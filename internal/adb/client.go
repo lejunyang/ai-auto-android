@@ -1,0 +1,334 @@
+package adb
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/lejunyang/ai-auto-android/internal/apperr"
+	"github.com/lejunyang/ai-auto-android/internal/process"
+	"github.com/lejunyang/ai-auto-android/internal/protocol"
+)
+
+const (
+	defaultTimeout   = 10 * time.Second
+	defaultMaxOutput = 1024 * 1024
+)
+
+type Client struct {
+	path      string
+	executor  process.Executor
+	timeout   time.Duration
+	maxOutput int
+	dial      func(network, address string, timeout time.Duration) (net.Conn, error)
+}
+
+type DoctorCheck struct {
+	Name    string         `json:"name"`
+	Passed  bool           `json:"passed"`
+	Message string         `json:"message"`
+	Details map[string]any `json:"details,omitempty"`
+}
+
+type DoctorReport struct {
+	Healthy    bool          `json:"healthy"`
+	ADBPath    string        `json:"adbPath"`
+	ADBVersion string        `json:"adbVersion"`
+	Checks     []DoctorCheck `json:"checks"`
+}
+
+type ConnectionResult struct {
+	Endpoint string `json:"endpoint"`
+	Message  string `json:"message"`
+}
+
+func NewClient(path string, executor process.Executor) *Client {
+	return &Client{
+		path:      path,
+		executor:  executor,
+		timeout:   defaultTimeout,
+		maxOutput: defaultMaxOutput,
+		dial:      net.DialTimeout,
+	}
+}
+
+func (c *Client) Doctor(ctx context.Context) (DoctorReport, error) {
+	report := DoctorReport{Healthy: true, ADBPath: c.path, Checks: make([]DoctorCheck, 0, 4)}
+
+	versionResult, err := c.run(ctx, []string{"version"}, process.Options{})
+	if err != nil {
+		return DoctorReport{}, err
+	}
+	report.ADBVersion = ParseVersion(string(versionResult.Stdout))
+	if report.ADBVersion == "" {
+		return DoctorReport{}, apperr.New(
+			apperr.CodeInternal,
+			"ADB version output was not recognized.",
+			false,
+			nil,
+		)
+	}
+	report.Checks = append(report.Checks, DoctorCheck{
+		Name: "adb.version", Passed: true, Message: "ADB executable is available.",
+		Details: map[string]any{"version": report.ADBVersion},
+	})
+
+	statusResult, statusErr := c.run(ctx, []string{"server-status"}, process.Options{})
+	if statusErr != nil {
+		report.Healthy = false
+		report.Checks = append(report.Checks, DoctorCheck{
+			Name: "adb.server", Passed: false, Message: "ADB server status is unavailable.",
+		})
+	} else {
+		status := ParseServerStatus(string(statusResult.Stdout))
+		report.Checks = append(report.Checks, DoctorCheck{
+			Name: "adb.server", Passed: true, Message: "ADB server status is available.",
+			Details: map[string]any{
+				"version":     status["version"],
+				"usbBackend":  status["usb_backend"],
+				"mdnsBackend": status["mdns_backend"],
+				"mdnsEnabled": status["mdns_enabled"],
+			},
+		})
+	}
+
+	connection, dialErr := c.dial("tcp", "127.0.0.1:5037", 250*time.Millisecond)
+	if dialErr == nil {
+		_ = connection.Close()
+	}
+	report.Checks = append(report.Checks, DoctorCheck{
+		Name:    "adb.port.5037",
+		Passed:  dialErr == nil,
+		Message: map[bool]string{true: "ADB server is listening on loopback port 5037.", false: "Nothing is listening on loopback port 5037."}[dialErr == nil],
+	})
+	if dialErr != nil {
+		report.Healthy = false
+	}
+
+	mdnsResult, mdnsErr := c.run(ctx, []string{"mdns", "check"}, process.Options{})
+	mdnsMessage := strings.TrimSpace(string(mdnsResult.Stdout))
+	if mdnsMessage == "" {
+		mdnsMessage = strings.TrimSpace(string(mdnsResult.Stderr))
+	}
+	report.Checks = append(report.Checks, DoctorCheck{
+		Name:    "adb.mdns",
+		Passed:  mdnsErr == nil,
+		Message: firstNonEmpty(mdnsMessage, "ADB mDNS check is unavailable."),
+	})
+	if mdnsErr != nil {
+		report.Healthy = false
+	}
+
+	return report, nil
+}
+
+func (c *Client) Devices(ctx context.Context) ([]protocol.Device, error) {
+	result, err := c.run(ctx, []string{"devices", "-l"}, process.Options{})
+	if err != nil {
+		return nil, err
+	}
+	if result.OutputTruncated {
+		return nil, apperr.New(apperr.CodeInternal, "ADB device output exceeded the safety limit.", false, nil)
+	}
+	devices, parseErr := ParseDevices(string(result.Stdout))
+	if parseErr != nil {
+		return nil, apperr.Wrap(apperr.CodeInternal, "ADB device output could not be parsed.", false, parseErr)
+	}
+	return devices, nil
+}
+
+func (c *Client) Pair(ctx context.Context, endpoint, pairingCode string) (ConnectionResult, error) {
+	if err := ValidateEndpoint(endpoint); err != nil {
+		return ConnectionResult{}, err
+	}
+	if err := ValidatePairingCode(pairingCode); err != nil {
+		return ConnectionResult{}, err
+	}
+	result, err := c.run(ctx, []string{"pair", endpoint}, process.Options{
+		Stdin:      []byte(pairingCode + "\n"),
+		Redactions: []string{pairingCode},
+		Timeout:    30 * time.Second,
+	})
+	if err != nil {
+		return ConnectionResult{}, err
+	}
+	message := strings.TrimSpace(string(result.Stdout))
+	if message == "" {
+		message = strings.TrimSpace(string(result.Stderr))
+	}
+	if strings.Contains(strings.ToLower(message), "failed") {
+		return ConnectionResult{}, apperr.New(
+			apperr.CodeDeviceUnreachable,
+			"ADB wireless pairing failed.",
+			true,
+			map[string]any{"endpoint": endpoint},
+		)
+	}
+	return ConnectionResult{Endpoint: endpoint, Message: firstNonEmpty(message, "Paired successfully.")}, nil
+}
+
+func (c *Client) Connect(ctx context.Context, endpoint string) (ConnectionResult, error) {
+	if err := ValidateEndpoint(endpoint); err != nil {
+		return ConnectionResult{}, err
+	}
+	result, err := c.run(ctx, []string{"connect", endpoint}, process.Options{})
+	if err != nil {
+		return ConnectionResult{}, err
+	}
+	message := strings.TrimSpace(string(result.Stdout))
+	if message == "" {
+		message = strings.TrimSpace(string(result.Stderr))
+	}
+	lowerMessage := strings.ToLower(message)
+	if strings.Contains(lowerMessage, "failed") || strings.Contains(lowerMessage, "cannot") {
+		return ConnectionResult{}, apperr.New(
+			apperr.CodeDeviceUnreachable,
+			"ADB could not connect to the wireless device.",
+			true,
+			map[string]any{"endpoint": endpoint},
+		)
+	}
+	return ConnectionResult{Endpoint: endpoint, Message: firstNonEmpty(message, "Connected successfully.")}, nil
+}
+
+func (c *Client) DeviceInfo(ctx context.Context, serial string) (protocol.Device, error) {
+	if err := ValidateSerial(serial); err != nil {
+		return protocol.Device{}, err
+	}
+	devices, err := c.Devices(ctx)
+	if err != nil {
+		return protocol.Device{}, err
+	}
+	device, err := selectDevice(devices, serial)
+	if err != nil {
+		return protocol.Device{}, err
+	}
+	if err := ensureOnline(device); err != nil {
+		return protocol.Device{}, err
+	}
+
+	result, err := c.run(ctx, []string{"-s", serial, "shell", "getprop"}, process.Options{})
+	if err != nil {
+		return protocol.Device{}, err
+	}
+	properties := ParseProperties(string(result.Stdout))
+	device.Manufacturer = properties["ro.product.manufacturer"]
+	if model := properties["ro.product.model"]; model != "" {
+		device.Model = model
+	}
+	if product := properties["ro.product.name"]; product != "" {
+		device.Product = product
+	}
+	device.AndroidVersion = properties["ro.build.version.release"]
+	if apiLevel, parseErr := strconv.Atoi(properties["ro.build.version.sdk"]); parseErr == nil {
+		device.APILevel = apiLevel
+	}
+	return device, nil
+}
+
+func selectDevice(devices []protocol.Device, serial string) (protocol.Device, error) {
+	if serial == "" {
+		switch len(devices) {
+		case 0:
+			return protocol.Device{}, apperr.New(apperr.CodeDeviceNotFound, "No ADB device was found.", true, nil)
+		case 1:
+			return devices[0], nil
+		default:
+			return protocol.Device{}, apperr.New(
+				apperr.CodeMultipleDevices,
+				"Multiple devices are connected; specify --device.",
+				false,
+				map[string]any{"count": len(devices)},
+			)
+		}
+	}
+	for _, device := range devices {
+		if device.Serial == serial {
+			return device, nil
+		}
+	}
+	return protocol.Device{}, apperr.New(
+		apperr.CodeDeviceNotFound,
+		"The requested ADB device was not found.",
+		true,
+		map[string]any{"device": serial},
+	)
+}
+
+func ensureOnline(device protocol.Device) error {
+	switch device.State {
+	case "device":
+		return nil
+	case "unauthorized":
+		return apperr.New(
+			apperr.CodeADBUnauthorized,
+			"Confirm the workstation RSA fingerprint on the Android device.",
+			true,
+			map[string]any{"device": device.Serial},
+		)
+	case "offline":
+		return apperr.New(
+			apperr.CodeDeviceOffline,
+			"The ADB device is offline.",
+			true,
+			map[string]any{"device": device.Serial},
+		)
+	default:
+		return apperr.New(
+			apperr.CodeDeviceUnreachable,
+			fmt.Sprintf("The ADB device is in state %q.", device.State),
+			true,
+			map[string]any{"device": device.Serial, "state": device.State},
+		)
+	}
+}
+
+func (c *Client) run(ctx context.Context, args []string, options process.Options) (process.Result, error) {
+	if options.Timeout <= 0 {
+		options.Timeout = c.timeout
+	}
+	if options.MaxOutput <= 0 {
+		options.MaxOutput = c.maxOutput
+	}
+	result, err := c.executor.Run(ctx, c.path, args, options)
+	if err == nil {
+		return result, nil
+	}
+	if errors.Is(err, process.ErrTimeout) {
+		return result, apperr.New(
+			apperr.CodeDeadlineExceeded,
+			"ADB command exceeded its deadline.",
+			true,
+			nil,
+		)
+	}
+	combinedOutput := strings.ToLower(string(result.Stdout) + "\n" + string(result.Stderr))
+	switch {
+	case strings.Contains(combinedOutput, "unauthorized"):
+		return result, apperr.New(apperr.CodeADBUnauthorized, "Confirm the workstation RSA fingerprint on the Android device.", true, nil)
+	case strings.Contains(combinedOutput, "offline"):
+		return result, apperr.New(apperr.CodeDeviceOffline, "The ADB device is offline.", true, nil)
+	case strings.Contains(combinedOutput, "no devices") || strings.Contains(combinedOutput, "device not found"):
+		return result, apperr.New(apperr.CodeDeviceNotFound, "No matching ADB device was found.", true, nil)
+	default:
+		return result, apperr.New(
+			apperr.CodeDeviceUnreachable,
+			"ADB command failed.",
+			true,
+			map[string]any{"exitCode": result.ExitCode},
+		)
+	}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}

@@ -12,12 +12,12 @@
   - [x] SubTask 2.3: 实现协议 Schema/fixture 自动验证测试
   - [x] SubTask 2.4: 验证协议测试并提交 `feat(protocol): define automation protocol v1`
 
-- [ ] Task 3: 实现 `aactl` 设备发现与 ADB 安全适配器：提供诊断、设备列表、无线配对/连接、设备信息、多设备显式选择和统一 JSON 输出。
-  - [ ] SubTask 3.1: 实现不经过 shell 的进程执行器、超时、输出上限和脱敏
-  - [ ] SubTask 3.2: 实现 ADB 路径解析、版本/5037/mDNS 诊断和状态解析
-  - [ ] SubTask 3.3: 实现 USB/无线/模拟器设备归一化与 `doctor`、`devices`、`device info` 命令
-  - [ ] SubTask 3.4: 使用 fake ADB 覆盖 unauthorized、offline、多设备、超时和恶意参数
-  - [ ] SubTask 3.5: 验证 Go 测试并提交 `feat(cli): add adb device discovery`
+- [x] Task 3: 实现 `aactl` 设备发现与 ADB 安全适配器：提供诊断、设备列表、无线配对/连接、设备信息、多设备显式选择和统一 JSON 输出。
+  - [x] SubTask 3.1: 实现不经过 shell 的进程执行器、超时、输出上限和脱敏
+  - [x] SubTask 3.2: 实现 ADB 路径解析、版本/5037/mDNS 诊断和状态解析
+  - [x] SubTask 3.3: 实现 USB/无线/模拟器设备归一化与 `doctor`、`devices`、`device info` 命令
+  - [x] SubTask 3.4: 使用 fake ADB 覆盖 unauthorized、offline、多设备、超时和恶意参数
+  - [x] SubTask 3.5: 验证 Go 测试并提交 `feat(cli): add adb device discovery`
 
 - [ ] Task 4: 实现 `aactl` 直接观察与类型化动作：在无需 Android App 的情况下支持截图、UI dump、点击、滑动、文本、按键和应用启动/停止。
   - [ ] SubTask 4.1: 实现截图与 UI hierarchy 观察命令及产物校验
