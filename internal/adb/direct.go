@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
+	"hash/crc32"
+	"image/png"
 	"io"
 	"regexp"
 	"strconv"
@@ -27,10 +30,10 @@ const (
 )
 
 var (
-	pngSignature    = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
-	packagePattern  = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$`)
-	activityPattern = regexp.MustCompile(`^(?:\.[A-Za-z][A-Za-z0-9_.$]*|[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+(?:/[A-Za-z0-9_.$]+)?)$`)
-	directText      = regexp.MustCompile(`^[A-Za-z0-9 @._+\-,:/]*$`)
+	pngSignature   = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
+	packagePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$`)
+	classPattern   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$`)
+	directText     = regexp.MustCompile(`^[A-Za-z0-9 @._+\-,:/]*$`)
 )
 
 var allowedKeys = map[string]string{
@@ -80,7 +83,7 @@ func (c *Client) Screenshot(ctx context.Context, serial string) (Screenshot, err
 	if err != nil {
 		return Screenshot{}, err
 	}
-	if result.OutputTruncated || !bytes.HasPrefix(result.Stdout, pngSignature) {
+	if result.OutputTruncated || !validPNGStructure(result.Stdout) {
 		return Screenshot{}, apperr.New(
 			apperr.CodeActionFailed,
 			"ADB returned an invalid or truncated PNG screenshot.",
@@ -191,12 +194,12 @@ func (c *Client) Launch(ctx context.Context, serial, packageName, activity strin
 	if err := ValidatePackageName(packageName); err != nil {
 		return ActionResult{}, err
 	}
+	component := ""
 	if activity != "" {
-		if !activityPattern.MatchString(activity) {
-			return ActionResult{}, invalidField("activity", "has an invalid Android component format")
-		}
-		if strings.Contains(activity, "/") && !strings.HasPrefix(activity, packageName+"/") {
-			return ActionResult{}, invalidField("activity", "must belong to the requested package")
+		var err error
+		component, err = validateActivity(packageName, activity)
+		if err != nil {
+			return ActionResult{}, err
 		}
 	}
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
@@ -209,13 +212,9 @@ func (c *Client) Launch(ctx context.Context, serial, packageName, activity strin
 			"-p", packageName, "-c", "android.intent.category.LAUNCHER", "1",
 		}
 	} else {
-		component := activity
-		if !strings.Contains(activity, "/") {
-			component = packageName + "/" + activity
-		}
 		args = []string{"-s", serial, "shell", "am", "start", "-W", "-n", component}
 	}
-	if _, err := c.run(ctx, args, process.Options{Timeout: 20 * time.Second}); err != nil {
+	if err := c.runAction(ctx, serial, args, process.Options{Timeout: 20 * time.Second}); err != nil {
 		return ActionResult{}, err
 	}
 	return ActionResult{Device: serial, Action: "app.launch"}, nil
@@ -228,7 +227,7 @@ func (c *Client) Stop(ctx context.Context, serial, packageName string) (ActionRe
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return ActionResult{}, err
 	}
-	if _, err := c.run(ctx, []string{
+	if err := c.runAction(ctx, serial, []string{
 		"-s", serial, "shell", "am", "force-stop", packageName,
 	}, process.Options{}); err != nil {
 		return ActionResult{}, err
@@ -246,10 +245,31 @@ func (c *Client) inputAction(
 		return ActionResult{}, err
 	}
 	args := append([]string{"-s", serial, "shell", "input"}, inputArgs...)
-	if _, err := c.run(ctx, args, process.Options{}); err != nil {
+	if err := c.runAction(ctx, serial, args, process.Options{}); err != nil {
 		return ActionResult{}, err
 	}
 	return ActionResult{Device: serial, Action: action}, nil
+}
+
+func (c *Client) runAction(
+	ctx context.Context,
+	serial string,
+	args []string,
+	options process.Options,
+) error {
+	result, err := c.run(ctx, args, options)
+	if err == nil {
+		return nil
+	}
+	if result.ExitCode <= 0 {
+		return err
+	}
+	return apperr.New(
+		apperr.CodeActionFailed,
+		"ADB action command failed.",
+		false,
+		map[string]any{"device": serial, "exitCode": result.ExitCode},
+	)
 }
 
 func (c *Client) requireOnlineDevice(ctx context.Context, serial string) error {
@@ -274,6 +294,33 @@ func ValidatePackageName(packageName string) error {
 	return nil
 }
 
+func validateActivity(packageName, activity string) (string, error) {
+	if len(activity) > 512 {
+		return "", invalidField("activity", "must be at most 512 bytes")
+	}
+
+	componentPackage, className, hasPackage := strings.Cut(activity, "/")
+	if hasPackage {
+		if componentPackage != packageName {
+			return "", invalidField("activity", "must belong to the requested package")
+		}
+	} else {
+		componentPackage = packageName
+		className = activity
+	}
+
+	validClass := false
+	if strings.HasPrefix(className, ".") {
+		validClass = classPattern.MatchString(strings.TrimPrefix(className, "."))
+	} else {
+		validClass = strings.Contains(className, ".") && classPattern.MatchString(className)
+	}
+	if !validClass {
+		return "", invalidField("activity", "has an invalid Android component format")
+	}
+	return componentPackage + "/" + className, nil
+}
+
 func validatePoint(x, y int) error {
 	if x < 0 || x > maxCoordinate {
 		return invalidField("x", fmt.Sprintf("must be between 0 and %d", maxCoordinate))
@@ -284,23 +331,111 @@ func validatePoint(x, y int) error {
 	return nil
 }
 
+func validPNGStructure(data []byte) bool {
+	if len(data) < len(pngSignature) || !bytes.Equal(data[:len(pngSignature)], pngSignature) {
+		return false
+	}
+	if _, err := png.DecodeConfig(bytes.NewReader(data)); err != nil {
+		return false
+	}
+
+	offset := len(pngSignature)
+	sawIHDR := false
+	sawPLTE := false
+	sawIDAT := false
+	idatClosed := false
+	for {
+		if len(data)-offset < 12 {
+			return false
+		}
+		length := binary.BigEndian.Uint32(data[offset : offset+4])
+		chunkEnd64 := uint64(offset) + 12 + uint64(length)
+		if chunkEnd64 > uint64(len(data)) {
+			return false
+		}
+		chunkEnd := int(chunkEnd64)
+		dataEnd := chunkEnd - 4
+		chunkType := data[offset+4 : offset+8]
+		if !validPNGChunkType(chunkType) ||
+			binary.BigEndian.Uint32(data[dataEnd:chunkEnd]) != crc32.ChecksumIEEE(data[offset+4:dataEnd]) {
+			return false
+		}
+
+		switch string(chunkType) {
+		case "IHDR":
+			if sawIHDR || offset != len(pngSignature) || length != 13 {
+				return false
+			}
+			sawIHDR = true
+		case "PLTE":
+			if !sawIHDR || sawPLTE || sawIDAT {
+				return false
+			}
+			sawPLTE = true
+		case "IDAT":
+			if !sawIHDR || idatClosed {
+				return false
+			}
+			sawIDAT = true
+		case "IEND":
+			return sawIHDR && sawIDAT && length == 0 && chunkEnd == len(data)
+		default:
+			if !sawIHDR || chunkType[0] >= 'A' && chunkType[0] <= 'Z' {
+				return false
+			}
+		}
+		if sawIDAT && string(chunkType) != "IDAT" {
+			idatClosed = true
+		}
+		offset = chunkEnd
+	}
+}
+
+func validPNGChunkType(chunkType []byte) bool {
+	for index, character := range chunkType {
+		if character < 'A' || character > 'Z' && character < 'a' || character > 'z' {
+			return false
+		}
+		if index == 2 && character >= 'a' && character <= 'z' {
+			return false
+		}
+	}
+	return true
+}
+
 func validHierarchyXML(data []byte) bool {
 	decoder := xml.NewDecoder(bytes.NewReader(data))
 	foundRoot := false
+	depth := 0
 	for {
 		token, err := decoder.Token()
 		if err != nil {
 			if err == io.EOF {
-				return foundRoot
+				return foundRoot && depth == 0
 			}
 			return false
 		}
-		if start, ok := token.(xml.StartElement); ok {
-			if !foundRoot {
+		switch value := token.(type) {
+		case xml.StartElement:
+			if depth == 0 {
+				if foundRoot {
+					return false
+				}
+				start := value
 				if start.Name.Local != "hierarchy" {
 					return false
 				}
 				foundRoot = true
+			}
+			depth++
+		case xml.EndElement:
+			if depth == 0 {
+				return false
+			}
+			depth--
+		case xml.CharData:
+			if depth == 0 && len(bytes.TrimSpace(value)) != 0 {
+				return false
 			}
 		}
 	}

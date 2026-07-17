@@ -1,7 +1,10 @@
 package cli
 
 import (
+	"bytes"
 	"context"
+	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,7 +35,7 @@ func (e *scriptedExecutor) Run(
 }
 
 func TestObserveScreenshotWritesValidatedPNGAndMetadata(t *testing.T) {
-	png := append([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}, []byte("payload")...)
+	png := validPNG(t)
 	executor := &scriptedExecutor{
 		results: []process.Result{
 			{Stdout: []byte("List of devices attached\nONE\tdevice usb:1-1\nTWO\tdevice usb:1-2\n")},
@@ -154,4 +157,13 @@ func assertCLICall(t *testing.T, actual []string, expected ...string) {
 	if strings.Join(actual, "\x00") != strings.Join(expected, "\x00") {
 		t.Fatalf("args = %#v, want %#v", actual, expected)
 	}
+}
+
+func validPNG(t *testing.T) []byte {
+	t.Helper()
+	var output bytes.Buffer
+	if err := png.Encode(&output, image.NewRGBA(image.Rect(0, 0, 1, 1))); err != nil {
+		t.Fatalf("encode PNG: %v", err)
+	}
+	return output.Bytes()
 }
