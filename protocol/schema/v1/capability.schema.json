@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/protocol/v1/capability.schema.json",
+  "title": "Device or Bridge Capability",
+  "type": "object",
+  "required": ["name", "version", "available"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/semanticVersion"
+    },
+    "available": {
+      "type": "boolean"
+    },
+    "permission": {
+      "enum": ["notRequired", "granted", "denied", "unknown"]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["integer", "number", "string", "boolean"]
+      }
+    }
+  },
+  "additionalProperties": true
+}

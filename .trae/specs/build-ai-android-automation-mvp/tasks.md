@@ -6,11 +6,11 @@
   - [x] SubTask 1.3: 建立 `protocol/`、`cmd/`、`internal/`、`android/`、`skills/`、`docs/` 和测试目录
   - [x] SubTask 1.4: 验证空骨架并提交 `chore: initialize repository and toolchains`
 
-- [ ] Task 2: 定义协议 v1 与契约夹具：建立 CLI 信封、设备模型、动作模型、录制模型和 App Bridge JSON-RPC Schema，作为 Go、Kotlin、MCP 和 Skills 的共同语义来源。
-  - [ ] SubTask 2.1: 编写 JSON Schema Draft 2020-12 文件和合法/非法 fixture
-  - [ ] SubTask 2.2: 定义 capability、错误码、版本协商、大小限制、超时和向后兼容规则
-  - [ ] SubTask 2.3: 实现协议 Schema/fixture 自动验证测试
-  - [ ] SubTask 2.4: 验证协议测试并提交 `feat(protocol): define automation protocol v1`
+- [x] Task 2: 定义协议 v1 与契约夹具：建立 CLI 信封、设备模型、动作模型、录制模型和 App Bridge JSON-RPC Schema，作为 Go、Kotlin、MCP 和 Skills 的共同语义来源。
+  - [x] SubTask 2.1: 编写 JSON Schema Draft 2020-12 文件和合法/非法 fixture
+  - [x] SubTask 2.2: 定义 capability、错误码、版本协商、大小限制、超时和向后兼容规则
+  - [x] SubTask 2.3: 实现协议 Schema/fixture 自动验证测试
+  - [x] SubTask 2.4: 验证协议测试并提交 `feat(protocol): define automation protocol v1`
 
 - [ ] Task 3: 实现 `aactl` 设备发现与 ADB 安全适配器：提供诊断、设备列表、无线配对/连接、设备信息、多设备显式选择和统一 JSON 输出。
   - [ ] SubTask 3.1: 实现不经过 shell 的进程执行器、超时、输出上限和脱敏

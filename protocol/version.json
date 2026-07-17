@@ -1,0 +1,27 @@
+{
+  "current": "1.0",
+  "supported": [
+    "1.0"
+  ],
+  "negotiation": {
+    "strategy": "highest-common-version",
+    "majorMismatchError": "VERSION_INCOMPATIBLE"
+  },
+  "compatibility": {
+    "sameMajorAllows": [
+      "add-optional-field",
+      "add-capability",
+      "add-enum-value-only-when-capability-gated"
+    ],
+    "requiresNewMajor": [
+      "remove-field",
+      "change-field-semantics",
+      "make-optional-field-required",
+      "narrow-valid-range",
+      "change-default-behavior"
+    ],
+    "unknownExtensibleObjectFields": "ignore",
+    "unknownCommandPayloadFields": "reject",
+    "unknownActionsMethodsAndErrorCodes": "reject"
+  }
+}

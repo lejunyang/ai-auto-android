@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/protocol/v1/device.schema.json",
+  "title": "Normalized Android Device",
+  "type": "object",
+  "required": ["serial", "state", "transport", "capabilities"],
+  "properties": {
+    "serial": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^\\s\\u0000]+$"
+    },
+    "state": {
+      "enum": ["device", "unauthorized", "offline", "bootloader", "recovery", "sideload", "unknown"]
+    },
+    "transport": {
+      "enum": ["usb", "wifi", "emulator", "unknown"]
+    },
+    "manufacturer": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "model": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "product": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "androidVersion": {
+      "type": "string",
+      "maxLength": 32
+    },
+    "apiLevel": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "connection": {
+      "type": "object",
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "mdnsService": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "transportId": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "capability.schema.json"
+      },
+      "maxItems": 128
+    }
+  },
+  "additionalProperties": true
+}

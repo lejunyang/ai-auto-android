@@ -1,0 +1,12 @@
+{
+  "protocolVersion": "1.0",
+  "encoding": "utf-8",
+  "framing": "ndjson",
+  "maxMessageBytes": 1048576,
+  "defaultDeadlineMs": 30000,
+  "maxDeadlineMs": 300000,
+  "maxConcurrentRequests": 4,
+  "sessionTokenTtlSeconds": 900,
+  "pairingCodeTtlSeconds": 120,
+  "replayWindowSeconds": 300
+}

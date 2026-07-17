@@ -1,0 +1,323 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/protocol/v1/bridge-request.schema.json",
+  "title": "App Bridge JSON-RPC Request",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/hello"
+    },
+    {
+      "$ref": "#/$defs/sessionOpen"
+    },
+    {
+      "$ref": "#/$defs/deviceInfo"
+    },
+    {
+      "$ref": "#/$defs/uiSnapshot"
+    },
+    {
+      "$ref": "#/$defs/actionExecute"
+    },
+    {
+      "$ref": "#/$defs/recordingList"
+    },
+    {
+      "$ref": "#/$defs/recordingReplay"
+    },
+    {
+      "$ref": "#/$defs/sessionClose"
+    }
+  ],
+  "$defs": {
+    "base": {
+      "type": "object",
+      "required": ["jsonrpc", "id", "requestId", "protocolVersion", "method", "params", "deadlineMs"],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "requestId": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "protocolVersion": {
+          "$ref": "common.schema.json#/$defs/protocolVersion"
+        },
+        "method": {
+          "enum": [
+            "rpc.hello",
+            "session.open",
+            "device.info",
+            "ui.snapshot",
+            "action.execute",
+            "recording.list",
+            "recording.replay",
+            "session.close"
+          ]
+        },
+        "params": {
+          "type": "object"
+        },
+        "deadlineMs": {
+          "$ref": "common.schema.json#/$defs/deadlineMs"
+        },
+        "token": {
+          "$ref": "#/$defs/token"
+        }
+      },
+      "additionalProperties": true
+    },
+    "token": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9._~-]+$"
+    },
+    "authorized": {
+      "type": "object",
+      "required": ["token"]
+    },
+    "hello": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "rpc.hello"
+            },
+            "params": {
+              "type": "object",
+              "required": ["clientVersion", "supportedProtocolVersions", "capabilities"],
+              "properties": {
+                "clientVersion": {
+                  "$ref": "common.schema.json#/$defs/semanticVersion"
+                },
+                "supportedProtocolVersions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 16,
+                  "uniqueItems": true,
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/protocolVersion"
+                  }
+                },
+                "capabilities": {
+                  "type": "array",
+                  "maxItems": 128,
+                  "items": {
+                    "$ref": "capability.schema.json"
+                  }
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        }
+      ]
+    },
+    "sessionOpen": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "session.open"
+            },
+            "params": {
+              "type": "object",
+              "required": ["pairingCode", "hostName"],
+              "properties": {
+                "pairingCode": {
+                  "type": "string",
+                  "pattern": "^[0-9]{6}$"
+                },
+                "hostName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "deviceInfo": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "$ref": "#/$defs/authorized"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "device.info"
+            },
+            "params": {
+              "type": "object",
+              "maxProperties": 0,
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "uiSnapshot": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "$ref": "#/$defs/authorized"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "ui.snapshot"
+            },
+            "params": {
+              "type": "object",
+              "properties": {
+                "targetPackage": {
+                  "$ref": "common.schema.json#/$defs/packageName"
+                },
+                "maxDepth": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "actionExecute": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "$ref": "#/$defs/authorized"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "action.execute"
+            },
+            "params": {
+              "type": "object",
+              "required": ["action", "idempotencyKey"],
+              "properties": {
+                "action": {
+                  "$ref": "action.schema.json"
+                },
+                "idempotencyKey": {
+                  "$ref": "common.schema.json#/$defs/uuid"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "recordingList": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "$ref": "#/$defs/authorized"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "recording.list"
+            },
+            "params": {
+              "type": "object",
+              "maxProperties": 0,
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "recordingReplay": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "$ref": "#/$defs/authorized"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "recording.replay"
+            },
+            "params": {
+              "type": "object",
+              "required": ["scriptId", "idempotencyKey"],
+              "properties": {
+                "scriptId": {
+                  "$ref": "common.schema.json#/$defs/uuid"
+                },
+                "idempotencyKey": {
+                  "$ref": "common.schema.json#/$defs/uuid"
+                },
+                "variables": {
+                  "type": "object",
+                  "maxProperties": 128,
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "sessionClose": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "$ref": "#/$defs/authorized"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "session.close"
+            },
+            "params": {
+              "type": "object",
+              "maxProperties": 0,
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    }
+  }
+}

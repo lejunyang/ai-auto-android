@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/protocol/v1/cli-envelope.schema.json",
+  "title": "CLI JSON Response Envelope",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/success"
+    },
+    {
+      "$ref": "#/$defs/failure"
+    }
+  ],
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "required": ["durationMs"],
+      "properties": {
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        }
+      },
+      "additionalProperties": true
+    },
+    "success": {
+      "type": "object",
+      "required": ["schemaVersion", "requestId", "ok", "data", "error", "meta"],
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0"
+        },
+        "requestId": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "ok": {
+          "const": true
+        },
+        "data": true,
+        "error": {
+          "type": "null"
+        },
+        "meta": {
+          "$ref": "#/$defs/meta"
+        }
+      },
+      "additionalProperties": true
+    },
+    "failure": {
+      "type": "object",
+      "required": ["schemaVersion", "requestId", "ok", "data", "error", "meta"],
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0"
+        },
+        "requestId": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "ok": {
+          "const": false
+        },
+        "data": {
+          "type": "null"
+        },
+        "error": {
+          "$ref": "error.schema.json"
+        },
+        "meta": {
+          "$ref": "#/$defs/meta"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

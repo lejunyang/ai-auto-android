@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/protocol/v1/bridge-response.schema.json",
+  "title": "App Bridge JSON-RPC Response",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/success"
+    },
+    {
+      "$ref": "#/$defs/failure"
+    }
+  ],
+  "$defs": {
+    "success": {
+      "type": "object",
+      "required": ["jsonrpc", "id", "requestId", "protocolVersion", "result"],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "requestId": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "protocolVersion": {
+          "$ref": "common.schema.json#/$defs/protocolVersion"
+        },
+        "result": {
+          "type": "object"
+        },
+        "error": false
+      },
+      "additionalProperties": true
+    },
+    "failure": {
+      "type": "object",
+      "required": ["jsonrpc", "id", "requestId", "protocolVersion", "error"],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "requestId": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "protocolVersion": {
+          "$ref": "common.schema.json#/$defs/protocolVersion"
+        },
+        "error": {
+          "type": "object",
+          "required": ["code", "message", "data"],
+          "properties": {
+            "code": {
+              "type": "integer",
+              "minimum": -32099,
+              "maximum": -32000
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            "data": {
+              "$ref": "error.schema.json"
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": false
+      },
+      "additionalProperties": true
+    }
+  }
+}

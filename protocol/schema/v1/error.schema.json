@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/protocol/v1/error.schema.json",
+  "title": "Stable Protocol Error",
+  "type": "object",
+  "required": ["code", "message", "retryable"],
+  "properties": {
+    "code": {
+      "enum": [
+        "INVALID_ARGUMENT",
+        "ADB_NOT_FOUND",
+        "ADB_UNAUTHORIZED",
+        "DEVICE_OFFLINE",
+        "DEVICE_NOT_FOUND",
+        "MULTIPLE_DEVICES",
+        "DEVICE_UNREACHABLE",
+        "PERMISSION_DENIED",
+        "CAPABILITY_UNAVAILABLE",
+        "VERSION_INCOMPATIBLE",
+        "AUTH_REQUIRED",
+        "AUTH_INVALID",
+        "AUTH_EXPIRED",
+        "REQUEST_REPLAYED",
+        "DEADLINE_EXCEEDED",
+        "MESSAGE_TOO_LARGE",
+        "RATE_LIMITED",
+        "ACTION_NOT_ALLOWED",
+        "ACTION_FAILED",
+        "SELECTOR_NOT_FOUND",
+        "SELECTOR_AMBIGUOUS",
+        "SCRIPT_NOT_FOUND",
+        "PROTOCOL_ERROR",
+        "INTERNAL_ERROR"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "details": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

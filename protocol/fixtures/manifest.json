@@ -1,0 +1,449 @@
+{
+  "valid": [
+    {
+      "name": "CLI success envelope",
+      "schema": "cli-envelope.schema.json",
+      "data": {
+        "schemaVersion": "1.0",
+        "requestId": "7ed37ce3-ae65-4a44-8454-e234d5f0a1c1",
+        "ok": true,
+        "data": {
+          "devices": []
+        },
+        "error": null,
+        "meta": {
+          "durationMs": 12
+        }
+      }
+    },
+    {
+      "name": "CLI failure envelope with stable error",
+      "schema": "cli-envelope.schema.json",
+      "data": {
+        "schemaVersion": "1.0",
+        "requestId": "e522a694-b7cb-43a4-b64d-9fac5d3200c5",
+        "ok": false,
+        "data": null,
+        "error": {
+          "code": "ADB_UNAUTHORIZED",
+          "message": "Confirm the host key on the device.",
+          "retryable": true,
+          "details": {
+            "serial": "R3CN30TEST"
+          }
+        },
+        "meta": {
+          "durationMs": 31
+        }
+      }
+    },
+    {
+      "name": "normalized wireless device",
+      "schema": "device.schema.json",
+      "data": {
+        "serial": "192.168.1.20:37129",
+        "state": "device",
+        "transport": "wifi",
+        "manufacturer": "Google",
+        "model": "Pixel 8",
+        "androidVersion": "16",
+        "apiLevel": 36,
+        "connection": {
+          "endpoint": "192.168.1.20:37129",
+          "mdnsService": "_adb-tls-connect._tcp"
+        },
+        "capabilities": [
+          {
+            "name": "adb.screenshot",
+            "version": "1.0.0",
+            "available": true,
+            "permission": "granted"
+          }
+        ]
+      }
+    },
+    {
+      "name": "semantic click action",
+      "schema": "action.schema.json",
+      "data": {
+        "type": "ui.click",
+        "params": {
+          "target": {
+            "packageName": "com.example.notes",
+            "selectorCandidates": [
+              {
+                "strategy": "resourceId",
+                "value": "com.example.notes:id/save",
+                "weight": 1,
+                "required": true
+              }
+            ],
+            "recordedBounds": {
+              "left": 840,
+              "top": 1820,
+              "right": 1040,
+              "bottom": 1980
+            },
+            "relativePoint": {
+              "x": 0.5,
+              "y": 0.5
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "secret text action",
+      "schema": "action.schema.json",
+      "data": {
+        "type": "ui.setText",
+        "params": {
+          "target": {
+            "selectorCandidates": [
+              {
+                "strategy": "contentDescription",
+                "value": "Password",
+                "weight": 0.9
+              }
+            ]
+          },
+          "secretRef": "account.password"
+        }
+      }
+    },
+    {
+      "name": "versioned recorded script",
+      "schema": "automation-script.schema.json",
+      "data": {
+        "id": "ec43ff73-c501-4c55-8785-9a812f009c1e",
+        "schemaVersion": "1.0",
+        "name": "Save a note",
+        "targetPackages": [
+          "com.example.notes"
+        ],
+        "createdAt": "2026-07-18T01:30:00Z",
+        "requirements": {
+          "minApiLevel": 30,
+          "capabilities": [
+            "accessibility.actions"
+          ]
+        },
+        "environment": {
+          "apiLevel": 36,
+          "logicalWidth": 1080,
+          "logicalHeight": 2400,
+          "densityDpi": 420,
+          "rotation": 0,
+          "locale": "zh-CN"
+        },
+        "variables": [
+          {
+            "name": "noteText",
+            "type": "string",
+            "scope": "run",
+            "sensitive": false
+          }
+        ],
+        "steps": [
+          {
+            "id": "786161ea-3432-48b3-a8c2-a53d9e548aa4",
+            "recordedAtMs": 320,
+            "action": {
+              "type": "ui.tap",
+              "params": {
+                "x": 540,
+                "y": 1800
+              }
+            },
+            "waitAfter": {
+              "kind": "uiStable",
+              "operator": "stable",
+              "stableDurationMs": 300,
+              "timeoutMs": 5000
+            },
+            "retry": {
+              "maxAttempts": 2,
+              "backoffMs": 200
+            },
+            "failurePolicy": "requestIntervention"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bridge hello request",
+      "schema": "bridge-request.schema.json",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        "requestId": "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        "protocolVersion": "1.0",
+        "method": "rpc.hello",
+        "params": {
+          "clientVersion": "0.1.0",
+          "supportedProtocolVersions": [
+            "1.0"
+          ],
+          "capabilities": []
+        },
+        "deadlineMs": 5000
+      }
+    },
+    {
+      "name": "authorized bridge action request",
+      "schema": "bridge-request.schema.json",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "a1960402-31ac-457e-9e82-e9bdd7eb3af1",
+        "requestId": "a1960402-31ac-457e-9e82-e9bdd7eb3af1",
+        "protocolVersion": "1.0",
+        "method": "action.execute",
+        "params": {
+          "action": {
+            "type": "ui.back",
+            "params": {}
+          },
+          "idempotencyKey": "16ddc19c-d71f-49aa-b2cc-b02979114345"
+        },
+        "deadlineMs": 10000,
+        "token": "4GJw5tzL7-Wa_gP8xUiVN6eC2zS7hHdx"
+      }
+    },
+    {
+      "name": "bridge success response",
+      "schema": "bridge-response.schema.json",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "1285a189-dd86-445c-b3b3-379848bd20a0",
+        "requestId": "1285a189-dd86-445c-b3b3-379848bd20a0",
+        "protocolVersion": "1.0",
+        "result": {
+          "accepted": true
+        }
+      }
+    },
+    {
+      "name": "bridge stable error response",
+      "schema": "bridge-response.schema.json",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "027185c0-6e40-4302-88f8-52c3b6b69870",
+        "requestId": "027185c0-6e40-4302-88f8-52c3b6b69870",
+        "protocolVersion": "1.0",
+        "error": {
+          "code": -32001,
+          "message": "Session token expired.",
+          "data": {
+            "code": "AUTH_EXPIRED",
+            "message": "Open a new bridge session.",
+            "retryable": true
+          }
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "CLI success cannot carry an error",
+      "schema": "cli-envelope.schema.json",
+      "expectedError": "oneOf",
+      "data": {
+        "schemaVersion": "1.0",
+        "requestId": "e522a694-b7cb-43a4-b64d-9fac5d3200c5",
+        "ok": true,
+        "data": {},
+        "error": {
+          "code": "INTERNAL_ERROR",
+          "message": "Contradiction",
+          "retryable": false
+        },
+        "meta": {
+          "durationMs": 1
+        }
+      }
+    },
+    {
+      "name": "unknown error code is rejected",
+      "schema": "error.schema.json",
+      "expectedError": "$.code",
+      "data": {
+        "code": "SOMETHING_NEW",
+        "message": "Unknown",
+        "retryable": false
+      }
+    },
+    {
+      "name": "device serial cannot contain whitespace",
+      "schema": "device.schema.json",
+      "expectedError": "$.serial",
+      "data": {
+        "serial": "bad serial",
+        "state": "device",
+        "transport": "usb",
+        "capabilities": []
+      }
+    },
+    {
+      "name": "arbitrary shell action is rejected",
+      "schema": "action.schema.json",
+      "expectedError": "oneOf",
+      "data": {
+        "type": "shell.exec",
+        "params": {
+          "command": "rm -rf /"
+        }
+      }
+    },
+    {
+      "name": "tap coordinates cannot be negative",
+      "schema": "action.schema.json",
+      "expectedError": "minimum",
+      "data": {
+        "type": "ui.tap",
+        "params": {
+          "x": -1,
+          "y": 200
+        }
+      }
+    },
+    {
+      "name": "text action cannot include plaintext and secret",
+      "schema": "action.schema.json",
+      "expectedError": "oneOf",
+      "data": {
+        "type": "ui.setText",
+        "params": {
+          "target": {
+            "normalizedScreenPoint": {
+              "x": 0.5,
+              "y": 0.5
+            }
+          },
+          "text": "plaintext",
+          "secretRef": "password"
+        }
+      }
+    },
+    {
+      "name": "script requires at least one target package",
+      "schema": "automation-script.schema.json",
+      "expectedError": "$.targetPackages",
+      "data": {
+        "id": "ec43ff73-c501-4c55-8785-9a812f009c1e",
+        "schemaVersion": "1.0",
+        "name": "Invalid",
+        "targetPackages": [],
+        "createdAt": "2026-07-18T01:30:00Z",
+        "requirements": {
+          "minApiLevel": 30,
+          "capabilities": []
+        },
+        "steps": [
+          {
+            "id": "786161ea-3432-48b3-a8c2-a53d9e548aa4",
+            "action": {
+              "type": "ui.home",
+              "params": {}
+            },
+            "retry": {
+              "maxAttempts": 1,
+              "backoffMs": 0
+            },
+            "failurePolicy": "stop"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bridge request requires deadline",
+      "schema": "bridge-request.schema.json",
+      "expectedError": "deadlineMs",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        "requestId": "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        "protocolVersion": "1.0",
+        "method": "rpc.hello",
+        "params": {
+          "clientVersion": "0.1.0",
+          "supportedProtocolVersions": [
+            "1.0"
+          ],
+          "capabilities": []
+        }
+      }
+    },
+    {
+      "name": "authorized bridge request requires token",
+      "schema": "bridge-request.schema.json",
+      "expectedError": "token",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "a1960402-31ac-457e-9e82-e9bdd7eb3af1",
+        "requestId": "a1960402-31ac-457e-9e82-e9bdd7eb3af1",
+        "protocolVersion": "1.0",
+        "method": "device.info",
+        "params": {},
+        "deadlineMs": 1000
+      }
+    },
+    {
+      "name": "bridge deadline cannot exceed protocol limit",
+      "schema": "bridge-request.schema.json",
+      "expectedError": "maximum",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        "requestId": "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        "protocolVersion": "1.0",
+        "method": "rpc.hello",
+        "params": {
+          "clientVersion": "0.1.0",
+          "supportedProtocolVersions": [
+            "1.0"
+          ],
+          "capabilities": []
+        },
+        "deadlineMs": 300001
+      }
+    },
+    {
+      "name": "pairing code must contain six digits",
+      "schema": "bridge-request.schema.json",
+      "expectedError": "pattern",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "d06d46a4-223a-4837-8f8e-e19ac2a54ebf",
+        "requestId": "d06d46a4-223a-4837-8f8e-e19ac2a54ebf",
+        "protocolVersion": "1.0",
+        "method": "session.open",
+        "params": {
+          "pairingCode": "12AB",
+          "hostName": "MacBook"
+        },
+        "deadlineMs": 5000
+      }
+    },
+    {
+      "name": "response cannot contain result and error",
+      "schema": "bridge-response.schema.json",
+      "expectedError": "oneOf",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "027185c0-6e40-4302-88f8-52c3b6b69870",
+        "requestId": "027185c0-6e40-4302-88f8-52c3b6b69870",
+        "protocolVersion": "1.0",
+        "result": {},
+        "error": {
+          "code": -32000,
+          "message": "Contradiction",
+          "data": {
+            "code": "PROTOCOL_ERROR",
+            "message": "Only one response branch is allowed.",
+            "retryable": false
+          }
+        }
+      }
+    }
+  ]
+}

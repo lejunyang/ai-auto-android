@@ -1,12 +1,15 @@
 SHELL := /bin/sh
 
-.PHONY: verify doctor test build android-test android-build
+.PHONY: verify doctor protocol-test test build android-test android-build
 
-verify:
+verify: protocol-test
 	@./scripts/verify-toolchains.sh --metadata-only
 
 doctor:
 	@./scripts/verify-toolchains.sh
+
+protocol-test:
+	@cd protocol && node scripts/validate.mjs
 
 test:
 	@echo "Go tests will be enabled with the CLI implementation."
