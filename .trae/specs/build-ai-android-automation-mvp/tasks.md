@@ -1,0 +1,102 @@
+# Tasks
+
+- [x] Task 1: 初始化仓库与可重复工具链：初始化 Git，建立单仓库目录、忽略规则、版本约束、基础说明和最小 CI，使后续每个任务可以独立构建与提交。
+  - [x] SubTask 1.1: 初始化 Git，加入当前规格文件并建立主分支
+  - [x] SubTask 1.2: 固定 Go 1.26.5、JDK 21、Android SDK 36、Gradle/AGP 版本和本地开发命令
+  - [x] SubTask 1.3: 建立 `protocol/`、`cmd/`、`internal/`、`android/`、`skills/`、`docs/` 和测试目录
+  - [x] SubTask 1.4: 验证空骨架并提交 `chore: initialize repository and toolchains`
+
+- [ ] Task 2: 定义协议 v1 与契约夹具：建立 CLI 信封、设备模型、动作模型、录制模型和 App Bridge JSON-RPC Schema，作为 Go、Kotlin、MCP 和 Skills 的共同语义来源。
+  - [ ] SubTask 2.1: 编写 JSON Schema Draft 2020-12 文件和合法/非法 fixture
+  - [ ] SubTask 2.2: 定义 capability、错误码、版本协商、大小限制、超时和向后兼容规则
+  - [ ] SubTask 2.3: 实现协议 Schema/fixture 自动验证测试
+  - [ ] SubTask 2.4: 验证协议测试并提交 `feat(protocol): define automation protocol v1`
+
+- [ ] Task 3: 实现 `aactl` 设备发现与 ADB 安全适配器：提供诊断、设备列表、无线配对/连接、设备信息、多设备显式选择和统一 JSON 输出。
+  - [ ] SubTask 3.1: 实现不经过 shell 的进程执行器、超时、输出上限和脱敏
+  - [ ] SubTask 3.2: 实现 ADB 路径解析、版本/5037/mDNS 诊断和状态解析
+  - [ ] SubTask 3.3: 实现 USB/无线/模拟器设备归一化与 `doctor`、`devices`、`device info` 命令
+  - [ ] SubTask 3.4: 使用 fake ADB 覆盖 unauthorized、offline、多设备、超时和恶意参数
+  - [ ] SubTask 3.5: 验证 Go 测试并提交 `feat(cli): add adb device discovery`
+
+- [ ] Task 4: 实现 `aactl` 直接观察与类型化动作：在无需 Android App 的情况下支持截图、UI dump、点击、滑动、文本、按键和应用启动/停止。
+  - [ ] SubTask 4.1: 实现截图与 UI hierarchy 观察命令及产物校验
+  - [ ] SubTask 4.2: 实现动作白名单、参数范围验证和显式设备选择
+  - [ ] SubTask 4.3: 实现 tap、swipe、text、key、launch、stop 的 ADB 参数映射
+  - [ ] SubTask 4.4: 添加 fake ADB 集成测试并确认未暴露任意 shell
+  - [ ] SubTask 4.5: 验证 Go 测试并提交 `feat(cli): add direct device observation and actions`
+
+- [ ] Task 5: 建立 Android App、Provider 配置与安全存储：创建可构建的 Compose App，实现权限状态首页、OpenAI 兼容 Provider 配置、Keystore 加密和连通性测试。
+  - [ ] SubTask 5.1: 创建 Gradle Kotlin DSL 工程、Compose Material 3 主题和基础导航
+  - [ ] SubTask 5.2: 实现首页状态卡、Provider 表单、任务入口和录制入口
+  - [ ] SubTask 5.3: 实现 Provider 接口、OpenAI 兼容请求/响应模型和严格 JSON 解析
+  - [ ] SubTask 5.4: 实现 Android Keystore AES/GCM API Key 存储与日志脱敏
+  - [ ] SubTask 5.5: 添加领域单测、构建 debug APK 并提交 `feat(android): add app shell and provider configuration`
+
+- [ ] Task 6: 实现无障碍观察与动作执行器：提供最小权限配置、UI 树快照、语义选择器匹配、节点动作、手势、文本和全局导航。
+  - [ ] SubTask 6.1: 声明 AccessibilityService、醒目披露和目标包范围配置
+  - [ ] SubTask 6.2: 实现不可长期缓存节点的规范化树快照与敏感字段过滤
+  - [ ] SubTask 6.3: 实现选择器评分、唯一性阈值和节点/坐标回退策略
+  - [ ] SubTask 6.4: 实现 click、longClick、setText、scroll、tap、swipe、back、home、recents
+  - [ ] SubTask 6.5: 添加选择器、坐标变换和动作路由单测并提交 `feat(android): add accessibility observation and execution`
+
+- [ ] Task 7: 实现电脑到 App 的本地桥：通过 ADB forward、loopback NDJSON JSON-RPC、一次性码和会话 token 提供语义观察与动作执行。
+  - [ ] SubTask 7.1: 在 Android 端实现仅绑定 `127.0.0.1` 的有界消息服务和桥 UI 状态
+  - [ ] SubTask 7.2: 实现 hello、session open/close、device info、ui snapshot、action execute
+  - [ ] SubTask 7.3: 在 `aactl` 实现端口分配、ADB forward 生命周期、配对和桥客户端
+  - [ ] SubTask 7.4: 覆盖错误码、错误/过期 token、重放、超时、断连和消息过大测试
+  - [ ] SubTask 7.5: 验证双方契约测试并提交 `feat(bridge): connect desktop to android app`
+
+- [ ] Task 8: 实现 App 内 AI 自动化会话与风险控制：完成观察、单步规划、确认、执行、验证、暂停、失败和紧急停止状态机。
+  - [ ] SubTask 8.1: 实现会话状态机、步骤/时长限制、重复动作检测和取消传播
+  - [ ] SubTask 8.2: 构造最小化 UI 上下文和严格动作提示/响应协议
+  - [ ] SubTask 8.3: 实现风险分类、目标包约束、人工确认和禁止动作
+  - [ ] SubTask 8.4: 实现会话页的当前步骤、确认、暂停、恢复、停止和脱敏审计
+  - [ ] SubTask 8.5: 使用 fake Provider/Executor 覆盖成功、非法动作、确认、超时和停止并提交 `feat(android): add guarded ai automation sessions`
+
+- [ ] Task 9: 实现语义录制与确定性回放：从无障碍事件生成版本化脚本，支持编辑名称、步骤预览、条件等待、断言、secret 引用和回放报告。
+  - [ ] SubTask 9.1: 实现录制状态机、事件归因/去重和节点指纹生成
+  - [ ] SubTask 9.2: 实现本地脚本存储、列表、详情、删除和 schema 迁移入口
+  - [ ] SubTask 9.3: 实现选择器优先回放、条件等待、有限重试和低置信度失败
+  - [ ] SubTask 9.4: 实现密码/验证码过滤、secret 引用和回放审计
+  - [ ] SubTask 9.5: 添加录制/回放单测与 UI 测试并提交 `feat(android): add semantic recording and replay`
+
+- [ ] Task 10: 实现 MCP stdio 适配器：使用官方稳定 MCP Go SDK 暴露设备列表、设备信息、观察、动作和录制回放工具。
+  - [ ] SubTask 10.1: 将公共 `aactl` 服务层与 CLI 参数层解耦
+  - [ ] SubTask 10.2: 实现五个 MCP tools 及结构化输入输出
+  - [ ] SubTask 10.3: 阻止配对、撤销信任和任意 shell 暴露给模型
+  - [ ] SubTask 10.4: 添加 MCP stdio 协议测试和 CLI/MCP 语义一致性测试
+  - [ ] SubTask 10.5: 验证 MCP 测试并提交 `feat(mcp): expose android automation tools`
+
+- [ ] Task 11: 创建跨 Agent 的 Skills 组：提供设备发现、设备观察和设备自动化三组符合 Agent Skills 规范的技能。
+  - [ ] SubTask 11.1: 创建 `android-device-discovery` Skill 与故障诊断参考
+  - [ ] SubTask 11.2: 创建 `android-device-observation` Skill 与隐私/产物参考
+  - [ ] SubTask 11.3: 创建 `android-device-automation` Skill 与风险/恢复参考
+  - [ ] SubTask 11.4: 验证 frontmatter、引用深度、命令示例和安全约束
+  - [ ] SubTask 11.5: 运行 Skill 校验并提交 `feat(skills): add portable android automation skills`
+
+- [ ] Task 12: 完成研究文档、端到端验证与发布：落地架构、协议、录制、安全、分发和备选方案文档，建立 CI、跨平台构建与制品校验。
+  - [ ] SubTask 12.1: 编写架构、协议、录制、安全分发、故障排查文档
+  - [ ] SubTask 12.2: 编写 Shizuku、Device Owner、UI Automator/设备农场、视觉层、getevent、蓝牙/厂商互联和 scrcpy 备选方案
+  - [ ] SubTask 12.3: 建立 Go、Android、Schema、Skill 和跨平台构建 CI
+  - [ ] SubTask 12.4: 运行全量单测、静态检查、契约测试和可用环境下的 Emulator/真机冒烟
+  - [ ] SubTask 12.5: 生成 macOS/Windows CLI 与 debug APK、校验和，检查 Git 历史并提交 `docs: finalize architecture and release guidance`
+
+# Task Dependencies
+
+- Task 2 depends on Task 1.
+- Task 3 and Task 5 depend on Task 2 and can run in parallel.
+- Task 4 depends on Task 3.
+- Task 6 depends on Task 5.
+- Task 7 depends on Task 3, Task 5 and Task 6.
+- Task 8 and Task 9 depend on Task 6 and can run in parallel.
+- Task 10 depends on Task 3, Task 4 and Task 7.
+- Task 11 depends on Task 4 and Task 10.
+- Task 12 depends on Tasks 1-11.
+
+# Commit Policy
+
+- 每个 Task 完成验证后立即创建一个单一职责 Conventional Commit。
+- 并行任务只能修改彼此独立的目录；集成冲突必须在对应任务提交前解决。
+- 不提交密钥、API Key、签名私钥、本机 SDK 路径、IDE 用户配置或构建缓存。
+- 每个提交必须至少通过该任务的定向测试；最终提交前运行全量验证。

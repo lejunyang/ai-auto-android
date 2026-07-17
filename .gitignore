@@ -1,0 +1,44 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.p12
+*.pem
+local.properties
+
+# Go
+/bin/
+/dist/
+coverage.out
+*.test
+
+# Gradle and Android
+.gradle/
+**/build/
+captures/
+.cxx/
+.externalNativeBuild/
+
+# Test and runtime artifacts
+/artifacts/
+/tmp/
+*.log
+*.pid
+
+# Generated release material
+checksums.txt
+*.apk
+*.aab
+*.zip
+*.tar.gz
