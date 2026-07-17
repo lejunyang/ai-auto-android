@@ -19,12 +19,12 @@
   - [x] SubTask 3.4: 使用 fake ADB 覆盖 unauthorized、offline、多设备、超时和恶意参数
   - [x] SubTask 3.5: 验证 Go 测试并提交 `feat(cli): add adb device discovery`
 
-- [ ] Task 4: 实现 `aactl` 直接观察与类型化动作：在无需 Android App 的情况下支持截图、UI dump、点击、滑动、文本、按键和应用启动/停止。
-  - [ ] SubTask 4.1: 实现截图与 UI hierarchy 观察命令及产物校验
-  - [ ] SubTask 4.2: 实现动作白名单、参数范围验证和显式设备选择
-  - [ ] SubTask 4.3: 实现 tap、swipe、text、key、launch、stop 的 ADB 参数映射
-  - [ ] SubTask 4.4: 添加 fake ADB 集成测试并确认未暴露任意 shell
-  - [ ] SubTask 4.5: 验证 Go 测试并提交 `feat(cli): add direct device observation and actions`
+- [x] Task 4: 实现 `aactl` 直接观察与类型化动作：在无需 Android App 的情况下支持截图、UI dump、点击、滑动、文本、按键和应用启动/停止。
+  - [x] SubTask 4.1: 实现截图与 UI hierarchy 观察命令及产物校验
+  - [x] SubTask 4.2: 实现动作白名单、参数范围验证和显式设备选择
+  - [x] SubTask 4.3: 实现 tap、swipe、text、key、launch、stop 的 ADB 参数映射
+  - [x] SubTask 4.4: 添加 fake ADB 集成测试并确认未暴露任意 shell
+  - [x] SubTask 4.5: 验证 Go 测试并提交 `feat(cli): add direct device observation and actions`
 
 - [ ] Task 5: 建立 Android App、Provider 配置与安全存储：创建可构建的 Compose App，实现权限状态首页、OpenAI 兼容 Provider 配置、Keystore 加密和连通性测试。
   - [ ] SubTask 5.1: 创建 Gradle Kotlin DSL 工程、Compose Material 3 主题和基础导航

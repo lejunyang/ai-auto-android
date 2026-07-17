@@ -16,6 +16,7 @@ const (
 	CodeMultipleDevices   = "MULTIPLE_DEVICES"
 	CodeDeviceUnreachable = "DEVICE_UNREACHABLE"
 	CodeDeadlineExceeded  = "DEADLINE_EXCEEDED"
+	CodeActionFailed      = "ACTION_FAILED"
 	CodeInternal          = "INTERNAL_ERROR"
 )
 
@@ -87,6 +88,8 @@ func ExitCode(err error) int {
 		return ExitDevice
 	case CodeDeadlineExceeded:
 		return ExitTimeout
+	case CodeActionFailed:
+		return ExitDevice
 	default:
 		return ExitInternal
 	}

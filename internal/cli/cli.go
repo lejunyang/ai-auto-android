@@ -92,8 +92,12 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 		return a.executeDevices(ctx, client, args[1:])
 	case "device":
 		return a.executeDevice(ctx, client, args[1:])
+	case "observe":
+		return a.executeObserve(ctx, client, args[1:])
+	case "action":
+		return a.executeAction(ctx, client, args[1:])
 	default:
-		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device.")
+		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action.")
 	}
 }
 
