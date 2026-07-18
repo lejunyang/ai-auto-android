@@ -48,10 +48,11 @@ aactl bridge close --device SERIAL --json
 供后续命令复用；`close` 会撤销 App 会话并移除 ADB forward。连接失败时也会
 清理刚创建的 forward。
 
-录制脚本由 Android App 创建、查看和选择。当前 CLI 只提供回放，不提供
-`recording list`：
+录制脚本由 Android App 创建和编辑。已建立 Bridge 会话后，CLI 可列出脚本并由
+人工按 UUID 发起回放：
 
 ```bash
+aactl recording list --device SERIAL --json
 aactl recording replay --device SERIAL --script 123e4567-e89b-42d3-a456-426614174000 --json
 ```
 
@@ -64,5 +65,8 @@ aactl mcp serve
 MCP 暴露 `android_devices_list`、`android_device_get`、`android_observe`、
 `android_action_execute` 和 `android_recording_replay`。其中
 `android_observe` 统一支持 screenshot、hierarchy 和已建立 Bridge 会话下的
-semantic；CLI 的 semantic 观察命令是 `bridge snapshot`。MCP 不暴露 doctor、
-配对、连接、Bridge 会话管理、Bridge action 或任意 shell。
+semantic、recordings；CLI 的 semantic 观察命令是 `bridge snapshot`，录制列表
+命令是 `recording list`。MCP 的 `android_recording_replay` 为兼容性保留，但
+MVP 始终返回 `CONFIRMATION_REQUIRED`，不会调用回放 service。MCP 不暴露
+doctor、配对、连接、Bridge 会话管理、Bridge action 或任意 shell，并在运行时
+强制拒绝 `app.stop`。

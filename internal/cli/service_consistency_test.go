@@ -142,9 +142,33 @@ func TestRecordingReplayCLIUsesSharedServiceWithExplicitDevice(t *testing.T) {
 	}
 }
 
+func TestRecordingListCLIUsesSharedServiceWithExplicitDevice(t *testing.T) {
+	automation := &actionCapturingAutomation{}
+	app, stdout := testApp(&commandExecutor{}, "")
+	app.Automation = automation
+
+	exitCode := app.Run(context.Background(), []string{
+		"recording", "list",
+		"--device", "SERIAL",
+		"--json",
+	})
+	if exitCode != 0 {
+		t.Fatalf("CLI exit code = %d, output = %s", exitCode, stdout.String())
+	}
+	envelope := decodeEnvelope(t, stdout.Bytes())
+	if !envelope.OK {
+		t.Fatalf("CLI envelope = %#v", envelope)
+	}
+	if len(automation.recordingLists) != 1 ||
+		automation.recordingLists[0] != "SERIAL" {
+		t.Fatalf("recording list calls = %#v", automation.recordingLists)
+	}
+}
+
 type actionCapturingAutomation struct {
-	actions []service.ActionRequest
-	replays []service.ReplayRecordingRequest
+	actions        []service.ActionRequest
+	recordingLists []string
+	replays        []service.ReplayRecordingRequest
 }
 
 func (a *actionCapturingAutomation) ListDevices(context.Context) (service.DeviceListResult, error) {
@@ -176,6 +200,18 @@ func (a *actionCapturingAutomation) ExecuteBridgeAction(
 	json.RawMessage,
 ) (json.RawMessage, error) {
 	return nil, nil
+}
+
+func (a *actionCapturingAutomation) ListRecordings(
+	_ context.Context,
+	device string,
+) (service.RecordingListResult, error) {
+	a.recordingLists = append(a.recordingLists, device)
+	return service.RecordingListResult{
+		Device:     device,
+		Recordings: []service.RecordingSummary{},
+		Count:      0,
+	}, nil
 }
 
 func (a *actionCapturingAutomation) ReplayRecording(

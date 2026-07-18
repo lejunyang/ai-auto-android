@@ -235,7 +235,8 @@ aactl bridge open --device SERIAL --json
 
 - `ui.snapshot` / `action.execute` 不可用：用户需手动启用并配置无障碍服务；
 - `recording.replay` 不可用：无障碍运行时未就绪；
-- `recording.list`：当前桌面服务固定不支持，不是重试可解决的问题。
+- `recording.list` 不依赖无障碍运行时；若调用失败，确认 App 桌面桥已开启且 CLI
+  保存的短期 token 仍有效。
 
 ### `PERMISSION_DENIED`
 

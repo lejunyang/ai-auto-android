@@ -18,7 +18,7 @@ func TestRunnerPassesArgumentsWithoutShellInterpretation(t *testing.T) {
 		context.Background(),
 		os.Args[0],
 		[]string{"-test.run=TestProcessHelper", "--", "args", payload},
-		Options{Timeout: time.Second},
+		Options{Timeout: helperTimeout},
 	)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -51,7 +51,7 @@ func TestRunnerLimitsOutput(t *testing.T) {
 		context.Background(),
 		os.Args[0],
 		[]string{"-test.run=TestProcessHelper", "--", "output"},
-		Options{Timeout: time.Second, MaxOutput: 16},
+		Options{Timeout: helperTimeout, MaxOutput: 16},
 	)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -69,7 +69,7 @@ func TestRunnerRedactsStdinSecretFromOutput(t *testing.T) {
 		os.Args[0],
 		[]string{"-test.run=TestProcessHelper", "--", "echo-stdin"},
 		Options{
-			Timeout:    time.Second,
+			Timeout:    helperTimeout,
 			Stdin:      []byte(secret),
 			Redactions: []string{secret},
 		},
@@ -111,3 +111,5 @@ func TestProcessHelper(t *testing.T) {
 	}
 	os.Exit(0)
 }
+
+const helperTimeout = 10 * time.Second

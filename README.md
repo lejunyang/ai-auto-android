@@ -49,12 +49,15 @@ aactl devices pair PAIR_HOST:PORT --json
 aactl devices connect CONNECT_HOST:PORT --json
 ```
 
-语义观察和回放要求先在 App 中接受披露、配置目标包、手动启用无障碍服务并开启
-桌面桥，然后执行：
+录制列表要求先开启桌面桥并建立 token 会话；语义观察和人工回放还要求在 App
+中接受披露、配置目标包并手动启用无障碍服务：
 
 ```bash
 aactl bridge open --device SERIAL --json
 aactl bridge snapshot --device SERIAL --package com.example.app --json
+aactl recording list --device SERIAL --json
+aactl recording replay --device SERIAL \
+  --script 123e4567-e89b-42d3-a456-426614174000 --json
 aactl bridge close --device SERIAL --json
 ```
 
@@ -76,7 +79,9 @@ aactl bridge close --device SERIAL --json
 ```
 
 MCP 不提供 ADB 配对、Bridge 建立、权限授予或任意 shell。先由用户通过 CLI 和
-App 建立所需信任，再让 MCP 使用已协商的类型化能力。
+App 建立所需信任，再让 MCP 使用已协商的类型化能力。录制列表通过
+`android_observe` 的 `kind=recordings` 读取；兼容保留的
+`android_recording_replay` 始终返回 `CONFIRMATION_REQUIRED` 且不执行回放。
 
 ## Agent Skills
 
@@ -106,9 +111,10 @@ Trae 项目级镜像位于对应的 `.trae/skills/<skill-name>`；只编辑 `ski
 - 仅支持 Android 11 / API 30 及以上；不支持 Root、Shizuku、Device Owner、
   蓝牙 ADB、互联网远控、OCR 或设备农场。
 - 直接 ADB 仅提供类型化观察、输入和应用控制，不提供任意 shell。
-- 当前录制配置只能端到端收到窗口变化事件；点击、文本、滚动映射尚未被发布配置订阅。
+- 录制订阅点击、长按、文本、滚动和窗口变化；由 App 执行器发起的 Back、Home、
+  Recents 也会录制。原始触摸、物理系统导航和自由手势不在录制范围内。
 - Bridge 不传截图；截图和 UIAutomator XML 是可能包含敏感内容的原始 ADB 产物。
-- CLI 不能列出或编辑录制脚本，也不能向回放传入 secret。
+- CLI 可列出但不能编辑录制脚本，也不能向回放传入 secret；MCP 不执行录制回放。
 - 支付、购买、安装、授权和系统安全设置被禁止；发送、提交、删除等动作需要当次确认。
 
 ## 开发与验证

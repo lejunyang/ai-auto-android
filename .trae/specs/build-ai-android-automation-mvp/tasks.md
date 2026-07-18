@@ -82,6 +82,16 @@
   - [x] SubTask 12.4: 运行全量单测、静态检查、契约测试和可用环境下的 Emulator/真机冒烟
   - [x] SubTask 12.5: 生成 macOS/Windows CLI 与 debug APK、校验和，检查 Git 历史并提交 `docs: finalize architecture and release guidance`
 
+- [x] Task 13: 修复系统验收发现的协议、设备诊断、录制回放与 MCP 安全缺口，并重新执行设备条件检查。
+  - [x] SubTask 13.1: 增加协议最高共同版本、同 major 可选字段兼容、未知字段策略和配置一致性自动测试
+  - [x] SubTask 13.2: 修复 doctor 的 Platform-Tools 版本、5037/mDNS、Windows 驱动/Linux udev/USB 提示与 fake ADB 覆盖
+  - [x] SubTask 13.3: 修复 mDNS service serial、无线地址、模拟器和无 `usb:` 属性物理设备的传输类型归一化
+  - [x] SubTask 13.4: 补齐无障碍录制事件订阅、显式全局动作录制入口和运行环境摘要
+  - [x] SubTask 13.5: 区分快照失败与节点不存在，执行前强制校验当前包属于脚本目标包
+  - [x] SubTask 13.6: 为 MCP 动作和录制回放增加统一风险门，默认拒绝高风险/破坏性调用
+  - [x] SubTask 13.7: 实现 App Bridge 与 CLI 的 `recording.list`，并补齐双端契约测试
+  - [x] SubTask 13.8: 运行全量测试、重新检测 ADB/Emulator/真机条件并更新验证记录
+
 # Task Dependencies
 
 - Task 2 depends on Task 1.
@@ -93,6 +103,7 @@
 - Task 10 depends on Task 3, Task 4 and Task 7.
 - Task 11 depends on Task 4 and Task 10.
 - Task 12 depends on Tasks 1-11.
+- Task 13 depends on Tasks 1-12.
 
 # Commit Policy
 

@@ -36,6 +36,8 @@ data class ScriptEnvironment(
     val densityDpi: Int? = null,
     val rotation: Int? = null,
     val locale: String? = null,
+    val fontScale: Float? = null,
+    val appVersion: String? = null,
 )
 
 @Serializable
@@ -89,6 +91,7 @@ data class AutomationScriptSummary(
     val targetPackages: List<String>,
     val createdAt: String,
     val stepCount: Int,
+    val requirements: ScriptRequirements,
 )
 
 enum class RecordingStatus {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -212,6 +213,37 @@ func TestServiceReplayAddsIdempotencyKeyAndScriptID(t *testing.T) {
 	}
 }
 
+func TestServiceListRecordingsUsesStoredSessionAndEmptyParams(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/recording-list-result.json")
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	forwarder := &fakeForwarder{}
+	client := &fakeRPCClient{callResult: fixture}
+	store := newMemoryStore()
+	store.Save(validSessionAt("2026-07-18T00:15:00Z"))
+	service := testService(forwarder, client, store)
+
+	result, err := service.ListRecordings(context.Background(), "SERIAL")
+	if err != nil {
+		t.Fatalf("ListRecordings() error = %v", err)
+	}
+	if string(result) != string(fixture) {
+		t.Fatalf("result = %s, want fixture %s", result, fixture)
+	}
+	if client.lastMethod != "recording.list" {
+		t.Fatalf("method = %q", client.lastMethod)
+	}
+	if client.lastPort != 41237 ||
+		client.lastToken != "random-token-value-that-is-longer-than-32-bytes" {
+		t.Fatalf("session call port=%d token=%q", client.lastPort, client.lastToken)
+	}
+	params, ok := client.lastParams.(map[string]any)
+	if !ok || len(params) != 0 {
+		t.Fatalf("params = %#v", client.lastParams)
+	}
+}
+
 func testService(
 	forwarder *fakeForwarder,
 	client *fakeRPCClient,
@@ -280,6 +312,8 @@ type fakeRPCClient struct {
 	callCount  int
 	lastMethod string
 	lastParams any
+	lastPort   int
+	lastToken  string
 }
 
 func (f *fakeRPCClient) Open(
@@ -293,8 +327,8 @@ func (f *fakeRPCClient) Open(
 
 func (f *fakeRPCClient) Call(
 	_ context.Context,
-	_ int,
-	_ string,
+	localPort int,
+	token string,
 	method string,
 	params any,
 	result any,
@@ -302,6 +336,8 @@ func (f *fakeRPCClient) Call(
 	f.callCount++
 	f.lastMethod = method
 	f.lastParams = params
+	f.lastPort = localPort
+	f.lastToken = token
 	if f.callErr != nil {
 		return f.callErr
 	}

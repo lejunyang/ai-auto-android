@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ type Client struct {
 	timeout   time.Duration
 	maxOutput int
 	dial      func(network, address string, timeout time.Duration) (net.Conn, error)
+	goos      string
 }
 
 type DoctorCheck struct {
@@ -35,10 +37,17 @@ type DoctorCheck struct {
 }
 
 type DoctorReport struct {
-	Healthy    bool          `json:"healthy"`
-	ADBPath    string        `json:"adbPath"`
-	ADBVersion string        `json:"adbVersion"`
-	Checks     []DoctorCheck `json:"checks"`
+	Healthy    bool           `json:"healthy"`
+	ADBPath    string         `json:"adbPath"`
+	ADBVersion string         `json:"adbVersion"`
+	Platform   string         `json:"platform"`
+	Checks     []DoctorCheck  `json:"checks"`
+	Guidance   DoctorGuidance `json:"guidance"`
+}
+
+type DoctorGuidance struct {
+	USB      []string `json:"usb"`
+	Platform []string `json:"platform,omitempty"`
 }
 
 type ConnectionResult struct {
@@ -53,11 +62,18 @@ func NewClient(path string, executor process.Executor) *Client {
 		timeout:   defaultTimeout,
 		maxOutput: defaultMaxOutput,
 		dial:      net.DialTimeout,
+		goos:      runtime.GOOS,
 	}
 }
 
 func (c *Client) Doctor(ctx context.Context) (DoctorReport, error) {
-	report := DoctorReport{Healthy: true, ADBPath: c.path, Checks: make([]DoctorCheck, 0, 4)}
+	report := DoctorReport{
+		Healthy:  true,
+		ADBPath:  c.path,
+		Platform: c.goos,
+		Checks:   make([]DoctorCheck, 0, 4),
+		Guidance: doctorGuidance(c.goos),
+	}
 
 	versionResult, err := c.run(ctx, []string{"version"}, process.Options{})
 	if err != nil {
@@ -78,17 +94,22 @@ func (c *Client) Doctor(ctx context.Context) (DoctorReport, error) {
 	})
 
 	statusResult, statusErr := c.run(ctx, []string{"server-status"}, process.Options{})
-	if statusErr != nil {
+	status := ParseServerStatus(string(statusResult.Stdout))
+	if statusErr != nil || len(status) == 0 {
 		report.Healthy = false
+		message := "ADB server status is unavailable."
+		if statusErr == nil {
+			message = "ADB server status output was not recognized."
+		}
 		report.Checks = append(report.Checks, DoctorCheck{
-			Name: "adb.server", Passed: false, Message: "ADB server status is unavailable.",
+			Name: "adb.server", Passed: false, Message: message,
 		})
 	} else {
-		status := ParseServerStatus(string(statusResult.Stdout))
 		report.Checks = append(report.Checks, DoctorCheck{
 			Name: "adb.server", Passed: true, Message: "ADB server status is available.",
 			Details: map[string]any{
-				"version":     status["version"],
+				"version":     firstNonEmpty(status["adb_server_version"], status["server_version"], status["version"]),
+				"serverPort":  status["server_port"],
 				"usbBackend":  status["usb_backend"],
 				"mdnsBackend": status["mdns_backend"],
 				"mdnsEnabled": status["mdns_enabled"],
@@ -97,13 +118,14 @@ func (c *Client) Doctor(ctx context.Context) (DoctorReport, error) {
 	}
 
 	connection, dialErr := c.dial("tcp", "127.0.0.1:5037", 250*time.Millisecond)
-	if dialErr == nil {
+	if dialErr == nil && connection != nil {
 		_ = connection.Close()
 	}
 	report.Checks = append(report.Checks, DoctorCheck{
 		Name:    "adb.port.5037",
 		Passed:  dialErr == nil,
 		Message: map[bool]string{true: "ADB server is listening on loopback port 5037.", false: "Nothing is listening on loopback port 5037."}[dialErr == nil],
+		Details: map[string]any{"address": "127.0.0.1:5037"},
 	})
 	if dialErr != nil {
 		report.Healthy = false
@@ -114,16 +136,42 @@ func (c *Client) Doctor(ctx context.Context) (DoctorReport, error) {
 	if mdnsMessage == "" {
 		mdnsMessage = strings.TrimSpace(string(mdnsResult.Stderr))
 	}
+	if mdnsMessage == "" && mdnsErr == nil {
+		mdnsMessage = "ADB mDNS check passed."
+	}
 	report.Checks = append(report.Checks, DoctorCheck{
 		Name:    "adb.mdns",
 		Passed:  mdnsErr == nil,
 		Message: firstNonEmpty(mdnsMessage, "ADB mDNS check is unavailable."),
+		Details: map[string]any{
+			"backend": status["mdns_backend"],
+			"enabled": status["mdns_enabled"],
+		},
 	})
 	if mdnsErr != nil {
 		report.Healthy = false
 	}
 
 	return report, nil
+}
+
+func doctorGuidance(goos string) DoctorGuidance {
+	guidance := DoctorGuidance{
+		USB: []string{
+			"Use a data-capable USB cable, keep the device unlocked, enable USB debugging, select a data-transfer USB mode, and retry another direct USB port.",
+		},
+	}
+	switch goos {
+	case "windows":
+		guidance.Platform = []string{
+			"Install or update the device manufacturer's official OEM USB driver in Device Manager, then reconnect the device.",
+		}
+	case "linux":
+		guidance.Platform = []string{
+			"Install the distribution's Android udev rules, add the user to the required device-access group, reload udev rules, and reconnect the device.",
+		}
+	}
+	return guidance
 }
 
 func (c *Client) Devices(ctx context.Context) ([]protocol.Device, error) {

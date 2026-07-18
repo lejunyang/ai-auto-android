@@ -21,7 +21,7 @@ class RecordingScriptStoreTest {
     fun `save list get and delete preserve a complete script`() {
         val directory = temporaryFolder.newFolder("recordings")
         val store = RecordingScriptStore(directory)
-        val script = script("script-1", "First")
+        val script = script(SCRIPT_ID, "First")
 
         store.save(script)
 
@@ -34,6 +34,7 @@ class RecordingScriptStoreTest {
                     targetPackages = script.targetPackages,
                     createdAt = script.createdAt,
                     stepCount = 1,
+                    requirements = script.requirements,
                 ),
             ),
             store.list(),
@@ -46,17 +47,17 @@ class RecordingScriptStoreTest {
     @Test
     fun `legacy schema is migrated and rewritten only after successful decode`() {
         val directory = temporaryFolder.newFolder("legacy")
-        val file = File(directory, "legacy.json")
+        val file = File(directory, "$SCRIPT_ID.json")
         file.writeText(
             """
             {
-              "id": "legacy",
+              "id": "$SCRIPT_ID",
               "schemaVersion": "0.9",
               "title": "Imported",
               "packages": ["com.example"],
               "createdAt": "2026-07-18T00:00:00Z",
               "steps": [{
-                "id": "step-1",
+                "id": "$STEP_ID",
                 "recordedAtMs": 10,
                 "action": {"type": "ui.back", "params": {}}
               }]
@@ -65,7 +66,7 @@ class RecordingScriptStoreTest {
         )
         val store = RecordingScriptStore(directory)
 
-        val migrated = store.get("legacy")
+        val migrated = store.get(SCRIPT_ID)
 
         assertNotNull(migrated)
         assertEquals(RECORDING_SCHEMA_VERSION, migrated?.schemaVersion)
@@ -77,15 +78,15 @@ class RecordingScriptStoreTest {
     @Test
     fun `unknown schema version is rejected without rewriting the source`() {
         val directory = temporaryFolder.newFolder("unknown")
-        val file = File(directory, "future.json")
+        val file = File(directory, "$SCRIPT_ID.json")
         val original = """
-            {"id":"future","schemaVersion":"9.0"}
+            {"id":"$SCRIPT_ID","schemaVersion":"9.0"}
         """.trimIndent()
         file.writeText(original)
         val store = RecordingScriptStore(directory)
 
         assertThrows(RecordingStorageException::class.java) {
-            store.get("future")
+            store.get(SCRIPT_ID)
         }
         assertEquals(original, file.readText())
     }
@@ -94,10 +95,10 @@ class RecordingScriptStoreTest {
     fun `text actions cannot contain both literal and secret input`() {
         val directory = temporaryFolder.newFolder("invalid-secret")
         val store = RecordingScriptStore(directory)
-        val invalid = script("invalid", "Invalid").copy(
+        val invalid = script(SCRIPT_ID, "Invalid").copy(
             steps = listOf(
                 RecordedStep(
-                    id = "step",
+                    id = STEP_ID,
                     recordedAtMs = 0,
                     action = RecordedAction(
                         type = "ui.setText",
@@ -127,6 +128,29 @@ class RecordingScriptStoreTest {
         }
     }
 
+    @Test
+    fun `summary contract rejects invalid package requirements and identifiers`() {
+        val store = RecordingScriptStore(temporaryFolder.newFolder("contract"))
+        val valid = script(SCRIPT_ID, "Valid")
+        val invalidScripts = listOf(
+            valid.copy(id = "not-a-uuid"),
+            valid.copy(targetPackages = listOf("com.example;bad")),
+            valid.copy(requirements = ScriptRequirements(minApiLevel = 29)),
+            valid.copy(
+                requirements = ScriptRequirements(
+                    capabilities = listOf("accessibility.action", "accessibility.action"),
+                ),
+            ),
+            valid.copy(steps = valid.steps.map { it.copy(id = "not-a-uuid") }),
+        )
+
+        invalidScripts.forEach { script ->
+            assertThrows(IllegalArgumentException::class.java) {
+                store.save(script)
+            }
+        }
+    }
+
     private fun script(
         id: String,
         name: String,
@@ -137,7 +161,7 @@ class RecordingScriptStoreTest {
         createdAt = "2026-07-18T00:00:00Z",
         steps = listOf(
             RecordedStep(
-                id = "step-1",
+                id = STEP_ID,
                 recordedAtMs = 0,
                 action = RecordedAction(
                     type = "ui.back",
@@ -146,4 +170,9 @@ class RecordingScriptStoreTest {
             ),
         ),
     )
+
+    private companion object {
+        const val SCRIPT_ID = "123e4567-e89b-42d3-a456-426614174000"
+        const val STEP_ID = "123e4567-e89b-42d3-a456-426614174001"
+    }
 }

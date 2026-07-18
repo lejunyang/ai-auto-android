@@ -2,10 +2,13 @@ package dev.aiauto.android.automation.recording
 
 import android.view.accessibility.AccessibilityEvent
 
+import dev.aiauto.android.accessibility.model.GlobalAction
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 
 fun interface RecordingEventSink {
     fun accept(event: RecordingEvent)
+
+    fun acceptGlobalAction(action: GlobalAction) = Unit
 }
 
 object RecordingRuntime {
@@ -27,10 +30,18 @@ object RecordingRuntime {
         }
     }
 
-    fun publish(event: AccessibilityEvent, source: UiNodeSnapshot?) {
+    fun publish(
+        event: AccessibilityEvent,
+        source: UiNodeSnapshot?,
+        receivedAtMs: Long = System.currentTimeMillis(),
+    ) {
         val currentSink = sink ?: return
-        val mapped = AndroidRecordingEventAdapter.map(event, source) ?: return
+        val mapped = AndroidRecordingEventAdapter.map(event, source, receivedAtMs) ?: return
         currentSink.accept(mapped)
+    }
+
+    fun publishGlobalAction(action: GlobalAction) {
+        sink?.acceptGlobalAction(action)
     }
 }
 
@@ -38,6 +49,7 @@ object AndroidRecordingEventAdapter {
     fun map(
         event: AccessibilityEvent,
         source: UiNodeSnapshot?,
+        receivedAtMs: Long = System.currentTimeMillis(),
     ): RecordingEvent? {
         val packageName = event.packageName?.toString()?.takeIf(String::isNotBlank)
             ?: return null
@@ -57,7 +69,7 @@ object AndroidRecordingEventAdapter {
             source?.state?.sensitive == true
         return RecordingEvent(
             type = type,
-            eventTimeMs = event.eventTime,
+            eventTimeMs = receivedAtMs,
             packageName = packageName,
             source = source,
             text = if (sensitive) null else event.text.lastOrNull()?.toString(),

@@ -2,9 +2,12 @@ package adb
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
 	"github.com/lejunyang/ai-auto-android/internal/process"
@@ -26,6 +29,129 @@ func (f *fakeADB) Run(_ context.Context, _ string, args []string, options proces
 		return process.Result{}, nil
 	}
 	return f.results[index], f.errors[index]
+}
+
+func TestDoctorParsesFakeADBPlatformToolsServerPortAndMDNS(t *testing.T) {
+	client, fake := healthyDoctorClient()
+
+	report, err := client.Doctor(context.Background())
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+	if !report.Healthy || report.ADBVersion != "36.0.0-13206524" {
+		t.Fatalf("report = %#v", report)
+	}
+	if len(report.Checks) != 4 {
+		t.Fatalf("len(report.Checks) = %d, want 4", len(report.Checks))
+	}
+	server := report.Checks[1]
+	if !server.Passed ||
+		server.Details["version"] != "41" ||
+		server.Details["serverPort"] != "5037" ||
+		server.Details["usbBackend"] != "libusb" ||
+		server.Details["mdnsBackend"] != "openscreen" ||
+		server.Details["mdnsEnabled"] != "true" {
+		t.Fatalf("server check = %#v", server)
+	}
+	if !report.Checks[2].Passed || report.Checks[2].Name != "adb.port.5037" {
+		t.Fatalf("port check = %#v", report.Checks[2])
+	}
+	if !report.Checks[3].Passed ||
+		report.Checks[3].Message != "mdns daemon version [Openscreen discovery 0.0.0]" {
+		t.Fatalf("mDNS check = %#v", report.Checks[3])
+	}
+	assertArgs(t, fake.calls[0], "version")
+	assertArgs(t, fake.calls[1], "server-status")
+	assertArgs(t, fake.calls[2], "mdns", "check")
+}
+
+func TestDoctorProvidesActionableUSBGuidance(t *testing.T) {
+	tests := []struct {
+		goos             string
+		expectedPlatform string
+		unexpected       string
+	}{
+		{goos: "windows", expectedPlatform: "OEM USB driver", unexpected: "udev rules"},
+		{goos: "linux", expectedPlatform: "udev rules", unexpected: "OEM USB driver"},
+	}
+	for _, test := range tests {
+		t.Run(test.goos, func(t *testing.T) {
+			client, _ := healthyDoctorClient()
+			client.goos = test.goos
+
+			report, err := client.Doctor(context.Background())
+			if err != nil {
+				t.Fatalf("Doctor() error = %v", err)
+			}
+			encoded, err := json.Marshal(report)
+			if err != nil {
+				t.Fatalf("json.Marshal() error = %v", err)
+			}
+			text := string(encoded)
+			for _, expected := range []string{"data-capable USB cable", test.expectedPlatform} {
+				if !strings.Contains(text, expected) {
+					t.Errorf("Doctor() JSON does not contain actionable %q guidance: %s", expected, text)
+				}
+			}
+			if strings.Contains(text, test.unexpected) {
+				t.Errorf("Doctor() JSON contains guidance for another platform %q: %s", test.unexpected, text)
+			}
+		})
+	}
+}
+
+func TestDoctorReportsServerPortAndMDNSFailuresIndependently(t *testing.T) {
+	fake := &fakeADB{
+		results: []process.Result{
+			{Stdout: []byte("Android Debug Bridge version 1.0.41\nVersion 36.0.0-13206524\n")},
+			{Stderr: []byte("server-status unavailable"), ExitCode: 1},
+			{Stderr: []byte("mdns unavailable"), ExitCode: 1},
+		},
+		errors: []error{nil, errors.New("exit status 1"), errors.New("exit status 1")},
+	}
+	client := NewClient("/fake/adb", fake)
+	client.dial = func(string, string, time.Duration) (net.Conn, error) {
+		return nil, errors.New("connection refused")
+	}
+
+	report, err := client.Doctor(context.Background())
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+	if report.Healthy {
+		t.Fatalf("report.Healthy = true, checks = %#v", report.Checks)
+	}
+	for _, index := range []int{1, 2, 3} {
+		if report.Checks[index].Passed {
+			t.Errorf("check %q passed, want failure", report.Checks[index].Name)
+		}
+	}
+}
+
+func healthyDoctorClient() (*Client, *fakeADB) {
+	fake := &fakeADB{
+		results: []process.Result{
+			{Stdout: []byte(`Android Debug Bridge version 1.0.41
+Version 36.0.0-13206524
+Installed as /opt/android-sdk/platform-tools/adb
+`)},
+			{Stdout: []byte(`ADB Server version: 41
+Server port: 5037
+USB backend: libusb
+mDNS backend: openscreen
+mDNS enabled: true
+`)},
+			{Stdout: []byte("mdns daemon version [Openscreen discovery 0.0.0]\n")},
+		},
+		errors: []error{nil, nil, nil},
+	}
+	client := NewClient("/fake/adb", fake)
+	client.dial = func(string, string, time.Duration) (net.Conn, error) {
+		server, connection := net.Pipe()
+		_ = server.Close()
+		return connection, nil
+	}
+	return client, fake
 }
 
 func TestDeviceInfoReadsPropertiesForExplicitOnlineDevice(t *testing.T) {

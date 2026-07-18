@@ -53,6 +53,40 @@ class BridgeDispatcherTest {
     }
 
     @Test
+    fun `unknown envelope and hello fields are rejected`() {
+        val hello = buildJsonObject {
+            put("jsonrpc", "2.0")
+            put("id", UUID.randomUUID().toString())
+            put("requestId", UUID.randomUUID().toString())
+            put("protocolVersion", "1.0")
+            put("method", "rpc.hello")
+            put(
+                "params",
+                buildJsonObject {
+                    helloParams(listOf("1.0")).forEach(::put)
+                    put("optionalCommandField", true)
+                },
+            )
+            put("deadlineMs", 1_000)
+        }
+        assertEquals(
+            "INVALID_ARGUMENT",
+            dispatcher.dispatch(hello.toString(), connection).decoded().errorCode(),
+        )
+        assertFalse(connection.helloCompleted)
+
+        val envelope = buildJsonObject {
+            hello.forEach(::put)
+            put("optionalRequestField", true)
+        }
+        assertEquals(
+            "INVALID_ARGUMENT",
+            dispatcher.dispatch(envelope.toString(), connection).decoded().errorCode(),
+        )
+        assertFalse(connection.helloCompleted)
+    }
+
+    @Test
     fun `session open exchanges code for token without echoing code`() {
         hello()
         val code = sessions.issuePairingCode()
@@ -106,6 +140,29 @@ class BridgeDispatcherTest {
                 requestId,
             ).errorCode(),
         )
+    }
+
+    @Test
+    fun `recording list requires hello and a current token before dispatch`() {
+        assertEquals(
+            "PROTOCOL_ERROR",
+            dispatch("recording.list", buildJsonObject {}).errorCode(),
+        )
+        assertEquals(0, handler.calls)
+
+        hello()
+        assertEquals(
+            "AUTH_REQUIRED",
+            dispatch("recording.list", buildJsonObject {}).errorCode(),
+        )
+        assertEquals(0, handler.calls)
+
+        val token = openSession()
+        val response = dispatch("recording.list", buildJsonObject {}, token)
+
+        assertEquals("recording.list", response.result()["method"]?.jsonPrimitive?.content)
+        assertEquals(1, handler.calls)
+        assertEquals("recording.list", handler.lastMethod)
     }
 
     @Test
@@ -215,12 +272,16 @@ class BridgeDispatcherTest {
 
     private class RecordingHandler : BridgeMethodHandler {
         var failure: BridgeException? = null
+        var calls = 0
+        var lastMethod: String? = null
 
         override fun capabilities(): List<BridgeCapability> = listOf(
             BridgeCapability(name = "device.info", available = true),
         )
 
         override fun handle(method: String, params: JsonObject): JsonObject {
+            calls += 1
+            lastMethod = method
             failure?.let { throw it }
             return buildJsonObject {
                 put("method", method)

@@ -67,7 +67,7 @@
           "$ref": "#/$defs/token"
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "token": {
       "type": "string",
@@ -114,7 +114,7 @@
                   }
                 }
               },
-              "additionalProperties": true
+              "additionalProperties": false
             }
           }
         }
@@ -283,11 +283,6 @@
                 },
                 "idempotencyKey": {
                   "$ref": "common.schema.json#/$defs/uuid"
-                },
-                "variables": {
-                  "type": "object",
-                  "maxProperties": 128,
-                  "additionalProperties": true
                 }
               },
               "additionalProperties": false

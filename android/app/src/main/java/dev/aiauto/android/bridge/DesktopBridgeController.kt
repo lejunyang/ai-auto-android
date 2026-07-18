@@ -116,7 +116,7 @@ class DesktopBridgeController private constructor(
         }
         val newSessions = BridgeSessionManager(observer = observer)
         val dispatcher = BridgeDispatcher(
-            methodHandler = AndroidBridgeMethods(applicationContext),
+            methodHandler = AndroidBridgeMethodsFactory.create(applicationContext),
             sessionManager = newSessions,
         )
         val newServer = NdjsonBridgeServer(dispatcher)

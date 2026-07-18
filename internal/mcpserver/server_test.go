@@ -66,13 +66,24 @@ func TestServerCallsProduceStructuredResults(t *testing.T) {
 			SHA256:    strings.Repeat("a", 64),
 			Image:     []byte("png"),
 		},
-		action: adb.ActionResult{Device: "SERIAL", Action: service.ActionTap},
-		replay: service.ReplayRecordingResult{
-			Device:    "SERIAL",
-			ScriptID:  "123e4567-e89b-42d3-a456-426614174000",
-			Succeeded: true,
-			Steps:     []service.ReplayStepResult{},
+		recordings: service.RecordingListResult{
+			Device: "SERIAL",
+			Recordings: []service.RecordingSummary{
+				{
+					ID:             "123e4567-e89b-42d3-a456-426614174000",
+					Name:           "Save a note",
+					TargetPackages: []string{"com.example.notes"},
+					CreatedAt:      "2026-07-18T01:30:00Z",
+					StepCount:      3,
+					Requirements: service.RecordingRequirements{
+						MinAPILevel:  30,
+						Capabilities: []string{"accessibility.snapshot", "accessibility.action"},
+					},
+				},
+			},
+			Count: 1,
 		},
+		action: adb.ActionResult{Device: "SERIAL", Action: service.ActionTap},
 	}
 	session := connectClient(t, automation)
 
@@ -122,6 +133,32 @@ func TestServerCallsProduceStructuredResults(t *testing.T) {
 			},
 		},
 		{
+			name: ToolObserve,
+			arguments: map[string]any{
+				"device": "SERIAL",
+				"kind":   "recordings",
+			},
+			assert: func(t *testing.T, result *mcp.CallToolResult) {
+				structured := structuredObject(t, result)
+				if structured["count"] != float64(1) {
+					t.Fatalf("structured result = %#v", structured)
+				}
+				recordings, ok := structured["recordings"].([]any)
+				if !ok || len(recordings) != 1 {
+					t.Fatalf("recordings = %#v", structured["recordings"])
+				}
+				recording := recordings[0].(map[string]any)
+				if recording["name"] != "Save a note" ||
+					recording["stepCount"] != float64(3) {
+					t.Fatalf("recording = %#v", recording)
+				}
+				requirements := recording["requirements"].(map[string]any)
+				if requirements["minApiLevel"] != float64(30) {
+					t.Fatalf("requirements = %#v", requirements)
+				}
+			},
+		},
+		{
 			name: ToolActionExecute,
 			arguments: map[string]any{
 				"device": "SERIAL",
@@ -132,19 +169,6 @@ func TestServerCallsProduceStructuredResults(t *testing.T) {
 			assert: func(t *testing.T, result *mcp.CallToolResult) {
 				structured := structuredObject(t, result)
 				if structured["action"] != "ui.tap" {
-					t.Fatalf("structured result = %#v", structured)
-				}
-			},
-		},
-		{
-			name: ToolRecordingReplay,
-			arguments: map[string]any{
-				"device":   "SERIAL",
-				"scriptId": "123e4567-e89b-42d3-a456-426614174000",
-			},
-			assert: func(t *testing.T, result *mcp.CallToolResult) {
-				structured := structuredObject(t, result)
-				if structured["succeeded"] != true {
 					t.Fatalf("structured result = %#v", structured)
 				}
 			},
@@ -170,7 +194,7 @@ func TestServerCallsProduceStructuredResults(t *testing.T) {
 	}
 }
 
-func TestServerRejectsPairTrustShellHighRiskAndImplicitDevice(t *testing.T) {
+func TestServerRiskGateRejectsPairTrustShellStopAndReplayBeforeService(t *testing.T) {
 	automation := &fakeAutomation{}
 	session := connectClient(t, automation)
 
@@ -192,6 +216,7 @@ func TestServerRejectsPairTrustShellHighRiskAndImplicitDevice(t *testing.T) {
 	invalidCalls := []struct {
 		name      string
 		arguments map[string]any
+		code      string
 	}{
 		{
 			name:      ToolDeviceGet,
@@ -228,16 +253,54 @@ func TestServerRejectsPairTrustShellHighRiskAndImplicitDevice(t *testing.T) {
 		{
 			name: ToolActionExecute,
 			arguments: map[string]any{
+				"device": "SERIAL",
+				"action": "permission.grant",
+			},
+		},
+		{
+			name: ToolActionExecute,
+			arguments: map[string]any{
+				"device": "SERIAL",
+				"action": "payment.submit",
+			},
+		},
+		{
+			name: ToolActionExecute,
+			arguments: map[string]any{
+				"device": "SERIAL",
+				"action": "data.delete",
+			},
+		},
+		{
+			name: ToolActionExecute,
+			arguments: map[string]any{
 				"device":  "SERIAL",
 				"action":  "app.stop",
 				"package": "com.example;reboot",
 			},
 		},
 		{
+			name: ToolActionExecute,
+			arguments: map[string]any{
+				"device":  "SERIAL",
+				"action":  "app.stop",
+				"package": "com.example.app",
+			},
+			code: "ACTION_NOT_ALLOWED",
+		},
+		{
 			name: ToolRecordingReplay,
 			arguments: map[string]any{
 				"scriptId": "123e4567-e89b-42d3-a456-426614174000",
 			},
+		},
+		{
+			name: ToolRecordingReplay,
+			arguments: map[string]any{
+				"device":   "SERIAL",
+				"scriptId": "123e4567-e89b-42d3-a456-426614174000",
+			},
+			code: "CONFIRMATION_REQUIRED",
 		},
 	}
 	for _, call := range invalidCalls {
@@ -251,6 +314,9 @@ func TestServerRejectsPairTrustShellHighRiskAndImplicitDevice(t *testing.T) {
 			}
 			if !result.IsError {
 				t.Fatalf("unsafe arguments were accepted: %#v", call.arguments)
+			}
+			if call.code != "" && !strings.Contains(toolErrorText(t, result), call.code) {
+				t.Fatalf("tool error = %q, want code %q", toolErrorText(t, result), call.code)
 			}
 		})
 	}
@@ -349,6 +415,18 @@ func structuredObject(t *testing.T, result *mcp.CallToolResult) map[string]any {
 	return object
 }
 
+func toolErrorText(t *testing.T, result *mcp.CallToolResult) string {
+	t.Helper()
+	if len(result.Content) != 1 {
+		t.Fatalf("tool error content = %#v", result.Content)
+	}
+	text, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("tool error content = %#v", result.Content[0])
+	}
+	return text.Text
+}
+
 func containsString(values []any, expected string) bool {
 	for _, value := range values {
 		if value == expected {
@@ -359,12 +437,13 @@ func containsString(values []any, expected string) bool {
 }
 
 type fakeAutomation struct {
-	devices service.DeviceListResult
-	device  protocol.Device
-	observe service.ObserveResult
-	action  adb.ActionResult
-	replay  service.ReplayRecordingResult
-	calls   int
+	devices    service.DeviceListResult
+	device     protocol.Device
+	observe    service.ObserveResult
+	recordings service.RecordingListResult
+	action     adb.ActionResult
+	replay     service.ReplayRecordingResult
+	calls      int
 }
 
 func (f *fakeAutomation) ListDevices(context.Context) (service.DeviceListResult, error) {
@@ -390,6 +469,14 @@ func (f *fakeAutomation) ExecuteAction(context.Context, service.ActionRequest) (
 func (f *fakeAutomation) ExecuteBridgeAction(context.Context, string, json.RawMessage) (json.RawMessage, error) {
 	f.calls++
 	return nil, nil
+}
+
+func (f *fakeAutomation) ListRecordings(
+	context.Context,
+	string,
+) (service.RecordingListResult, error) {
+	f.calls++
+	return f.recordings, nil
 }
 
 func (f *fakeAutomation) ReplayRecording(

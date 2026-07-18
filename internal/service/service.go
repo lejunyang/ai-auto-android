@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
@@ -49,6 +51,7 @@ type DirectBackend interface {
 type BridgeBackend interface {
 	Snapshot(context.Context, string, string, int) (json.RawMessage, error)
 	Action(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	ListRecordings(context.Context, string) (json.RawMessage, error)
 	Replay(context.Context, string, string) (json.RawMessage, error)
 }
 
@@ -59,6 +62,7 @@ type Automation interface {
 	Observe(context.Context, ObserveRequest) (ObserveResult, error)
 	ExecuteAction(context.Context, ActionRequest) (adb.ActionResult, error)
 	ExecuteBridgeAction(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	ListRecordings(context.Context, string) (RecordingListResult, error)
 	ReplayRecording(context.Context, ReplayRecordingRequest) (ReplayRecordingResult, error)
 }
 
@@ -144,6 +148,26 @@ type ActionRequest struct {
 	Key        string `json:"key,omitempty"`
 	Package    string `json:"package,omitempty"`
 	Activity   string `json:"activity,omitempty"`
+}
+
+type RecordingListResult struct {
+	Device     string             `json:"device"`
+	Recordings []RecordingSummary `json:"recordings"`
+	Count      int                `json:"count"`
+}
+
+type RecordingSummary struct {
+	ID             string                `json:"id"`
+	Name           string                `json:"name"`
+	TargetPackages []string              `json:"targetPackages"`
+	CreatedAt      string                `json:"createdAt"`
+	StepCount      int                   `json:"stepCount"`
+	Requirements   RecordingRequirements `json:"requirements"`
+}
+
+type RecordingRequirements struct {
+	MinAPILevel  int      `json:"minApiLevel"`
+	Capabilities []string `json:"capabilities"`
 }
 
 type ReplayRecordingRequest struct {
@@ -338,6 +362,76 @@ func (s *Service) ExecuteBridgeAction(
 	return s.bridge.Action(ctx, device, action)
 }
 
+func (s *Service) ListRecordings(
+	ctx context.Context,
+	device string,
+) (RecordingListResult, error) {
+	if err := adb.ValidateSerial(device); err != nil {
+		return RecordingListResult{}, err
+	}
+	if s.bridge == nil {
+		return RecordingListResult{}, unavailable("recording list")
+	}
+	raw, err := s.bridge.ListRecordings(ctx, device)
+	if err != nil {
+		return RecordingListResult{}, err
+	}
+	var bridgeResult struct {
+		Recordings []RecordingSummary `json:"recordings"`
+	}
+	if err := json.Unmarshal(raw, &bridgeResult); err != nil ||
+		bridgeResult.Recordings == nil {
+		return RecordingListResult{}, invalidRecordingList()
+	}
+	seenIDs := make(map[string]struct{}, len(bridgeResult.Recordings))
+	for _, recording := range bridgeResult.Recordings {
+		if !scriptIDPattern.MatchString(recording.ID) ||
+			strings.TrimSpace(recording.Name) == "" ||
+			len(recording.Name) > 128 ||
+			len(recording.TargetPackages) == 0 ||
+			len(recording.TargetPackages) > 32 ||
+			recording.StepCount < 1 ||
+			recording.StepCount > 10_000 ||
+			recording.Requirements.MinAPILevel < 30 ||
+			recording.Requirements.MinAPILevel > 1_000 ||
+			len(recording.Requirements.Capabilities) > 64 {
+			return RecordingListResult{}, invalidRecordingList()
+		}
+		if _, duplicate := seenIDs[recording.ID]; duplicate {
+			return RecordingListResult{}, invalidRecordingList()
+		}
+		seenIDs[recording.ID] = struct{}{}
+		if _, err := time.Parse(time.RFC3339Nano, recording.CreatedAt); err != nil {
+			return RecordingListResult{}, invalidRecordingList()
+		}
+		seenCapabilities := make(map[string]struct{}, len(recording.Requirements.Capabilities))
+		for _, capability := range recording.Requirements.Capabilities {
+			if strings.TrimSpace(capability) == "" || len(capability) > 128 {
+				return RecordingListResult{}, invalidRecordingList()
+			}
+			if _, duplicate := seenCapabilities[capability]; duplicate {
+				return RecordingListResult{}, invalidRecordingList()
+			}
+			seenCapabilities[capability] = struct{}{}
+		}
+		seenPackages := make(map[string]struct{}, len(recording.TargetPackages))
+		for _, targetPackage := range recording.TargetPackages {
+			if err := adb.ValidatePackageName(targetPackage); err != nil {
+				return RecordingListResult{}, invalidRecordingList()
+			}
+			if _, duplicate := seenPackages[targetPackage]; duplicate {
+				return RecordingListResult{}, invalidRecordingList()
+			}
+			seenPackages[targetPackage] = struct{}{}
+		}
+	}
+	return RecordingListResult{
+		Device:     device,
+		Recordings: bridgeResult.Recordings,
+		Count:      len(bridgeResult.Recordings),
+	}, nil
+}
+
 func (s *Service) ReplayRecording(
 	ctx context.Context,
 	request ReplayRecordingRequest,
@@ -374,6 +468,15 @@ func (s *Service) ReplayRecording(
 	}
 	result.Device = request.Device
 	return result, nil
+}
+
+func invalidRecordingList() error {
+	return apperr.New(
+		apperr.CodeProtocol,
+		"The Android bridge returned an invalid recording list.",
+		false,
+		nil,
+	)
 }
 
 func invalid(message string) error {

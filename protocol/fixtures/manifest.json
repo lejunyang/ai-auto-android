@@ -223,6 +223,21 @@
       }
     },
     {
+      "name": "same-major response ignores optional fields added by a newer minor",
+      "schema": "bridge-response.schema.json",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "1285a189-dd86-445c-b3b3-379848bd20a0",
+        "requestId": "1285a189-dd86-445c-b3b3-379848bd20a0",
+        "protocolVersion": "1.1",
+        "result": {
+          "accepted": true,
+          "optionalResultField": "introduced-in-1.1"
+        },
+        "optionalResponseField": "introduced-in-1.1"
+      }
+    },
+    {
       "name": "bridge stable error response",
       "schema": "bridge-response.schema.json",
       "data": {
@@ -405,6 +420,48 @@
           "capabilities": []
         },
         "deadlineMs": 300001
+      }
+    },
+    {
+      "name": "bridge request rejects unknown envelope field",
+      "schema": "bridge-request.schema.json",
+      "expectedError": "additionalProperties",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        "requestId": "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        "protocolVersion": "1.0",
+        "method": "rpc.hello",
+        "params": {
+          "clientVersion": "0.1.0",
+          "supportedProtocolVersions": [
+            "1.0"
+          ],
+          "capabilities": []
+        },
+        "deadlineMs": 5000,
+        "optionalRequestField": "must-not-be-ignored"
+      }
+    },
+    {
+      "name": "bridge request rejects unknown command payload field",
+      "schema": "bridge-request.schema.json",
+      "expectedError": "additionalProperties",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        "requestId": "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        "protocolVersion": "1.0",
+        "method": "rpc.hello",
+        "params": {
+          "clientVersion": "0.1.0",
+          "supportedProtocolVersions": [
+            "1.0"
+          ],
+          "capabilities": [],
+          "optionalCommandField": "must-not-be-ignored"
+        },
+        "deadlineMs": 5000
       }
     },
     {

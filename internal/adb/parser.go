@@ -13,12 +13,15 @@ import (
 )
 
 var (
-	versionPattern  = regexp.MustCompile(`(?m)^Android Debug Bridge version ([^\s]+)`)
-	serialPattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:%+\-\[\]]{0,254}$`)
-	hostPattern     = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$`)
-	pairCodePattern = regexp.MustCompile(`^[0-9]{6}$`)
-	getpropPattern  = regexp.MustCompile(`^\[([^\]]+)\]: \[(.*)\]$`)
+	platformToolsVersionPattern = regexp.MustCompile(`(?m)^Version[ \t]+([^\s]+)`)
+	statusKeySeparatorPattern   = regexp.MustCompile(`[^a-z0-9]+`)
+	serialPattern               = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:%+\-\[\]]{0,254}$`)
+	hostPattern                 = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$`)
+	pairCodePattern             = regexp.MustCompile(`^[0-9]{6}$`)
+	getpropPattern              = regexp.MustCompile(`^\[([^\]]+)\]: \[(.*)\]$`)
 )
+
+const mdnsConnectService = "_adb-tls-connect._tcp"
 
 func ParseDevices(output string) ([]protocol.Device, error) {
 	devices := make([]protocol.Device, 0)
@@ -49,7 +52,11 @@ func ParseDevices(output string) ([]protocol.Device, error) {
 		if transportID, err := strconv.Atoi(attributes["transport_id"]); err == nil {
 			device.Connection.TransportID = transportID
 		}
-		if device.Transport == "wifi" {
+		switch {
+		case isMDNSServiceSerial(serial):
+			device.Connection.Endpoint = serial
+			device.Connection.MDNSService = mdnsConnectService
+		case device.Transport == "wifi":
 			device.Connection.Endpoint = serial
 		}
 		devices = append(devices, device)
@@ -61,7 +68,7 @@ func ParseDevices(output string) ([]protocol.Device, error) {
 }
 
 func ParseVersion(output string) string {
-	match := versionPattern.FindStringSubmatch(output)
+	match := platformToolsVersionPattern.FindStringSubmatch(output)
 	if len(match) != 2 {
 		return ""
 	}
@@ -77,7 +84,10 @@ func ParseServerStatus(output string) map[string]string {
 		if !found {
 			continue
 		}
-		status[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), `"`)
+		normalizedKey := normalizeStatusKey(key)
+		if normalizedKey != "" {
+			status[normalizedKey] = strings.Trim(strings.TrimSpace(value), `"`)
+		}
 	}
 	return status
 }
@@ -172,13 +182,26 @@ func detectTransport(serial string, attributes map[string]string) string {
 	switch {
 	case strings.HasPrefix(serial, "emulator-"):
 		return "emulator"
-	case strings.Contains(serial, ":"):
+	case isMDNSServiceSerial(serial):
+		return "wifi"
+	case ValidateEndpoint(serial) == nil:
 		return "wifi"
 	case attributes["usb"] != "":
 		return "usb"
 	default:
-		return "unknown"
+		// ADB uses plain hardware serials for physical USB devices and does not
+		// guarantee that devices -l includes a usb: topology attribute.
+		return "usb"
 	}
+}
+
+func isMDNSServiceSerial(serial string) bool {
+	return strings.Contains(strings.ToLower(serial), mdnsConnectService)
+}
+
+func normalizeStatusKey(key string) string {
+	normalized := statusKeySeparatorPattern.ReplaceAllString(strings.ToLower(strings.TrimSpace(key)), "_")
+	return strings.Trim(normalized, "_")
 }
 
 func humanizeADBValue(value string) string {

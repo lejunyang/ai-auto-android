@@ -14,6 +14,7 @@ import dev.aiauto.android.accessibility.model.ActionRoute
 import dev.aiauto.android.accessibility.model.NodeAction
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import dev.aiauto.android.automation.recording.AndroidReplayGateway
+import dev.aiauto.android.automation.recording.AutomationScriptSummary
 import dev.aiauto.android.automation.recording.RecordingScriptStore
 import dev.aiauto.android.automation.recording.ReplayEngine
 import dev.aiauto.android.automation.recording.ReplayReport
@@ -50,14 +51,14 @@ object RuntimeAccessibilityBridgeGateway : AccessibilityBridgeGateway {
 interface RecordingBridgeGateway {
     fun isAvailable(): Boolean
 
+    fun list(): List<AutomationScriptSummary>
+
     fun replay(scriptId: String): ReplayReport?
 }
 
 class RuntimeRecordingBridgeGateway(
-    context: Context,
+    private val store: RecordingScriptStore,
 ) : RecordingBridgeGateway {
-    private val applicationContext = context.applicationContext
-    private val store by lazy { RecordingScriptStore.from(applicationContext) }
     private val replayEngine by lazy {
         ReplayEngine(
             gateway = AndroidReplayGateway(),
@@ -69,16 +70,17 @@ class RuntimeRecordingBridgeGateway(
 
     override fun isAvailable(): Boolean = AccessibilityRuntime.isAvailable()
 
+    override fun list(): List<AutomationScriptSummary> = store.list()
+
     override fun replay(scriptId: String): ReplayReport? =
         store.get(scriptId)?.let { script -> replayEngine.replay(script) }
 }
 
 class AndroidBridgeMethods(
     context: Context,
+    private val recording: RecordingBridgeGateway,
     private val accessibility: AccessibilityBridgeGateway =
         RuntimeAccessibilityBridgeGateway,
-    private val recording: RecordingBridgeGateway =
-        RuntimeRecordingBridgeGateway(context),
     private val commandParser: AccessibilityCommandJsonParser =
         AccessibilityCommandJsonParser(),
 ) : BridgeMethodHandler {
@@ -103,6 +105,7 @@ class AndroidBridgeMethods(
                 ),
             ),
             BridgeCapability(name = "device.info", available = true),
+            BridgeCapability(name = "recording.list", available = true),
             BridgeCapability(
                 name = "ui.snapshot",
                 available = accessibilityAvailable,
@@ -129,10 +132,7 @@ class AndroidBridgeMethods(
         "ui.snapshot" -> snapshot(params)
         "action.execute" -> execute(params)
         "recording.replay" -> replay(params)
-        "recording.list" -> throw BridgeException(
-            code = BridgeErrorCode.CAPABILITY_UNAVAILABLE,
-            message = "Recording list is not exposed by the desktop automation service.",
-        )
+        "recording.list" -> recordingList(params)
 
         else -> throw BridgeException(
             code = BridgeErrorCode.PROTOCOL_ERROR,
@@ -150,6 +150,18 @@ class AndroidBridgeMethods(
             put("appPackage", applicationContext.packageName)
             put("appVersion", BuildConfig.VERSION_NAME)
             put("capabilities", capabilitiesToJson())
+        }
+    }
+
+    private fun recordingList(params: JsonObject): JsonObject {
+        requireKeys(params, emptySet(), emptySet())
+        return buildJsonObject {
+            put(
+                "recordings",
+                buildJsonArray {
+                    recording.list().forEach { summary -> add(summary.toJson()) }
+                },
+            )
         }
     }
 
@@ -287,6 +299,35 @@ class AndroidBridgeMethods(
         matchScore?.let { put("matchScore", it) }
         errorCode?.let { put("errorCode", it) }
         message?.let { put("message", it) }
+    }
+
+    private fun AutomationScriptSummary.toJson(): JsonObject = buildJsonObject {
+        put("id", id)
+        put("name", name)
+        put(
+            "targetPackages",
+            buildJsonArray {
+                targetPackages.forEach { targetPackage ->
+                    add(JsonPrimitive(targetPackage))
+                }
+            },
+        )
+        put("stepCount", stepCount)
+        put("createdAt", createdAt)
+        put(
+            "requirements",
+            buildJsonObject {
+                put("minApiLevel", requirements.minApiLevel)
+                put(
+                    "capabilities",
+                    buildJsonArray {
+                        requirements.capabilities.forEach { capability ->
+                            add(JsonPrimitive(capability))
+                        }
+                    },
+                )
+            },
+        )
     }
 
     private fun UiNodeSnapshot.toJson(depth: Int, maxDepth: Int): JsonObject =
@@ -430,6 +471,17 @@ class AndroidBridgeMethods(
         val UUID = Regex(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-" +
                 "[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+        )
+    }
+}
+
+internal object AndroidBridgeMethodsFactory {
+    fun create(context: Context): AndroidBridgeMethods {
+        val applicationContext = context.applicationContext
+        val store = RecordingScriptStore.from(applicationContext)
+        return AndroidBridgeMethods(
+            context = applicationContext,
+            recording = RuntimeRecordingBridgeGateway(store),
         )
     }
 }

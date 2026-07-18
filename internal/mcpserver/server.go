@@ -15,6 +15,8 @@ const (
 	ToolObserve         = "android_observe"
 	ToolActionExecute   = "android_action_execute"
 	ToolRecordingReplay = "android_recording_replay"
+
+	observeKindRecordings = "recordings"
 )
 
 var ToolNames = []string{
@@ -39,13 +41,15 @@ type observeInput struct {
 }
 
 type observeOutput struct {
-	Device    string                    `json:"device"`
-	Kind      string                    `json:"kind"`
-	Format    string                    `json:"format"`
-	SizeBytes int                       `json:"sizeBytes,omitempty"`
-	SHA256    string                    `json:"sha256,omitempty"`
-	XML       string                    `json:"xml,omitempty"`
-	Snapshot  *service.SemanticSnapshot `json:"snapshot,omitempty"`
+	Device     string                      `json:"device"`
+	Kind       string                      `json:"kind"`
+	Format     string                      `json:"format"`
+	SizeBytes  int                         `json:"sizeBytes,omitempty"`
+	SHA256     string                      `json:"sha256,omitempty"`
+	XML        string                      `json:"xml,omitempty"`
+	Snapshot   *service.SemanticSnapshot   `json:"snapshot,omitempty"`
+	Recordings *[]service.RecordingSummary `json:"recordings,omitempty"`
+	Count      *int                        `json:"count,omitempty"`
 }
 
 type actionInput struct {
@@ -118,6 +122,21 @@ func New(automation service.Automation, version string) *mcp.Server {
 		_ *mcp.CallToolRequest,
 		input observeInput,
 	) (*mcp.CallToolResult, observeOutput, error) {
+		if input.Kind == observeKindRecordings {
+			result, err := automation.ListRecordings(ctx, input.Device)
+			if err != nil {
+				return nil, observeOutput{}, err
+			}
+			recordings := result.Recordings
+			count := result.Count
+			return nil, observeOutput{
+				Device:     result.Device,
+				Kind:       observeKindRecordings,
+				Format:     "recording-list",
+				Recordings: &recordings,
+				Count:      &count,
+			}, nil
+		}
 		result, err := automation.Observe(ctx, service.ObserveRequest{
 			Device:        input.Device,
 			Kind:          input.Kind,
@@ -148,7 +167,7 @@ func New(automation service.Automation, version string) *mcp.Server {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        ToolActionExecute,
-		Description: "Execute one safe typed ADB action on an explicitly selected Android device. Arbitrary shell and high-risk system actions are unavailable.",
+		Description: "Execute one low-risk typed ADB action on an explicitly selected Android device. The server enforces a model-action allowlist and rejects destructive or high-risk actions.",
 		InputSchema: actionSchema(),
 		Annotations: actionAnnotations(),
 	}, func(
@@ -156,6 +175,9 @@ func New(automation service.Automation, version string) *mcp.Server {
 		_ *mcp.CallToolRequest,
 		input actionInput,
 	) (*mcp.CallToolResult, adb.ActionResult, error) {
+		if err := requireModelActionAllowed(input.Action); err != nil {
+			return nil, adb.ActionResult{}, err
+		}
 		result, err := automation.ExecuteAction(ctx, service.ActionRequest{
 			Device:     input.Device,
 			Action:     input.Action,
@@ -176,19 +198,15 @@ func New(automation service.Automation, version string) *mcp.Server {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        ToolRecordingReplay,
-		Description: "Replay one stored semantic recording through an existing App bridge session on an explicitly selected device.",
+		Description: "Request replay of one stored semantic recording. This MVP always returns CONFIRMATION_REQUIRED because a model cannot provide a trustworthy human confirmation credential.",
 		InputSchema: recordingReplaySchema(),
 		Annotations: replayAnnotations(),
 	}, func(
-		ctx context.Context,
+		_ context.Context,
 		_ *mcp.CallToolRequest,
-		input recordingReplayInput,
+		_ recordingReplayInput,
 	) (*mcp.CallToolResult, service.ReplayRecordingResult, error) {
-		result, err := automation.ReplayRecording(ctx, service.ReplayRecordingRequest{
-			Device:   input.Device,
-			ScriptID: input.ScriptID,
-		})
-		return nil, result, err
+		return nil, service.ReplayRecordingResult{}, requireReplayConfirmation()
 	})
 
 	return server

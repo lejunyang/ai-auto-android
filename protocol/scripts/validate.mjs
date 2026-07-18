@@ -8,11 +8,31 @@ const draft202012 = "https://json-schema.org/draft/2020-12/schema";
 
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
 const deepEqual = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const assert = (condition, message) => {
+  if (!condition) throw new Error(message);
+};
 const typeOf = (value) => {
   if (value === null) return "null";
   if (Array.isArray(value)) return "array";
   if (Number.isInteger(value)) return "integer";
   return typeof value === "object" ? "object" : typeof value;
+};
+
+const parseProtocolVersion = (version) => {
+  const match = /^([1-9][0-9]*)\.([0-9]+)$/.exec(version);
+  if (!match) throw new Error(`Invalid protocol version: ${version}`);
+  return { text: version, major: Number(match[1]), minor: Number(match[2]) };
+};
+
+const negotiateProtocolVersion = (localVersions, remoteVersions, incompatibleError) => {
+  const remote = new Set(remoteVersions);
+  const common = localVersions
+    .filter((candidate) => remote.has(candidate))
+    .map(parseProtocolVersion)
+    .sort((left, right) => right.major - left.major || right.minor - left.minor);
+  return common.length > 0
+    ? { version: common[0].text, error: null }
+    : { version: null, error: incompatibleError };
 };
 
 const escapeJsonPointer = (part) => part.replaceAll("~", "~0").replaceAll("/", "~1");
@@ -245,14 +265,113 @@ for (const { schema } of schemaFiles) {
 const limits = await readJson(path.join(protocolRoot, "limits.json"));
 const version = await readJson(path.join(protocolRoot, "version.json"));
 const common = schemaFiles.find(({ name }) => name === "common.schema.json").schema;
-if (common.$defs.deadlineMs.maximum !== limits.maxDeadlineMs) {
-  throw new Error("limits.maxDeadlineMs does not match common.schema.json");
+const schemaByName = (name) => schemaFiles.find((entry) => entry.name === name)?.schema;
+
+assert(
+  common.$defs.deadlineMs.maximum === limits.maxDeadlineMs,
+  "limits.maxDeadlineMs does not match common.schema.json",
+);
+assert(version.supported.includes(version.current), "version.current must be included in version.supported");
+assert(
+  new Set(version.supported).size === version.supported.length,
+  "version.supported must not contain duplicate versions",
+);
+version.supported.forEach(parseProtocolVersion);
+assert(limits.protocolVersion === version.current, "limits.protocolVersion must match version.current");
+assert(
+  limits.defaultDeadlineMs > 0 && limits.defaultDeadlineMs <= limits.maxDeadlineMs,
+  "limits.defaultDeadlineMs must be positive and no greater than maxDeadlineMs",
+);
+assert(limits.maxMessageBytes > 0, "limits.maxMessageBytes must be positive");
+assert(limits.maxConcurrentRequests > 0, "limits.maxConcurrentRequests must be positive");
+
+const expectedCompatibility = {
+  sameMajorAllows: [
+    "add-optional-field",
+    "add-capability",
+    "add-enum-value-only-when-capability-gated",
+  ],
+  requiresNewMajor: [
+    "remove-field",
+    "change-field-semantics",
+    "make-optional-field-required",
+    "narrow-valid-range",
+    "change-default-behavior",
+  ],
+  unknownExtensibleObjectFields: "ignore",
+  unknownCommandPayloadFields: "reject",
+  unknownActionsMethodsAndErrorCodes: "reject",
+};
+assert(
+  version.negotiation.strategy === "highest-common-version",
+  "version.negotiation.strategy must be highest-common-version",
+);
+assert(
+  deepEqual(version.compatibility, expectedCompatibility),
+  "version.compatibility does not match the schema compatibility policy",
+);
+
+const bridgeRequest = schemaByName("bridge-request.schema.json");
+const bridgeResponse = schemaByName("bridge-response.schema.json");
+const action = schemaByName("action.schema.json");
+const errorSchema = schemaByName("error.schema.json");
+const cliEnvelope = schemaByName("cli-envelope.schema.json");
+const automationScript = schemaByName("automation-script.schema.json");
+const recordingListResult = schemaByName("recording-list-result.schema.json");
+
+assert(
+  errorSchema.properties.code.enum.includes(version.negotiation.majorMismatchError),
+  "version.negotiation.majorMismatchError must be a stable error code",
+);
+assert(
+  cliEnvelope.$defs.success.properties.schemaVersion.const === version.current
+    && cliEnvelope.$defs.failure.properties.schemaVersion.const === version.current
+    && automationScript.properties.schemaVersion.const === version.current,
+  "version.current must match versioned schema constants",
+);
+assert(
+  bridgeRequest.$defs.base.additionalProperties === false,
+  "bridge request envelopes must reject unknown fields",
+);
+for (const [name, definition] of Object.entries(bridgeRequest.$defs)) {
+  if (!Array.isArray(definition.allOf)) continue;
+  const paramsSchema = definition.allOf.find((branch) => branch.properties?.params)?.properties.params;
+  assert(paramsSchema, `bridge request ${name} must declare params`);
+  assert(
+    paramsSchema.additionalProperties === false,
+    `bridge request ${name} params must reject unknown fields`,
+  );
 }
-if (!version.supported.includes(version.current)) {
-  throw new Error("version.current must be included in version.supported");
+for (const branch of action.oneOf) {
+  const actionDefinition = resolvePointer(action, branch.$ref);
+  assert(
+    actionDefinition.additionalProperties === false,
+    `${branch.$ref} must reject unknown action fields`,
+  );
+  const paramsSchema = actionDefinition.properties.params;
+  const resolvedParams = paramsSchema.$ref
+    ? validator.resolveRef(paramsSchema.$ref, action).target
+    : paramsSchema;
+  assert(
+    resolvedParams.additionalProperties === false,
+    `${branch.$ref} params must reject unknown command fields`,
+  );
 }
-if (limits.protocolVersion !== version.current) {
-  throw new Error("limits.protocolVersion must match version.current");
+for (const definition of Object.values(bridgeResponse.$defs)) {
+  assert(
+    definition.additionalProperties === true,
+    "bridge responses must ignore optional fields added by newer minor versions",
+  );
+}
+for (const name of [
+  "automation-script.schema.json",
+  "capability.schema.json",
+  "device.schema.json",
+]) {
+  assert(
+    schemaByName(name).additionalProperties === true,
+    `${name} must ignore unknown extensible object fields`,
+  );
 }
 
 const fixtures = await readJson(path.join(protocolRoot, "fixtures", "manifest.json"));
@@ -281,7 +400,102 @@ for (const fixture of fixtures.invalid) {
   passed += 1;
 }
 
+const goRecordingListFixture = await readJson(
+  path.join(protocolRoot, "..", "internal", "bridge", "testdata", "recording-list-result.json"),
+);
+const androidRecordingListFixture = await readJson(
+  path.join(
+    protocolRoot,
+    "..",
+    "android",
+    "app",
+    "src",
+    "test",
+    "resources",
+    "recording-list-result.json",
+  ),
+);
+assert(
+  deepEqual(goRecordingListFixture, androidRecordingListFixture),
+  "Go and Android recording.list fixtures must be identical",
+);
+const recordingListErrors = validator.validate(recordingListResult, goRecordingListFixture);
+assert(
+  recordingListErrors.length === 0,
+  `recording.list fixture does not match the protocol schema:\n${recordingListErrors.join("\n")}`,
+);
+
+const compatibilityChecks = [
+  {
+    name: "highest common protocol version is selected numerically",
+    run: () => {
+      const result = negotiateProtocolVersion(
+        ["1.0", "1.2", "1.10"],
+        ["1.1", "1.2", "1.10"],
+        version.negotiation.majorMismatchError,
+      );
+      assert(result.version === "1.10" && result.error === null, `negotiated ${JSON.stringify(result)}`);
+    },
+  },
+  {
+    name: "different majors fail with the configured stable error",
+    run: () => {
+      const result = negotiateProtocolVersion(
+        ["1.0", "1.1"],
+        ["2.0", "2.1"],
+        version.negotiation.majorMismatchError,
+      );
+      assert(
+        result.version === null && result.error === "VERSION_INCOMPATIBLE",
+        `negotiated ${JSON.stringify(result)}`,
+      );
+    },
+  },
+  {
+    name: "same-major optional response fields are ignored",
+    run: () => {
+      const errors = validator.validate(bridgeResponse, {
+        jsonrpc: "2.0",
+        id: "1285a189-dd86-445c-b3b3-379848bd20a0",
+        requestId: "1285a189-dd86-445c-b3b3-379848bd20a0",
+        protocolVersion: "1.1",
+        result: { accepted: true, optionalResultField: "introduced-in-1.1" },
+        optionalResponseField: "introduced-in-1.1",
+      });
+      assert(errors.length === 0, errors.join("\n"));
+    },
+  },
+  {
+    name: "unknown request fields are rejected",
+    run: () => {
+      const errors = validator.validate(bridgeRequest, {
+        jsonrpc: "2.0",
+        id: "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        requestId: "a20d1e2c-4411-4575-998d-4f8f47ca9012",
+        protocolVersion: "1.0",
+        method: "rpc.hello",
+        params: {
+          clientVersion: "0.1.0",
+          supportedProtocolVersions: ["1.0"],
+          capabilities: [],
+          optionalCommandField: "must-not-be-ignored",
+        },
+        deadlineMs: 5000,
+      });
+      assert(errors.some((error) => error.includes("additionalProperties")), errors.join("\n"));
+    },
+  },
+];
+for (const check of compatibilityChecks) {
+  try {
+    check.run();
+  } catch (error) {
+    throw new Error(`Compatibility check failed: ${check.name}\n${error.message}`);
+  }
+}
+
 console.log(
   `Protocol validation passed: ${schemaFiles.length} schemas, `
-  + `${fixtures.valid.length} valid fixtures, ${fixtures.invalid.length} invalid fixtures (${passed} total).`,
+  + `${fixtures.valid.length} valid fixtures, ${fixtures.invalid.length} invalid fixtures, `
+  + `${compatibilityChecks.length} compatibility checks (${passed + compatibilityChecks.length} total).`,
 );

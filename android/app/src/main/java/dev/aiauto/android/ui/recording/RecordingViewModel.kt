@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 
+import dev.aiauto.android.automation.recording.AndroidScriptEnvironmentProvider
 import dev.aiauto.android.automation.recording.AndroidReplayGateway
 import dev.aiauto.android.automation.recording.AutomationScript
 import dev.aiauto.android.automation.recording.RecordingController
@@ -15,6 +16,7 @@ import dev.aiauto.android.automation.recording.RecordingStateMachine
 import dev.aiauto.android.automation.recording.RecordingStatus
 import dev.aiauto.android.automation.recording.ReplayEngine
 import dev.aiauto.android.automation.recording.SecretResolver
+import dev.aiauto.android.automation.recording.ScriptEnvironmentProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +47,7 @@ data class RecordingUiState(
 
 class RecordingViewModel(
     private val coordinator: RecordingCoordinator,
+    private val environmentProvider: ScriptEnvironmentProvider,
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow(
         RecordingUiState(recording = coordinator.state.value),
@@ -113,7 +116,11 @@ class RecordingViewModel(
         if (name.isEmpty() || targetPackages.isEmpty()) {
             return
         }
-        coordinator.start(name, targetPackages)
+        coordinator.start(
+            name = name,
+            targetPackages = targetPackages,
+            environment = environmentProvider.capture(),
+        )
     }
 
     fun pause() {
@@ -209,7 +216,10 @@ class RecordingViewModel(
                             },
                         ),
                     )
-                    return RecordingViewModel(coordinator) as T
+                    return RecordingViewModel(
+                        coordinator = coordinator,
+                        environmentProvider = AndroidScriptEnvironmentProvider(applicationContext),
+                    ) as T
                 }
             }
         }

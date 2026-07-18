@@ -132,7 +132,7 @@ token 过期、错误或被 App 撤销时，本地记录会在相应错误后清
 | `device.info` | token | 返回 Android、App 版本及 Bridge 能力 |
 | `ui.snapshot` | token | 返回脱敏 Accessibility 树；深度 1..100，默认 64 |
 | `action.execute` | token | 执行当前 Bridge 已实现的动作 |
-| `recording.list` | token | Schema 保留；当前明确返回 `CAPABILITY_UNAVAILABLE` |
+| `recording.list` | token | 返回脱敏脚本摘要，不返回步骤、变量或 secret |
 | `recording.replay` | token | 回放 App 私有存储中的脚本 UUID |
 | `session.close` | token | 撤销当前 App 会话 |
 
@@ -140,13 +140,16 @@ token 过期、错误或被 App 撤销时，本地记录会在相应错误后清
 
 - `bridge.rpc`
 - `device.info`
+- `recording.list`
 - `ui.snapshot`
 - `action.execute`
 - `recording.replay`
 
-后三项是否可用取决于无障碍服务是否正在运行。`recording.list` 不在当前能力列表。
-直接 ADB 设备则报告 `adb.direct`，并根据 `device`、`unauthorized`、`offline`
-等状态设置 `available`、`permission` 和 `reason`。
+`recording.list` 直接读取 App 私有 `RecordingScriptStore`，桥启动后可用；它只返回
+`id`、`name`、`targetPackages`、`stepCount`、`createdAt` 和 `requirements`。
+后三项是否可用取决于无障碍服务是否正在运行。直接 ADB 设备则报告 `adb.direct`，
+并根据 `device`、`unauthorized`、`offline` 等状态设置 `available`、`permission`
+和 `reason`。
 
 ## 动作
 

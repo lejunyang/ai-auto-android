@@ -170,6 +170,10 @@ class BridgeDispatcher(
         connection: BridgeConnectionState,
     ): JsonObject {
         val params = request.params
+        requireExactKeys(
+            params,
+            setOf("clientVersion", "supportedProtocolVersions", "capabilities"),
+        )
         val clientVersion = params.string("clientVersion")
         if (!SEMANTIC_VERSION.matches(clientVersion)) {
             throw invalidArgument("clientVersion is not a semantic version.")
@@ -259,6 +263,19 @@ class BridgeDispatcher(
         } ?: throw BridgeException(
             code = BridgeErrorCode.PROTOCOL_ERROR,
             message = "The request must be one JSON object.",
+        )
+        requireAllowedKeys(
+            root,
+            required = setOf(
+                "jsonrpc",
+                "id",
+                "requestId",
+                "protocolVersion",
+                "method",
+                "params",
+                "deadlineMs",
+            ),
+            optional = setOf("token"),
         )
         if (root.string("jsonrpc") != BridgeProtocol.JSON_RPC_VERSION) {
             throw BridgeException(
@@ -379,8 +396,16 @@ class BridgeDispatcher(
         }
 
     private fun requireExactKeys(value: JsonObject, required: Set<String>) {
+        requireAllowedKeys(value, required, emptySet())
+    }
+
+    private fun requireAllowedKeys(
+        value: JsonObject,
+        required: Set<String>,
+        optional: Set<String>,
+    ) {
         val missing = required - value.keys
-        val extra = value.keys - required
+        val extra = value.keys - required - optional
         if (missing.isNotEmpty() || extra.isNotEmpty()) {
             throw invalidArgument("Method parameters contain missing or unsupported fields.")
         }

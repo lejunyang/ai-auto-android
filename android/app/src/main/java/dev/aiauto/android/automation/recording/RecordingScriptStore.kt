@@ -3,6 +3,7 @@ package dev.aiauto.android.automation.recording
 import android.content.Context
 import java.io.File
 import java.io.FileOutputStream
+import java.time.Instant
 
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
@@ -49,6 +50,9 @@ class RecordingScriptStore(
         val migrated = migrator.migrate(original)
         val script = decode(migrated.content)
         validate(script)
+        require(script.id == id) {
+            "The script id does not match its storage key"
+        }
         if (migrated.changed) {
             writeAtomically(file, json.encodeToString(script))
         }
@@ -67,6 +71,7 @@ class RecordingScriptStore(
                     targetPackages = script.targetPackages,
                     createdAt = script.createdAt,
                     stepCount = script.steps.size,
+                    requirements = script.requirements,
                 )
             }
             .sortedByDescending(AutomationScriptSummary::createdAt)
@@ -113,12 +118,29 @@ class RecordingScriptStore(
     }
 
     private fun validate(script: AutomationScript) {
+        require(SCRIPT_ID_PATTERN.matches(script.id))
         require(script.schemaVersion == RECORDING_SCHEMA_VERSION)
         require(script.name.isNotBlank() && script.name.length <= 128)
         require(script.targetPackages.isNotEmpty() && script.targetPackages.size <= 32)
+        require(script.targetPackages.distinct().size == script.targetPackages.size)
+        require(script.targetPackages.all(PACKAGE_NAME_PATTERN::matches))
+        require(runCatching { Instant.parse(script.createdAt) }.isSuccess)
+        require(script.requirements.minApiLevel in 30..1_000)
+        require(script.requirements.capabilities.size <= 64)
+        require(
+            script.requirements.capabilities.distinct().size ==
+                script.requirements.capabilities.size,
+        )
+        require(
+            script.requirements.capabilities.all { capability ->
+                capability.isNotBlank() && capability.length <= 128
+            },
+        )
         require(script.steps.isNotEmpty() && script.steps.size <= 10_000)
         require(script.variables.distinctBy(ScriptVariable::name).size == script.variables.size)
         script.steps.forEach { step ->
+            require(SCRIPT_ID_PATTERN.matches(step.id))
+            require(step.recordedAtMs >= 0)
             if (step.action.type == "ui.setText") {
                 val hasText = step.action.params.containsKey("text")
                 val hasSecret = step.action.params.containsKey("secretRef")
@@ -131,7 +153,12 @@ class RecordingScriptStore(
 
     companion object {
         private const val FILE_EXTENSION = "json"
-        private val SCRIPT_ID_PATTERN = Regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+        private val SCRIPT_ID_PATTERN = Regex(
+            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-" +
+                "[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+        )
+        private val PACKAGE_NAME_PATTERN =
+            Regex("^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+$")
         private val DEFAULT_JSON = Json {
             encodeDefaults = true
             ignoreUnknownKeys = true

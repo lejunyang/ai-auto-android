@@ -11,20 +11,36 @@ func (a *App) executeRecording(
 	automation service.Automation,
 	args []string,
 ) (any, error) {
-	if len(args) == 0 || args[0] != "replay" {
+	if len(args) == 0 {
 		return nil, usageError(
-			"Usage: aactl recording replay --device SERIAL --script UUID [--json]",
+			"Usage: aactl recording list|replay [options]",
 		)
 	}
-	options, err := parseNamedOptions(args[1:], optionSpec{
-		allowed:  optionSet("device", "script"),
-		required: []string{"device", "script"},
-	})
-	if err != nil {
-		return nil, err
+	switch args[0] {
+	case "list":
+		options, err := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device"),
+			required: []string{"device"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		return automation.ListRecordings(ctx, options["device"])
+	case "replay":
+		options, err := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "script"),
+			required: []string{"device", "script"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		return automation.ReplayRecording(ctx, service.ReplayRecordingRequest{
+			Device:   options["device"],
+			ScriptID: options["script"],
+		})
+	default:
+		return nil, usageError(
+			"Unknown recording command. Supported commands: list, replay.",
+		)
 	}
-	return automation.ReplayRecording(ctx, service.ReplayRecordingRequest{
-		Device:   options["device"],
-		ScriptID: options["script"],
-	})
 }

@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -34,6 +36,49 @@ func TestClientOpenSendsHelloBeforeSessionOpen(t *testing.T) {
 	}
 	if hello.SelectedProtocolVersion != "1.0" || len(opened.Token) < 32 {
 		t.Fatalf("hello = %#v, opened = %#v", hello, opened)
+	}
+}
+
+func TestClientCallsRecordingListWithSessionTokenAndParsesFixture(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/recording-list-result.json")
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	token := "random-token-value-that-is-longer-than-32-bytes"
+	dialer := pipeDialer(func(connection net.Conn) {
+		defer connection.Close()
+		hello := readRequest(t, connection)
+		writeResponse(t, connection, successfulResponse(hello, `{
+			"serverVersion":"0.1.0",
+			"selectedProtocolVersion":"1.0",
+			"capabilities":[]
+		}`))
+		request := readRequest(t, connection)
+		if request.Method != "recording.list" || request.Token != token {
+			t.Errorf("request = %#v", request)
+		}
+		params, err := json.Marshal(request.Params)
+		if err != nil || string(params) != `{}` {
+			t.Errorf("params = %s, error = %v", params, err)
+		}
+		writeResponse(t, connection, successfulResponse(request, string(fixture)))
+	})
+	client := NewClientWithDialer(dialer, time.Second)
+
+	var result json.RawMessage
+	err = client.Call(
+		context.Background(),
+		41237,
+		token,
+		"recording.list",
+		map[string]any{},
+		&result,
+	)
+	if err != nil {
+		t.Fatalf("Call() error = %v", err)
+	}
+	if !jsonEqual(result, fixture) {
+		t.Fatalf("result = %s, want fixture %s", result, fixture)
 	}
 }
 
@@ -274,6 +319,14 @@ func successfulResponse(request Request, result string) Response {
 		ProtocolVersion: "1.0",
 		Result:          json.RawMessage(result),
 	}
+}
+
+func jsonEqual(left, right []byte) bool {
+	var leftValue any
+	var rightValue any
+	return json.Unmarshal(left, &leftValue) == nil &&
+		json.Unmarshal(right, &rightValue) == nil &&
+		reflect.DeepEqual(leftValue, rightValue)
 }
 
 func writeResponse(t *testing.T, connection net.Conn, response Response) {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/lejunyang/ai-auto-android/internal/adb"
@@ -12,6 +14,10 @@ import (
 )
 
 func TestServiceUsesTypedBackendsAndStableResults(t *testing.T) {
+	recordingsFixture, err := os.ReadFile("../bridge/testdata/recording-list-result.json")
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
 	direct := &fakeDirect{
 		devices: []protocol.Device{
 			{Serial: "SERIAL", State: "device", Transport: "usb", Capabilities: []protocol.Capability{}},
@@ -37,6 +43,7 @@ func TestServiceUsesTypedBackendsAndStableResults(t *testing.T) {
 			"requiresIntervention":false,
 			"steps":[]
 		}`),
+		recordings: recordingsFixture,
 	}
 	automation := New(direct, bridge)
 
@@ -66,6 +73,21 @@ func TestServiceUsesTypedBackendsAndStableResults(t *testing.T) {
 		bridge.snapshotPackage != "com.example.app" ||
 		bridge.snapshotDepth != 12 {
 		t.Fatalf("snapshot call = %#v", bridge)
+	}
+
+	recordings, err := automation.ListRecordings(context.Background(), "SERIAL")
+	if err != nil {
+		t.Fatalf("ListRecordings() error = %v", err)
+	}
+	if recordings.Device != "SERIAL" ||
+		recordings.Count != 1 ||
+		len(recordings.Recordings) != 1 ||
+		recordings.Recordings[0].Name != "Save a note" ||
+		recordings.Recordings[0].StepCount != 3 ||
+		recordings.Recordings[0].Requirements.MinAPILevel != 30 ||
+		len(recordings.Recordings[0].Requirements.Capabilities) != 2 ||
+		bridge.listDevice != "SERIAL" {
+		t.Fatalf("recordings = %#v, bridge = %#v", recordings, bridge)
 	}
 
 	action, err := automation.ExecuteAction(context.Background(), ActionRequest{
@@ -150,6 +172,14 @@ func TestServiceRejectsUnsafeOrImplicitRequestsBeforeBackends(t *testing.T) {
 			},
 			code: apperr.CodeInvalidArgument,
 		},
+		{
+			name: "recording list missing device",
+			run: func() error {
+				_, err := automation.ListRecordings(context.Background(), "")
+				return err
+			},
+			code: apperr.CodeInvalidArgument,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -158,6 +188,61 @@ func TestServiceRejectsUnsafeOrImplicitRequestsBeforeBackends(t *testing.T) {
 	}
 	if direct.callCount != 0 || bridge.callCount != 0 {
 		t.Fatalf("unsafe request reached a backend: direct=%d bridge=%d", direct.callCount, bridge.callCount)
+	}
+}
+
+func TestServiceRejectsMalformedRecordingListBeforeReturningData(t *testing.T) {
+	tests := []string{
+		`{}`,
+		`{"recordings":null}`,
+		`{"recordings":[{"id":"not-a-uuid","name":"Bad","targetPackages":["com.example.app"],"createdAt":"2026-07-18T01:30:00Z","stepCount":1,"requirements":{"minApiLevel":30,"capabilities":[]}}]}`,
+		`{"recordings":[{"id":"123e4567-e89b-42d3-a456-426614174000","name":"Bad","targetPackages":["com.example;bad"],"createdAt":"2026-07-18T01:30:00Z","stepCount":1,"requirements":{"minApiLevel":30,"capabilities":[]}}]}`,
+		`{"recordings":[{"id":"123e4567-e89b-42d3-a456-426614174000","name":"Bad","targetPackages":["com.example.app"],"createdAt":"not-a-time","stepCount":1,"requirements":{"minApiLevel":30,"capabilities":[]}}]}`,
+		`{"recordings":[{"id":"123e4567-e89b-42d3-a456-426614174000","name":"Bad","targetPackages":["com.example.app"],"createdAt":"2026-07-18T01:30:00Z","stepCount":0,"requirements":{"minApiLevel":30,"capabilities":[]}}]}`,
+		`{"recordings":[{"id":"123e4567-e89b-42d3-a456-426614174000","name":"Bad","targetPackages":["com.example.app"],"createdAt":"2026-07-18T01:30:00Z","stepCount":1,"requirements":{"minApiLevel":29,"capabilities":[]}}]}`,
+		`{"recordings":[{"id":"123e4567-e89b-42d3-a456-426614174000","name":"Bad","targetPackages":["com.example.app"],"createdAt":"2026-07-18T01:30:00Z","stepCount":1,"requirements":{"minApiLevel":30,"capabilities":["accessibility.action","accessibility.action"]}}]}`,
+	}
+	for _, response := range tests {
+		t.Run(response, func(t *testing.T) {
+			bridge := &fakeBridge{recordings: json.RawMessage(response)}
+			automation := New(&fakeDirect{}, bridge)
+
+			_, err := automation.ListRecordings(context.Background(), "SERIAL")
+			assertCode(t, err, apperr.CodeProtocol)
+			if bridge.callCount != 1 {
+				t.Fatalf("bridge calls = %d, want 1", bridge.callCount)
+			}
+		})
+	}
+}
+
+func TestServiceReturnsOnlySanitizedRecordingSummaryFields(t *testing.T) {
+	bridge := &fakeBridge{recordings: json.RawMessage(`{
+		"recordings":[{
+			"id":"123e4567-e89b-42d3-a456-426614174000",
+			"name":"Safe summary",
+			"targetPackages":["com.example.app"],
+			"createdAt":"2026-07-18T01:30:00Z",
+			"stepCount":1,
+			"requirements":{"minApiLevel":30,"capabilities":["accessibility.action"]},
+			"secret":"must-not-return",
+			"variables":[{"name":"account.password","sensitive":true}]
+		}]
+	}`)}
+	automation := New(&fakeDirect{}, bridge)
+
+	result, err := automation.ListRecordings(context.Background(), "SERIAL")
+	if err != nil {
+		t.Fatalf("ListRecordings() error = %v", err)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	for _, forbidden := range []string{"must-not-return", "account.password", `"secret"`, `"variables"`} {
+		if strings.Contains(string(encoded), forbidden) {
+			t.Fatalf("sanitized result contains %q: %s", forbidden, encoded)
+		}
 	}
 }
 
@@ -223,11 +308,13 @@ func (f *fakeDirect) Stop(context.Context, string, string) (adb.ActionResult, er
 
 type fakeBridge struct {
 	snapshot        json.RawMessage
+	recordings      json.RawMessage
 	replay          json.RawMessage
 	callCount       int
 	snapshotDevice  string
 	snapshotPackage string
 	snapshotDepth   int
+	listDevice      string
 	replayScript    string
 }
 
@@ -242,6 +329,15 @@ func (f *fakeBridge) Snapshot(
 	f.snapshotPackage = targetPackage
 	f.snapshotDepth = maxDepth
 	return f.snapshot, nil
+}
+
+func (f *fakeBridge) ListRecordings(
+	_ context.Context,
+	device string,
+) (json.RawMessage, error) {
+	f.callCount++
+	f.listDevice = device
+	return f.recordings, nil
 }
 
 func (f *fakeBridge) Action(context.Context, string, json.RawMessage) (json.RawMessage, error) {

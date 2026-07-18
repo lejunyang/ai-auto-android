@@ -1,5 +1,6 @@
 package dev.aiauto.android.automation.recording
 
+import dev.aiauto.android.accessibility.model.GlobalAction
 import dev.aiauto.android.accessibility.model.UiBounds
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import dev.aiauto.android.accessibility.model.UiNodeState
@@ -25,6 +26,38 @@ class RecordingStateMachineTest {
         machine.accept(event.copy(eventTimeMs = 1_300))
 
         assertEquals(1, machine.current().steps.size)
+    }
+
+    @Test
+    fun `duplicate global actions inside the window are recorded once BitsUT`() {
+        machine.start("Navigation", setOf("com.example"))
+        nowMs = 1_100
+
+        machine.recordGlobalAction(GlobalAction.BACK)
+        nowMs = 1_300
+        machine.recordGlobalAction(GlobalAction.BACK)
+
+        assertEquals(1, machine.current().steps.size)
+        assertEquals("ui.back", machine.current().steps.single().action.type)
+    }
+
+    @Test
+    fun `all explicit global actions map to recorded steps BitsUT`() {
+        machine.start("Navigation", setOf("com.example"))
+
+        listOf(
+            GlobalAction.BACK,
+            GlobalAction.HOME,
+            GlobalAction.RECENTS,
+        ).forEachIndexed { index, action ->
+            nowMs = 1_100L + index * 400L
+            machine.recordGlobalAction(action)
+        }
+
+        assertEquals(
+            listOf("ui.back", "ui.home", "ui.recents"),
+            machine.current().steps.map { it.action.type },
+        )
     }
 
     @Test

@@ -41,6 +41,45 @@ object SystemReplayTime : ReplayTime {
     override fun sleep(ms: Long) = Thread.sleep(ms)
 }
 
+private fun ReplayGateway.snapshotForReplay(
+    targetPackages: Set<String>,
+    expectedPackage: String? = null,
+): AccessibilityResult<UiNodeSnapshot> {
+    if (targetPackages.isEmpty()) {
+        return AccessibilityResult.Failure(
+            code = AccessibilityErrorCode.TARGET_PACKAGES_NOT_CONFIGURED,
+            message = "The script does not declare any target packages",
+        )
+    }
+    if (expectedPackage != null && expectedPackage !in targetPackages) {
+        return AccessibilityResult.Failure(
+            code = AccessibilityErrorCode.PACKAGE_NOT_ALLOWED,
+            message = "The action target package is not allowed by the script",
+        )
+    }
+    return when (val snapshot = snapshot(expectedPackage)) {
+        is AccessibilityResult.Failure -> snapshot
+        is AccessibilityResult.Success -> {
+            val currentPackage = snapshot.value.packageName
+            when {
+                currentPackage !in targetPackages -> AccessibilityResult.Failure(
+                    code = AccessibilityErrorCode.PACKAGE_NOT_ALLOWED,
+                    message = "The active package is not allowed by the script",
+                )
+
+                expectedPackage != null && currentPackage != expectedPackage ->
+                    AccessibilityResult.Failure(
+                        code = AccessibilityErrorCode.PACKAGE_NOT_ALLOWED,
+                        message = "The active package does not match the action target",
+                        retryable = true,
+                    )
+
+                else -> snapshot
+            }
+        }
+    }
+}
+
 class AndroidReplayGateway(
     private val commandParser: AccessibilityCommandJsonParser =
         AccessibilityCommandJsonParser(),
@@ -74,44 +113,42 @@ class ConditionWaiter(
 ) {
     fun await(
         predicate: RecordedPredicate,
-        expectedPackage: String?,
-    ): Boolean {
+        targetPackages: Set<String>,
+    ): AccessibilityResult<Boolean> {
         val deadline = time.nowMs() + predicate.timeoutMs
         var stableSince: Long? = null
         var previousFingerprint: String? = null
         do {
-            val snapshot = gateway.snapshot(expectedPackage)
-            val root = (snapshot as? AccessibilityResult.Success)?.value
-            val satisfied = if (root == null) {
-                predicate.operator == "notExists"
-            } else {
-                when (predicate.kind) {
-                    "node", "text" -> evaluateNode(root, predicate)
-                    "package", "window" -> evaluatePackage(root, predicate)
-                    "uiStable" -> {
-                        val current = snapshotFingerprint(root)
-                        if (current == previousFingerprint) {
-                            stableSince = stableSince ?: time.nowMs()
-                        } else {
-                            stableSince = null
-                        }
-                        previousFingerprint = current
-                        val duration = predicate.stableDurationMs ?: DEFAULT_STABLE_DURATION_MS
-                        stableSince?.let { time.nowMs() - it >= duration } == true
+            val root = when (val snapshot = gateway.snapshotForReplay(targetPackages)) {
+                is AccessibilityResult.Failure -> return snapshot
+                is AccessibilityResult.Success -> snapshot.value
+            }
+            val satisfied = when (predicate.kind) {
+                "node", "text" -> evaluateNode(root, predicate)
+                "package", "window" -> evaluatePackage(root, predicate)
+                "uiStable" -> {
+                    val current = snapshotFingerprint(root)
+                    if (current == previousFingerprint) {
+                        stableSince = stableSince ?: time.nowMs()
+                    } else {
+                        stableSince = null
                     }
-
-                    else -> false
+                    previousFingerprint = current
+                    val duration = predicate.stableDurationMs ?: DEFAULT_STABLE_DURATION_MS
+                    stableSince?.let { time.nowMs() - it >= duration } == true
                 }
+
+                else -> false
             }
             if (satisfied) {
-                return true
+                return AccessibilityResult.Success(true)
             }
             if (time.nowMs() >= deadline) {
-                return false
+                return AccessibilityResult.Success(false)
             }
             time.sleep(minOf(pollIntervalMs, deadline - time.nowMs()))
         } while (time.nowMs() <= deadline)
-        return false
+        return AccessibilityResult.Success(false)
     }
 
     private fun evaluateNode(
@@ -196,9 +233,10 @@ class ReplayEngine(
         val startedAt = time.nowMs()
         val results = mutableListOf<ReplayStepResult>()
         var requiresIntervention = false
+        val targetPackages = script.targetPackages.toSet()
 
         for (step in script.steps) {
-            val result = replayStep(step, script.targetPackages, secrets)
+            val result = replayStep(step, targetPackages, secrets)
             results += result
             if (result.status == ReplayStepStatus.FAILED) {
                 requiresIntervention = step.failurePolicy == "requestIntervention"
@@ -218,7 +256,7 @@ class ReplayEngine(
 
     private fun replayStep(
         step: RecordedStep,
-        targetPackages: List<String>,
+        targetPackages: Set<String>,
         secrets: Map<String, String>,
     ): ReplayStepResult {
         val resolved = resolveSecret(step.action, secrets) ?: return failure(
@@ -234,20 +272,28 @@ class ReplayEngine(
                 code = "INVALID_PREDICATE",
                 message = "The recorded condition is invalid",
             )
-            val matched = waiter.await(predicate, targetPackages.singleOrNull())
-            return if (matched) {
-                ReplayStepResult(
-                    stepId = step.id,
-                    status = ReplayStepStatus.SUCCEEDED,
-                    attempts = 1,
-                )
-            } else {
-                failure(
+            return when (val waited = waiter.await(predicate, targetPackages)) {
+                is AccessibilityResult.Failure -> failure(
                     step = step,
-                    attempts = 1,
-                    code = "CONDITION_TIMEOUT",
-                    message = "The recorded condition did not become true",
+                    attempts = 0,
+                    code = waited.error.code.name,
+                    message = waited.error.message,
                 )
+
+                is AccessibilityResult.Success -> if (waited.value) {
+                    ReplayStepResult(
+                        stepId = step.id,
+                        status = ReplayStepStatus.SUCCEEDED,
+                        attempts = 1,
+                    )
+                } else {
+                    failure(
+                        step = step,
+                        attempts = 1,
+                        code = "CONDITION_TIMEOUT",
+                        message = "The recorded condition did not become true",
+                    )
+                }
             }
         }
         val expectedPackage = resolved.params["target"]
@@ -255,45 +301,48 @@ class ReplayEngine(
             ?.get("packageName")
             ?.jsonPrimitive
             ?.contentOrNull
-            ?: targetPackages.singleOrNull()
-
-        semanticTarget(resolved)?.let { target ->
-            val snapshot = gateway.snapshot(expectedPackage)
-            val root = (snapshot as? AccessibilityResult.Success)?.value
-                ?: return failure(
-                    step = step,
-                    attempts = 0,
-                    code = (snapshot as AccessibilityResult.Failure).error.code.name,
-                    message = snapshot.error.message,
-                )
-            when (val match = selectorMatcher.match(root, target)) {
-                is SelectorMatch.NotFound -> return failure(
-                    step,
-                    0,
-                    "SELECTOR_LOW_CONFIDENCE",
-                    "No semantic selector reached the minimum confidence",
-                )
-
-                is SelectorMatch.Ambiguous -> return failure(
-                    step,
-                    0,
-                    "SELECTOR_AMBIGUOUS",
-                    "Multiple semantic targets matched with similar confidence",
-                )
-
-                is SelectorMatch.Found -> Unit
-            }
-        }
+        val semanticTarget = semanticTarget(resolved)
 
         var lastFailure: AccessibilityError? = null
         repeat(step.retry.maxAttempts) { index ->
             val attempts = index + 1
+            val root = when (
+                val snapshot = gateway.snapshotForReplay(
+                    targetPackages = targetPackages,
+                    expectedPackage = expectedPackage,
+                )
+            ) {
+                is AccessibilityResult.Failure -> return failure(
+                    step = step,
+                    attempts = index,
+                    code = snapshot.error.code.name,
+                    message = snapshot.error.message,
+                )
+
+                is AccessibilityResult.Success -> snapshot.value
+            }
+            semanticTarget?.let { target ->
+                when (val match = selectorMatcher.match(root, target)) {
+                    is SelectorMatch.NotFound -> return failure(
+                        step,
+                        index,
+                        "SELECTOR_LOW_CONFIDENCE",
+                        "No semantic selector reached the minimum confidence",
+                    )
+
+                    is SelectorMatch.Ambiguous -> return failure(
+                        step,
+                        index,
+                        "SELECTOR_AMBIGUOUS",
+                        "Multiple semantic targets matched with similar confidence",
+                    )
+
+                    is SelectorMatch.Found -> Unit
+                }
+            }
             when (val execution = gateway.execute(resolved)) {
                 is AccessibilityResult.Success -> {
-                    val waitSucceeded = step.waitAfter?.let {
-                        waiter.await(it, expectedPackage)
-                    } ?: true
-                    if (waitSucceeded) {
+                    if (step.waitAfter == null) {
                         return ReplayStepResult(
                             stepId = step.id,
                             status = ReplayStepStatus.SUCCEEDED,
@@ -302,11 +351,30 @@ class ReplayEngine(
                             matchScore = execution.value.matchScore,
                         )
                     }
-                    lastFailure = AccessibilityError(
-                        code = AccessibilityErrorCode.ACTION_FAILED,
-                        message = "The post-action condition timed out",
-                        retryable = true,
-                    )
+                    when (val waited = waiter.await(step.waitAfter, targetPackages)) {
+                        is AccessibilityResult.Failure -> return failure(
+                            step = step,
+                            attempts = attempts,
+                            code = waited.error.code.name,
+                            message = waited.error.message,
+                        )
+
+                        is AccessibilityResult.Success -> if (waited.value) {
+                            return ReplayStepResult(
+                                stepId = step.id,
+                                status = ReplayStepStatus.SUCCEEDED,
+                                attempts = attempts,
+                                route = execution.value.route.name,
+                                matchScore = execution.value.matchScore,
+                            )
+                        } else {
+                            lastFailure = AccessibilityError(
+                                code = AccessibilityErrorCode.ACTION_FAILED,
+                                message = "The post-action condition timed out",
+                                retryable = true,
+                            )
+                        }
+                    }
                 }
 
                 is AccessibilityResult.Failure -> lastFailure = execution.error

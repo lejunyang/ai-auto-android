@@ -12,11 +12,12 @@
 - 录制开始时再次填写目标包；其他包的事件会被忽略；
 - 回放时目标应用必须位于允许列表且保持前台。
 
-脚本只能在 Android App 中创建、查看、删除和选择。电脑端当前只能按已知 UUID
-回放，不能列出、编辑或检查脚本：
+脚本只能在 Android App 中创建、编辑名称、删除和选择。电脑端可以列出脱敏摘要，
+再由人工按 UUID 回放，但不能读取步骤、变量或 secret：
 
 ```bash
 aactl bridge open --device SERIAL --json
+aactl recording list --device SERIAL --json
 aactl recording replay --device SERIAL \
   --script 123e4567-e89b-42d3-a456-426614174000 --json
 aactl bridge close --device SERIAL --json
@@ -34,14 +35,12 @@ aactl bridge close --device SERIAL --json
 | `TYPE_VIEW_SCROLLED` | `ui.scroll` |
 | `TYPE_WINDOW_STATE_CHANGED`、`TYPE_WINDOWS_CHANGED` | `ui.wait`，等待包名 |
 
-但是，当前发布配置
-`android/app/src/main/res/xml/accessibility_service_config.xml` 只订阅
-`typeWindowStateChanged|typeWindowsChanged`。服务运行时只动态更新目标包，没有
-扩展事件类型。因此当前 APK **只能自动收到窗口变化并生成包名等待步骤**；
-点击、长按、文本和滚动的映射代码已存在，但尚未通过当前服务配置接收到事件。
+发布配置订阅上述六类事件。服务只处理录制运行时已挂载且目标包匹配的事件，并在
+接收时转换到与录制开始时间一致的墙钟时间轴。
 
-状态机也提供 Back、Home、Recents 的显式全局动作录制方法，但当前 UI 和执行器
-没有调用该入口。不能把这些映射器和状态机能力视为已完成的端到端录制功能。
+Back、Home、Recents 由 App 的 Accessibility 执行器成功提交后，会经
+`RecordingRuntime` 进入同一去重状态机。用户通过物理按键或系统导航手势触发的
+全局动作没有可靠 Accessibility 事件，因此不会伪装成已录制步骤。
 
 ## 脚本模型
 
@@ -171,15 +170,15 @@ steps[]:
 
 ## 已知限制
 
-- 当前有效订阅只覆盖窗口变化，尚不能端到端录制点击、文本、滚动或全局动作。
+- 显式全局动作只覆盖由 App Accessibility 执行器发起的 Back、Home、Recents；
+  物理系统导航不会被录制。
 - 没有原始触摸、多点触控、自由手势、按键序列、分支、循环或子流程。
 - WebView、自绘控件和游戏可能没有可用 Accessibility 节点或稳定事件。
 - UI 树最多复制 64 层、4,000 个节点；Bridge 输出还会按请求深度 1..100
   截断展示，底层快照的 64 层上限不会因此提高。
 - `FLAG_SECURE`、系统保护页面和不可访问窗口可能为空或缺少内容；不得绕过。
 - 脚本只检查 schema 版本和局部约束，没有导入任意外部脚本的 UI。
-- 电脑端没有 `recording list`；协议中的该方法当前返回
-  `CAPABILITY_UNAVAILABLE`。
+- 电脑端 `recording list` 只返回脱敏摘要，不能读取或编辑脚本步骤、变量和 secret。
 
 ## 隐私操作
 

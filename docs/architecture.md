@@ -142,7 +142,7 @@ Android Bridge -> AccessibilityRuntime -> 重新获取当前窗口 -> 执行 -> 
 
 ## 当前边界
 
-- CLI 没有 `devices watch`、`recording list` 或录制编辑命令。
+- CLI 没有 `devices watch` 或录制编辑命令；`recording list` 仅返回脱敏摘要。
 - CLI 的语义观察命令是 `bridge snapshot`；MCP 将三种观察统一为
   `android_observe`。
 - Bridge 不传输截图；像素截图始终走直接 ADB 后端。

@@ -49,6 +49,15 @@ func observeSchema() json.RawMessage {
 					"maxDepth":{"type":"integer","minimum":1,"maximum":100}
 				},
 				"additionalProperties":false
+			},
+			{
+				"type":"object",
+				"required":["device","kind"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"kind":{"const":"recordings"}
+				},
+				"additionalProperties":false
 			}
 		]
 	}`)
@@ -134,12 +143,14 @@ func observeOutputSchema() json.RawMessage {
 		"required":["device","kind","format"],
 		"properties":{
 			"device":` + deviceSchema() + `,
-			"kind":{"enum":["screenshot","hierarchy","semantic"]},
-			"format":{"enum":["png","uiautomator-xml","accessibility-tree"]},
+			"kind":{"enum":["screenshot","hierarchy","semantic","recordings"]},
+			"format":{"enum":["png","uiautomator-xml","accessibility-tree","recording-list"]},
 			"sizeBytes":{"type":"integer","minimum":1},
 			"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},
 			"xml":{"type":"string"},
-			"snapshot":{"$ref":"#/$defs/snapshot"}
+			"snapshot":{"$ref":"#/$defs/snapshot"},
+			"recordings":{"type":"array","items":{"$ref":"#/$defs/recording"}},
+			"count":{"type":"integer","minimum":0}
 		},
 		"additionalProperties":false,
 		"$defs":{
@@ -194,6 +205,38 @@ func observeOutputSchema() json.RawMessage {
 						"additionalProperties":false
 					},
 					"children":{"type":"array","items":{"$ref":"#/$defs/node"}}
+				},
+				"additionalProperties":false
+			},
+			"recording":{
+				"type":"object",
+				"required":["id","name","targetPackages","createdAt","stepCount","requirements"],
+				"properties":{
+					"id":{"type":"string","format":"uuid"},
+					"name":{"type":"string","minLength":1,"maxLength":128},
+					"targetPackages":{
+						"type":"array",
+						"minItems":1,
+						"maxItems":32,
+						"uniqueItems":true,
+						"items":` + packageSchema() + `
+					},
+					"createdAt":{"type":"string","format":"date-time"},
+					"stepCount":{"type":"integer","minimum":1,"maximum":10000},
+					"requirements":{
+						"type":"object",
+						"required":["minApiLevel","capabilities"],
+						"properties":{
+							"minApiLevel":{"type":"integer","minimum":30,"maximum":1000},
+							"capabilities":{
+								"type":"array",
+								"maxItems":64,
+								"uniqueItems":true,
+								"items":{"type":"string","minLength":1,"maxLength":128}
+							}
+						},
+						"additionalProperties":false
+					}
 				},
 				"additionalProperties":false
 			}

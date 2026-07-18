@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+import dev.aiauto.android.accessibility.model.GlobalAction
+
 data class RecordingControllerState(
     val draft: RecordingDraft = RecordingDraft(),
     val scripts: List<AutomationScriptSummary> = emptyList(),
@@ -28,7 +30,7 @@ interface RecordingCoordinator : Closeable {
     fun start(
         name: String,
         targetPackages: Set<String>,
-        environment: ScriptEnvironment? = null,
+        environment: ScriptEnvironment,
     )
 
     fun pause()
@@ -68,7 +70,7 @@ class RecordingController(
     override fun start(
         name: String,
         targetPackages: Set<String>,
-        environment: ScriptEnvironment?,
+        environment: ScriptEnvironment,
     ) {
         runCatching {
             val draft = stateMachine.start(name, targetPackages, environment)
@@ -205,6 +207,11 @@ class RecordingController(
 
     override fun accept(event: RecordingEvent) {
         val draft = stateMachine.accept(event)
+        mutableState.value = mutableState.value.copy(draft = draft)
+    }
+
+    override fun acceptGlobalAction(action: GlobalAction) {
+        val draft = stateMachine.recordGlobalAction(action)
         mutableState.value = mutableState.value.copy(draft = draft)
     }
 

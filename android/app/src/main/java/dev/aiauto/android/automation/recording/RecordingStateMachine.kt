@@ -23,7 +23,7 @@ class RecordingStateMachine(
     fun start(
         name: String,
         targetPackages: Set<String>,
-        environment: ScriptEnvironment? = null,
+        environment: ScriptEnvironment = ScriptEnvironment(),
     ): RecordingDraft {
         check(draft.status == RecordingStatus.IDLE) {
             "A recording session is already active"
@@ -74,29 +74,7 @@ class RecordingStateMachine(
             return draft
         }
         val mapped = eventMapper.map(event) ?: return draft
-        val key = "${mapped.action.type}:${mapped.action.params}"
-        if (key == lastAcceptedKey && event.eventTimeMs - lastAcceptedAtMs <= DEDUP_WINDOW_MS) {
-            return draft
-        }
-
-        val nextStep = RecordedStep(
-            id = idFactory(),
-            recordedAtMs = event.eventTimeMs - requireNotNull(draft.startedAtMs),
-            action = mapped.action,
-            waitAfter = mapped.action.defaultWaitAfter(),
-        )
-        val nextSteps = if (shouldCoalesceText(nextStep, event.eventTimeMs)) {
-            draft.steps.dropLast(1) + nextStep
-        } else {
-            draft.steps + nextStep
-        }
-        val variables = mapped.secretVariable?.let { variable ->
-            (draft.variables + variable).distinctBy(ScriptVariable::name)
-        } ?: draft.variables
-        draft = draft.copy(steps = nextSteps, variables = variables)
-        lastAcceptedKey = key
-        lastAcceptedAtMs = event.eventTimeMs
-        return draft
+        return append(mapped, event.eventTimeMs)
     }
 
     @Synchronized
@@ -110,17 +88,15 @@ class RecordingStateMachine(
             GlobalAction.RECENTS -> "ui.recents"
         }
         val now = clockMs()
-        draft = draft.copy(
-            steps = draft.steps + RecordedStep(
-                id = idFactory(),
-                recordedAtMs = now - requireNotNull(draft.startedAtMs),
-                action = RecordedAction(type = type, params = JsonObject(emptyMap())),
-                waitAfter = stableWait(),
+        return append(
+            mapped = MappedRecordingAction(
+                action = RecordedAction(
+                    type = type,
+                    params = JsonObject(emptyMap()),
+                ),
             ),
+            eventTimeMs = now,
         )
-        lastAcceptedKey = null
-        lastAcceptedAtMs = now
-        return draft
     }
 
     @Synchronized
@@ -163,6 +139,35 @@ class RecordingStateMachine(
         return previous.action.type == "ui.setText" &&
             previous.action.params["target"] == step.action.params["target"] &&
             eventTimeMs - lastAcceptedAtMs <= TEXT_COALESCE_WINDOW_MS
+    }
+
+    private fun append(
+        mapped: MappedRecordingAction,
+        eventTimeMs: Long,
+    ): RecordingDraft {
+        val key = "${mapped.action.type}:${mapped.action.params}"
+        if (key == lastAcceptedKey && eventTimeMs - lastAcceptedAtMs <= DEDUP_WINDOW_MS) {
+            return draft
+        }
+
+        val nextStep = RecordedStep(
+            id = idFactory(),
+            recordedAtMs = eventTimeMs - requireNotNull(draft.startedAtMs),
+            action = mapped.action,
+            waitAfter = mapped.action.defaultWaitAfter(),
+        )
+        val nextSteps = if (shouldCoalesceText(nextStep, eventTimeMs)) {
+            draft.steps.dropLast(1) + nextStep
+        } else {
+            draft.steps + nextStep
+        }
+        val variables = mapped.secretVariable?.let { variable ->
+            (draft.variables + variable).distinctBy(ScriptVariable::name)
+        } ?: draft.variables
+        draft = draft.copy(steps = nextSteps, variables = variables)
+        lastAcceptedKey = key
+        lastAcceptedAtMs = eventTimeMs
+        return draft
     }
 
     private fun RecordedAction.defaultWaitAfter(): RecordedPredicate? =

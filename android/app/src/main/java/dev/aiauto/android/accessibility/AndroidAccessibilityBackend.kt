@@ -21,6 +21,7 @@ import dev.aiauto.android.accessibility.settings.AccessibilitySettings
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.accessibility.snapshot.AccessibilitySnapshotter
 import dev.aiauto.android.accessibility.snapshot.recycleSafely
+import dev.aiauto.android.automation.recording.RecordingRuntime
 
 internal class AndroidAccessibilityBackend(
     private val service: AccessibilityService,
@@ -123,14 +124,19 @@ internal class AndroidAccessibilityBackend(
         return service.dispatchGesture(description, null, null)
     }
 
-    override fun performGlobal(action: GlobalAction): Boolean =
-        service.performGlobalAction(
+    override fun performGlobal(action: GlobalAction): Boolean {
+        val performed = service.performGlobalAction(
             when (action) {
                 GlobalAction.BACK -> AccessibilityService.GLOBAL_ACTION_BACK
                 GlobalAction.HOME -> AccessibilityService.GLOBAL_ACTION_HOME
                 GlobalAction.RECENTS -> AccessibilityService.GLOBAL_ACTION_RECENTS
             },
         )
+        if (performed) {
+            RecordingRuntime.publishGlobalAction(action)
+        }
+        return performed
+    }
 
     override fun screenBounds(): ScreenBounds {
         val bounds = service.getSystemService(WindowManager::class.java)

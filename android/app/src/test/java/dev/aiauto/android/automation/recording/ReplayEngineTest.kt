@@ -51,6 +51,7 @@ class ReplayEngineTest {
     @Test
     fun `retryable action succeeds on the configured second attempt`() {
         val gateway = FakeGateway(
+            snapshots = mutableListOf(success(node()), success(node())),
             executions = mutableListOf(
                 AccessibilityResult.Failure(
                     code = AccessibilityErrorCode.ACTION_FAILED,
@@ -151,6 +152,82 @@ class ReplayEngineTest {
         assertTrue(gateway.executed.isEmpty())
     }
 
+    @Test
+    fun `snapshot failure does not satisfy a missing node condition BitsUT`() {
+        val gateway = FakeGateway(
+            snapshots = mutableListOf(
+                AccessibilityResult.Failure(
+                    code = AccessibilityErrorCode.SNAPSHOT_FAILED,
+                    message = "Snapshot failed",
+                    retryable = true,
+                ),
+            ),
+        )
+        val engine = engine(gateway)
+        val action = RecordedAction(
+            type = "ui.wait",
+            params = buildJsonObject {
+                put("kind", JsonPrimitive("node"))
+                put("operator", JsonPrimitive("notExists"))
+                put("target", clickAction(node()).params.getValue("target"))
+                put("timeoutMs", JsonPrimitive(0))
+            },
+        )
+
+        val report = engine.replay(script(action = action))
+
+        assertFalse(report.succeeded)
+        assertEquals("SNAPSHOT_FAILED", report.steps.single().errorCode)
+        assertTrue(gateway.executed.isEmpty())
+    }
+
+    @Test
+    fun `multi target action rejects an active package outside the script BitsUT`() {
+        val gateway = FakeGateway(
+            snapshots = mutableListOf(success(node(packageName = "com.other"))),
+        )
+        val engine = engine(gateway)
+
+        val report = engine.replay(
+            script(
+                action = RecordedAction("ui.back", JsonObject(emptyMap())),
+                targetPackages = listOf("com.example", "com.example.auth"),
+            ),
+        )
+
+        assertFalse(report.succeeded)
+        assertEquals("PACKAGE_NOT_ALLOWED", report.steps.single().errorCode)
+        assertTrue(gateway.executed.isEmpty())
+    }
+
+    @Test
+    fun `multi target wait rejects an active package outside the script BitsUT`() {
+        val gateway = FakeGateway(
+            snapshots = mutableListOf(success(node(packageName = "com.other"))),
+        )
+        val engine = engine(gateway)
+        val action = RecordedAction(
+            type = "ui.wait",
+            params = buildJsonObject {
+                put("kind", JsonPrimitive("package"))
+                put("operator", JsonPrimitive("equals"))
+                put("expected", JsonPrimitive("com.example.auth"))
+                put("timeoutMs", JsonPrimitive(500))
+            },
+        )
+
+        val report = engine.replay(
+            script(
+                action = action,
+                targetPackages = listOf("com.example", "com.example.auth"),
+            ),
+        )
+
+        assertFalse(report.succeeded)
+        assertEquals("PACKAGE_NOT_ALLOWED", report.steps.single().errorCode)
+        assertTrue(gateway.executed.isEmpty())
+    }
+
     private var engineTime: ReplayTime = FakeTime()
 
     private fun engine(gateway: FakeGateway): ReplayEngine {
@@ -170,10 +247,11 @@ class ReplayEngineTest {
     private fun script(
         action: RecordedAction,
         retry: RetryPolicy = RetryPolicy(maxAttempts = 1, backoffMs = 0),
+        targetPackages: List<String> = listOf("com.example"),
     ) = AutomationScript(
         id = "script",
         name = "Replay",
-        targetPackages = listOf("com.example"),
+        targetPackages = targetPackages,
         createdAt = "2026-07-18T00:00:00Z",
         steps = listOf(
             RecordedStep(
@@ -200,9 +278,10 @@ class ReplayEngineTest {
     private fun node(
         resourceId: String = "com.example:id/action",
         className: String = "android.widget.Button",
+        packageName: String = "com.example",
         children: List<UiNodeSnapshot> = emptyList(),
     ) = UiNodeSnapshot(
-        packageName = "com.example",
+        packageName = packageName,
         className = className,
         resourceId = resourceId,
         text = null,

@@ -8,6 +8,7 @@ import dev.aiauto.android.automation.recording.RecordedStep
 import dev.aiauto.android.automation.recording.RecordingControllerState
 import dev.aiauto.android.automation.recording.RecordingCoordinator
 import dev.aiauto.android.automation.recording.ScriptEnvironment
+import dev.aiauto.android.automation.recording.ScriptEnvironmentProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -31,6 +33,17 @@ import org.junit.runner.Description
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecordingViewModelTest {
     private val dispatcher = StandardTestDispatcher()
+    private val environment = ScriptEnvironment(
+        apiLevel = 36,
+        logicalWidth = 1080,
+        logicalHeight = 2400,
+        densityDpi = 420,
+        rotation = 0,
+        locale = "en-US",
+        fontScale = 1.0f,
+        appVersion = "0.1.0",
+    )
+    private val environmentProvider = ScriptEnvironmentProvider { environment }
 
     @get:Rule
     val mainDispatcherRule: TestWatcher = RecordingMainDispatcherRule(dispatcher)
@@ -39,7 +52,7 @@ class RecordingViewModelTest {
     fun `recording controls delegate parsed input and return to list BitsUT`() =
         runTest(dispatcher) {
             val coordinator = FakeRecordingCoordinator()
-            val viewModel = RecordingViewModel(coordinator)
+            val viewModel = viewModel(coordinator)
             runCurrent()
 
             viewModel.openNewRecording()
@@ -65,11 +78,27 @@ class RecordingViewModelTest {
         }
 
     @Test
+    fun `recording start always passes an environment summary BitsUT`() =
+        runTest(dispatcher) {
+            val coordinator = FakeRecordingCoordinator()
+            val viewModel = viewModel(coordinator)
+            runCurrent()
+            viewModel.openNewRecording()
+            viewModel.updateName("Environment")
+            viewModel.updateTargetPackages("com.example")
+
+            viewModel.start()
+
+            assertNotNull(coordinator.startedEnvironment)
+            assertEquals(environment, coordinator.startedEnvironment)
+        }
+
+    @Test
     fun `detail replay passes only required in memory secrets BitsUT`() =
         runTest(dispatcher) {
             val script = secretScript()
             val coordinator = FakeRecordingCoordinator(mapOf(script.id to script))
-            val viewModel = RecordingViewModel(coordinator)
+            val viewModel = viewModel(coordinator)
             runCurrent()
 
             viewModel.openScript(script.id)
@@ -98,7 +127,7 @@ class RecordingViewModelTest {
         runTest(dispatcher) {
             val script = secretScript()
             val coordinator = FakeRecordingCoordinator(finishedScript = script)
-            val viewModel = RecordingViewModel(coordinator)
+            val viewModel = viewModel(coordinator)
             runCurrent()
             viewModel.openNewRecording()
             viewModel.updateName("Named recording")
@@ -116,7 +145,7 @@ class RecordingViewModelTest {
         runTest(dispatcher) {
             val script = secretScript()
             val coordinator = FakeRecordingCoordinator(mapOf(script.id to script))
-            val viewModel = RecordingViewModel(coordinator)
+            val viewModel = viewModel(coordinator)
             runCurrent()
             viewModel.openScript(script.id)
             runCurrent()
@@ -135,12 +164,17 @@ class RecordingViewModelTest {
     fun `clearing ViewModel closes recording coordinator BitsUT`() {
         val coordinator = FakeRecordingCoordinator()
         val store = ViewModelStore()
-        store.put("recording", RecordingViewModel(coordinator))
+        store.put("recording", viewModel(coordinator))
 
         store.clear()
 
         assertTrue(coordinator.closed)
     }
+
+    private fun viewModel(coordinator: RecordingCoordinator) = RecordingViewModel(
+        coordinator = coordinator,
+        environmentProvider = environmentProvider,
+    )
 
     private fun secretScript() = AutomationScript(
         id = "secret-script",
@@ -170,6 +204,7 @@ class RecordingViewModelTest {
 
         var startedName: String? = null
         var startedPackages: Set<String>? = null
+        var startedEnvironment: ScriptEnvironment? = null
         var pauseCalls = 0
         var resumeCalls = 0
         var cancelCalls = 0
@@ -182,10 +217,11 @@ class RecordingViewModelTest {
         override fun start(
             name: String,
             targetPackages: Set<String>,
-            environment: ScriptEnvironment?,
+            environment: ScriptEnvironment,
         ) {
             startedName = name
             startedPackages = targetPackages
+            startedEnvironment = environment
         }
 
         override fun pause() {

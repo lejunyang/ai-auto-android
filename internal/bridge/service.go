@@ -224,6 +224,13 @@ func (s *Service) Action(
 	)
 }
 
+func (s *Service) ListRecordings(
+	ctx context.Context,
+	device string,
+) (json.RawMessage, error) {
+	return s.call(ctx, device, "recording.list", map[string]any{})
+}
+
 func (s *Service) Replay(
 	ctx context.Context,
 	device string,
