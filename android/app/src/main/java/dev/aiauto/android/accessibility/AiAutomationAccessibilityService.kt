@@ -96,6 +96,8 @@ object AccessibilityRuntime {
     @Volatile
     private var service: AiAutomationAccessibilityService? = null
 
+    fun isAvailable(): Boolean = service != null
+
     fun snapshot(expectedPackage: String? = null): AccessibilityResult<UiNodeSnapshot> =
         service?.snapshot(expectedPackage) ?: serviceDisabled()
 

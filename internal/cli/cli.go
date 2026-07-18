@@ -10,6 +10,7 @@ import (
 
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
+	"github.com/lejunyang/ai-auto-android/internal/bridge"
 	"github.com/lejunyang/ai-auto-android/internal/output"
 	"github.com/lejunyang/ai-auto-android/internal/process"
 )
@@ -21,21 +22,24 @@ type PathResolver interface {
 }
 
 type App struct {
-	Locator  PathResolver
-	Executor process.Executor
-	Stdin    io.Reader
-	Stdout   io.Writer
-	Stderr   io.Writer
+	Locator      PathResolver
+	Executor     process.Executor
+	Stdin        io.Reader
+	Stdout       io.Writer
+	Stderr       io.Writer
+	BridgeClient bridge.RPCClient
+	BridgeStore  bridge.SessionStore
 }
 
 func DefaultApp(stdin io.Reader, stdout, stderr io.Writer) *App {
 	locator := adb.DefaultLocator()
 	return &App{
-		Locator:  locator,
-		Executor: process.Runner{},
-		Stdin:    stdin,
-		Stdout:   stdout,
-		Stderr:   stderr,
+		Locator:      locator,
+		Executor:     process.Runner{},
+		Stdin:        stdin,
+		Stdout:       stdout,
+		Stderr:       stderr,
+		BridgeClient: bridge.NewClient(),
 	}
 }
 
@@ -96,8 +100,10 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 		return a.executeObserve(ctx, client, args[1:])
 	case "action":
 		return a.executeAction(ctx, client, args[1:])
+	case "bridge":
+		return a.executeBridge(ctx, client, args[1:])
 	default:
-		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action.")
+		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, bridge.")
 	}
 }
 

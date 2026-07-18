@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+import dev.aiauto.android.bridge.DesktopBridgeState
+import dev.aiauto.android.bridge.DesktopBridgeStatus
 import dev.aiauto.android.ui.components.StatusCard
 import dev.aiauto.android.ui.components.StatusTone
 
@@ -28,8 +30,10 @@ fun HomeScreen(
     providerReady: Boolean,
     accessibilityConfigured: Boolean,
     accessibilityEnabled: Boolean,
+    bridgeState: DesktopBridgeState,
     onAccessibilityClick: () -> Unit,
     onProviderClick: () -> Unit,
+    onBridgeClick: () -> Unit,
     onTaskClick: () -> Unit,
     onRecordingClick: () -> Unit,
 ) {
@@ -104,9 +108,37 @@ fun HomeScreen(
             item {
                 StatusCard(
                     title = "桌面桥",
-                    description = "默认关闭。连接时仅通过 ADB 转发访问设备回环地址。",
-                    status = "已关闭",
-                    tone = StatusTone.INACTIVE,
+                    description = when (bridgeState.status) {
+                        DesktopBridgeStatus.STOPPED ->
+                            "默认关闭。连接时仅通过 ADB 转发访问设备回环地址。"
+
+                        DesktopBridgeStatus.STARTING -> "正在绑定设备回环地址。"
+                        DesktopBridgeStatus.WAITING_FOR_CODE ->
+                            "一次性码短期有效，等待已授权电脑连接。"
+
+                        DesktopBridgeStatus.CONNECTED ->
+                            "短期桌面会话已建立，可随时在 App 中关闭。"
+
+                        DesktopBridgeStatus.ERROR ->
+                            bridgeState.errorMessage ?: "本地桥启动失败。"
+                    },
+                    status = when (bridgeState.status) {
+                        DesktopBridgeStatus.STOPPED -> "已关闭"
+                        DesktopBridgeStatus.STARTING -> "启动中"
+                        DesktopBridgeStatus.WAITING_FOR_CODE -> "等待连接"
+                        DesktopBridgeStatus.CONNECTED -> "已连接"
+                        DesktopBridgeStatus.ERROR -> "启动失败"
+                    },
+                    tone = when (bridgeState.status) {
+                        DesktopBridgeStatus.CONNECTED -> StatusTone.READY
+                        DesktopBridgeStatus.STARTING,
+                        DesktopBridgeStatus.WAITING_FOR_CODE,
+                        DesktopBridgeStatus.ERROR,
+                        -> StatusTone.ATTENTION
+
+                        DesktopBridgeStatus.STOPPED -> StatusTone.INACTIVE
+                    },
+                    onClick = onBridgeClick,
                 )
             }
             item {

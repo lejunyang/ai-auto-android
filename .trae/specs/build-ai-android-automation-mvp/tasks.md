@@ -40,12 +40,12 @@
   - [x] SubTask 6.4: 实现 click、longClick、setText、scroll、tap、swipe、back、home、recents
   - [x] SubTask 6.5: 添加选择器、坐标变换和动作路由单测并提交 `feat(android): add accessibility observation and execution`
 
-- [ ] Task 7: 实现电脑到 App 的本地桥：通过 ADB forward、loopback NDJSON JSON-RPC、一次性码和会话 token 提供语义观察与动作执行。
-  - [ ] SubTask 7.1: 在 Android 端实现仅绑定 `127.0.0.1` 的有界消息服务和桥 UI 状态
-  - [ ] SubTask 7.2: 实现 hello、session open/close、device info、ui snapshot、action execute
-  - [ ] SubTask 7.3: 在 `aactl` 实现端口分配、ADB forward 生命周期、配对和桥客户端
-  - [ ] SubTask 7.4: 覆盖错误码、错误/过期 token、重放、超时、断连和消息过大测试
-  - [ ] SubTask 7.5: 验证双方契约测试并提交 `feat(bridge): connect desktop to android app`
+- [x] Task 7: 实现电脑到 App 的本地桥：通过 ADB forward、loopback NDJSON JSON-RPC、一次性码和会话 token 提供语义观察与动作执行。
+  - [x] SubTask 7.1: 在 Android 端实现仅绑定 `127.0.0.1` 的有界消息服务和桥 UI 状态
+  - [x] SubTask 7.2: 实现 hello、session open/close、device info、ui snapshot、action execute
+  - [x] SubTask 7.3: 在 `aactl` 实现端口分配、ADB forward 生命周期、配对和桥客户端
+  - [x] SubTask 7.4: 覆盖错误码、错误/过期 token、重放、超时、断连和消息过大测试
+  - [x] SubTask 7.5: 验证双方契约测试并提交 `feat(bridge): connect desktop to android app`
 
 - [ ] Task 8: 实现 App 内 AI 自动化会话与风险控制：完成观察、单步规划、确认、执行、验证、暂停、失败和紧急停止状态机。
   - [ ] SubTask 8.1: 实现会话状态机、步骤/时长限制、重复动作检测和取消传播

@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
+import dev.aiauto.android.bridge.DesktopBridgeController
 import dev.aiauto.android.provider.ProviderConfigRepository
 import dev.aiauto.android.security.AndroidKeystoreSecretCipher
 import dev.aiauto.android.ui.AiAutoAndroidApp
@@ -21,12 +22,14 @@ class MainActivity : ComponentActivity() {
             secretCipher = AndroidKeystoreSecretCipher(),
         )
         val accessibilityRepository = AccessibilitySettingsRepository.from(this)
+        val bridgeController = DesktopBridgeController.from(this)
 
         setContent {
             AiAutoAndroidTheme {
                 AiAutoAndroidApp(
                     providerRepository = providerRepository,
                     accessibilityRepository = accessibilityRepository,
+                    bridgeController = bridgeController,
                 )
             }
         }

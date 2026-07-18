@@ -9,6 +9,11 @@ Keystore 加密存储，以及受目标包白名单约束的 AccessibilityServic
 动作优先于手势，只有协议显式提供时才使用坐标回退，歧义选择器会明确失败。
 密码、验证码和支付相关节点不保留文本或内容描述。
 
+桌面桥默认关闭，只能由用户在 App 的“桌面桥”页面开启。服务显式绑定设备
+`127.0.0.1:38383`，不监听 LAN；页面显示 2 分钟有效的一次性码，配对后签发
+最长 15 分钟的随机会话 token。桥限制单条 NDJSON 消息为 1 MiB、并发请求为
+4，并对错误 token、过期会话和重复 `requestId` 返回稳定协议错误。
+
 工具链基线由 `gradle/libs.versions.toml` 定义，需要 JDK 21 与 Android SDK
 36。SDK 路径应通过 `ANDROID_HOME`、`ANDROID_SDK_ROOT` 或未提交的
 `local.properties` 提供。

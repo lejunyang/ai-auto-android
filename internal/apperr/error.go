@@ -15,8 +15,21 @@ const (
 	CodeDeviceNotFound    = "DEVICE_NOT_FOUND"
 	CodeMultipleDevices   = "MULTIPLE_DEVICES"
 	CodeDeviceUnreachable = "DEVICE_UNREACHABLE"
+	CodeCapabilityMissing = "CAPABILITY_UNAVAILABLE"
+	CodeVersionMismatch   = "VERSION_INCOMPATIBLE"
+	CodeAuthRequired      = "AUTH_REQUIRED"
+	CodeAuthInvalid       = "AUTH_INVALID"
+	CodeAuthExpired       = "AUTH_EXPIRED"
+	CodeRequestReplayed   = "REQUEST_REPLAYED"
 	CodeDeadlineExceeded  = "DEADLINE_EXCEEDED"
+	CodeMessageTooLarge   = "MESSAGE_TOO_LARGE"
+	CodeRateLimited       = "RATE_LIMITED"
+	CodePermissionDenied  = "PERMISSION_DENIED"
+	CodeActionNotAllowed  = "ACTION_NOT_ALLOWED"
 	CodeActionFailed      = "ACTION_FAILED"
+	CodeSelectorNotFound  = "SELECTOR_NOT_FOUND"
+	CodeSelectorAmbiguous = "SELECTOR_AMBIGUOUS"
+	CodeProtocol          = "PROTOCOL_ERROR"
 	CodeInternal          = "INTERNAL_ERROR"
 )
 
@@ -80,15 +93,17 @@ func ExitCode(err error) int {
 		return ExitInternal
 	}
 	switch appError.Code {
-	case CodeInvalidArgument:
+	case CodeInvalidArgument, CodeMessageTooLarge, CodeRequestReplayed:
 		return ExitArgument
-	case CodeADBUnauthorized:
+	case CodeADBUnauthorized, CodeAuthRequired, CodeAuthInvalid, CodeAuthExpired, CodePermissionDenied:
 		return ExitAuth
 	case CodeADBNotFound, CodeDeviceOffline, CodeDeviceNotFound, CodeMultipleDevices, CodeDeviceUnreachable:
 		return ExitDevice
 	case CodeDeadlineExceeded:
 		return ExitTimeout
-	case CodeActionFailed:
+	case CodeCapabilityMissing, CodeVersionMismatch, CodeActionNotAllowed:
+		return ExitUnsupported
+	case CodeActionFailed, CodeSelectorNotFound, CodeSelectorAmbiguous:
 		return ExitDevice
 	default:
 		return ExitInternal
