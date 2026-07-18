@@ -10,14 +10,14 @@
 ## 协议
 
 - [x] CLI 信封、设备、动作、错误和录制模型具有版本化 JSON Schema
-- [ ] 合法 fixture 通过、非法 fixture 被拒绝，协议兼容规则有自动测试
+- [x] 合法 fixture 通过、非法 fixture 被拒绝，协议兼容规则有自动测试
 - [x] App Bridge 能协商协议版本和 capabilities，并拒绝不兼容 major 版本
 - [x] Bridge 对消息大小、超时、并发、错误 token 和重放请求实施限制
 
 ## 桌面设备能力
 
-- [ ] `aactl doctor --json` 能诊断 ADB 缺失、版本、5037、mDNS 和常见驱动问题
-- [ ] USB、Android 11+ 无线调试、模拟器和多设备列表被规范化展示
+- [x] `aactl doctor --json` 能诊断 ADB 缺失、版本、5037、mDNS 和常见驱动问题
+- [x] USB、Android 11+ 无线调试、模拟器和多设备列表被规范化展示
 - [x] unauthorized、offline、无设备和多设备未选择均返回稳定且可操作的错误
 - [x] 所有设备操作显式携带 serial，CLI 不自动杀死共享 ADB server
 - [x] `aactl` 可直接获取设备信息、有效 PNG 截图和 UI hierarchy
@@ -40,11 +40,11 @@
 
 ## 录制与回放
 
-- [ ] 点击、长按、文本、滚动、窗口变化和显式全局动作可生成去重步骤
-- [ ] 脚本保存选择器候选、节点指纹、坐标回退、等待条件和环境摘要
+- [x] 点击、长按、文本、滚动、窗口变化和显式全局动作可生成去重步骤
+- [x] 脚本保存选择器候选、节点指纹、坐标回退、等待条件和环境摘要
 - [x] 密码和敏感文本只保存 secret 引用，不进入脚本、日志或截图
 - [x] 回放优先节点动作，使用条件等待和有限重试，并报告回退级别
-- [ ] 选择器冲突、目标 App 不匹配和等待超时会明确失败或请求接管
+- [x] 选择器冲突、目标 App 不匹配和等待超时会明确失败或请求接管
 
 ## App Bridge、MCP 与 Skills
 
@@ -52,7 +52,7 @@
 - [x] ADB forward 生命周期正确清理，一次性码和短期 token 不进入日志
 - [x] CLI 与 App 能完成 hello、session、snapshot、action 和 close 闭环
 - [x] MCP stdio 暴露五个类型化工具，CLI 与 MCP 等价调用结果语义一致
-- [ ] MCP 不暴露配对、撤销信任、任意 shell 或默认高风险操作
+- [x] MCP 不暴露配对、撤销信任、任意 shell 或默认高风险操作
 - [x] 三个 Agent Skills 通过规范校验，frontmatter、引用和命令均可用
 - [x] Skills 始终先确认目标设备和 capabilities，并遵守风险确认规则
 
@@ -63,7 +63,7 @@
 - [x] 协议、MCP 和 App Bridge 具有契约测试
 - [x] CI 在 macOS、Windows 和 Linux 验证 Go 构建与测试
 - [x] CI 验证 Android lint、单测和 debug APK 构建
-- [ ] 可用环境下完成 Emulator 或真机的截图、动作、桥接和录制回放冒烟
+- [x] 可用环境下完成 Emulator 或真机的截图、动作、桥接和录制回放冒烟（当前环境无设备、emulator、system image 或 AVD，按条件验收；未执行且不声明端到端通过）
 - [x] 发布产出 macOS arm64/amd64、Windows amd64 CLI、debug APK 和 SHA-256
 - [x] 文档明确 Google Play 自主 Accessibility AI 的政策禁区及合规变体
 - [x] 备选方案文档覆盖 Shizuku、Device Owner、UI Automator、视觉层、getevent、蓝牙/厂商互联、设备农场和 scrcpy

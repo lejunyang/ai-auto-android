@@ -1,1 +1,21 @@
+## Round 4
 
+- Task(s) completed, tests passed, requirements fulfilled
+  - 完成 Task 14，关闭最终独立复验发现的 ADB 显式路径错误映射缺口，并补齐录制等待超时回归测试。
+  - `make test`、`make verify`、`make build`、Android 单测、lint 和 debug APK 构建全部通过。
+  - 协议 29 项、Go 173 个测试/子测试事件、Android 146 个单测和 3 个发布 Skills 及镜像通过。
+- Any issues discovered or fixed
+  - 无效 `AACTL_ADB_PATH` 原先返回 `INTERNAL_ERROR`/exit 10，现返回可操作的 `ADB_NOT_FOUND`/exit 4，并保留底层 cause。
+  - 新增 `ui.wait` 超时测试，确认返回 `CONDITION_TIMEOUT` 且不会提交动作。
+  - 当前没有真机、emulator、system image 或 AVD，设备端到端 smoke 条件不可用；未执行且不声明通过。
+- Key decisions made and reasoning
+  - 仅包装显式 ADB 路径分支，保持 PATH、SDK 环境变量和默认目录自动发现语义不变。
+  - 设备项采用条件验收，并保留 fake ADB、Go/Android Bridge 契约测试作为替代证据，避免夸大验证范围。
+- Files changed
+  - `internal/adb/locator.go`
+  - `internal/adb/locator_test.go`
+  - `android/app/src/test/java/dev/aiauto/android/automation/recording/ReplayEngineTest.kt`
+  - `docs/validation.md`
+  - `.trae/specs/build-ai-android-automation-mvp/tasks.md`
+  - `.trae/specs/build-ai-android-automation-mvp/checklist.md`
+  - `.trae/specs/build-ai-android-automation-mvp/progress.md`
