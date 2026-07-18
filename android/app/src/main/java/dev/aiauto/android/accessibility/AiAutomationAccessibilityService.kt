@@ -13,6 +13,8 @@ import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import dev.aiauto.android.accessibility.selector.SelectorMatcher
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.accessibility.snapshot.AccessibilitySnapshotter
+import dev.aiauto.android.accessibility.snapshot.recycleSafely
+import dev.aiauto.android.automation.recording.RecordingRuntime
 
 class AiAutomationAccessibilityService :
     AccessibilityService(),
@@ -39,7 +41,22 @@ class AiAutomationAccessibilityService :
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Task 6 observes on demand. Event-driven recording is added in Task 9.
+        if (event == null || !RecordingRuntime.isListening()) {
+            return
+        }
+        val source = event.source ?: run {
+            RecordingRuntime.publish(event, source = null)
+            return
+        }
+        try {
+            val snapshot = AccessibilitySnapshotter().snapshot(source)
+            RecordingRuntime.publish(
+                event = event,
+                source = (snapshot as? AccessibilityResult.Success)?.value,
+            )
+        } finally {
+            source.recycleSafely()
+        }
     }
 
     override fun onInterrupt() = Unit

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_title">操作录制</string>
+    <string name="recording_session_title">录制新流程</string>
+    <string name="recording_start">开始录制</string>
+    <string name="recording_pause">暂停</string>
+    <string name="recording_resume">继续</string>
+    <string name="recording_finish">结束并保存</string>
+    <string name="recording_cancel">取消本次录制</string>
+    <string name="recording_replay">回放</string>
+    <string name="recording_delete">删除</string>
+    <string name="recording_empty">暂无录制脚本。开始录制后，点击、输入、滚动和窗口变化会转为可检查的语义步骤。</string>
+    <string name="recording_name">脚本名称</string>
+    <string name="recording_target_packages">目标应用包名</string>
+    <string name="recording_target_packages_help">每行、空格或逗号分隔；录制器会忽略其他应用事件。</string>
+    <string name="recording_sensitive_notice">密码、验证码和支付字段不会保存明文。回放时会要求通过 secret 引用单独提供敏感值。</string>
+    <string name="recording_status_idle">尚未开始</string>
+    <string name="recording_status_recording">正在录制</string>
+    <string name="recording_status_paused">录制已暂停</string>
+    <string name="recording_step_preview">步骤预览</string>
+    <string name="recording_no_steps">尚未捕获可回放的语义操作。</string>
+    <string name="recording_step_count">%1$d 个步骤</string>
+    <string name="recording_step_time">录制时间 +%1$d ms</string>
+    <string name="recording_secret_step">敏感输入：仅保存 secret 引用</string>
+    <string name="recording_secret_required">此脚本包含敏感输入。回放前必须提供对应的 secret，明文不会写入脚本。</string>
+    <string name="recording_all_steps">全部步骤</string>
+    <string name="recording_replay_succeeded">回放完成</string>
+    <string name="recording_replay_failed">回放失败</string>
+    <string name="recording_replay_intervention">选择器置信度不足或步骤要求人工接管。</string>
+</resources>
