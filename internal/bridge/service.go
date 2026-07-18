@@ -224,6 +224,26 @@ func (s *Service) Action(
 	)
 }
 
+func (s *Service) Replay(
+	ctx context.Context,
+	device string,
+	scriptID string,
+) (json.RawMessage, error) {
+	idempotencyKey, err := newRequestID()
+	if err != nil {
+		return nil, err
+	}
+	return s.call(
+		ctx,
+		device,
+		"recording.replay",
+		map[string]any{
+			"scriptId":       scriptID,
+			"idempotencyKey": idempotencyKey,
+		},
+	)
+}
+
 func (s *Service) Close(ctx context.Context, device string) (CloseResult, error) {
 	session, err := s.store.Load(device)
 	if err != nil {

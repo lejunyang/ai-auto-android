@@ -10,6 +10,7 @@ import (
 
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
+	"github.com/lejunyang/ai-auto-android/internal/service"
 )
 
 type optionSpec struct {
@@ -17,7 +18,11 @@ type optionSpec struct {
 	required []string
 }
 
-func (a *App) executeObserve(ctx context.Context, client *adb.Client, args []string) (any, error) {
+func (a *App) executeObserve(
+	ctx context.Context,
+	automation service.Automation,
+	args []string,
+) (any, error) {
 	if len(args) == 0 {
 		return nil, usageError("Usage: aactl observe screenshot|hierarchy [options]")
 	}
@@ -30,11 +35,14 @@ func (a *App) executeObserve(ctx context.Context, client *adb.Client, args []str
 		if err != nil {
 			return nil, err
 		}
-		screenshot, err := client.Screenshot(ctx, options["device"])
+		screenshot, err := automation.Observe(ctx, service.ObserveRequest{
+			Device: options["device"],
+			Kind:   service.ObserveScreenshot,
+		})
 		if err != nil {
 			return nil, err
 		}
-		path, err := writeScreenshot(options["output"], screenshot.Bytes)
+		path, err := writeScreenshot(options["output"], screenshot.Image)
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +50,7 @@ func (a *App) executeObserve(ctx context.Context, client *adb.Client, args []str
 			"device":    options["device"],
 			"path":      path,
 			"format":    "png",
-			"sizeBytes": len(screenshot.Bytes),
+			"sizeBytes": screenshot.SizeBytes,
 			"sha256":    screenshot.SHA256,
 		}, nil
 	case "hierarchy":
@@ -53,7 +61,10 @@ func (a *App) executeObserve(ctx context.Context, client *adb.Client, args []str
 		if err != nil {
 			return nil, err
 		}
-		hierarchy, err := client.Hierarchy(ctx, options["device"])
+		hierarchy, err := automation.Observe(ctx, service.ObserveRequest{
+			Device: options["device"],
+			Kind:   service.ObserveHierarchy,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -61,7 +72,7 @@ func (a *App) executeObserve(ctx context.Context, client *adb.Client, args []str
 			"device":    options["device"],
 			"format":    "uiautomator-xml",
 			"xml":       hierarchy.XML,
-			"sizeBytes": hierarchy.Bytes,
+			"sizeBytes": hierarchy.SizeBytes,
 			"sha256":    hierarchy.SHA256,
 		}, nil
 	default:
@@ -69,7 +80,11 @@ func (a *App) executeObserve(ctx context.Context, client *adb.Client, args []str
 	}
 }
 
-func (a *App) executeAction(ctx context.Context, client *adb.Client, args []string) (any, error) {
+func (a *App) executeAction(
+	ctx context.Context,
+	automation service.Automation,
+	args []string,
+) (any, error) {
 	if len(args) == 0 {
 		return nil, usageError("Usage: aactl action tap|swipe|text|key|launch|stop [options]")
 	}
@@ -90,7 +105,12 @@ func (a *App) executeAction(ctx context.Context, client *adb.Client, args []stri
 		if err != nil {
 			return nil, err
 		}
-		return client.Tap(ctx, options["device"], x, y)
+		return automation.ExecuteAction(ctx, service.ActionRequest{
+			Device: options["device"],
+			Action: service.ActionTap,
+			X:      x,
+			Y:      y,
+		})
 	case "swipe":
 		options, err := parseNamedOptions(args[1:], optionSpec{
 			allowed:  optionSet("device", "x1", "y1", "x2", "y2", "duration"),
@@ -114,15 +134,15 @@ func (a *App) executeAction(ctx context.Context, client *adb.Client, args []stri
 				return nil, err
 			}
 		}
-		return client.Swipe(
-			ctx,
-			options["device"],
-			values["x1"],
-			values["y1"],
-			values["x2"],
-			values["y2"],
-			duration,
-		)
+		return automation.ExecuteAction(ctx, service.ActionRequest{
+			Device:     options["device"],
+			Action:     service.ActionSwipe,
+			StartX:     values["x1"],
+			StartY:     values["y1"],
+			EndX:       values["x2"],
+			EndY:       values["y2"],
+			DurationMS: duration,
+		})
 	case "text":
 		options, err := parseNamedOptions(args[1:], optionSpec{
 			allowed:  optionSet("device", "text"),
@@ -131,7 +151,11 @@ func (a *App) executeAction(ctx context.Context, client *adb.Client, args []stri
 		if err != nil {
 			return nil, err
 		}
-		return client.Text(ctx, options["device"], options["text"])
+		return automation.ExecuteAction(ctx, service.ActionRequest{
+			Device: options["device"],
+			Action: service.ActionSetText,
+			Text:   options["text"],
+		})
 	case "key":
 		options, err := parseNamedOptions(args[1:], optionSpec{
 			allowed:  optionSet("device", "key"),
@@ -140,7 +164,11 @@ func (a *App) executeAction(ctx context.Context, client *adb.Client, args []stri
 		if err != nil {
 			return nil, err
 		}
-		return client.Key(ctx, options["device"], options["key"])
+		return automation.ExecuteAction(ctx, service.ActionRequest{
+			Device: options["device"],
+			Action: service.ActionPressKey,
+			Key:    options["key"],
+		})
 	case "launch":
 		options, err := parseNamedOptions(args[1:], optionSpec{
 			allowed:  optionSet("device", "package", "activity"),
@@ -149,7 +177,12 @@ func (a *App) executeAction(ctx context.Context, client *adb.Client, args []stri
 		if err != nil {
 			return nil, err
 		}
-		return client.Launch(ctx, options["device"], options["package"], options["activity"])
+		return automation.ExecuteAction(ctx, service.ActionRequest{
+			Device:   options["device"],
+			Action:   service.ActionLaunch,
+			Package:  options["package"],
+			Activity: options["activity"],
+		})
 	case "stop":
 		options, err := parseNamedOptions(args[1:], optionSpec{
 			allowed:  optionSet("device", "package"),
@@ -158,7 +191,11 @@ func (a *App) executeAction(ctx context.Context, client *adb.Client, args []stri
 		if err != nil {
 			return nil, err
 		}
-		return client.Stop(ctx, options["device"], options["package"])
+		return automation.ExecuteAction(ctx, service.ActionRequest{
+			Device:  options["device"],
+			Action:  service.ActionStop,
+			Package: options["package"],
+		})
 	default:
 		return nil, usageError("Unknown action. Supported actions: tap, swipe, text, key, launch, stop.")
 	}

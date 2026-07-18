@@ -13,6 +13,12 @@ import dev.aiauto.android.accessibility.model.ActionExecution
 import dev.aiauto.android.accessibility.model.ActionRoute
 import dev.aiauto.android.accessibility.model.NodeAction
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
+import dev.aiauto.android.automation.recording.AndroidReplayGateway
+import dev.aiauto.android.automation.recording.RecordingScriptStore
+import dev.aiauto.android.automation.recording.ReplayEngine
+import dev.aiauto.android.automation.recording.ReplayReport
+import dev.aiauto.android.automation.recording.ReplayStepResult
+import dev.aiauto.android.automation.recording.SecretResolver
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -41,10 +47,38 @@ object RuntimeAccessibilityBridgeGateway : AccessibilityBridgeGateway {
     ): AccessibilityResult<ActionExecution> = AccessibilityRuntime.execute(command)
 }
 
+interface RecordingBridgeGateway {
+    fun isAvailable(): Boolean
+
+    fun replay(scriptId: String): ReplayReport?
+}
+
+class RuntimeRecordingBridgeGateway(
+    context: Context,
+) : RecordingBridgeGateway {
+    private val applicationContext = context.applicationContext
+    private val store by lazy { RecordingScriptStore.from(applicationContext) }
+    private val replayEngine by lazy {
+        ReplayEngine(
+            gateway = AndroidReplayGateway(),
+            secretResolver = object : SecretResolver {
+                override fun resolve(alias: String): String? = null
+            },
+        )
+    }
+
+    override fun isAvailable(): Boolean = AccessibilityRuntime.isAvailable()
+
+    override fun replay(scriptId: String): ReplayReport? =
+        store.get(scriptId)?.let { script -> replayEngine.replay(script) }
+}
+
 class AndroidBridgeMethods(
     context: Context,
     private val accessibility: AccessibilityBridgeGateway =
         RuntimeAccessibilityBridgeGateway,
+    private val recording: RecordingBridgeGateway =
+        RuntimeRecordingBridgeGateway(context),
     private val commandParser: AccessibilityCommandJsonParser =
         AccessibilityCommandJsonParser(),
 ) : BridgeMethodHandler {
@@ -52,6 +86,7 @@ class AndroidBridgeMethods(
 
     override fun capabilities(): List<BridgeCapability> {
         val accessibilityAvailable = accessibility.isAvailable()
+        val recordingAvailable = recording.isAvailable()
         val accessibilityReason = if (accessibilityAvailable) {
             null
         } else {
@@ -80,6 +115,12 @@ class AndroidBridgeMethods(
                 permission = if (accessibilityAvailable) "granted" else "denied",
                 reason = accessibilityReason,
             ),
+            BridgeCapability(
+                name = "recording.replay",
+                available = recordingAvailable,
+                permission = if (recordingAvailable) "granted" else "denied",
+                reason = if (recordingAvailable) null else accessibilityReason,
+            ),
         )
     }
 
@@ -87,9 +128,10 @@ class AndroidBridgeMethods(
         "device.info" -> deviceInfo(params)
         "ui.snapshot" -> snapshot(params)
         "action.execute" -> execute(params)
-        "recording.list", "recording.replay" -> throw BridgeException(
+        "recording.replay" -> replay(params)
+        "recording.list" -> throw BridgeException(
             code = BridgeErrorCode.CAPABILITY_UNAVAILABLE,
-            message = "Recording bridge methods are added in Task 9.",
+            message = "Recording list is not exposed by the desktop automation service.",
         )
 
         else -> throw BridgeException(
@@ -158,6 +200,34 @@ class AndroidBridgeMethods(
         }
     }
 
+    private fun replay(params: JsonObject): JsonObject {
+        requireKeys(
+            params,
+            required = setOf("scriptId", "idempotencyKey"),
+            optional = emptySet(),
+        )
+        if (!recording.isAvailable()) {
+            throw BridgeException(
+                code = BridgeErrorCode.CAPABILITY_UNAVAILABLE,
+                message = "Recording replay requires the accessibility service.",
+                retryable = true,
+            )
+        }
+        val scriptId = params.requiredString("scriptId")
+        val idempotencyKey = params.requiredString("idempotencyKey")
+        if (!UUID.matches(scriptId)) {
+            throw invalidArgument("scriptId must be a UUID.")
+        }
+        if (!UUID.matches(idempotencyKey)) {
+            throw invalidArgument("idempotencyKey must be a UUID.")
+        }
+        return recording.replay(scriptId)?.toJson()
+            ?: throw BridgeException(
+                code = BridgeErrorCode.SCRIPT_NOT_FOUND,
+                message = "The requested recording script was not found.",
+            )
+    }
+
     private fun requireAccessibility() {
         if (!accessibility.isAvailable()) {
             throw BridgeException(
@@ -193,6 +263,30 @@ class AndroidBridgeMethods(
             )
         }
         matchScore?.let { put("matchScore", it) }
+    }
+
+    private fun ReplayReport.toJson(): JsonObject = buildJsonObject {
+        put("scriptId", scriptId)
+        put("startedAtMs", startedAtMs)
+        put("finishedAtMs", finishedAtMs)
+        put("succeeded", succeeded)
+        put("requiresIntervention", requiresIntervention)
+        put(
+            "steps",
+            buildJsonArray {
+                steps.forEach { step -> add(step.toJson()) }
+            },
+        )
+    }
+
+    private fun ReplayStepResult.toJson(): JsonObject = buildJsonObject {
+        put("stepId", stepId)
+        put("status", status.name.lowercase())
+        put("attempts", attempts)
+        route?.let { put("route", it) }
+        matchScore?.let { put("matchScore", it) }
+        errorCode?.let { put("errorCode", it) }
+        message?.let { put("message", it) }
     }
 
     private fun UiNodeSnapshot.toJson(depth: Int, maxDepth: Int): JsonObject =

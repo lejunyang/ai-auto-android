@@ -29,6 +29,7 @@ const (
 	CodeActionFailed      = "ACTION_FAILED"
 	CodeSelectorNotFound  = "SELECTOR_NOT_FOUND"
 	CodeSelectorAmbiguous = "SELECTOR_AMBIGUOUS"
+	CodeScriptNotFound    = "SCRIPT_NOT_FOUND"
 	CodeProtocol          = "PROTOCOL_ERROR"
 	CodeInternal          = "INTERNAL_ERROR"
 )
@@ -103,7 +104,7 @@ func ExitCode(err error) int {
 		return ExitTimeout
 	case CodeCapabilityMissing, CodeVersionMismatch, CodeActionNotAllowed:
 		return ExitUnsupported
-	case CodeActionFailed, CodeSelectorNotFound, CodeSelectorAmbiguous:
+	case CodeActionFailed, CodeSelectorNotFound, CodeSelectorAmbiguous, CodeScriptNotFound:
 		return ExitDevice
 	default:
 		return ExitInternal

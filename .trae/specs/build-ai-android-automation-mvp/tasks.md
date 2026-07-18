@@ -61,12 +61,12 @@
   - [x] SubTask 9.4: 实现密码/验证码过滤、secret 引用和回放审计
   - [x] SubTask 9.5: 添加录制/回放单测与 UI 测试并提交 `feat(android): add semantic recording and replay`
 
-- [ ] Task 10: 实现 MCP stdio 适配器：使用官方稳定 MCP Go SDK 暴露设备列表、设备信息、观察、动作和录制回放工具。
-  - [ ] SubTask 10.1: 将公共 `aactl` 服务层与 CLI 参数层解耦
-  - [ ] SubTask 10.2: 实现五个 MCP tools 及结构化输入输出
-  - [ ] SubTask 10.3: 阻止配对、撤销信任和任意 shell 暴露给模型
-  - [ ] SubTask 10.4: 添加 MCP stdio 协议测试和 CLI/MCP 语义一致性测试
-  - [ ] SubTask 10.5: 验证 MCP 测试并提交 `feat(mcp): expose android automation tools`
+- [x] Task 10: 实现 MCP stdio 适配器：使用官方稳定 MCP Go SDK 暴露设备列表、设备信息、观察、动作和录制回放工具。
+  - [x] SubTask 10.1: 将公共 `aactl` 服务层与 CLI 参数层解耦
+  - [x] SubTask 10.2: 实现五个 MCP tools 及结构化输入输出
+  - [x] SubTask 10.3: 阻止配对、撤销信任和任意 shell 暴露给模型
+  - [x] SubTask 10.4: 添加 MCP stdio 协议测试和 CLI/MCP 语义一致性测试
+  - [x] SubTask 10.5: 验证 MCP 测试并提交 `feat(mcp): expose android automation tools`
 
 - [ ] Task 11: 创建跨 Agent 的 Skills 组：提供设备发现、设备观察和设备自动化三组符合 Agent Skills 规范的技能。
   - [ ] SubTask 11.1: 创建 `android-device-discovery` Skill 与故障诊断参考

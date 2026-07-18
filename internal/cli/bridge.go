@@ -9,11 +9,13 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
 	"github.com/lejunyang/ai-auto-android/internal/bridge"
+	"github.com/lejunyang/ai-auto-android/internal/service"
 )
 
 func (a *App) executeBridge(
 	ctx context.Context,
 	client *adb.Client,
+	automation service.Automation,
 	args []string,
 ) (any, error) {
 	if len(args) == 0 {
@@ -105,7 +107,7 @@ func (a *App) executeBridge(
 				nil,
 			)
 		}
-		return service.Action(ctx, options["device"], action)
+		return automation.ExecuteBridgeAction(ctx, options["device"], action)
 	case "close":
 		options, err := parseNamedOptions(args[1:], optionSpec{
 			allowed:  optionSet("device"),

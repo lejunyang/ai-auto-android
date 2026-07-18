@@ -11,8 +11,11 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
 	"github.com/lejunyang/ai-auto-android/internal/bridge"
+	"github.com/lejunyang/ai-auto-android/internal/mcpserver"
 	"github.com/lejunyang/ai-auto-android/internal/output"
 	"github.com/lejunyang/ai-auto-android/internal/process"
+	"github.com/lejunyang/ai-auto-android/internal/service"
+	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 var Version = "dev"
@@ -29,6 +32,8 @@ type App struct {
 	Stderr       io.Writer
 	BridgeClient bridge.RPCClient
 	BridgeStore  bridge.SessionStore
+	Automation   service.Automation
+	MCPTransport sdkmcp.Transport
 }
 
 func DefaultApp(stdin io.Reader, stdout, stderr io.Writer) *App {
@@ -44,6 +49,14 @@ func DefaultApp(stdin io.Reader, stdout, stderr io.Writer) *App {
 }
 
 func (a *App) Run(ctx context.Context, args []string) int {
+	if len(args) == 2 && args[0] == "mcp" && args[1] == "serve" {
+		if err := a.serveMCP(ctx); err != nil {
+			_, _ = fmt.Fprintf(a.Stderr, "MCP server failed: %v\n", err)
+			return apperr.ExitCode(err)
+		}
+		return apperr.ExitSuccess
+	}
+
 	startedAt := time.Now()
 	requestID, err := output.RequestID()
 	if err != nil {
@@ -93,21 +106,38 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 		}
 		return client.Doctor(ctx)
 	case "devices":
-		return a.executeDevices(ctx, client, args[1:])
+		return a.executeDevices(ctx, client, a.directAutomation(client), args[1:])
 	case "device":
-		return a.executeDevice(ctx, client, args[1:])
+		return a.executeDevice(ctx, a.directAutomation(client), args[1:])
 	case "observe":
-		return a.executeObserve(ctx, client, args[1:])
+		return a.executeObserve(ctx, a.directAutomation(client), args[1:])
 	case "action":
-		return a.executeAction(ctx, client, args[1:])
+		return a.executeAction(ctx, a.directAutomation(client), args[1:])
+	case "recording":
+		automation, err := a.automationService(client)
+		if err != nil {
+			return nil, err
+		}
+		return a.executeRecording(ctx, automation, args[1:])
 	case "bridge":
-		return a.executeBridge(ctx, client, args[1:])
+		automation, err := a.automationService(client)
+		if err != nil {
+			return nil, err
+		}
+		return a.executeBridge(ctx, client, automation, args[1:])
+	case "mcp":
+		return nil, usageError("Usage: aactl mcp serve")
 	default:
-		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, bridge.")
+		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, recording, bridge, mcp.")
 	}
 }
 
-func (a *App) executeDevices(ctx context.Context, client *adb.Client, args []string) (any, error) {
+func (a *App) executeDevices(
+	ctx context.Context,
+	client *adb.Client,
+	automation service.Automation,
+	args []string,
+) (any, error) {
 	if len(args) == 0 {
 		return nil, usageError("Usage: aactl devices list|pair|connect")
 	}
@@ -116,11 +146,7 @@ func (a *App) executeDevices(ctx context.Context, client *adb.Client, args []str
 		if len(args) != 1 {
 			return nil, usageError("Usage: aactl devices list [--json]")
 		}
-		devices, err := client.Devices(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return map[string]any{"devices": devices, "count": len(devices)}, nil
+		return automation.ListDevices(ctx)
 	case "pair":
 		if len(args) != 2 {
 			return nil, usageError("Usage: aactl devices pair HOST:PORT [--json]")
@@ -141,7 +167,11 @@ func (a *App) executeDevices(ctx context.Context, client *adb.Client, args []str
 	}
 }
 
-func (a *App) executeDevice(ctx context.Context, client *adb.Client, args []string) (any, error) {
+func (a *App) executeDevice(
+	ctx context.Context,
+	automation service.Automation,
+	args []string,
+) (any, error) {
 	if len(args) == 0 || args[0] != "info" {
 		return nil, usageError("Usage: aactl device info --device SERIAL [--json]")
 	}
@@ -149,7 +179,47 @@ func (a *App) executeDevice(ctx context.Context, client *adb.Client, args []stri
 	if err != nil {
 		return nil, err
 	}
-	return client.DeviceInfo(ctx, serial)
+	return automation.GetDevice(ctx, serial)
+}
+
+func (a *App) directAutomation(client *adb.Client) service.Automation {
+	if a.Automation != nil {
+		return a.Automation
+	}
+	return service.New(client, nil)
+}
+
+func (a *App) automationService(client *adb.Client) (service.Automation, error) {
+	if a.Automation != nil {
+		return a.Automation, nil
+	}
+	bridgeService, err := a.bridgeService(client)
+	if err != nil {
+		return nil, err
+	}
+	return service.New(client, bridgeService), nil
+}
+
+func (a *App) serveMCP(ctx context.Context) error {
+	var automation service.Automation
+	if a.Automation != nil {
+		automation = a.Automation
+	} else {
+		path, err := a.Locator.Resolve()
+		if err != nil {
+			return err
+		}
+		client := adb.NewClient(path, a.Executor)
+		automation, err = a.automationService(client)
+		if err != nil {
+			return err
+		}
+	}
+	transport := a.MCPTransport
+	if transport == nil {
+		transport = &sdkmcp.StdioTransport{}
+	}
+	return mcpserver.Run(ctx, automation, Version, transport)
 }
 
 func extractJSONFlag(args []string) ([]string, bool) {

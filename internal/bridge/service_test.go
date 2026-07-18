@@ -177,6 +177,41 @@ func TestServiceActionAddsIdempotencyKey(t *testing.T) {
 	}
 }
 
+func TestServiceReplayAddsIdempotencyKeyAndScriptID(t *testing.T) {
+	forwarder := &fakeForwarder{}
+	client := &fakeRPCClient{
+		callResult: json.RawMessage(`{
+			"scriptId":"123e4567-e89b-42d3-a456-426614174000",
+			"startedAtMs":10,
+			"finishedAtMs":20,
+			"succeeded":true,
+			"requiresIntervention":false,
+			"steps":[]
+		}`),
+	}
+	store := newMemoryStore()
+	store.Save(validSessionAt("2026-07-18T00:15:00Z"))
+	service := testService(forwarder, client, store)
+
+	_, err := service.Replay(
+		context.Background(),
+		"SERIAL",
+		"123e4567-e89b-42d3-a456-426614174000",
+	)
+	if err != nil {
+		t.Fatalf("Replay() error = %v", err)
+	}
+	if client.lastMethod != "recording.replay" {
+		t.Fatalf("method = %q", client.lastMethod)
+	}
+	params, ok := client.lastParams.(map[string]any)
+	if !ok ||
+		params["scriptId"] != "123e4567-e89b-42d3-a456-426614174000" ||
+		params["idempotencyKey"] == "" {
+		t.Fatalf("params = %#v", client.lastParams)
+	}
+}
+
 func testService(
 	forwarder *fakeForwarder,
 	client *fakeRPCClient,
