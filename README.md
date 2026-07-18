@@ -45,6 +45,20 @@ make android-test
 make android-build
 ```
 
+## Agent Skills
+
+可移植发布源位于 `skills/<skill-name>`，Trae 项目级自动发现镜像位于
+`.trae/skills/<skill-name>`。三个 Skill 分别覆盖设备发现、设备观察和受控自动化。
+
+```bash
+make skills-sync
+make skills-check
+```
+
+其他兼容 Agent Skills 的客户端可直接安装 `skills/android-device-discovery`、
+`skills/android-device-observation` 或 `skills/android-device-automation`。完整路径、
+触发场景和官方校验命令见 [skills/README.md](skills/README.md)。
+
 ## 安全基线
 
 - 设备操作必须显式指定设备，不在多设备环境中猜测目标。

@@ -68,12 +68,12 @@
   - [x] SubTask 10.4: 添加 MCP stdio 协议测试和 CLI/MCP 语义一致性测试
   - [x] SubTask 10.5: 验证 MCP 测试并提交 `feat(mcp): expose android automation tools`
 
-- [ ] Task 11: 创建跨 Agent 的 Skills 组：提供设备发现、设备观察和设备自动化三组符合 Agent Skills 规范的技能。
-  - [ ] SubTask 11.1: 创建 `android-device-discovery` Skill 与故障诊断参考
-  - [ ] SubTask 11.2: 创建 `android-device-observation` Skill 与隐私/产物参考
-  - [ ] SubTask 11.3: 创建 `android-device-automation` Skill 与风险/恢复参考
-  - [ ] SubTask 11.4: 验证 frontmatter、引用深度、命令示例和安全约束
-  - [ ] SubTask 11.5: 运行 Skill 校验并提交 `feat(skills): add portable android automation skills`
+- [x] Task 11: 创建跨 Agent 的 Skills 组：提供设备发现、设备观察和设备自动化三组符合 Agent Skills 规范的技能。
+  - [x] SubTask 11.1: 创建 `android-device-discovery` Skill 与故障诊断参考
+  - [x] SubTask 11.2: 创建 `android-device-observation` Skill 与隐私/产物参考
+  - [x] SubTask 11.3: 创建 `android-device-automation` Skill 与风险/恢复参考
+  - [x] SubTask 11.4: 验证 frontmatter、引用深度、命令示例和安全约束
+  - [x] SubTask 11.5: 运行 Skill 校验并提交 `feat(skills): add portable android automation skills`
 
 - [ ] Task 12: 完成研究文档、端到端验证与发布：落地架构、协议、录制、安全、分发和备选方案文档，建立 CI、跨平台构建与制品校验。
   - [ ] SubTask 12.1: 编写架构、协议、录制、安全分发、故障排查文档
