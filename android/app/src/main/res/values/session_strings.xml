@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="session_title">AI 自动化会话</string>
+    <string name="session_task_label">任务目标</string>
+    <string name="session_task_supporting">每次只执行一个经本地策略校验的动作，执行后重新观察。</string>
+    <string name="session_target_label">目标应用包名</string>
+    <string name="session_authorized_targets">已授权目标</string>
+    <string name="session_start">开始安全会话</string>
+    <string name="session_pause">暂停</string>
+    <string name="session_resume">继续</string>
+    <string name="session_stop">立即停止</string>
+    <string name="session_audit_title">脱敏审计</string>
+    <string name="session_back_home">返回首页</string>
+    <string name="session_step">当前步骤：%1$d</string>
+    <string name="session_current_action">当前动作：%1$s</string>
+    <string name="session_confirmation_title">此动作需要你的明确确认</string>
+    <string name="session_reject">拒绝并停止</string>
+    <string name="session_confirm">确认执行一次</string>
+    <string name="session_phase_idle">等待开始</string>
+    <string name="session_phase_observing">正在观察目标应用</string>
+    <string name="session_phase_planning">AI 正在规划一个动作</string>
+    <string name="session_phase_confirmation">等待人工确认</string>
+    <string name="session_phase_executing">正在执行一个动作</string>
+    <string name="session_phase_verifying">正在验证执行结果</string>
+    <string name="session_phase_paused">会话已暂停</string>
+    <string name="session_phase_completed">任务已完成</string>
+    <string name="session_phase_failed">会话失败</string>
+    <string name="session_phase_stopped">会话已停止</string>
+</resources>

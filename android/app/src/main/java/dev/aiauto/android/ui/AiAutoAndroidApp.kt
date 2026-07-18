@@ -11,20 +11,23 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 import dev.aiauto.android.accessibility.settings.AccessibilityServiceStatus
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
+import dev.aiauto.android.automation.session.AndroidAutomationSessionFactory
 import dev.aiauto.android.bridge.DesktopBridgeController
 import dev.aiauto.android.provider.ProviderConfigRepository
 import dev.aiauto.android.ui.accessibility.AccessibilityScreen
 import dev.aiauto.android.ui.bridge.DesktopBridgeScreen
 import dev.aiauto.android.ui.home.HomeScreen
 import dev.aiauto.android.ui.placeholder.RecordingScreen
-import dev.aiauto.android.ui.placeholder.TaskScreen
 import dev.aiauto.android.ui.provider.ProviderScreen
+import dev.aiauto.android.ui.session.SessionScreen
+import dev.aiauto.android.ui.session.SessionViewModel
 
 private object Route {
     const val HOME = "home"
@@ -54,6 +57,17 @@ fun AiAutoAndroidApp(
     }
     var accessibilityEnabled by remember {
         mutableStateOf(AccessibilityServiceStatus.isEnabled(context))
+    }
+    val sessionFactory = remember(
+        context,
+        providerRepository,
+        accessibilityRepository,
+    ) {
+        AndroidAutomationSessionFactory(
+            context = context,
+            providerRepository = providerRepository,
+            accessibilityRepository = accessibilityRepository,
+        )
     }
     val bridgeState by bridgeController.state.collectAsStateWithLifecycle()
 
@@ -111,7 +125,13 @@ fun AiAutoAndroidApp(
             )
         }
         composable(Route.TASK) {
-            TaskScreen(onBack = navController::popBackStack)
+            val sessionViewModel: SessionViewModel = viewModel(
+                factory = SessionViewModel.factory(sessionFactory),
+            )
+            SessionScreen(
+                viewModel = sessionViewModel,
+                onBack = navController::popBackStack,
+            )
         }
         composable(Route.RECORDING) {
             RecordingScreen(onBack = navController::popBackStack)
