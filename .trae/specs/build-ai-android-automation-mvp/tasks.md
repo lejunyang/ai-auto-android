@@ -26,12 +26,12 @@
   - [x] SubTask 4.4: 添加 fake ADB 集成测试并确认未暴露任意 shell
   - [x] SubTask 4.5: 验证 Go 测试并提交 `feat(cli): add direct device observation and actions`
 
-- [ ] Task 5: 建立 Android App、Provider 配置与安全存储：创建可构建的 Compose App，实现权限状态首页、OpenAI 兼容 Provider 配置、Keystore 加密和连通性测试。
-  - [ ] SubTask 5.1: 创建 Gradle Kotlin DSL 工程、Compose Material 3 主题和基础导航
-  - [ ] SubTask 5.2: 实现首页状态卡、Provider 表单、任务入口和录制入口
-  - [ ] SubTask 5.3: 实现 Provider 接口、OpenAI 兼容请求/响应模型和严格 JSON 解析
-  - [ ] SubTask 5.4: 实现 Android Keystore AES/GCM API Key 存储与日志脱敏
-  - [ ] SubTask 5.5: 添加领域单测、构建 debug APK 并提交 `feat(android): add app shell and provider configuration`
+- [x] Task 5: 建立 Android App、Provider 配置与安全存储：创建可构建的 Compose App，实现权限状态首页、OpenAI 兼容 Provider 配置、Keystore 加密和连通性测试。
+  - [x] SubTask 5.1: 创建 Gradle Kotlin DSL 工程、Compose Material 3 主题和基础导航
+  - [x] SubTask 5.2: 实现首页状态卡、Provider 表单、任务入口和录制入口
+  - [x] SubTask 5.3: 实现 Provider 接口、OpenAI 兼容请求/响应模型和严格 JSON 解析
+  - [x] SubTask 5.4: 实现 Android Keystore AES/GCM API Key 存储与日志脱敏
+  - [x] SubTask 5.5: 添加领域单测、构建 debug APK 并提交 `feat(android): add app shell and provider configuration`
 
 - [ ] Task 6: 实现无障碍观察与动作执行器：提供最小权限配置、UI 树快照、语义选择器匹配、节点动作、手势、文本和全局导航。
   - [ ] SubTask 6.1: 声明 AccessibilityService、醒目披露和目标包范围配置
