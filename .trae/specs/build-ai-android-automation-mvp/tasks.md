@@ -47,19 +47,19 @@
   - [x] SubTask 7.4: 覆盖错误码、错误/过期 token、重放、超时、断连和消息过大测试
   - [x] SubTask 7.5: 验证双方契约测试并提交 `feat(bridge): connect desktop to android app`
 
-- [ ] Task 8: 实现 App 内 AI 自动化会话与风险控制：完成观察、单步规划、确认、执行、验证、暂停、失败和紧急停止状态机。
-  - [ ] SubTask 8.1: 实现会话状态机、步骤/时长限制、重复动作检测和取消传播
-  - [ ] SubTask 8.2: 构造最小化 UI 上下文和严格动作提示/响应协议
-  - [ ] SubTask 8.3: 实现风险分类、目标包约束、人工确认和禁止动作
-  - [ ] SubTask 8.4: 实现会话页的当前步骤、确认、暂停、恢复、停止和脱敏审计
-  - [ ] SubTask 8.5: 使用 fake Provider/Executor 覆盖成功、非法动作、确认、超时和停止并提交 `feat(android): add guarded ai automation sessions`
+- [x] Task 8: 实现 App 内 AI 自动化会话与风险控制：完成观察、单步规划、确认、执行、验证、暂停、失败和紧急停止状态机。
+  - [x] SubTask 8.1: 实现会话状态机、步骤/时长限制、重复动作检测和取消传播
+  - [x] SubTask 8.2: 构造最小化 UI 上下文和严格动作提示/响应协议
+  - [x] SubTask 8.3: 实现风险分类、目标包约束、人工确认和禁止动作
+  - [x] SubTask 8.4: 实现会话页的当前步骤、确认、暂停、恢复、停止和脱敏审计
+  - [x] SubTask 8.5: 使用 fake Provider/Executor 覆盖成功、非法动作、确认、超时和停止并提交 `feat(android): add guarded ai automation sessions`
 
-- [ ] Task 9: 实现语义录制与确定性回放：从无障碍事件生成版本化脚本，支持编辑名称、步骤预览、条件等待、断言、secret 引用和回放报告。
-  - [ ] SubTask 9.1: 实现录制状态机、事件归因/去重和节点指纹生成
-  - [ ] SubTask 9.2: 实现本地脚本存储、列表、详情、删除和 schema 迁移入口
-  - [ ] SubTask 9.3: 实现选择器优先回放、条件等待、有限重试和低置信度失败
-  - [ ] SubTask 9.4: 实现密码/验证码过滤、secret 引用和回放审计
-  - [ ] SubTask 9.5: 添加录制/回放单测与 UI 测试并提交 `feat(android): add semantic recording and replay`
+- [x] Task 9: 实现语义录制与确定性回放：从无障碍事件生成版本化脚本，支持编辑名称、步骤预览、条件等待、断言、secret 引用和回放报告。
+  - [x] SubTask 9.1: 实现录制状态机、事件归因/去重和节点指纹生成
+  - [x] SubTask 9.2: 实现本地脚本存储、列表、详情、删除和 schema 迁移入口
+  - [x] SubTask 9.3: 实现选择器优先回放、条件等待、有限重试和低置信度失败
+  - [x] SubTask 9.4: 实现密码/验证码过滤、secret 引用和回放审计
+  - [x] SubTask 9.5: 添加录制/回放单测与 UI 测试并提交 `feat(android): add semantic recording and replay`
 
 - [ ] Task 10: 实现 MCP stdio 适配器：使用官方稳定 MCP Go SDK 暴露设备列表、设备信息、观察、动作和录制回放工具。
   - [ ] SubTask 10.1: 将公共 `aactl` 服务层与 CLI 参数层解耦

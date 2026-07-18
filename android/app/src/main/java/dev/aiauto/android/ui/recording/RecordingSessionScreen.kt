@@ -29,6 +29,7 @@ fun RecordingSessionScreen(
     draft: RecordingDraft,
     name: String,
     targetPackages: String,
+    errorMessage: String?,
     onNameChanged: (String) -> Unit,
     onTargetPackagesChanged: (String) -> Unit,
     onStart: () -> Unit,
@@ -147,7 +148,7 @@ fun RecordingSessionScreen(
                     )
                 }
             }
-            draft.errorMessage?.let { message ->
+            (draft.errorMessage ?: errorMessage)?.let { message ->
                 Text(text = message, color = MaterialTheme.colorScheme.error)
             }
         }

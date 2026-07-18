@@ -10,6 +10,7 @@ import dev.aiauto.android.accessibility.model.UiNodeState
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -95,6 +96,39 @@ class ReplayEngineTest {
         assertFalse(report.succeeded)
         assertEquals("SECRET_REQUIRED", report.steps.single().errorCode)
         assertTrue(gateway.executed.isEmpty())
+    }
+
+    @Test
+    fun `per replay secret is resolved without mutating the script BitsUT`() {
+        val target = node(className = "android.widget.EditText")
+        val gateway = FakeGateway(snapshots = mutableListOf(success(target)))
+        val engine = ReplayEngine(
+            gateway = gateway,
+            secretResolver = secretResolver(null),
+            time = FakeTime(),
+        )
+        val action = RecordedAction(
+            type = "ui.setText",
+            params = buildJsonObject {
+                put("target", clickAction(target).params.getValue("target"))
+                put("secretRef", JsonPrimitive("account.password"))
+            },
+        )
+        val script = script(action = action)
+
+        val report = engine.replay(
+            script = script,
+            secrets = mapOf("account.password" to "run-only-value"),
+        )
+
+        assertTrue(report.succeeded)
+        assertEquals(
+            "run-only-value",
+            gateway.executed.single().params.getValue("text").jsonPrimitive.content,
+        )
+        assertFalse("secretRef" in gateway.executed.single().params)
+        assertTrue("secretRef" in script.steps.single().action.params)
+        assertFalse("text" in script.steps.single().action.params)
     }
 
     @Test

@@ -188,14 +188,17 @@ class ReplayEngine(
         time = time,
     ),
 ) {
-    fun replay(script: AutomationScript): ReplayReport {
+    fun replay(
+        script: AutomationScript,
+        secrets: Map<String, String> = emptyMap(),
+    ): ReplayReport {
         require(script.schemaVersion == RECORDING_SCHEMA_VERSION)
         val startedAt = time.nowMs()
         val results = mutableListOf<ReplayStepResult>()
         var requiresIntervention = false
 
         for (step in script.steps) {
-            val result = replayStep(step, script.targetPackages)
+            val result = replayStep(step, script.targetPackages, secrets)
             results += result
             if (result.status == ReplayStepStatus.FAILED) {
                 requiresIntervention = step.failurePolicy == "requestIntervention"
@@ -216,8 +219,9 @@ class ReplayEngine(
     private fun replayStep(
         step: RecordedStep,
         targetPackages: List<String>,
+        secrets: Map<String, String>,
     ): ReplayStepResult {
-        val resolved = resolveSecret(step.action) ?: return failure(
+        val resolved = resolveSecret(step.action, secrets) ?: return failure(
             step = step,
             attempts = 0,
             code = "SECRET_REQUIRED",
@@ -320,12 +324,15 @@ class ReplayEngine(
         )
     }
 
-    private fun resolveSecret(action: RecordedAction): RecordedAction? {
+    private fun resolveSecret(
+        action: RecordedAction,
+        secrets: Map<String, String>,
+    ): RecordedAction? {
         if (action.type != "ui.setText") {
             return action
         }
         val alias = action.params["secretRef"]?.jsonPrimitive?.contentOrNull ?: return action
-        val value = secretResolver.resolve(alias) ?: return null
+        val value = secrets[alias] ?: secretResolver.resolve(alias) ?: return null
         return action.copy(
             params = buildJsonObject {
                 action.params.forEach { (key, element) ->

@@ -23,6 +23,9 @@
     <string name="recording_step_time">录制时间 +%1$d ms</string>
     <string name="recording_secret_step">敏感输入：仅保存 secret 引用</string>
     <string name="recording_secret_required">此脚本包含敏感输入。回放前必须提供对应的 secret，明文不会写入脚本。</string>
+    <string name="recording_secret_label">本次回放 secret：%1$s</string>
+    <string name="recording_secret_memory_notice">仅保留在当前详情页内存中，离开页面后立即丢弃。</string>
+    <string name="recording_loading">正在加载脚本…</string>
     <string name="recording_all_steps">全部步骤</string>
     <string name="recording_replay_succeeded">回放完成</string>
     <string name="recording_replay_failed">回放失败</string>

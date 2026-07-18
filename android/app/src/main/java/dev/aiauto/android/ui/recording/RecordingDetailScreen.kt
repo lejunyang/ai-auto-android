@@ -11,10 +11,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
 import dev.aiauto.android.R
@@ -29,6 +31,9 @@ fun RecordingDetailScreen(
     replayReport: ReplayReport?,
     busy: Boolean,
     errorMessage: String?,
+    requiredSecretRefs: List<String>,
+    secretValues: Map<String, String>,
+    onSecretChanged: (String, String) -> Unit,
     onReplay: () -> Unit,
     onDelete: () -> Unit,
     onBack: () -> Unit,
@@ -52,7 +57,7 @@ fun RecordingDetailScreen(
                 text = stringResource(R.string.recording_step_count, script.steps.size),
                 style = MaterialTheme.typography.titleMedium,
             )
-            if (script.variables.any { it.sensitive }) {
+            if (requiredSecretRefs.isNotEmpty()) {
                 Card {
                     Text(
                         text = stringResource(R.string.recording_secret_required),
@@ -60,11 +65,30 @@ fun RecordingDetailScreen(
                         color = MaterialTheme.colorScheme.tertiary,
                     )
                 }
+                requiredSecretRefs.forEach { alias ->
+                    OutlinedTextField(
+                        value = secretValues[alias].orEmpty(),
+                        onValueChange = { value -> onSecretChanged(alias, value) },
+                        label = {
+                            Text(stringResource(R.string.recording_secret_label, alias))
+                        },
+                        supportingText = {
+                            Text(stringResource(R.string.recording_secret_memory_notice))
+                        },
+                        visualTransformation = PasswordVisualTransformation(),
+                        enabled = !busy,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
                     onClick = onReplay,
-                    enabled = !busy,
+                    enabled = !busy && hasRequiredSecrets(
+                        requiredRefs = requiredSecretRefs,
+                        secretValues = secretValues,
+                    ),
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(stringResource(R.string.recording_replay))

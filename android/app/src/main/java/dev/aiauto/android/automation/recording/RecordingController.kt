@@ -22,24 +22,53 @@ data class RecordingControllerState(
     val errorMessage: String? = null,
 )
 
+interface RecordingCoordinator : Closeable {
+    val state: StateFlow<RecordingControllerState>
+
+    fun start(
+        name: String,
+        targetPackages: Set<String>,
+        environment: ScriptEnvironment? = null,
+    )
+
+    fun pause()
+
+    fun resume()
+
+    fun cancelRecording()
+
+    fun finish(name: String)
+
+    fun refresh()
+
+    fun select(id: String)
+
+    fun delete(id: String)
+
+    fun replay(
+        script: AutomationScript = requireNotNull(state.value.selectedScript),
+        secrets: Map<String, String> = emptyMap(),
+    )
+}
+
 class RecordingController(
     private val stateMachine: RecordingStateMachine,
     private val store: RecordingScriptStore,
     private val replayEngine: ReplayEngine,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-) : RecordingEventSink, Closeable {
+) : RecordingCoordinator, RecordingEventSink {
     private val mutableState = MutableStateFlow(RecordingControllerState())
-    val state: StateFlow<RecordingControllerState> = mutableState.asStateFlow()
+    override val state: StateFlow<RecordingControllerState> = mutableState.asStateFlow()
 
     init {
         refresh()
     }
 
-    fun start(
+    override fun start(
         name: String,
         targetPackages: Set<String>,
-        environment: ScriptEnvironment? = null,
+        environment: ScriptEnvironment?,
     ) {
         runCatching {
             val draft = stateMachine.start(name, targetPackages, environment)
@@ -52,16 +81,16 @@ class RecordingController(
         }.onFailure(::showError)
     }
 
-    fun pause() = updateDraft(stateMachine::pause)
+    override fun pause() = updateDraft(stateMachine::pause)
 
-    fun resume() = updateDraft(stateMachine::resume)
+    override fun resume() = updateDraft(stateMachine::resume)
 
-    fun cancelRecording() {
+    override fun cancelRecording() {
         RecordingRuntime.detach(this)
         updateDraft(stateMachine::cancel)
     }
 
-    fun finish(name: String) {
+    override fun finish(name: String) {
         runCatching {
             val script = stateMachine.finish(name)
             RecordingRuntime.detach(this)
@@ -87,7 +116,7 @@ class RecordingController(
         }.onFailure(::showError)
     }
 
-    fun refresh() {
+    override fun refresh() {
         scope.launch {
             setBusy(true)
             runCatching { withContext(dispatcher) { store.list() } }
@@ -105,7 +134,7 @@ class RecordingController(
         }
     }
 
-    fun select(id: String) {
+    override fun select(id: String) {
         scope.launch {
             setBusy(true)
             runCatching { withContext(dispatcher) { store.get(id) } }
@@ -124,7 +153,7 @@ class RecordingController(
         }
     }
 
-    fun delete(id: String) {
+    override fun delete(id: String) {
         scope.launch {
             setBusy(true)
             runCatching {
@@ -148,10 +177,17 @@ class RecordingController(
         }
     }
 
-    fun replay(script: AutomationScript = requireNotNull(state.value.selectedScript)) {
+    override fun replay(
+        script: AutomationScript,
+        secrets: Map<String, String>,
+    ) {
         scope.launch {
             setBusy(true)
-            runCatching { withContext(dispatcher) { replayEngine.replay(script) } }
+            runCatching {
+                withContext(dispatcher) {
+                    replayEngine.replay(script, secrets)
+                }
+            }
                 .onSuccess { report ->
                     mutableState.value = mutableState.value.copy(
                         replayReport = report,

@@ -24,8 +24,9 @@ import dev.aiauto.android.provider.ProviderConfigRepository
 import dev.aiauto.android.ui.accessibility.AccessibilityScreen
 import dev.aiauto.android.ui.bridge.DesktopBridgeScreen
 import dev.aiauto.android.ui.home.HomeScreen
-import dev.aiauto.android.ui.placeholder.RecordingScreen
 import dev.aiauto.android.ui.provider.ProviderScreen
+import dev.aiauto.android.ui.recording.RecordingHost
+import dev.aiauto.android.ui.recording.RecordingViewModel
 import dev.aiauto.android.ui.session.SessionScreen
 import dev.aiauto.android.ui.session.SessionViewModel
 
@@ -134,7 +135,13 @@ fun AiAutoAndroidApp(
             )
         }
         composable(Route.RECORDING) {
-            RecordingScreen(onBack = navController::popBackStack)
+            val recordingViewModel: RecordingViewModel = viewModel(
+                factory = RecordingViewModel.factory(context),
+            )
+            RecordingHost(
+                viewModel = recordingViewModel,
+                onBack = navController::popBackStack,
+            )
         }
     }
 }
