@@ -75,12 +75,12 @@
   - [x] SubTask 11.4: 验证 frontmatter、引用深度、命令示例和安全约束
   - [x] SubTask 11.5: 运行 Skill 校验并提交 `feat(skills): add portable android automation skills`
 
-- [ ] Task 12: 完成研究文档、端到端验证与发布：落地架构、协议、录制、安全、分发和备选方案文档，建立 CI、跨平台构建与制品校验。
-  - [ ] SubTask 12.1: 编写架构、协议、录制、安全分发、故障排查文档
-  - [ ] SubTask 12.2: 编写 Shizuku、Device Owner、UI Automator/设备农场、视觉层、getevent、蓝牙/厂商互联和 scrcpy 备选方案
-  - [ ] SubTask 12.3: 建立 Go、Android、Schema、Skill 和跨平台构建 CI
-  - [ ] SubTask 12.4: 运行全量单测、静态检查、契约测试和可用环境下的 Emulator/真机冒烟
-  - [ ] SubTask 12.5: 生成 macOS/Windows CLI 与 debug APK、校验和，检查 Git 历史并提交 `docs: finalize architecture and release guidance`
+- [x] Task 12: 完成研究文档、端到端验证与发布：落地架构、协议、录制、安全、分发和备选方案文档，建立 CI、跨平台构建与制品校验。
+  - [x] SubTask 12.1: 编写架构、协议、录制、安全分发、故障排查文档
+  - [x] SubTask 12.2: 编写 Shizuku、Device Owner、UI Automator/设备农场、视觉层、getevent、蓝牙/厂商互联和 scrcpy 备选方案
+  - [x] SubTask 12.3: 建立 Go、Android、Schema、Skill 和跨平台构建 CI
+  - [x] SubTask 12.4: 运行全量单测、静态检查、契约测试和可用环境下的 Emulator/真机冒烟
+  - [x] SubTask 12.5: 生成 macOS/Windows CLI 与 debug APK、校验和，检查 Git 历史并提交 `docs: finalize architecture and release guidance`
 
 # Task Dependencies
 

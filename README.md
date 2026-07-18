@@ -1,67 +1,141 @@
 # AI Auto Android
 
-AI Auto Android 是一套面向 Android 的本地优先自动化工具，包含 Android 执行 App、跨平台 `aactl` CLI、MCP 服务和可移植 Agent Skills。
+AI Auto Android 是一套本地优先的 Android 自动化 MVP，包括 Go `aactl`
+CLI、MCP stdio 服务、Kotlin/Compose Android App 和三组可移植 Agent Skills。
+电脑端可直接通过官方 ADB 观察和执行基础动作；安装 App 并由用户启用无障碍与
+桌面桥后，可使用语义选择器和录制回放。
 
-项目当前按照 [.trae/specs/build-ai-android-automation-mvp/spec.md](.trae/specs/build-ai-android-automation-mvp/spec.md) 逐步实现。完整自主 AI 版本定位为开源侧载、内部测试或企业受控分发，不承诺通过 Google Play 的 Accessibility API 政策审核。
+完整自主 AI 版本只定位于开源侧载、内部测试或企业受控分发。它不应被描述为可直接
+上架 Google Play 的版本，发布的 debug APK 也不是生产安装包。
 
-## 仓库结构
+## 安装
 
-| 路径 | 职责 |
-| --- | --- |
-| `protocol/` | 版本化 JSON Schema、夹具和兼容性约束 |
-| `cmd/` | `aactl` 可执行程序入口 |
-| `internal/` | CLI、ADB、Bridge 和 MCP 的内部实现 |
-| `android/` | Kotlin + Jetpack Compose Android App |
-| `skills/` | Agent Skills 及一层引用资料 |
-| `tests/` | 跨模块契约测试支持 |
-| `integration-tests/` | 设备与模拟器端到端场景 |
-| `docs/` | 架构、协议、安全、录制和备选方案 |
+运行 `aactl` 需要官方
+[Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools)。
+从 GitHub Release 下载与系统匹配的 `aactl_<version>_<os>_<arch>`，按同一
+Release 中的 `SHA256SUMS` 验证后，将其重命名为 `aactl`（Windows 保留
+`.exe`）并加入 `PATH`。
 
-## 工具链
-
-- Go `1.26.5`
-- JDK `21`
-- Android compile/target SDK `36`
-- Android Gradle Plugin `9.1.1`
-- Gradle `9.3.1`
-
-版本来源统一记录在 `.tool-versions`、`.go-version`、`.java-version` 和 `android/gradle/libs.versions.toml`。本项目不提交 `local.properties` 或任何本机 SDK 路径。
-
-## 开发入口
+从源码构建需要 Go `1.26.5`：
 
 ```bash
-make verify
-make doctor
+GO=/path/to/go make build VERSION=0.1.0
+./bin/aactl version --json
 ```
 
-`make verify` 校验仓库结构与版本约束，不要求所有 SDK 已安装。`make doctor` 检查当前机器上的 Git、Go、Java 和 ADB，并在版本不匹配或工具缺失时失败。
+Android App 需要 Android 11 / API 30 及以上。开发用 debug APK 位于 Release
+或 `android/app/build/outputs/apk/debug/app-debug.apk`；它使用调试签名，只能用于
+开发与验证。生产分发前必须配置受控发布签名并重新验证 APK。
 
-后续实现会逐步开放：
+## 快速开始
+
+在设备上启用开发者选项和 USB 调试，连接数据线，并在设备端核对、接受当前电脑的
+ADB RSA 指纹。所有设备操作都显式指定 `SERIAL`：
 
 ```bash
-make test
-make build
-make android-test
-make android-build
+aactl version --json
+aactl doctor --json
+aactl devices list --json
+aactl device info --device SERIAL --json
+aactl observe screenshot --device SERIAL --output screenshot.png --json
+aactl observe hierarchy --device SERIAL --json
 ```
+
+Android 11+ 无线调试使用设备显示的两个不同 endpoint；配对码由交互式 stdin
+读取，不要放进参数或日志：
+
+```bash
+aactl devices pair PAIR_HOST:PORT --json
+aactl devices connect CONNECT_HOST:PORT --json
+```
+
+语义观察和回放要求先在 App 中接受披露、配置目标包、手动启用无障碍服务并开启
+桌面桥，然后执行：
+
+```bash
+aactl bridge open --device SERIAL --json
+aactl bridge snapshot --device SERIAL --package com.example.app --json
+aactl bridge close --device SERIAL --json
+```
+
+## MCP 配置
+
+`aactl mcp serve` 通过 stdio 暴露五个类型化工具。MCP 客户端可使用以下通用配置；
+`command` 必须是客户端实际可访问的可执行文件路径，或已在其 `PATH` 中的
+`aactl`：
+
+```json
+{
+  "mcpServers": {
+    "android": {
+      "command": "aactl",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+MCP 不提供 ADB 配对、Bridge 建立、权限授予或任意 shell。先由用户通过 CLI 和
+App 建立所需信任，再让 MCP 使用已协商的类型化能力。
 
 ## Agent Skills
 
-可移植发布源位于 `skills/<skill-name>`，Trae 项目级自动发现镜像位于
-`.trae/skills/<skill-name>`。三个 Skill 分别覆盖设备发现、设备观察和受控自动化。
+三个发布源可分别安装到兼容 Agent Skills 的客户端：
 
-```bash
-make skills-sync
-make skills-check
+```text
+skills/android-device-discovery
+skills/android-device-observation
+skills/android-device-automation
 ```
 
-其他兼容 Agent Skills 的客户端可直接安装 `skills/android-device-discovery`、
-`skills/android-device-observation` 或 `skills/android-device-automation`。完整路径、
-触发场景和官方校验命令见 [skills/README.md](skills/README.md)。
+Trae 项目级镜像位于对应的 `.trae/skills/<skill-name>`；只编辑 `skills/`，
+再运行 `make skills-sync`。规范、触发场景及官方 `skills-ref` 校验命令见
+[skills/README.md](skills/README.md)。
 
-## 安全基线
+## Android 权限
 
-- 设备操作必须显式指定设备，不在多设备环境中猜测目标。
-- CLI 使用参数数组启动 ADB，不向 Agent 暴露任意 shell。
-- API Key、配对码、会话 token、密码和验证码不得进入 Git 或日志。
-- 支付、授权、安装等高风险动作必须阻断或等待人工确认。
+- App 清单只声明网络权限，用于访问用户配置的 OpenAI 兼容 Provider。
+- AccessibilityService 必须由用户先接受 App 内独立醒目披露，再到系统设置手动
+  启用；App 不能替用户授权。
+- 用户必须配置允许的目标包。前台包不匹配、敏感目标或能力不可用时执行失败关闭。
+- 桌面桥默认关闭，只绑定设备 loopback；每次由用户开启并使用一次性码建立短期会话。
+- ADB 的 USB/无线调试授权属于电脑与设备间的独立信任，必须由设备用户确认。
+
+## MVP 限制
+
+- 仅支持 Android 11 / API 30 及以上；不支持 Root、Shizuku、Device Owner、
+  蓝牙 ADB、互联网远控、OCR 或设备农场。
+- 直接 ADB 仅提供类型化观察、输入和应用控制，不提供任意 shell。
+- 当前录制配置只能端到端收到窗口变化事件；点击、文本、滚动映射尚未被发布配置订阅。
+- Bridge 不传截图；截图和 UIAutomator XML 是可能包含敏感内容的原始 ADB 产物。
+- CLI 不能列出或编辑录制脚本，也不能向回放传入 secret。
+- 支付、购买、安装、授权和系统安全设置被禁止；发送、提交、删除等动作需要当次确认。
+
+## 开发与验证
+
+固定工具链为 Go `1.26.5`、JDK `21`、Android SDK `36`、AGP `9.1.1` 和
+Gradle `9.3.1`。本机 SDK 路径不得提交到仓库。
+
+```bash
+make test
+make verify
+make build
+ANDROID_HOME=/path/to/android-sdk ./android/gradlew -p android \
+  --no-daemon testDebugUnitTest assembleDebug lintDebug
+make release VERSION=0.1.0
+```
+
+`make test` 运行协议、Skills、Go 格式、单测和 vet；`make verify` 运行协议与
+Skills smoke、fake ADB 定向测试和工具链元数据检查；`make doctor` 检查本机完整
+工具链。发布目录 `dist/` 和所有构建缓存均被忽略，不应提交。
+
+## 文档
+
+- [文档导航](docs/README.md)
+- [架构与信任边界](docs/architecture.md)
+- [协议 v1](docs/protocol.md)
+- [录制与回放](docs/recording.md)
+- [安全与分发](docs/security-distribution.md)
+- [故障排查](docs/troubleshooting.md)
+- [备选方案](docs/alternatives.md)
+- [Task 12 验证记录](docs/validation.md)
