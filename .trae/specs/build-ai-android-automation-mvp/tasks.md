@@ -33,12 +33,12 @@
   - [x] SubTask 5.4: 实现 Android Keystore AES/GCM API Key 存储与日志脱敏
   - [x] SubTask 5.5: 添加领域单测、构建 debug APK 并提交 `feat(android): add app shell and provider configuration`
 
-- [ ] Task 6: 实现无障碍观察与动作执行器：提供最小权限配置、UI 树快照、语义选择器匹配、节点动作、手势、文本和全局导航。
-  - [ ] SubTask 6.1: 声明 AccessibilityService、醒目披露和目标包范围配置
-  - [ ] SubTask 6.2: 实现不可长期缓存节点的规范化树快照与敏感字段过滤
-  - [ ] SubTask 6.3: 实现选择器评分、唯一性阈值和节点/坐标回退策略
-  - [ ] SubTask 6.4: 实现 click、longClick、setText、scroll、tap、swipe、back、home、recents
-  - [ ] SubTask 6.5: 添加选择器、坐标变换和动作路由单测并提交 `feat(android): add accessibility observation and execution`
+- [x] Task 6: 实现无障碍观察与动作执行器：提供最小权限配置、UI 树快照、语义选择器匹配、节点动作、手势、文本和全局导航。
+  - [x] SubTask 6.1: 声明 AccessibilityService、醒目披露和目标包范围配置
+  - [x] SubTask 6.2: 实现不可长期缓存节点的规范化树快照与敏感字段过滤
+  - [x] SubTask 6.3: 实现选择器评分、唯一性阈值和节点/坐标回退策略
+  - [x] SubTask 6.4: 实现 click、longClick、setText、scroll、tap、swipe、back、home、recents
+  - [x] SubTask 6.5: 添加选择器、坐标变换和动作路由单测并提交 `feat(android): add accessibility observation and execution`
 
 - [ ] Task 7: 实现电脑到 App 的本地桥：通过 ADB forward、loopback NDJSON JSON-RPC、一次性码和会话 token 提供语义观察与动作执行。
   - [ ] SubTask 7.1: 在 Android 端实现仅绑定 `127.0.0.1` 的有界消息服务和桥 UI 状态

@@ -1,15 +1,23 @@
 package dev.aiauto.android.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
+import dev.aiauto.android.accessibility.settings.AccessibilityServiceStatus
+import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.provider.ProviderConfigRepository
+import dev.aiauto.android.ui.accessibility.AccessibilityScreen
 import dev.aiauto.android.ui.home.HomeScreen
 import dev.aiauto.android.ui.placeholder.RecordingScreen
 import dev.aiauto.android.ui.placeholder.TaskScreen
@@ -17,16 +25,44 @@ import dev.aiauto.android.ui.provider.ProviderScreen
 
 private object Route {
     const val HOME = "home"
+    const val ACCESSIBILITY = "accessibility"
     const val PROVIDER = "provider"
     const val TASK = "task"
     const val RECORDING = "recording"
 }
 
 @Composable
-fun AiAutoAndroidApp(providerRepository: ProviderConfigRepository) {
+fun AiAutoAndroidApp(
+    providerRepository: ProviderConfigRepository,
+    accessibilityRepository: AccessibilitySettingsRepository,
+) {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val initialProvider = remember(providerRepository) { providerRepository.load() }
+    val initialAccessibility = remember(accessibilityRepository) {
+        accessibilityRepository.load()
+    }
     var providerReady by remember { mutableStateOf(initialProvider.hasApiKey) }
+    var accessibilityConfigured by remember {
+        mutableStateOf(initialAccessibility.isReady)
+    }
+    var accessibilityEnabled by remember {
+        mutableStateOf(AccessibilityServiceStatus.isEnabled(context))
+    }
+
+    DisposableEffect(lifecycleOwner, accessibilityRepository) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                accessibilityConfigured = accessibilityRepository.load().isReady
+                accessibilityEnabled = AccessibilityServiceStatus.isEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -35,9 +71,22 @@ fun AiAutoAndroidApp(providerRepository: ProviderConfigRepository) {
         composable(Route.HOME) {
             HomeScreen(
                 providerReady = providerReady,
+                accessibilityConfigured = accessibilityConfigured,
+                accessibilityEnabled = accessibilityEnabled,
+                onAccessibilityClick = { navController.navigate(Route.ACCESSIBILITY) },
                 onProviderClick = { navController.navigate(Route.PROVIDER) },
                 onTaskClick = { navController.navigate(Route.TASK) },
                 onRecordingClick = { navController.navigate(Route.RECORDING) },
+            )
+        }
+        composable(Route.ACCESSIBILITY) {
+            AccessibilityScreen(
+                repository = accessibilityRepository,
+                serviceEnabled = accessibilityEnabled,
+                onBack = navController::popBackStack,
+                onSettingsChanged = {
+                    accessibilityConfigured = it.isReady
+                },
             )
         }
         composable(Route.PROVIDER) {

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AI 安卓自动化</string>
+    <string name="accessibility_service_label">AI 安卓自动化执行服务</string>
+    <string name="accessibility_service_description">仅在你选择的目标应用中读取界面结构并执行你发起的自动化操作。不会记录或上传密码、验证码和支付内容。</string>
 </resources>

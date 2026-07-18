@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 
+import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.provider.ProviderConfigRepository
 import dev.aiauto.android.security.AndroidKeystoreSecretCipher
 import dev.aiauto.android.ui.AiAutoAndroidApp
@@ -19,10 +20,14 @@ class MainActivity : ComponentActivity() {
             preferences = getSharedPreferences("provider-config", MODE_PRIVATE),
             secretCipher = AndroidKeystoreSecretCipher(),
         )
+        val accessibilityRepository = AccessibilitySettingsRepository.from(this)
 
         setContent {
             AiAutoAndroidTheme {
-                AiAutoAndroidApp(providerRepository = providerRepository)
+                AiAutoAndroidApp(
+                    providerRepository = providerRepository,
+                    accessibilityRepository = accessibilityRepository,
+                )
             }
         }
     }

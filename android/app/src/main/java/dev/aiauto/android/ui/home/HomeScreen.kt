@@ -26,6 +26,9 @@ import dev.aiauto.android.ui.components.StatusTone
 @Composable
 fun HomeScreen(
     providerReady: Boolean,
+    accessibilityConfigured: Boolean,
+    accessibilityEnabled: Boolean,
+    onAccessibilityClick: () -> Unit,
     onProviderClick: () -> Unit,
     onTaskClick: () -> Unit,
     onRecordingClick: () -> Unit,
@@ -62,9 +65,27 @@ fun HomeScreen(
             item {
                 StatusCard(
                     title = "无障碍执行",
-                    description = "尚未启用。后续版本将在系统设置中由你手动授权。",
-                    status = "待配置",
-                    tone = StatusTone.ATTENTION,
+                    description = when {
+                        accessibilityEnabled && accessibilityConfigured ->
+                            "仅观察和操作你明确配置的目标应用。"
+
+                        accessibilityConfigured ->
+                            "披露与目标应用已配置，请到系统设置手动启用服务。"
+
+                        else ->
+                            "查看读取与操作范围，选择目标应用后再前往系统设置授权。"
+                    },
+                    status = when {
+                        accessibilityEnabled && accessibilityConfigured -> "已启用"
+                        accessibilityConfigured -> "系统未启用"
+                        else -> "需披露"
+                    },
+                    tone = if (accessibilityEnabled && accessibilityConfigured) {
+                        StatusTone.READY
+                    } else {
+                        StatusTone.ATTENTION
+                    },
+                    onClick = onAccessibilityClick,
                 )
             }
             item {
@@ -110,7 +131,7 @@ fun HomeScreen(
                 ) {
                     Button(
                         onClick = onTaskClick,
-                        enabled = providerReady,
+                        enabled = providerReady && accessibilityEnabled && accessibilityConfigured,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("新建 AI 任务")
