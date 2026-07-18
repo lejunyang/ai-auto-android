@@ -35,7 +35,18 @@ func (l Locator) Resolve() (string, error) {
 	}
 
 	if configured := l.Getenv(envADBPath); configured != "" {
-		return l.validate(configured)
+		resolved, err := l.validate(configured)
+		if err != nil {
+			return "", apperr.Wrap(
+				apperr.CodeADBNotFound,
+				"ADB configured by AACTL_ADB_PATH is unavailable. "+
+					"Point AACTL_ADB_PATH to the official Platform-Tools ADB executable, "+
+					"or unset it to enable automatic discovery.",
+				false,
+				err,
+			)
+		}
+		return resolved, nil
 	}
 	if found, err := l.LookPath(executable); err == nil {
 		return filepath.Abs(found)

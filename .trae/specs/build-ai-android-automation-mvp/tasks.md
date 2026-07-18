@@ -92,6 +92,11 @@
   - [x] SubTask 13.7: 实现 App Bridge 与 CLI 的 `recording.list`，并补齐双端契约测试
   - [x] SubTask 13.8: 运行全量测试、重新检测 ADB/Emulator/真机条件并更新验证记录
 
+- [x] Task 14: 修复最终独立复验发现的 ADB 路径诊断缺口，并补齐录制回放等待超时的直接回归测试。
+  - [x] SubTask 14.1: 将无效 `AACTL_ADB_PATH` 归一化为可操作的 `ADB_NOT_FOUND`，保留底层原因并增加单测
+  - [x] SubTask 14.2: 增加 `ui.wait` 条件超时返回 `CONDITION_TIMEOUT` 且不执行动作的直接单测
+  - [x] SubTask 14.3: 运行定向测试和全量验证，更新最终验收记录
+
 # Task Dependencies
 
 - Task 2 depends on Task 1.
@@ -104,6 +109,7 @@
 - Task 11 depends on Task 4 and Task 10.
 - Task 12 depends on Tasks 1-11.
 - Task 13 depends on Tasks 1-12.
+- Task 14 depends on Task 13.
 
 # Commit Policy
 

@@ -153,6 +153,35 @@ class ReplayEngineTest {
     }
 
     @Test
+    fun `ui wait condition timeout fails without dispatching an action BitsUT`() {
+        val gateway = FakeGateway(
+            snapshots = mutableListOf(
+                success(node()),
+                success(node()),
+                success(node()),
+            ),
+        )
+        val engine = engine(gateway)
+        val action = RecordedAction(
+            type = "ui.wait",
+            params = buildJsonObject {
+                put("kind", JsonPrimitive("package"))
+                put("operator", JsonPrimitive("equals"))
+                put("expected", JsonPrimitive("com.example.auth"))
+                put("timeoutMs", JsonPrimitive(200))
+            },
+        )
+
+        val report = engine.replay(script(action = action))
+
+        assertFalse(report.succeeded)
+        assertEquals("CONDITION_TIMEOUT", report.steps.single().errorCode)
+        assertEquals(1, report.steps.single().attempts)
+        assertEquals(listOf(100L, 100L), (engineTime as FakeTime).sleeps)
+        assertTrue(gateway.executed.isEmpty())
+    }
+
+    @Test
     fun `snapshot failure does not satisfy a missing node condition BitsUT`() {
         val gateway = FakeGateway(
             snapshots = mutableListOf(

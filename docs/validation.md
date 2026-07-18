@@ -104,3 +104,35 @@ shasum -a 256 -c SHA256SUMS
 `file` 分别识别 CLI 为 Mach-O arm64、Mach-O x86_64、PE32+ x86_64 和静态
 ELF x86_64。`apksigner verify --verbose --print-certs` 验证 APK 的 v2 签名，
 签名者为 `CN=Android Debug`；它不是生产发布签名。
+
+## Task 14 最终复验
+
+最终独立复验发现：当 `AACTL_ADB_PATH` 指向不存在、目录或不可执行文件时，
+路径校验错误会被 CLI 映射为 `INTERNAL_ERROR`。Task 14 将该分支归一化为
+`ADB_NOT_FOUND`，保留底层 cause，并提示修正或取消环境变量以启用自动发现。
+
+修复后实际执行：
+
+```bash
+go test -count=1 -v ./internal/adb
+GORACE=halt_on_error=1 go test -race -count=1 ./internal/adb
+AACTL_ADB_PATH=/path/to/missing-adb ./bin/aactl doctor --json
+make test
+make verify
+make build
+ANDROID_HOME="$ANDROID_HOME" make android-test android-lint android-build
+```
+
+结果：
+
+- `internal/adb` 的 35 个顶层测试及 race 全部通过；
+- 无效显式 ADB 路径返回 `ADB_NOT_FOUND` 且退出码为 4；
+- Go 全仓共有 173 个通过的测试/子测试事件，其中 92 个顶层测试；
+- 协议 29 项、3 个发布 Skills 及 Trae 镜像、fake ADB smoke 和仓库元数据通过；
+- Android 共有 146 个单测，0 failure/error/skip，lint 和 debug APK 构建通过；
+- 新增回放回归测试确认 `ui.wait` 超时返回 `CONDITION_TIMEOUT`，尝试次数为 1，
+  不会提交任何动作。
+
+设备条件重新检测结果不变：ADB 37.0.0 健康，5037 与 mDNS 正常，但设备数为
+0，且没有 emulator 二进制、system image 或 AVD。真实设备端到端 smoke 仍为
+条件不可用，未执行，也不声明通过。
