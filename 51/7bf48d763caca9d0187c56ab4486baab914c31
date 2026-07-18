@@ -1,0 +1,1202 @@
+README.md
+  s_f25e8ac3859bf8::t_0b73d3675507c8 48-61 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b86311c04f77597c085aa","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[48,61]}]}]}
+skills/android-device-discovery/references/commands.md
+  s_f25e8ac3859bf8::t_3969c481b16c00 63-69 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b86021c04f77597c08566","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[63,69]}]}]}
+  s_f25e8ac3859bf8::t_e2ed232f2ac9cf 1-62,70-78 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b851f1c04f77597c08436","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,62]},{"Range":[70,78]}]}]}
+.trae/skills/android-device-observation/references/commands.md
+  s_f25e8ac3859bf8::t_f0bd2bf6440425 1-90 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b87401c04f77597c08741","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Range":[1,90]}]}]}
+skills/android-device-discovery/SKILL.md
+  s_f25e8ac3859bf8::t_438f4a5d33a0a5 1-54 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b85101c04f77597c08420","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,54]}]}]}
+skills/android-device-observation/references/privacy-and-artifacts.md
+  s_f25e8ac3859bf8::t_4335aef5a84aa1 1-68 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b85641c04f77597c08493","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,68]}]}]}
+.trae/skills/android-device-automation/references/safety-and-recovery.md
+  s_f25e8ac3859bf8::t_f0bd2bf6440425 1-102 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b87401c04f77597c08741","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Range":[1,102]}]}]}
+skills/android-device-automation/SKILL.md
+  s_f25e8ac3859bf8::t_7172866b25dc78 1-69 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b85761c04f77597c084ab","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,69]}]}]}
+.trae/skills/android-device-discovery/SKILL.md
+  s_f25e8ac3859bf8::t_f0bd2bf6440425 1-54 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b87401c04f77597c08741","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Range":[1,54]}]}]}
+.trae/skills/android-device-observation/SKILL.md
+  s_f25e8ac3859bf8::t_f0bd2bf6440425 1-57 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b87401c04f77597c08741","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Range":[1,57]}]}]}
+scripts/skills.mjs
+  s_f25e8ac3859bf8::t_90e5d76def3c17 51-55,115 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b864e1c04f77597c085d4","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[51,55]},{"Single":115}]}]}
+  s_f25e8ac3859bf8::t_17e7056753eae6 148 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b865f1c04f77597c085ee","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":148}]}]}
+  s_f25e8ac3859bf8::t_b62d8ef5688131 1-50,56-114,116-147,149-269 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b85b31c04f77597c084ff","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,50]},{"Range":[56,114]},{"Range":[116,147]},{"Range":[149,269]}]}]}
+skills/android-device-discovery/references/troubleshooting.md
+  s_f25e8ac3859bf8::t_7142bab92248ac 1-62 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b852f1c04f77597c0844f","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,62]}]}]}
+.trae/specs/build-ai-android-automation-mvp/tasks.md
+  s_f25e8ac3859bf8::t_78dbbfbb296f7b 71-76 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b87141c04f77597c08709","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[71,76]}]}]}
+.trae/skills/android-device-discovery/references/commands.md
+  s_f25e8ac3859bf8::t_f0bd2bf6440425 1-78 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b87401c04f77597c08741","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Range":[1,78]}]}]}
+Makefile
+  s_f25e8ac3859bf8::t_c1d8d2cae103eb 5,7,16-21 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b860f1c04f77597c0857a","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":5},{"Single":7},{"Range":[16,21]}]}]}
+  s_f25e8ac3859bf8::t_56406f43e9e9f1 22
+skills/android-device-automation/references/commands.md
+  s_f25e8ac3859bf8::t_b1dbb411ec8739 1-113 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b85851c04f77597c084c2","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,113]}]}]}
+.trae/skills/android-device-discovery/references/troubleshooting.md
+  s_f25e8ac3859bf8::t_f0bd2bf6440425 1-62 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b87401c04f77597c08741","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Range":[1,62]}]}]}
+internal/cli/skill_examples_test.go
+  s_f25e8ac3859bf8::t_83c5988389bc0e 1-5,8-32,35-169,172-179 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b85df1c04f77597c08530","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,5]},{"Range":[8,32]},{"Range":[35,169]},{"Range":[172,179]}]}]}
+  s_f25e8ac3859bf8::t_8fa2ae807a76bd 6-7,33-34,170-171 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b86931c04f77597c08641","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[6,7]},{"Range":[33,34]},{"Range":[170,171]}]}]}
+.trae/skills/android-device-automation/references/commands.md
+  s_f25e8ac3859bf8::t_f0bd2bf6440425 1-113 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b87401c04f77597c08741","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Range":[1,113]}]}]}
+skills/android-device-automation/references/safety-and-recovery.md
+  s_f25e8ac3859bf8::t_a833b75bb141dd 1-102 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b85971c04f77597c084dc","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,102]}]}]}
+skills/android-device-observation/SKILL.md
+  s_f25e8ac3859bf8::t_00bb6e978c9594 1-57 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b85451c04f77597c0846b","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,57]}]}]}
+skills/android-device-observation/references/commands.md
+  s_f25e8ac3859bf8::t_d4bb365ab8919c 1-90 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b85561c04f77597c08480","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,90]}]}]}
+skills/README.md
+  s_f25e8ac3859bf8::t_ca5b3413bc3c1b 3-45 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b86201c04f77597c08593","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[3,45]}]}]}
+.trae/skills/android-device-observation/references/privacy-and-artifacts.md
+  s_f25e8ac3859bf8::t_f0bd2bf6440425 1-68 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b87401c04f77597c08741","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Range":[1,68]}]}]}
+.trae/skills/android-device-automation/SKILL.md
+  s_f25e8ac3859bf8::t_f0bd2bf6440425 1-69 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b87401c04f77597c08741","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Range":[1,69]}]}]}
+cmd/README.md
+  s_f25e8ac3859bf8::t_3c8015a1614e62 5-19,50-68 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5b86391c04f77597c085b8","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[5,19]},{"Range":[50,68]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "517bf48d763caca9d0187c56ab4486baab914c31",
+  "prompts": {},
+  "sessions": {
+    "s_f25e8ac3859bf8": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5a66941c04f77597bfb545",
+        "model": "gpt-5.6-sol__max"
+      },
+      "human_author": "lejunyang <lejunyang@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    ".trae/skills/android-device-automation/SKILL.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_f0bd2bf6440425",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              69
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b87401c04f77597c08741",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  69
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/skills/android-device-automation/references/commands.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_f0bd2bf6440425",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              113
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b87401c04f77597c08741",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  113
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/skills/android-device-automation/references/safety-and-recovery.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_f0bd2bf6440425",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              102
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b87401c04f77597c08741",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  102
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/skills/android-device-discovery/SKILL.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_f0bd2bf6440425",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              54
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b87401c04f77597c08741",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  54
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/skills/android-device-discovery/references/commands.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_f0bd2bf6440425",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              78
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b87401c04f77597c08741",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  78
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/skills/android-device-discovery/references/troubleshooting.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_f0bd2bf6440425",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              62
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b87401c04f77597c08741",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  62
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/skills/android-device-observation/SKILL.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_f0bd2bf6440425",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              57
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b87401c04f77597c08741",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  57
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/skills/android-device-observation/references/commands.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_f0bd2bf6440425",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              90
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b87401c04f77597c08741",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  90
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/skills/android-device-observation/references/privacy-and-artifacts.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_f0bd2bf6440425",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              68
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b87401c04f77597c08741",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  68
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/specs/build-ai-android-automation-mvp/tasks.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_78dbbfbb296f7b",
+        "line_ranges": [
+          {
+            "Range": [
+              71,
+              76
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b87141c04f77597c08709",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  71,
+                  76
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "Makefile": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_c1d8d2cae103eb",
+        "line_ranges": [
+          {
+            "Single": 5
+          },
+          {
+            "Single": 7
+          },
+          {
+            "Range": [
+              16,
+              21
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b860f1c04f77597c0857a",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 5
+              },
+              {
+                "Single": 7
+              },
+              {
+                "Range": [
+                  16,
+                  21
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "README.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_0b73d3675507c8",
+        "line_ranges": [
+          {
+            "Range": [
+              48,
+              61
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b86311c04f77597c085aa",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  48,
+                  61
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "cmd/README.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_3c8015a1614e62",
+        "line_ranges": [
+          {
+            "Range": [
+              5,
+              19
+            ]
+          },
+          {
+            "Range": [
+              50,
+              68
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b86391c04f77597c085b8",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  5,
+                  19
+                ]
+              },
+              {
+                "Range": [
+                  50,
+                  68
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "internal/cli/skill_examples_test.go": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_83c5988389bc0e",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              5
+            ]
+          },
+          {
+            "Range": [
+              8,
+              32
+            ]
+          },
+          {
+            "Range": [
+              35,
+              169
+            ]
+          },
+          {
+            "Range": [
+              172,
+              179
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b85df1c04f77597c08530",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  5
+                ]
+              },
+              {
+                "Range": [
+                  8,
+                  32
+                ]
+              },
+              {
+                "Range": [
+                  35,
+                  169
+                ]
+              },
+              {
+                "Range": [
+                  172,
+                  179
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "hash": "s_f25e8ac3859bf8::t_8fa2ae807a76bd",
+        "line_ranges": [
+          {
+            "Range": [
+              6,
+              7
+            ]
+          },
+          {
+            "Range": [
+              33,
+              34
+            ]
+          },
+          {
+            "Range": [
+              170,
+              171
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b86931c04f77597c08641",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  6,
+                  7
+                ]
+              },
+              {
+                "Range": [
+                  33,
+                  34
+                ]
+              },
+              {
+                "Range": [
+                  170,
+                  171
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "scripts/skills.mjs": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_90e5d76def3c17",
+        "line_ranges": [
+          {
+            "Range": [
+              51,
+              55
+            ]
+          },
+          {
+            "Single": 115
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b864e1c04f77597c085d4",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  51,
+                  55
+                ]
+              },
+              {
+                "Single": 115
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "hash": "s_f25e8ac3859bf8::t_17e7056753eae6",
+        "line_ranges": [
+          {
+            "Single": 148
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b865f1c04f77597c085ee",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 148
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "hash": "s_f25e8ac3859bf8::t_b62d8ef5688131",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              50
+            ]
+          },
+          {
+            "Range": [
+              56,
+              114
+            ]
+          },
+          {
+            "Range": [
+              116,
+              147
+            ]
+          },
+          {
+            "Range": [
+              149,
+              269
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b85b31c04f77597c084ff",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  50
+                ]
+              },
+              {
+                "Range": [
+                  56,
+                  114
+                ]
+              },
+              {
+                "Range": [
+                  116,
+                  147
+                ]
+              },
+              {
+                "Range": [
+                  149,
+                  269
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/README.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_ca5b3413bc3c1b",
+        "line_ranges": [
+          {
+            "Range": [
+              3,
+              45
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b86201c04f77597c08593",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  3,
+                  45
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/android-device-automation/SKILL.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_7172866b25dc78",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              69
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b85761c04f77597c084ab",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  69
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/android-device-automation/references/commands.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_b1dbb411ec8739",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              113
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b85851c04f77597c084c2",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  113
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/android-device-automation/references/safety-and-recovery.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_a833b75bb141dd",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              102
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b85971c04f77597c084dc",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  102
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/android-device-discovery/SKILL.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_438f4a5d33a0a5",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              54
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b85101c04f77597c08420",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  54
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/android-device-discovery/references/commands.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_3969c481b16c00",
+        "line_ranges": [
+          {
+            "Range": [
+              63,
+              69
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b86021c04f77597c08566",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  63,
+                  69
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "hash": "s_f25e8ac3859bf8::t_e2ed232f2ac9cf",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              62
+            ]
+          },
+          {
+            "Range": [
+              70,
+              78
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b851f1c04f77597c08436",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  62
+                ]
+              },
+              {
+                "Range": [
+                  70,
+                  78
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/android-device-discovery/references/troubleshooting.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_7142bab92248ac",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              62
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b852f1c04f77597c0844f",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  62
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/android-device-observation/SKILL.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_00bb6e978c9594",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              57
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b85451c04f77597c0846b",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  57
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/android-device-observation/references/commands.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_d4bb365ab8919c",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              90
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b85561c04f77597c08480",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  90
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/android-device-observation/references/privacy-and-artifacts.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_4335aef5a84aa1",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              68
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5b85641c04f77597c08493",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  68
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_f25e8ac3859bf8": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_00bb6e978c9594": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_0b73d3675507c8": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_17e7056753eae6": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_3969c481b16c00": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_3c8015a1614e62": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_4335aef5a84aa1": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_438f4a5d33a0a5": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_70150db165c615": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_7142bab92248ac": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_7172866b25dc78": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_78dbbfbb296f7b": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_83c5988389bc0e": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_8fa2ae807a76bd": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_90e5d76def3c17": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_a833b75bb141dd": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_b1dbb411ec8739": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_b62d8ef5688131": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_c1d8d2cae103eb": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_ca5b3413bc3c1b": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_d4bb365ab8919c": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_e2ed232f2ac9cf": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_f0bd2bf6440425": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
