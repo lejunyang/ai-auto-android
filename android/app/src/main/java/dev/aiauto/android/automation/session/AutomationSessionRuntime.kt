@@ -4,25 +4,31 @@ internal fun interface UserTouchStopHandler {
     fun stopForUserTouch()
 }
 
+internal data class ScreenshotAuthorization(
+    val sessionId: Long,
+    val targetPackage: String,
+)
+
 internal class ActiveAutomationSessionRegistry {
     private val lock = Any()
     private var activeSession: ActiveSession? = null
+    private var nextSessionId = 1L
 
     fun register(
         targetPackage: String,
         screenshotsAllowed: Boolean,
         stopHandler: UserTouchStopHandler,
-    ): AutoCloseable {
+    ): AutoCloseable = synchronized(lock) {
+        check(activeSession == null) { "Another automation session is already active." }
         val session = ActiveSession(
+            sessionId = nextSessionId++,
             targetPackage = targetPackage,
             screenshotsAllowed = screenshotsAllowed,
             stopHandler = stopHandler,
-        )
-        synchronized(lock) {
-            check(activeSession == null) { "Another automation session is already active." }
-            activeSession = session
+        ).also {
+            activeSession = it
         }
-        return AutoCloseable {
+        AutoCloseable {
             synchronized(lock) {
                 if (activeSession === session) {
                     activeSession = null
@@ -31,10 +37,37 @@ internal class ActiveAutomationSessionRegistry {
         }
     }
 
-    fun isScreenshotAuthorized(targetPackage: String): Boolean = synchronized(lock) {
+    fun acquireScreenshotAuthorization(targetPackage: String): ScreenshotAuthorization? =
+        synchronized(lock) {
+            activeSession
+                ?.takeIf { session ->
+                    session.targetPackage == targetPackage && session.screenshotsAllowed
+                }
+                ?.let { session ->
+                    ScreenshotAuthorization(
+                        sessionId = session.sessionId,
+                        targetPackage = session.targetPackage,
+                    )
+                }
+        }
+
+    fun isScreenshotAuthorizationActive(
+        authorization: ScreenshotAuthorization,
+    ): Boolean = synchronized(lock) {
         activeSession?.let { session ->
-            session.targetPackage == targetPackage && session.screenshotsAllowed
+            session.sessionId == authorization.sessionId &&
+                session.targetPackage == authorization.targetPackage &&
+                session.screenshotsAllowed
         } == true
+    }
+
+    fun isScreenshotAuthorized(targetPackage: String): Boolean =
+        acquireScreenshotAuthorization(targetPackage) != null
+
+    fun activeSessionId(targetPackage: String): Long? = synchronized(lock) {
+        activeSession
+            ?.takeIf { it.targetPackage == targetPackage }
+            ?.sessionId
     }
 
     fun notifyUserTouch(targetPackage: String): Boolean {
@@ -48,6 +81,7 @@ internal class ActiveAutomationSessionRegistry {
     }
 
     private data class ActiveSession(
+        val sessionId: Long,
         val targetPackage: String,
         val screenshotsAllowed: Boolean,
         val stopHandler: UserTouchStopHandler,
@@ -67,8 +101,20 @@ object AutomationSessionRuntime {
         stopHandler = stopHandler,
     )
 
+    internal fun acquireScreenshotAuthorization(
+        targetPackage: String,
+    ): ScreenshotAuthorization? =
+        registry.acquireScreenshotAuthorization(targetPackage)
+
+    internal fun isScreenshotAuthorizationActive(
+        authorization: ScreenshotAuthorization,
+    ): Boolean = registry.isScreenshotAuthorizationActive(authorization)
+
     fun isScreenshotAuthorized(targetPackage: String): Boolean =
         registry.isScreenshotAuthorized(targetPackage)
+
+    internal fun activeSessionId(targetPackage: String): Long? =
+        registry.activeSessionId(targetPackage)
 
     fun notifyUserTouch(targetPackage: String): Boolean =
         registry.notifyUserTouch(targetPackage)

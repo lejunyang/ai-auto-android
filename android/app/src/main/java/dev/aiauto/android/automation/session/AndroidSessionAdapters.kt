@@ -26,7 +26,9 @@ class ProviderSessionPlanner(
     override suspend fun plan(request: SessionPlanRequest): ProviderAction {
         val screenshot = if (request.screenshotsAllowed) {
             when (val result = screenshotCapture(request.targetPackage)) {
-                is AccessibilityResult.Failure -> throw SessionFailureException(result.message)
+                is AccessibilityResult.Failure ->
+                    throw SessionFailureException(result.error.message)
+
                 is AccessibilityResult.Success -> result.value
             }
         } else {

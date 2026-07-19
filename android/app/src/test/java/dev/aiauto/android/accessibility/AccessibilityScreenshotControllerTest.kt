@@ -28,7 +28,7 @@ class AccessibilityScreenshotControllerTest {
         var platformCalls = 0
         val controller = controller(
             sdkInt = 29,
-            platform = ScreenshotPlatform { platformCalls += 1 },
+            platform = ScreenshotPlatform { _, _ -> platformCalls += 1 },
         )
 
         val result = controller.capture(TARGET_PACKAGE)
@@ -41,7 +41,7 @@ class AccessibilityScreenshotControllerTest {
     fun `capture rejects session without screenshot authorization BitsUT`() = runTest {
         var snapshotCalls = 0
         val controller = AccessibilityScreenshotController(
-            platform = ScreenshotPlatform { error("platform must not be called") },
+            platform = ScreenshotPlatform { _, _ -> error("platform must not be called") },
             snapshot = {
                 snapshotCalls += 1
                 AccessibilityResult.Success(node())
@@ -63,7 +63,7 @@ class AccessibilityScreenshotControllerTest {
             snapshot = AccessibilityResult.Success(
                 node(children = listOf(node(sensitive = true))),
             ),
-            platform = ScreenshotPlatform { platformCalls += 1 },
+            platform = ScreenshotPlatform { _, _ -> platformCalls += 1 },
         )
 
         val result = controller.capture(TARGET_PACKAGE)
@@ -73,9 +73,79 @@ class AccessibilityScreenshotControllerTest {
     }
 
     @Test
+    fun `capture clears screenshot when authorization is revoked during capture BitsUT`() = runTest {
+        var authorized = true
+        val bytes = byteArrayOf(1, 2, 3)
+        val controller = AccessibilityScreenshotController(
+            platform = ScreenshotPlatform { _, callback ->
+                authorized = false
+                callback(
+                    PlatformScreenshotResult.Success(
+                        AccessibilityScreenshot(bytes, 2, 3, 4),
+                    ),
+                )
+            },
+            snapshot = { AccessibilityResult.Success(node()) },
+            isAuthorized = { authorized },
+            sdkInt = 30,
+        )
+
+        val result = controller.capture(TARGET_PACKAGE)
+
+        assertFailure(result, AccessibilityErrorCode.SCREENSHOT_NOT_AUTHORIZED)
+        assertTrue(bytes.all { it == 0.toByte() })
+    }
+
+    @Test
+    fun `capture clears screenshot when sensitive content appears during capture BitsUT`() = runTest {
+        var snapshotCalls = 0
+        val bytes = byteArrayOf(1, 2, 3)
+        val controller = AccessibilityScreenshotController(
+            platform = ScreenshotPlatform { _, callback ->
+                callback(
+                    PlatformScreenshotResult.Success(
+                        AccessibilityScreenshot(bytes, 2, 3, 4),
+                    ),
+                )
+            },
+            snapshot = {
+                snapshotCalls += 1
+                AccessibilityResult.Success(node(sensitive = snapshotCalls > 1))
+            },
+            isAuthorized = { true },
+            sdkInt = 30,
+        )
+
+        val result = controller.capture(TARGET_PACKAGE)
+
+        assertFailure(result, AccessibilityErrorCode.SCREENSHOT_SENSITIVE_CONTENT)
+        assertEquals(2, snapshotCalls)
+        assertTrue(bytes.all { it == 0.toByte() })
+    }
+
+    @Test
+    fun `capture rejects and clears screenshot above local byte budget BitsUT`() = runTest {
+        val bytes = ByteArray(1_048_577) { 1 }
+        val controller = controller(
+            platform = ScreenshotPlatform { _, callback ->
+                callback(
+                    PlatformScreenshotResult.Success(
+                        AccessibilityScreenshot(bytes, 2_000, 1_000, 4),
+                    ),
+                )
+            },
+        )
+
+        val result = controller.capture(TARGET_PACKAGE)
+
+        assertFailure(result, AccessibilityErrorCode.SCREENSHOT_FAILED)
+        assertTrue(bytes.all { it == 0.toByte() })
+    }
+
+    @Test
     fun `capture maps secure window platform failure BitsUT`() = runTest {
         val controller = controller(
-            platform = ScreenshotPlatform { callback ->
+            platform = ScreenshotPlatform { _, callback ->
                 callback(
                     PlatformScreenshotResult.Failure(
                         AccessibilityService.ERROR_TAKE_SCREENSHOT_SECURE_WINDOW,
@@ -94,7 +164,7 @@ class AccessibilityScreenshotControllerTest {
         val bytes = byteArrayOf(1, 2, 3)
         val screenshot = AccessibilityScreenshot(bytes, 2, 3, 4)
         val controller = controller(
-            platform = ScreenshotPlatform { callback ->
+            platform = ScreenshotPlatform { _, callback ->
                 callback(PlatformScreenshotResult.Success(screenshot))
             },
         )
@@ -123,12 +193,12 @@ class AccessibilityScreenshotControllerTest {
         val platform = AndroidScreenshotPlatform(
             service = service,
             callbackExecutor = Executor(Runnable::run),
-            encoder = HardwareBufferScreenshotEncoder { _, _, _ ->
+            encoder = HardwareBufferScreenshotEncoder { _, _, _, _, _ ->
                 throw IllegalStateException("encoding failed")
             },
         )
 
-        platform.capture { platformResult = it }
+        platform.capture(node().bounds) { platformResult = it }
         callbackSlot.captured.onSuccess(result)
 
         verify(exactly = 1) { buffer.close() }

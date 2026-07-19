@@ -35,6 +35,32 @@ class AutomationSessionRuntimeTest {
     }
 
     @Test
+    fun `same package replacement cannot reactivate old screenshot authorization BitsUT`() {
+        val registry = ActiveAutomationSessionRegistry()
+        val firstRegistration = registry.register(
+            targetPackage = TARGET_PACKAGE,
+            screenshotsAllowed = true,
+            stopHandler = UserTouchStopHandler {},
+        )
+        val firstAuthorization = checkNotNull(
+            registry.acquireScreenshotAuthorization(TARGET_PACKAGE),
+        )
+        firstRegistration.close()
+
+        registry.register(
+            targetPackage = TARGET_PACKAGE,
+            screenshotsAllowed = true,
+            stopHandler = UserTouchStopHandler {},
+        ).use {
+            assertFalse(registry.isScreenshotAuthorizationActive(firstAuthorization))
+            val replacementAuthorization = checkNotNull(
+                registry.acquireScreenshotAuthorization(TARGET_PACKAGE),
+            )
+            assertTrue(registry.isScreenshotAuthorizationActive(replacementAuthorization))
+        }
+    }
+
+    @Test
     fun `registry ignores non target package touch BitsUT`() {
         var stops = 0
         val registry = ActiveAutomationSessionRegistry()

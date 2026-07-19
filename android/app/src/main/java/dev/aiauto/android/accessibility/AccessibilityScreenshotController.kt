@@ -1,21 +1,20 @@
 package dev.aiauto.android.accessibility
 
 import android.accessibilityservice.AccessibilityService
-import android.graphics.Bitmap
 import android.graphics.ColorSpace
 import android.hardware.HardwareBuffer
 import android.os.Build
 import android.view.Display
 
-import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executor
-import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 import dev.aiauto.android.accessibility.model.AccessibilityErrorCode
 import dev.aiauto.android.accessibility.model.AccessibilityResult
 import dev.aiauto.android.accessibility.model.AccessibilityScreenshot
+import dev.aiauto.android.accessibility.model.UiBounds
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
+import dev.aiauto.android.automation.session.ScreenshotAuthorization
 
 internal sealed interface PlatformScreenshotResult {
     data class Success(val screenshot: AccessibilityScreenshot) : PlatformScreenshotResult
@@ -24,7 +23,10 @@ internal sealed interface PlatformScreenshotResult {
 }
 
 internal fun interface ScreenshotPlatform {
-    fun capture(callback: (PlatformScreenshotResult) -> Unit)
+    fun capture(
+        bounds: UiBounds,
+        callback: (PlatformScreenshotResult) -> Unit,
+    )
 }
 
 internal fun interface HardwareBufferScreenshotEncoder {
@@ -32,16 +34,22 @@ internal fun interface HardwareBufferScreenshotEncoder {
         buffer: HardwareBuffer,
         colorSpace: ColorSpace,
         timestampMs: Long,
+        bounds: UiBounds,
+        policy: ScreenshotImagePolicy,
     ): AccessibilityScreenshot?
 }
 
 internal class AndroidScreenshotPlatform(
     private val service: AccessibilityService,
     private val callbackExecutor: Executor,
+    private val imagePolicy: ScreenshotImagePolicy = ScreenshotImagePolicy(),
     private val encoder: HardwareBufferScreenshotEncoder =
-        HardwareBufferScreenshotEncoder(::encodeHardwareBuffer),
+        HardwareBufferScreenshotEncoder(ScreenshotImageProcessor::encode),
 ) : ScreenshotPlatform {
-    override fun capture(callback: (PlatformScreenshotResult) -> Unit) {
+    override fun capture(
+        bounds: UiBounds,
+        callback: (PlatformScreenshotResult) -> Unit,
+    ) {
         service.takeScreenshot(
             Display.DEFAULT_DISPLAY,
             callbackExecutor,
@@ -53,6 +61,8 @@ internal class AndroidScreenshotPlatform(
                             buffer = buffer,
                             colorSpace = result.colorSpace,
                             timestampMs = result.timestamp,
+                            bounds = bounds,
+                            policy = imagePolicy,
                         )
                     } catch (_: RuntimeException) {
                         null
@@ -73,44 +83,42 @@ internal class AndroidScreenshotPlatform(
             },
         )
     }
-
-    private companion object {
-        fun encodeHardwareBuffer(
-            buffer: HardwareBuffer,
-            colorSpace: ColorSpace,
-            timestampMs: Long,
-        ): AccessibilityScreenshot? {
-            val hardwareBitmap = Bitmap.wrapHardwareBuffer(buffer, colorSpace) ?: return null
-            val softwareBitmap = hardwareBitmap.copy(Bitmap.Config.ARGB_8888, false)
-                ?: run {
-                    hardwareBitmap.recycle()
-                    return null
-                }
-            return try {
-                val output = ByteArrayOutputStream()
-                if (!softwareBitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
-                    return null
-                }
-                AccessibilityScreenshot(
-                    pngBytes = output.toByteArray(),
-                    width = softwareBitmap.width,
-                    height = softwareBitmap.height,
-                    timestampMs = timestampMs,
-                )
-            } finally {
-                softwareBitmap.recycle()
-                hardwareBitmap.recycle()
-            }
-        }
-    }
 }
 
 internal class AccessibilityScreenshotController(
     private val platform: ScreenshotPlatform,
     private val snapshot: (String) -> AccessibilityResult<UiNodeSnapshot>,
-    private val isAuthorized: (String) -> Boolean,
+    private val acquireAuthorization: (String) -> ScreenshotAuthorization?,
+    private val isAuthorizationActive: (ScreenshotAuthorization) -> Boolean,
+    private val imagePolicy: ScreenshotImagePolicy = ScreenshotImagePolicy(),
     private val sdkInt: Int = Build.VERSION.SDK_INT,
 ) {
+    constructor(
+        platform: ScreenshotPlatform,
+        snapshot: (String) -> AccessibilityResult<UiNodeSnapshot>,
+        isAuthorized: (String) -> Boolean,
+        imagePolicy: ScreenshotImagePolicy = ScreenshotImagePolicy(),
+        sdkInt: Int = Build.VERSION.SDK_INT,
+    ) : this(
+        platform = platform,
+        snapshot = snapshot,
+        acquireAuthorization = { targetPackage ->
+            if (isAuthorized(targetPackage)) {
+                ScreenshotAuthorization(
+                    sessionId = LEGACY_AUTHORIZATION_SESSION_ID,
+                    targetPackage = targetPackage,
+                )
+            } else {
+                null
+            }
+        },
+        isAuthorizationActive = { authorization ->
+            isAuthorized(authorization.targetPackage)
+        },
+        imagePolicy = imagePolicy,
+        sdkInt = sdkInt,
+    )
+
     suspend fun capture(targetPackage: String): AccessibilityResult<AccessibilityScreenshot> {
         if (sdkInt < Build.VERSION_CODES.R) {
             return failure(
@@ -118,15 +126,91 @@ internal class AccessibilityScreenshotController(
                 message = "Accessibility screenshots require Android 11 or newer",
             )
         }
-        if (!isAuthorized(targetPackage)) {
-            return failure(
+        val authorization = acquireAuthorization(targetPackage)
+            ?: return failure(
                 code = AccessibilityErrorCode.SCREENSHOT_NOT_AUTHORIZED,
                 message = "The active automation session has not authorized screenshots",
             )
+        val root = when (val result = validateSnapshot(targetPackage)) {
+            is AccessibilityResult.Failure -> return result
+            is AccessibilityResult.Success -> result.value
         }
+
+        return suspendCancellableCoroutine { continuation ->
+            platform.capture(root.bounds) callback@{ result ->
+                if (!continuation.isActive) {
+                    if (result is PlatformScreenshotResult.Success) {
+                        result.screenshot.close()
+                    }
+                    return@callback
+                }
+                val checked = when (result) {
+                    is PlatformScreenshotResult.Success ->
+                        validateCapturedScreenshot(
+                            targetPackage = targetPackage,
+                            authorization = authorization,
+                            screenshot = result.screenshot,
+                        )
+
+                    is PlatformScreenshotResult.Failure -> result.toAccessibilityFailure()
+                }
+                continuation.resume(checked) { _, resumedResult, _ ->
+                    if (resumedResult is AccessibilityResult.Success) {
+                        resumedResult.value.close()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun validateCapturedScreenshot(
+        targetPackage: String,
+        authorization: ScreenshotAuthorization,
+        screenshot: AccessibilityScreenshot,
+    ): AccessibilityResult<AccessibilityScreenshot> {
+        val failure = when {
+            !isAuthorizationActive(authorization) -> failure(
+                code = AccessibilityErrorCode.SCREENSHOT_NOT_AUTHORIZED,
+                message = "Screenshot authorization expired while Android captured the window",
+            )
+
+            else -> when (val snapshotResult = validateSnapshot(targetPackage)) {
+                is AccessibilityResult.Failure -> snapshotResult
+                is AccessibilityResult.Success -> when {
+                    !isAuthorizationActive(authorization) -> failure(
+                        code = AccessibilityErrorCode.SCREENSHOT_NOT_AUTHORIZED,
+                        message = "Screenshot authorization expired during safety validation",
+                    )
+
+                    screenshot.pngBytes.size > imagePolicy.maxPngBytes -> failure(
+                        code = AccessibilityErrorCode.SCREENSHOT_FAILED,
+                        message = "The local screenshot exceeded the image byte budget",
+                    )
+
+                    else -> null
+                }
+            }
+        }
+        if (failure != null) {
+            screenshot.close()
+            return failure
+        }
+        return AccessibilityResult.Success(screenshot)
+    }
+
+    private fun validateSnapshot(
+        targetPackage: String,
+    ): AccessibilityResult<UiNodeSnapshot> {
         val root = when (val result = snapshot(targetPackage)) {
             is AccessibilityResult.Failure -> return result
             is AccessibilityResult.Success -> result.value
+        }
+        if (root.packageName != targetPackage) {
+            return failure(
+                code = AccessibilityErrorCode.SCREENSHOT_NOT_AUTHORIZED,
+                message = "The active window does not match the screenshot target",
+                retryable = true,
+            )
         }
         if (root.containsSensitiveNode()) {
             return failure(
@@ -134,25 +218,7 @@ internal class AccessibilityScreenshotController(
                 message = "The active window contains sensitive content",
             )
         }
-
-        return suspendCancellableCoroutine { continuation ->
-            platform.capture callback@{ result ->
-                if (!continuation.isActive) {
-                    if (result is PlatformScreenshotResult.Success) {
-                        result.screenshot.close()
-                    }
-                    return@callback
-                }
-                continuation.resume(
-                    when (result) {
-                        is PlatformScreenshotResult.Success ->
-                            AccessibilityResult.Success(result.screenshot)
-
-                        is PlatformScreenshotResult.Failure -> result.toAccessibilityFailure()
-                    },
-                )
-            }
-        }
+        return AccessibilityResult.Success(root)
     }
 
     private fun UiNodeSnapshot.containsSensitiveNode(): Boolean =
@@ -190,4 +256,8 @@ internal class AccessibilityScreenshotController(
         retryable = retryable,
         details = details,
     )
+
+    private companion object {
+        const val LEGACY_AUTHORIZATION_SESSION_ID = 0L
+    }
 }
