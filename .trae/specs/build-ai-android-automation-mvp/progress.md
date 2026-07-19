@@ -61,3 +61,13 @@
   - `.trae/specs/build-ai-android-automation-mvp/tasks.md`
   - `.trae/specs/build-ai-android-automation-mvp/checklist.md`
   - `.trae/specs/build-ai-android-automation-mvp/progress.md`
+
+## Round 8
+
+- **结论**: FAIL
+- **审查范围**: Broad；协议、Go CLI/ADB/Bridge/MCP、Android App/Accessibility/AI 会话/录制回放、Agent Skills、跨平台构建、发布入口及 Round 7 的 Tasks 15-19
+- **验证结果**:
+  - 构建/运行时: 失败；macOS arm64/amd64、Windows amd64、Linux amd64 CLI 构建和 CLI smoke 通过，但无障碍服务未声明截图 capability，且截图开关未接入观察/Provider 生产链路；API 30-33 的触摸中止依赖未启用触摸探索时不会产生的事件。Android 构建因本机 SDK 36/Build Tools 36/Platform-Tools 缺失及许可证未接受而无法在本轮重现，不计为代码失败
+  - 测试/覆盖率: 失败；协议 29 项、Go 174 个测试/子测试事件（92 个顶层测试）、Go race、3 个 Skills、ADB 注入和 MCP 风险门对抗测试通过；截图 capability 与 API 30-33 触摸事件前提探针均失败，当前无设备或 AVD，instrumentation 与真机 smoke 未执行
+  - 清单审计: 50/53 通过，3 项失败
+- **风险与问题**: 2 项 major：API 30+ App 截图运行时闭环不可用；API 30-33 用户触摸不能可靠中止活动 AI 会话。现有单测只模拟平台回调或直接注入触摸事件，未覆盖服务 capability 和系统事件产生前提
