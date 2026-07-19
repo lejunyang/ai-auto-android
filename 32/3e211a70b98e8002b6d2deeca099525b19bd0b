@@ -1,0 +1,249 @@
+docs/device-usb-acceptance.md
+  s_f25e8ac3859bf8::t_4f9c197a6ef9d2 7-9,46,49
+  s_f25e8ac3859bf8::t_0587d9308fec35 1-6,10-45,47-48,50-226
+skills/android-device-automation/references/commands.md
+  s_f25e8ac3859bf8::t_3d5aa5a4abc57b 123 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5c491e1c04f77597c10587","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Single":123}]}]}
+  s_f25e8ac3859bf8::t_0b86b0691e614c 96,98-107,113-114,117,120-122
+.trae/skills/android-device-automation/references/commands.md
+  s_f25e8ac3859bf8::t_3d5aa5a4abc57b 96,98-107,113-114,117,120-122 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5c491e1c04f77597c10587","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Single":96},{"Range":[98,107]},{"Range":[113,114]},{"Single":117},{"Range":[120,122]}]}]}
+  s_f25e8ac3859bf8::t_684c820ea69aa2 123
+docs/README.md
+  s_f25e8ac3859bf8::t_ff1b1abdd9b793 7-8
+skills/android-device-automation/references/safety-and-recovery.md
+  s_f25e8ac3859bf8::t_e0ff90cae4c5fd 89-92
+docs/troubleshooting.md
+  s_f25e8ac3859bf8::t_b979bee6e66f27 59-65,73-74,86-87,296-304,307-311
+  s_f25e8ac3859bf8::t_d53ad1e5f8cb07 70
+README.md
+  s_f25e8ac3859bf8::t_c8a71cc107541a 144
+.trae/specs/build-ai-android-automation-mvp/tasks.md
+  s_f25e8ac3859bf8::t_06356f15b952cd 106,108 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5c49041c04f77597c10578","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":106},{"Single":108}]}]}
+.trae/specs/build-ai-android-automation-mvp/checklist.md
+  s_f25e8ac3859bf8::t_7abd8a59fa1424 50,70 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5c49141c04f77597c10581","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":50},{"Single":70}]}]}
+.trae/skills/android-device-automation/references/safety-and-recovery.md
+  s_f25e8ac3859bf8::t_3d5aa5a4abc57b 89-92 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5c491e1c04f77597c10587","tool_type":"agent","tool_id":"exec_command","line_ranges":[{"Range":[89,92]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "323e211a70b98e8002b6d2deeca099525b19bd0b",
+  "prompts": {},
+  "sessions": {
+    "s_f25e8ac3859bf8": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5a66941c04f77597bfb545",
+        "model": "gpt-5.6-sol__max",
+        "display_model_name": "GPT-5.6-Sol"
+      },
+      "human_author": "lejunyang <lejunyang@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    ".trae/skills/android-device-automation/references/commands.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_3d5aa5a4abc57b",
+        "line_ranges": [
+          {
+            "Single": 96
+          },
+          {
+            "Range": [
+              98,
+              107
+            ]
+          },
+          {
+            "Range": [
+              113,
+              114
+            ]
+          },
+          {
+            "Single": 117
+          },
+          {
+            "Range": [
+              120,
+              122
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5c491e1c04f77597c10587",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Single": 96
+              },
+              {
+                "Range": [
+                  98,
+                  107
+                ]
+              },
+              {
+                "Range": [
+                  113,
+                  114
+                ]
+              },
+              {
+                "Single": 117
+              },
+              {
+                "Range": [
+                  120,
+                  122
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/skills/android-device-automation/references/safety-and-recovery.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_3d5aa5a4abc57b",
+        "line_ranges": [
+          {
+            "Range": [
+              89,
+              92
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5c491e1c04f77597c10587",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Range": [
+                  89,
+                  92
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/specs/build-ai-android-automation-mvp/checklist.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_7abd8a59fa1424",
+        "line_ranges": [
+          {
+            "Single": 50
+          },
+          {
+            "Single": 70
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5c49141c04f77597c10581",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 50
+              },
+              {
+                "Single": 70
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/specs/build-ai-android-automation-mvp/tasks.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_06356f15b952cd",
+        "line_ranges": [
+          {
+            "Single": 106
+          },
+          {
+            "Single": 108
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5c49041c04f77597c10578",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 106
+              },
+              {
+                "Single": 108
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/android-device-automation/references/commands.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_3d5aa5a4abc57b",
+        "line_ranges": [
+          {
+            "Single": 123
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5c491e1c04f77597c10587",
+            "tool_type": "agent",
+            "tool_id": "exec_command",
+            "line_ranges": [
+              {
+                "Single": 123
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_f25e8ac3859bf8": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_06356f15b952cd": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_3d5aa5a4abc57b": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_7abd8a59fa1424": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
