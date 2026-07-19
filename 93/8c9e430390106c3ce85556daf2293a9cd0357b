@@ -1,0 +1,188 @@
+android/device-fixture/src/main/java/dev/aiauto/fixture/MainActivity.kt
+  s_f25e8ac3859bf8::t_622e6c366f537c 1-2,4-7,9-32 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5ce1391c04f77597c16078","tool_type":"agent","tool_id":"write_stdin","line_ranges":[{"Range":[1,2]},{"Range":[4,7]},{"Range":[9,32]}]}]}
+  s_f25e8ac3859bf8::t_1fa9f2c66e3578 3,8 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5ce16e1c04f77597c16081","tool_type":"agent","tool_id":"write_stdin","line_ranges":[{"Single":3},{"Single":8}]}]}
+android/device-fixture/src/main/AndroidManifest.xml
+  s_f25e8ac3859bf8::t_622e6c366f537c 1-16 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5ce1391c04f77597c16078","tool_type":"agent","tool_id":"write_stdin","line_ranges":[{"Range":[1,16]}]}]}
+android/device-fixture/build.gradle.kts
+  s_f25e8ac3859bf8::t_622e6c366f537c 1-34 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5ce1391c04f77597c16078","tool_type":"agent","tool_id":"write_stdin","line_ranges":[{"Range":[1,34]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "938c9e430390106c3ce85556daf2293a9cd0357b",
+  "prompts": {},
+  "sessions": {
+    "s_f25e8ac3859bf8": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5a66941c04f77597bfb545",
+        "model": "gpt-5.6-sol__max",
+        "display_model_name": "GPT-5.6-Sol"
+      },
+      "human_author": "lejunyang <lejunyang@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "android/device-fixture/build.gradle.kts": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_622e6c366f537c",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              34
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5ce1391c04f77597c16078",
+            "tool_type": "agent",
+            "tool_id": "write_stdin",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  34
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "android/device-fixture/src/main/AndroidManifest.xml": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_622e6c366f537c",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              16
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5ce1391c04f77597c16078",
+            "tool_type": "agent",
+            "tool_id": "write_stdin",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  16
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "android/device-fixture/src/main/java/dev/aiauto/fixture/MainActivity.kt": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_622e6c366f537c",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              2
+            ]
+          },
+          {
+            "Range": [
+              4,
+              7
+            ]
+          },
+          {
+            "Range": [
+              9,
+              32
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5ce1391c04f77597c16078",
+            "tool_type": "agent",
+            "tool_id": "write_stdin",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  2
+                ]
+              },
+              {
+                "Range": [
+                  4,
+                  7
+                ]
+              },
+              {
+                "Range": [
+                  9,
+                  32
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "hash": "s_f25e8ac3859bf8::t_1fa9f2c66e3578",
+        "line_ranges": [
+          {
+            "Single": 3
+          },
+          {
+            "Single": 8
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5ce16e1c04f77597c16081",
+            "tool_type": "agent",
+            "tool_id": "write_stdin",
+            "line_ranges": [
+              {
+                "Single": 3
+              },
+              {
+                "Single": 8
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_f25e8ac3859bf8": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_1fa9f2c66e3578": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_622e6c366f537c": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
