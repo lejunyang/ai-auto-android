@@ -93,21 +93,33 @@ Close the session after bridge work:
 aactl bridge close --device SERIAL --json
 ```
 
-## Recording Replay
+## Recording List and Replay
 
-The current CLI can replay, but cannot list, edit, or inspect recordings.
-Require the user to select and review the script in the Android App and provide
-its UUID. An existing bridge session is required:
+The current CLI can list sanitized recording summaries and replay one explicit
+UUID, but it cannot edit recordings or inspect their steps, variables, or
+secrets. An existing bridge session is required:
+
+```bash
+aactl recording list --device SERIAL --json
+```
+
+Require the user to review and select the script in the Android App before
+replay:
 
 ```bash
 aactl recording replay --device SERIAL --script 123e4567-e89b-42d3-a456-426614174000 --json
 ```
 
-With MCP, call `android_recording_replay`:
+With MCP, sanitized summaries are available through the read-only
+`android_observe` tool:
 
 ```json
-{"device":"SERIAL","scriptId":"123e4567-e89b-42d3-a456-426614174000"}
+{"device":"SERIAL","kind":"recordings"}
 ```
+
+The compatibility `android_recording_replay` MCP tool always returns
+`CONFIRMATION_REQUIRED` in this MVP and does not execute a replay. Use the CLI
+only after direct human review and confirmation.
 
 Inspect `succeeded`, `requiresIntervention`, and every step's `status`,
 `attempts`, `route`, `matchScore`, `errorCode`, and `message`.

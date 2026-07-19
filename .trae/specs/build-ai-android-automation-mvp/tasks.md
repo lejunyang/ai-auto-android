@@ -103,9 +103,9 @@
 
 - [x] Task 17: 补齐录制与回放 UI 测试：增加真实 Compose/instrumentation UI 测试及依赖，覆盖录制、步骤预览、secret 输入、回放和失败反馈交互。
 
-- [ ] Task 18: 修正过期录制故障排查：更新 `docs/troubleshooting.md` 中已失效的录制列表和事件订阅说明，使其与当前 CLI、AccessibilityService 和 Task 13 实现一致。
+- [x] Task 18: 修正过期录制故障排查：更新 `docs/troubleshooting.md` 中已失效的录制列表和事件订阅说明，使其与当前 CLI、AccessibilityService 和 Task 13 实现一致。
 
-- [ ] Task 19: 完善真机 USB 验收指南：明确“仅充电/传输文件/传输图片”的选择策略，并串联开发者选项、USB 调试、RSA、App 安装、目标包、无障碍、Bridge 与录制回放 smoke 步骤。
+- [x] Task 19: 完善真机 USB 验收指南：明确“仅充电/传输文件/传输图片”的选择策略，并串联开发者选项、USB 调试、RSA、App 安装、目标包、无障碍、Bridge 与录制回放 smoke 步骤。
 
 # Task Dependencies
 

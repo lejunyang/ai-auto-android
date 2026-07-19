@@ -47,7 +47,7 @@
 - [x] 密码和敏感文本只保存 secret 引用，不进入脚本、日志或截图
 - [x] 回放优先节点动作，使用条件等待和有限重试，并报告回退级别
 - [x] 选择器冲突、目标 App 不匹配和等待超时会明确失败或请求接管
-- [ ] 故障排查中的录制列表与事件订阅说明和当前 CLI、AccessibilityService 行为一致
+- [x] 故障排查中的录制列表与事件订阅说明和当前 CLI、AccessibilityService 行为一致
 
 ## App Bridge、MCP 与 Skills
 
@@ -67,7 +67,7 @@
 - [x] CI 在 macOS、Windows 和 Linux 验证 Go 构建与测试
 - [x] CI 验证 Android lint、单测和 debug APK 构建
 - [x] 录制与回放具有真实 Compose/instrumentation UI 交互测试
-- [ ] 真机测试指南明确 USB 模式选择，并覆盖开发者选项、USB 调试、RSA、无障碍、Bridge 和录制回放 smoke
+- [x] 真机测试指南明确 USB 模式选择，并覆盖开发者选项、USB 调试、RSA、无障碍、Bridge 和录制回放 smoke
 - [x] 可用环境下完成 Emulator 或真机的截图、动作、桥接和录制回放冒烟（当前环境无设备、emulator、system image 或 AVD，按条件验收；未执行且不声明端到端通过）
 - [x] 发布产出 macOS arm64/amd64、Windows amd64 CLI、debug APK 和 SHA-256
 - [x] 文档明确 Google Play 自主 Accessibility AI 的政策禁区及合规变体

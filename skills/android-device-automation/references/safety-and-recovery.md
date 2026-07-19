@@ -86,8 +86,10 @@ could change external data, do not retry until the result is reconciled.
 
 ### `SCRIPT_NOT_FOUND`
 
-Ask the user to select an existing recording in the Android App. There is no
-current CLI recording-list command.
+List sanitized summaries with
+`aactl recording list --device SERIAL --json`, then ask the user to select and
+review an existing recording in the Android App. The list does not expose
+steps, variables, or secrets.
 
 ### Replay Failure
 

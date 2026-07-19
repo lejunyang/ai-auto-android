@@ -141,6 +141,7 @@ Skills smoke、fake ADB 定向测试和工具链元数据检查；`make doctor` 
 - [架构与信任边界](docs/architecture.md)
 - [协议 v1](docs/protocol.md)
 - [录制与回放](docs/recording.md)
+- [真机 USB 验收](docs/device-usb-acceptance.md)
 - [安全与分发](docs/security-distribution.md)
 - [故障排查](docs/troubleshooting.md)
 - [备选方案](docs/alternatives.md)
