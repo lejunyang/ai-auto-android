@@ -1,0 +1,113 @@
+android/gradle/libs.versions.toml
+  s_f25e8ac3859bf8::t_dc9a11f351695b 17,35-37
+android/app/src/main/java/dev/aiauto/android/ui/recording/RecordingDetailScreen.kt
+  s_f25e8ac3859bf8::t_9ed6bbcba1ea61 18,82-84,95-97,128-132,154
+android/app/src/androidTest/java/dev/aiauto/android/ui/recording/RecordingScreensInstrumentedTest.kt
+  s_f25e8ac3859bf8::t_a3860f0d6df05c 1-5,7-40,42-94,96-192
+  s_f25e8ac3859bf8::t_a7ee00a9838efe 6,41,95
+android/app/src/main/java/dev/aiauto/android/ui/recording/RecordingTestTags.kt
+  s_f25e8ac3859bf8::t_59f013a986044d 1-15
+android/app/src/main/java/dev/aiauto/android/ui/recording/RecordingSessionScreen.kt
+  s_f25e8ac3859bf8::t_489d51b6b1b69e 18,85-87,97-99,106-108,119-121,128-130,197-201
+.trae/specs/build-ai-android-automation-mvp/checklist.md
+  s_f25e8ac3859bf8::t_01e10ccc90209d 69 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5c48da1c04f77597c1055d","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":69}]}]}
+android/app/build.gradle.kts
+  s_f25e8ac3859bf8::t_10c9e009c57b62 64,69-72
+.trae/specs/build-ai-android-automation-mvp/tasks.md
+  s_f25e8ac3859bf8::t_c3bb98997b8d19 104 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5c48d31c04f77597c10553","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":104}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c86057dab53e55da506107779a18e835abc77419",
+  "prompts": {},
+  "sessions": {
+    "s_f25e8ac3859bf8": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5a66941c04f77597bfb545",
+        "model": "gpt-5.6-sol__max",
+        "display_model_name": "GPT-5.6-Sol"
+      },
+      "human_author": "lejunyang <lejunyang@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    ".trae/specs/build-ai-android-automation-mvp/checklist.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_01e10ccc90209d",
+        "line_ranges": [
+          {
+            "Single": 69
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5c48da1c04f77597c1055d",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 69
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    ".trae/specs/build-ai-android-automation-mvp/tasks.md": [
+      {
+        "hash": "s_f25e8ac3859bf8::t_c3bb98997b8d19",
+        "line_ranges": [
+          {
+            "Single": 104
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5c48d31c04f77597c10553",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 104
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_f25e8ac3859bf8": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_01e10ccc90209d": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_6b1e1d5946b5d5": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_c3bb98997b8d19": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
