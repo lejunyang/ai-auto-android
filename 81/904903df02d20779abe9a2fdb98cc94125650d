@@ -1,0 +1,40 @@
+android/app/src/main/java/dev/aiauto/android/accessibility/UserTouchMonitor.kt
+  s_f25e8ac3859bf8::t_4a9e754f3959ca 18-19,26-30,44-46,68-85
+  s_f25e8ac3859bf8::t_ca67c5a5df4dc3 47
+android/app/src/test/java/dev/aiauto/android/accessibility/AiAutomationAccessibilityServiceTest.kt
+  s_f25e8ac3859bf8::t_9cb1a5f1f1910d 1-44
+android/app/src/test/java/dev/aiauto/android/automation/session/AndroidSessionAdaptersTest.kt
+  s_f25e8ac3859bf8::t_5027bf56a1943e 101,140-141,167,180,194-195,232-246
+  s_f25e8ac3859bf8::t_5964d038f00910 98-100
+  s_f25e8ac3859bf8::t_d9ad05b3de59c1 102-104,137-139
+  s_f25e8ac3859bf8::t_4dfa6e52a6e175 142-144,164-166
+  s_f25e8ac3859bf8::t_8f4e7f16a50bf5 168-170,177-179
+  s_f25e8ac3859bf8::t_bc8d823fed572c 181-183,191-193
+  s_f25e8ac3859bf8::t_bfbdaba6e14634 196-198,229-231
+android/app/src/test/java/dev/aiauto/android/accessibility/UserTouchMonitorTest.kt
+  s_f25e8ac3859bf8::t_dec3717804e799 216
+  s_f25e8ac3859bf8::t_7ef2d907e1f3f0 39,45,57-61,106,122,131-215
+  s_f25e8ac3859bf8::t_90cd816e156172 42-44,46-51,56
+  s_f25e8ac3859bf8::t_06f042af196410 41
+  s_f25e8ac3859bf8::t_76bed71790903c 52-55
+android/app/src/main/java/dev/aiauto/android/automation/session/AndroidSessionAdapters.kt
+  s_f25e8ac3859bf8::t_5009a8f372727c 79,81-83,85-94,108,132,144-161,167-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "81904903df02d20779abe9a2fdb98cc94125650d",
+  "prompts": {},
+  "sessions": {
+    "s_f25e8ac3859bf8": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5a66941c04f77597bfb545",
+        "model": "gpt-5.6-sol__max"
+      },
+      "human_author": "lejunyang <lejunyang@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
