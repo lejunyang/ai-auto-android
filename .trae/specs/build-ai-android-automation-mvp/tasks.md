@@ -126,6 +126,11 @@
   - [x] 移除会在目标 OPPO API 34 设备上破坏正常触控的 raw touchscreen motion observer
   - [x] API 33 模拟器确认自动化点击不被误判，用户语义点击停止真实会话、写入停止审计、保持 executor 为 0 并清理 Runtime
 
+- [ ] Task 24: 建立独立无副作用 Android device fixture，并在 API 33 emulator 完成直接设备、App Bridge 与录制回放端到端冒烟。
+  - [ ] SubTask 24.1: 实现仅包含本地 toggle、稳定 `resourceId`、无网络和无敏感数据的独立 Android device fixture，并验证可重复复位
+  - [ ] SubTask 24.2: 在 API 33 emulator 验证直接 screenshot/action，以及 App Bridge hello、info、snapshot、semantic action 和 close 闭环
+  - [ ] SubTask 24.3: 在 API 33 emulator 录制 fixture toggle，验证 recording list、replay、步骤结果和最终 UI 状态
+
 # Task Dependencies
 
 - Task 2 depends on Task 1.
@@ -141,6 +146,7 @@
 - Task 14 depends on Task 13.
 - Task 22 depends on Task 20.
 - Task 23 depends on Task 21.
+- Task 24 depends on Task 23.
 - Task 22 and Task 23 can run in parallel.
 
 # Commit Policy
