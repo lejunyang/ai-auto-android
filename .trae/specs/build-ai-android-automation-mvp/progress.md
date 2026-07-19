@@ -116,3 +116,10 @@
 
 - API 34 `connectedDebugAndroidTest` 最终通过：3 个录制 UI 测试通过，2 个需显式
   `manualAccessibility=true` 的手动无障碍测试按设计跳过，0 failure/error。
+
+## Round 11
+
+- Task(s) completed, tests passed, requirements fulfilled：完成 Task 21 和 Task 23；API 33 模拟器真实 Engine 自检及 `aactl` 独立复核均返回 `SESSION_STOP_PASS phase=Stopped executorCalls=0`；协议 29 项、3 组 Skills、Go 全包与 race、Android 185 个单测、lint 及 debug/androidTest/release 构建全部通过。
+- Any issues discovered or fixed：补齐设备端完整会话停止证据；修复人工验收 10 秒超时和 Planner 同步竞态，定向 harness 连续 3 次直接通过。
+- Key decisions made and reasoning：继续仅使用普通 View accessibility events，不启用会改变触控语义的触摸探索或 raw motion；debug-only 自检不进入 release，临时 API 33 AVD 不作为发布制品。
+- Files changed：Round 11 debug-only 自检与测试提交 `d64cca1`、`dbc7384`、`835f931`；本轮更新 `tasks.md`、`checklist.md`、`progress.md`、`docs/validation.md`、`docs/review-round-11.md`、`docs/review-round-11.html` 和 `docs/README.md`。

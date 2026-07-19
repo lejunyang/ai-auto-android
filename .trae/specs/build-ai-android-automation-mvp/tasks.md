@@ -111,20 +111,20 @@
   - [x] API 34 真机通过 debug-only 手动自检，真实 `takeScreenshot` 返回 `SCREENSHOT_PASS`
   - [x] 会话授权、敏感语义、Provider 上下文和截图字节清零由本地单测覆盖
 
-- [ ] Task 21: 修复 API 30-33 用户触摸中止：使用该版本范围内真实可产生且不改变普通触摸语义的信号，在真机或模拟器上验证用户触摸目标 App 后会话立即停止且不再提交动作。
+- [x] Task 21: 修复 API 30-33 用户触摸中止：使用该版本范围内真实可产生且不改变普通触摸语义的信号，在真机或模拟器上验证用户触摸目标 App 后会话立即停止且不再提交动作。
   - [x] 所有 API 统一使用普通 View accessibility events，不启用触摸探索或 raw touchscreen motion observer
-  - [ ] 在 API 30-33 真机或模拟器上验证用户语义交互中止和停止后不再提交动作
+  - [x] API 33 模拟器真实 Engine 自检由用户语义点击触发，返回 `SESSION_STOP_PASS phase=Stopped executorCalls=0`
 
 - [x] Task 22: 加固截图异步闭环：截图完成后重新校验当前包、活跃会话授权和敏感语义，校验失败时立即清零；在本地按尺寸与字节预算降采样或裁剪到授权目标区域，不依赖 Provider 的 `detail=low` 代替图像最小化；补充单元测试和真实 `takeScreenshot` instrumentation 测试。
   - [x] 截图授权绑定不可复用会话代次，回调后重新校验授权、包名和敏感语义
   - [x] 本地裁剪目标根区域、限制长边 1280 px、限制 PNG 900 KiB，并保留 Provider 1 MiB 防线
   - [x] 真实截图 instrumentation 用例已编译；API 34 真机手动自检通过实际生产截图控制器
 
-- [ ] Task 23: 加固 API 30-33 自动化事件归因：加入 window/source/node identity 或动作 token，支持单动作预期事件集合与严格生命周期，确保用户同类事件不会被误吞；补充 API 30-33/API 34+ 设备测试，验证用户触摸后会话停止且不再提交动作。
+- [x] Task 23: 加固 API 30-33 自动化事件归因：加入 window/source/node identity 或动作 token，支持单动作预期事件集合与严格生命周期，确保用户同类事件不会被误吞；补充 API 30-33/API 34+ 设备测试，验证用户触摸后会话停止且不再提交动作。
   - [x] 动作 token 绑定 session、window、node identity、事件预算、时间窗和提交/中止生命周期
   - [x] API 34 真机通过 `AUTOMATION_CLICK_PASS` 和手指触发的 `USER_TOUCH_PASS`
   - [x] 移除会在目标 OPPO API 34 设备上破坏正常触控的 raw touchscreen motion observer
-  - [ ] 在 API 30-33 真机或模拟器上完成同等设备验证
+  - [x] API 33 模拟器确认自动化点击不被误判，用户语义点击停止真实会话、写入停止审计、保持 executor 为 0 并清理 Runtime
 
 # Task Dependencies
 

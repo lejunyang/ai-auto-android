@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Round 11 设备验收评审</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f6f8fa; color: #1f2328; }
+    .main { max-width: 960px; margin: 32px auto; padding: 28px; background: #fff; border-radius: 12px; }
+    h1, h2 { color: #0d47a1; }
+    .status { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #c8e6c9; color: #1a5e20; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 28px; }
+    th, td { padding: 10px 12px; border: 1px solid #d0d7de; text-align: left; vertical-align: top; }
+    th { background: #ddf4ff; color: #0d47a1; }
+    code { background: #eff1f3; padding: 2px 5px; border-radius: 4px; }
+    li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+<div class="main">
+  <h1>Round 11 设备验收评审</h1>
+  <p>评审日期：2026-07-19</p>
+  <p><span class="status">PASS</span></p>
+
+  <h2>结论</h2>
+  <ul>
+    <li>API 33 设备自检证明用户语义交互会停止真实 AI 会话，且停止后不再提交动作。</li>
+    <li>结合 Round 10 的 API 34 真机证据，Task 21、Task 23 和跨 API 触摸清单项已关闭。</li>
+  </ul>
+
+  <h2>实现与修复</h2>
+  <table>
+    <tr><th>提交</th><th>内容</th></tr>
+    <tr><td><code>d64cca1</code></td><td>增加 debug-only 真实 Engine 自检，覆盖自动化归因、用户停止、审计、executor 和 Runtime。</td></tr>
+    <tr><td><code>dbc7384</code></td><td>分离人工操作窗口和断言等待，避免验收会话提前超时。</td></tr>
+    <tr><td><code>835f931</code></td><td>使用 Planner 进入同步点替代固定延时，消除 host 测试竞态。</td></tr>
+  </table>
+  <p>自检宿主只存在于 debug source set，不进入 release APK。生产安全策略和权限模型未被放宽。</p>
+
+  <h2>安全边界</h2>
+  <ul>
+    <li>无障碍服务由用户手动启用，测试不写入 <code>Settings.Secure</code>。</li>
+    <li>不启用触摸探索、raw touchscreen motion observer 或 <code>FLAG_SEND_MOTION_EVENTS</code>。</li>
+    <li>自动化事件绑定 session、window、node identity、事件集合、预算和生命周期。</li>
+    <li>无法建立唯一语义身份时 fail closed，不猜测坐标。</li>
+    <li>通过条件同时要求 Stopped、停止审计、executor 为 0 和 Runtime 清理。</li>
+  </ul>
+
+  <h2>设备证据</h2>
+  <table>
+    <tr><th>环境</th><th>结果</th></tr>
+    <tr><td>OPPO Android 14 / API 34 真机</td><td><code>AUTOMATION_CLICK_PASS</code>、<code>USER_TOUCH_PASS</code></td></tr>
+    <tr><td>Android 13 / API 33 模拟器</td><td><code>SESSION_STOP_PASS phase=Stopped executorCalls=0</code></td></tr>
+    <tr><td>API 33 独立复核</td><td><code>aactl</code> hierarchy 精确复核 PASS 状态，未保存原始 hierarchy</td></tr>
+  </table>
+  <p>API 33 自检使用真实 <code>AutomationSessionEngine</code>。自动化点击未被误判；用户语义点击停止会话、写入审计、保持 executor 为 0，并清理活动 Runtime。</p>
+
+  <h2>回归结果</h2>
+  <table>
+    <tr><th>范围</th><th>结果</th></tr>
+    <tr><td>协议</td><td>10 个 Schema、29 项检查通过</td></tr>
+    <tr><td>Agent Skills</td><td>3 组发布 Skills 及镜像通过</td></tr>
+    <tr><td>Go</td><td>全包测试、race、make test/verify/build 通过</td></tr>
+    <tr><td>Android 单测</td><td>185 个通过，0 failure/error/skip</td></tr>
+    <tr><td>Android lint</td><td>0 error，26 warning</td></tr>
+    <tr><td>Android APK</td><td>debug、androidTest、release 构建通过</td></tr>
+    <tr><td>Harness 稳定性</td><td>定向测试连续 3 次直接通过</td></tr>
+    <tr><td>Diff</td><td><code>git diff --check</code> 通过</td></tr>
+  </table>
+  <p>Round 11 未重跑 connectedDebugAndroidTest。Round 10 已记录 3 个录制 UI 测试通过，2 个手动无障碍用例按设计跳过。</p>
+
+  <h2>残余限制</h2>
+  <ul>
+    <li>用户触摸中止仅覆盖可产生普通 View accessibility events 的语义交互。</li>
+    <li>空白区域、自绘 Canvas 或其他不产生普通 View accessibility events 的触摸仍不可可靠观察。</li>
+    <li>API 33 AVD 是临时本地验收环境，不属于源码、构建产物或发布制品。</li>
+  </ul>
+</div>
+</body>
+</html>

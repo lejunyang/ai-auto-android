@@ -189,3 +189,49 @@ ANDROID_HOME="$ANDROID_HOME" make android-test android-lint android-build
   用例通过，2 个手动用例按设计跳过；
 - 空白区域且不产生 View accessibility event 的触摸无法在不改变普通触控语义的
   前提下可靠观察。当前安全控制覆盖点击、长按、滚动和文本等可观察语义交互。
+
+## Round 11 API 33 设备验收
+
+本节追加 Round 11 的设备证据，不修改上节记录的 Round 10 当时状态。验证环境为
+Android 13 / API 33 模拟器。用户手动启用 debug-only
+`Accessibility device test`，测试没有自动写入 `Settings.Secure` 或绕过系统授权。
+
+### 完整会话停止证据
+
+- 提交 `d64cca1` 增加 debug-only 真实 `AutomationSessionEngine` 自检，使设备端
+  同时验证自动化事件归因、用户交互停止、停止审计、executor 计数和 Runtime 清理；
+- 提交 `dbc7384` 将人工验收会话时限与断言时限分离，避免用户操作期间会话先超时；
+- 提交 `835f931` 使用明确的 Planner 进入同步点替代固定延时，消除 host 测试竞态；
+- 在最终 HEAD `835f931` 上，自动化点击没有被误判为用户交互；用户随后点击不同
+  语义节点，真实会话进入 `Stopped`，生成用户触摸停止审计，停止后没有提交动作，
+  且活动 Runtime 注册被清理；
+- 自检页精确显示
+  `SESSION_STOP_PASS phase=Stopped executorCalls=0`，随后由 `aactl` hierarchy
+  独立只读复核；原始 hierarchy 未保存或提交。
+
+结合 Round 10 的 API 34 OPPO 真机 `AUTOMATION_CLICK_PASS` /
+`USER_TOUCH_PASS`，Task 21、Task 23 和跨 API 用户触摸验收项现已关闭。
+
+### Round 11 回归
+
+| 范围 | 结果 |
+| --- | --- |
+| 协议 | 10 个 Schema、29 项检查通过 |
+| Agent Skills | 3 组发布 Skills 及镜像通过 |
+| Go | 全包测试、race、`make test`、`make verify`、`make build` 通过 |
+| Android 单测 | 185 个通过，0 failure/error/skip |
+| Android lint | 0 error，26 warning |
+| Android 构建 | `assembleDebug`、`assembleDebugAndroidTest`、`assembleRelease` 通过 |
+| Harness 稳定性 | 定向测试连续 3 次直接通过 |
+| Diff | `git diff --check` 通过 |
+
+Round 11 未重跑 `connectedDebugAndroidTest`，避免覆盖已取得的手动设备状态。
+Round 10 已记录 3 个录制 UI 测试通过、2 个手动无障碍测试按设计跳过。
+
+### 保留限制
+
+- 用户触摸中止只覆盖可产生普通 View accessibility events 的语义交互，例如点击、
+  长按、滚动和文本变化；
+- 空白区域或自绘界面中不产生此类事件的触摸仍不可在不改变普通触控语义的前提下
+  可靠观察；
+- Round 11 创建的临时 API 33 AVD 仅用于本地验收，不属于源码或发布制品。
