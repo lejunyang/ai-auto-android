@@ -46,6 +46,7 @@ data class SessionPlanRequest(
     val targetPackage: String,
     val observation: SessionObservation,
     val previousActionSummary: String?,
+    val screenshotsAllowed: Boolean = false,
 )
 
 data class SessionExecutionResult(

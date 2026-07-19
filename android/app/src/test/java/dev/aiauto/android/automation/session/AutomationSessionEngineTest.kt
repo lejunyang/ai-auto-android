@@ -19,6 +19,29 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class AutomationSessionEngineTest {
     @Test
+    fun `start forwards screenshot authorization only to planning BitsUT`() = runTest {
+        var planRequest: SessionPlanRequest? = null
+        val engine = engine(
+            observer = FakeObserver(),
+            planner = SessionPlanner {
+                planRequest = it
+                finishAction("done")
+            },
+            executor = FakeExecutor(),
+        )
+
+        engine.start(
+            SessionRequest(
+                task = "Inspect the inbox",
+                targetPackage = TARGET_PACKAGE,
+                screenshotsAllowed = true,
+            ),
+        )
+
+        assertTrue(requireNotNull(planRequest).screenshotsAllowed)
+    }
+
+    @Test
     fun `start completes after one action and post execution observation BitsUT`() = runTest {
         val observer = FakeObserver()
         val planner = QueuePlanner(

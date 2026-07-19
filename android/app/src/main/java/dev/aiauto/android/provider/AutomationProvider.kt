@@ -4,6 +4,7 @@ data class AutomationPrompt(
     val task: String,
     val uiSummary: String,
     val previousActionSummary: String? = null,
+    val screenshotPng: ByteArray? = null,
 )
 
 data class ProviderResult(

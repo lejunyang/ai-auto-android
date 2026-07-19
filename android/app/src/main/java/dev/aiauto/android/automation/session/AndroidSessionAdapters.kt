@@ -5,6 +5,7 @@ import android.content.Intent
 
 import dev.aiauto.android.accessibility.AccessibilityRuntime
 import dev.aiauto.android.accessibility.model.AccessibilityResult
+import dev.aiauto.android.accessibility.model.AccessibilityScreenshot
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.bridge.AccessibilityCommandJsonParser
 import dev.aiauto.android.bridge.BridgeException
@@ -19,18 +20,34 @@ import kotlinx.serialization.json.JsonPrimitive
 
 class ProviderSessionPlanner(
     private val provider: AutomationProvider,
+    private val screenshotCapture: suspend (String) -> AccessibilityResult<AccessibilityScreenshot> =
+        AccessibilityRuntime::captureScreenshot,
 ) : SessionPlanner {
-    override suspend fun plan(request: SessionPlanRequest): ProviderAction =
-        provider.planNextAction(
-            AutomationPrompt(
-                task = request.task,
-                uiSummary = buildString {
-                    appendLine("Authorized target package: ${request.targetPackage}")
-                    append(request.observation.uiSummary)
-                },
-                previousActionSummary = request.previousActionSummary,
-            ),
-        ).action.bindToTargetPackage(request.targetPackage)
+    override suspend fun plan(request: SessionPlanRequest): ProviderAction {
+        val screenshot = if (request.screenshotsAllowed) {
+            when (val result = screenshotCapture(request.targetPackage)) {
+                is AccessibilityResult.Failure -> throw SessionFailureException(result.message)
+                is AccessibilityResult.Success -> result.value
+            }
+        } else {
+            null
+        }
+        return try {
+            provider.planNextAction(
+                AutomationPrompt(
+                    task = request.task,
+                    uiSummary = buildString {
+                        appendLine("Authorized target package: ${request.targetPackage}")
+                        append(request.observation.uiSummary)
+                    },
+                    previousActionSummary = request.previousActionSummary,
+                    screenshotPng = screenshot?.pngBytes,
+                ),
+            ).action.bindToTargetPackage(request.targetPackage)
+        } finally {
+            screenshot?.close()
+        }
+    }
 
     private fun ProviderAction.bindToTargetPackage(targetPackage: String): ProviderAction {
         val target = params["target"] as? JsonObject ?: return this

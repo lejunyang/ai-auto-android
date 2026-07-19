@@ -58,6 +58,58 @@ class OpenAICompatibleProviderTest {
     }
 
     @Test
+    fun `sends an authorized screenshot as a bounded low detail png BitsUT`() = runTest {
+        val connection = FakeHttpURLConnection(
+            responseCodeValue = 200,
+            responseBody = completionResponse(
+                """{"type":"task.finish","params":{"summary":"done"}}""",
+            ),
+        )
+
+        provider(connection).planNextAction(
+            AutomationPrompt(
+                task = "Inspect",
+                uiSummary = "One non-sensitive button",
+                screenshotPng = byteArrayOf(1, 2, 3),
+            ),
+        )
+
+        val requestBody = connection.requestBody.toString(StandardCharsets.UTF_8)
+        assertTrue(requestBody.contains("\"type\":\"image_url\""))
+        assertTrue(requestBody.contains("\"detail\":\"low\""))
+        assertTrue(requestBody.contains("data:image/png;base64,AQID"))
+    }
+
+    @Test
+    fun `rejects screenshots larger than one mebibyte before opening connection BitsUT`() =
+        runTest {
+            var connectionOpened = false
+            val provider = OpenAICompatibleProvider(
+                config = config,
+                apiKey = apiKey,
+                actionParser = ProviderActionParser(),
+                connectionFactory = {
+                    connectionOpened = true
+                    error("connection must not be opened")
+                },
+            )
+
+            try {
+                provider.planNextAction(
+                    AutomationPrompt(
+                        task = "Inspect",
+                        uiSummary = "Safe UI",
+                        screenshotPng = ByteArray(1_048_577),
+                    ),
+                )
+                fail("Expected oversized screenshot rejection")
+            } catch (error: java.io.IOException) {
+                assertTrue(error.message!!.contains("exceeds 1048576 bytes"))
+            }
+            assertFalse(connectionOpened)
+        }
+
+    @Test
     fun `connection test requires a strictly valid finish action`() = runTest {
         val validConnection = FakeHttpURLConnection(
             responseCodeValue = 200,

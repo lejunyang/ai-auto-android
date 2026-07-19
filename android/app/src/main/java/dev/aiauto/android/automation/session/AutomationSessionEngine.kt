@@ -188,6 +188,7 @@ class AutomationSessionEngine(
                         targetPackage = request.targetPackage,
                         observation = observation,
                         previousActionSummary = previousActionSummary,
+                        screenshotsAllowed = request.screenshotsAllowed,
                     ),
                 )
             }

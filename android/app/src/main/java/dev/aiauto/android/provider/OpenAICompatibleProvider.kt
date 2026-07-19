@@ -6,6 +6,7 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URI
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +15,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 
 class ProviderHttpException(
     val statusCode: Int,
@@ -36,8 +42,8 @@ class OpenAICompatibleProvider(
         val request = ChatCompletionRequest(
             model = config.model,
             messages = listOf(
-                ChatMessage(role = "system", content = SYSTEM_PROMPT),
-                ChatMessage(role = "user", content = prompt.toUserMessage()),
+                ChatRequestMessage(role = "system", content = JsonPrimitive(SYSTEM_PROMPT)),
+                ChatRequestMessage(role = "user", content = prompt.toUserContent()),
             ),
             temperature = 0.0,
             responseFormat = ResponseFormat(type = "json_object"),
@@ -56,9 +62,11 @@ class OpenAICompatibleProvider(
                 ChatCompletionRequest(
                     model = config.model,
                     messages = listOf(
-                        ChatMessage(
+                        ChatRequestMessage(
                             role = "user",
-                            content = """Return {"type":"task.finish","params":{"summary":"ok"}}""",
+                            content = JsonPrimitive(
+                                """Return {"type":"task.finish","params":{"summary":"ok"}}""",
+                            ),
                         ),
                     ),
                     temperature = 0.0,
@@ -97,6 +105,10 @@ class OpenAICompatibleProvider(
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 val requestBody = json.encodeToString(request)
                     .toByteArray(StandardCharsets.UTF_8)
+                if (requestBody.size > MAX_REQUEST_BYTES) {
+                    requestBody.fill(0)
+                    throw IOException("Provider request exceeds $MAX_REQUEST_BYTES bytes")
+                }
                 try {
                     connection.outputStream.use { output -> output.write(requestBody) }
                 } finally {
@@ -132,18 +144,40 @@ class OpenAICompatibleProvider(
         choices.firstOrNull()?.message?.content
             ?: throw IOException("Provider returned no choices")
 
-    private fun AutomationPrompt.toUserMessage(): String = buildString {
-        appendLine("Task:")
-        appendLine(task)
-        appendLine("Current UI summary:")
-        appendLine(uiSummary)
-        previousActionSummary?.let {
-            appendLine("Previous action:")
-            appendLine(it)
+    private fun AutomationPrompt.toUserContent(): JsonElement {
+        val text = buildString {
+            appendLine("Task:")
+            appendLine(task)
+            appendLine("Current UI summary:")
+            appendLine(uiSummary)
+            previousActionSummary?.let {
+                appendLine("Previous action:")
+                appendLine(it)
+            }
         }
+        val screenshot = screenshotPng ?: return JsonPrimitive(text)
+        if (screenshot.size > MAX_SCREENSHOT_BYTES) {
+            throw IOException("Provider screenshot exceeds $MAX_SCREENSHOT_BYTES bytes")
+        }
+        val dataUrl = "data:image/png;base64,${Base64.getEncoder().encodeToString(screenshot)}"
+        return JsonArray(
+            listOf(
+                requestContent("text", "text", JsonPrimitive(text)),
+                requestContent(
+                    "image_url",
+                    "image_url",
+                    buildJsonObject {
+                        put("url", JsonPrimitive(dataUrl))
+                        put("detail", JsonPrimitive("low"))
+                    },
+                ),
+            ),
+        )
     }
 
     private companion object {
+        const val MAX_SCREENSHOT_BYTES = 1_048_576
+        const val MAX_REQUEST_BYTES = 2_097_152
         const val MAX_RESPONSE_BYTES = 1_048_576
 
         val SYSTEM_PROMPT = """
@@ -176,16 +210,16 @@ private fun InputStream.readUtf8(maxBytes: Int): String {
 @Serializable
 private data class ChatCompletionRequest(
     val model: String,
-    val messages: List<ChatMessage>,
+    val messages: List<ChatRequestMessage>,
     val temperature: Double,
     @SerialName("max_tokens") val maxTokens: Int? = null,
     @SerialName("response_format") val responseFormat: ResponseFormat,
 )
 
 @Serializable
-private data class ChatMessage(
+private data class ChatRequestMessage(
     val role: String,
-    val content: String,
+    val content: JsonElement,
 )
 
 @Serializable
@@ -200,7 +234,13 @@ private data class ChatCompletionResponse(
 
 @Serializable
 private data class ChatChoice(
-    val message: ChatMessage,
+    val message: ChatResponseMessage,
+)
+
+@Serializable
+private data class ChatResponseMessage(
+    val role: String,
+    val content: String,
 )
 
 @Serializable
@@ -212,3 +252,12 @@ private data class ProviderErrorEnvelope(
 private data class ProviderError(
     val message: String,
 )
+
+private fun requestContent(
+    type: String,
+    contentName: String,
+    content: JsonElement,
+): JsonObject = buildJsonObject {
+    put("type", JsonPrimitive(type))
+    put(contentName, content)
+}
