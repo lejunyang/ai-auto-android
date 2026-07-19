@@ -66,7 +66,7 @@
 - [x] 协议、MCP 和 App Bridge 具有契约测试
 - [x] CI 在 macOS、Windows 和 Linux 验证 Go 构建与测试
 - [x] CI 验证 Android lint、单测和 debug APK 构建
-- [ ] 录制与回放具有真实 Compose/instrumentation UI 交互测试
+- [x] 录制与回放具有真实 Compose/instrumentation UI 交互测试
 - [ ] 真机测试指南明确 USB 模式选择，并覆盖开发者选项、USB 调试、RSA、无障碍、Bridge 和录制回放 smoke
 - [x] 可用环境下完成 Emulator 或真机的截图、动作、桥接和录制回放冒烟（当前环境无设备、emulator、system image 或 AVD，按条件验收；未执行且不声明端到端通过）
 - [x] 发布产出 macOS arm64/amd64、Windows amd64 CLI、debug APK 和 SHA-256

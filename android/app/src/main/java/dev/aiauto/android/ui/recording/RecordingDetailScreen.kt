@@ -15,6 +15,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -78,7 +79,9 @@ fun RecordingDetailScreen(
                         visualTransformation = PasswordVisualTransformation(),
                         enabled = !busy,
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(RecordingTestTags.secretInput(alias)),
                     )
                 }
             }
@@ -89,7 +92,9 @@ fun RecordingDetailScreen(
                         requiredRefs = requiredSecretRefs,
                         secretValues = secretValues,
                     ),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag(RecordingTestTags.REPLAY),
                 ) {
                     Text(stringResource(R.string.recording_replay))
                 }
@@ -120,7 +125,11 @@ fun RecordingDetailScreen(
 
 @Composable
 private fun ReplayReportCard(report: ReplayReport) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(RecordingTestTags.REPLAY_RESULT),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -142,6 +151,7 @@ private fun ReplayReportCard(report: ReplayReport) {
                 Text(
                     text = stringResource(R.string.recording_replay_intervention),
                     color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.testTag(RecordingTestTags.REPLAY_INTERVENTION),
                 )
             }
             report.steps.forEachIndexed { index, step ->

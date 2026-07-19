@@ -101,7 +101,7 @@
 
 - [x] Task 16: 补齐用户触摸中止安全控制：将目标 App 中的用户触摸交互接入活动 AI 会话的同步停止入口，并验证停止后不再提交动作。
 
-- [ ] Task 17: 补齐录制与回放 UI 测试：增加真实 Compose/instrumentation UI 测试及依赖，覆盖录制、步骤预览、secret 输入、回放和失败反馈交互。
+- [x] Task 17: 补齐录制与回放 UI 测试：增加真实 Compose/instrumentation UI 测试及依赖，覆盖录制、步骤预览、secret 输入、回放和失败反馈交互。
 
 - [ ] Task 18: 修正过期录制故障排查：更新 `docs/troubleshooting.md` 中已失效的录制列表和事件订阅说明，使其与当前 CLI、AccessibilityService 和 Task 13 实现一致。
 

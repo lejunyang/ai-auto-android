@@ -15,6 +15,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
@@ -81,7 +82,9 @@ fun RecordingSessionScreen(
                 RecordingStatus.IDLE -> Button(
                     onClick = onStart,
                     enabled = name.isNotBlank() && targetPackages.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(RecordingTestTags.START),
                 ) {
                     Text(stringResource(R.string.recording_start))
                 }
@@ -91,14 +94,18 @@ fun RecordingSessionScreen(
                 ) {
                     OutlinedButton(
                         onClick = onPause,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag(RecordingTestTags.PAUSE),
                     ) {
                         Text(stringResource(R.string.recording_pause))
                     }
                     Button(
                         onClick = onFinish,
                         enabled = draft.steps.isNotEmpty(),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag(RecordingTestTags.FINISH),
                     ) {
                         Text(stringResource(R.string.recording_finish))
                     }
@@ -109,14 +116,18 @@ fun RecordingSessionScreen(
                 ) {
                     OutlinedButton(
                         onClick = onResume,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag(RecordingTestTags.RESUME),
                     ) {
                         Text(stringResource(R.string.recording_resume))
                     }
                     Button(
                         onClick = onFinish,
                         enabled = draft.steps.isNotEmpty(),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag(RecordingTestTags.FINISH),
                     ) {
                         Text(stringResource(R.string.recording_finish))
                     }
@@ -183,7 +194,11 @@ internal fun RecordingStepCard(
     number: Int,
     step: RecordedStep,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(RecordingTestTags.step(number)),
+    ) {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
