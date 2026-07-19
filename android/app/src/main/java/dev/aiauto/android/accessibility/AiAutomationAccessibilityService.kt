@@ -123,7 +123,10 @@ class AiAutomationAccessibilityService :
 
     internal fun execute(
         command: AccessibilityCommand,
-    ): AccessibilityResult<ActionExecution> = actionRouter.execute(command)
+    ): AccessibilityResult<ActionExecution> = AccessibilityCommandAttributor(
+        userTouchMonitor = userTouchMonitor,
+        currentPackageName = ::activePackageName,
+    ).execute(command, actionRouter::execute)
 
     internal suspend fun captureScreenshot(
         expectedPackage: String,
@@ -165,6 +168,42 @@ class AiAutomationAccessibilityService :
         } finally {
             root.recycleSafely()
         }
+    }
+
+}
+
+internal class AccessibilityCommandAttributor(
+    private val userTouchMonitor: UserTouchMonitor,
+    private val currentPackageName: () -> String?,
+) {
+    fun execute(
+        command: AccessibilityCommand,
+        executeCommand: (AccessibilityCommand) -> AccessibilityResult<ActionExecution>,
+    ): AccessibilityResult<ActionExecution> {
+        val expectedEventType = command.expectedAccessibilityEventType()
+        if (expectedEventType == null) {
+            return executeCommand(command)
+        }
+        val targetPackage = currentPackageName()
+        if (!targetPackage.isNullOrBlank()) {
+            userTouchMonitor.expectAutomationEvent(
+                eventType = expectedEventType,
+                packageName = targetPackage,
+            )
+        }
+        return executeCommand(command).also { result ->
+            if (result is AccessibilityResult.Failure) {
+                userTouchMonitor.clearExpectedAutomationEvent()
+            }
+        }
+    }
+
+    private fun AccessibilityCommand.expectedAccessibilityEventType(): Int? = when (this) {
+        is AccessibilityCommand.Click -> AccessibilityEvent.TYPE_VIEW_CLICKED
+        is AccessibilityCommand.LongClick -> AccessibilityEvent.TYPE_VIEW_LONG_CLICKED
+        is AccessibilityCommand.Scroll -> AccessibilityEvent.TYPE_VIEW_SCROLLED
+        is AccessibilityCommand.SetText -> AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
+        else -> null
     }
 }
 
