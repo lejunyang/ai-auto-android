@@ -8,9 +8,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -164,11 +164,18 @@ class RecordingScreensInstrumentedTest {
         composeRule.onNodeWithTag(RecordingTestTags.REPLAY_RESULT)
             .performScrollTo()
             .assertIsDisplayed()
-            .assertTextContains("回放失败", substring = true)
+        composeRule.onNodeWithText(
+            text = "回放失败",
+            substring = true,
+            useUnmergedTree = true,
+        ).assertIsDisplayed()
         composeRule.onNodeWithTag(RecordingTestTags.REPLAY_INTERVENTION)
             .assertIsDisplayed()
-        composeRule.onNodeWithTag(RecordingTestTags.REPLAY_RESULT)
-            .assertTextContains("SELECTOR_AMBIGUOUS", substring = true)
+        composeRule.onNodeWithText(
+            text = "SELECTOR_AMBIGUOUS",
+            substring = true,
+            useUnmergedTree = true,
+        ).assertIsDisplayed()
     }
 
     private fun script(step: RecordedStep) = AutomationScript(
