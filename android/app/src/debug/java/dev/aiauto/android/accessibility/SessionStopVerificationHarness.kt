@@ -21,7 +21,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -31,6 +30,7 @@ internal class SessionStopVerificationHarness(
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val plannerGate = CompletableDeferred<ProviderAction>()
+    private val plannerEntered = CompletableDeferred<Unit>()
     private val executorCalls = AtomicInteger()
     private val automationClickVerified = AtomicBoolean()
     private val engine = AutomationSessionEngine(
@@ -40,7 +40,10 @@ internal class SessionStopVerificationHarness(
                 uiSummary = "Debug-only session stop verification surface",
             )
         },
-        planner = SessionPlanner { plannerGate.await() },
+        planner = SessionPlanner {
+            plannerEntered.complete(Unit)
+            plannerGate.await()
+        },
         executor = SessionExecutor { _, _ ->
             executorCalls.incrementAndGet()
             SessionExecutionResult("Unexpected debug executor invocation")
@@ -65,6 +68,7 @@ internal class SessionStopVerificationHarness(
             )
         }
         return withTimeoutOrNull(ASSERTION_TIMEOUT_MS) {
+            plannerEntered.await()
             engine.state.first { it.phase == SessionPhase.Planning }
             true
         } == true
@@ -87,7 +91,6 @@ internal class SessionStopVerificationHarness(
         withTimeoutOrNull(ASSERTION_TIMEOUT_MS) {
             sessionJob?.join()
         }
-        delay(POST_STOP_SETTLE_MS)
 
         val state = engine.state.value
         val calls = executorCalls.get()
@@ -115,13 +118,13 @@ internal class SessionStopVerificationHarness(
     override fun close() {
         engine.stop()
         plannerGate.cancel()
+        plannerEntered.cancel()
         scope.cancel()
     }
 
     internal companion object {
         const val MANUAL_SESSION_TIMEOUT_MS = 120_000L
         const val ASSERTION_TIMEOUT_MS = 10_000L
-        const val POST_STOP_SETTLE_MS = 500L
         const val USER_TOUCH_STOP_MESSAGE =
             "Session stopped because the user touched the target app."
     }
