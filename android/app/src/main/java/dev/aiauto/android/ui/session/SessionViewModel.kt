@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 data class SessionUiState(
     val taskInput: String = "",
     val targetPackageInput: String = "",
+    val screenshotsAllowed: Boolean = false,
     val availableTargetPackages: List<String> = emptyList(),
     val session: AutomationSessionState = AutomationSessionState(),
     val setupError: String? = null,
@@ -51,6 +52,15 @@ class SessionViewModel(
         if (!mutableUiState.value.session.isRunning) {
             mutableUiState.value = mutableUiState.value.copy(
                 targetPackageInput = value.take(MAX_PACKAGE_LENGTH),
+                setupError = null,
+            )
+        }
+    }
+
+    fun updateScreenshotsAllowed(value: Boolean) {
+        if (!mutableUiState.value.session.isRunning) {
+            mutableUiState.value = mutableUiState.value.copy(
+                screenshotsAllowed = value,
                 setupError = null,
             )
         }
@@ -94,6 +104,7 @@ class SessionViewModel(
                 SessionRequest(
                     task = task,
                     targetPackage = targetPackage,
+                    screenshotsAllowed = mutableUiState.value.screenshotsAllowed,
                 ),
             )
         }

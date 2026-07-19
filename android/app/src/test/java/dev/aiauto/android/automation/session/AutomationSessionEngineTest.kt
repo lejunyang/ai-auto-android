@@ -352,6 +352,36 @@ class AutomationSessionEngineTest {
     }
 
     @Test
+    fun `target app touch stops active session before executor submission BitsUT`() = runTest {
+        val plannedAction = CompletableDeferred<ProviderAction>()
+        val executor = FakeExecutor()
+        val engine = engine(
+            observer = FakeObserver(),
+            planner = QueuePlanner(
+                actions = mutableListOf(action("ui.back")),
+                firstActionGate = plannedAction,
+            ),
+            executor = executor,
+        )
+        val job = launch { engine.start(request()) }
+
+        runCurrent()
+        assertEquals(SessionPhase.Planning, engine.state.value.phase)
+
+        assertTrue(AutomationSessionRuntime.notifyUserTouch(TARGET_PACKAGE))
+        plannedAction.complete(action("ui.back"))
+        advanceUntilIdle()
+
+        assertEquals(SessionPhase.Stopped, engine.state.value.phase)
+        assertTrue(
+            engine.state.value.audit.last().message.contains("touched the target app"),
+        )
+        assertTrue(executor.actionTypes.isEmpty())
+        assertFalse(AutomationSessionRuntime.isScreenshotAuthorized(TARGET_PACKAGE))
+        job.join()
+    }
+
+    @Test
     fun `external cancellation propagates without becoming failed state BitsUT`() = runTest {
         val engine = engine(
             observer = FakeObserver(),

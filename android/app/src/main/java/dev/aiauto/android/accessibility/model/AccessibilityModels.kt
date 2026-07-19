@@ -84,6 +84,17 @@ data class UiNodeSnapshot(
     val children: List<UiNodeSnapshot>,
 )
 
+class AccessibilityScreenshot(
+    val pngBytes: ByteArray,
+    val width: Int,
+    val height: Int,
+    val timestampMs: Long,
+) : AutoCloseable {
+    override fun close() {
+        pngBytes.fill(0)
+    }
+}
+
 data class NodePath(
     val indices: List<Int>,
 )
@@ -192,6 +203,11 @@ enum class AccessibilityErrorCode {
     PACKAGE_NOT_ALLOWED,
     WINDOW_UNAVAILABLE,
     SNAPSHOT_FAILED,
+    SCREENSHOT_NOT_SUPPORTED,
+    SCREENSHOT_NOT_AUTHORIZED,
+    SCREENSHOT_SENSITIVE_CONTENT,
+    SCREENSHOT_SECURE_WINDOW,
+    SCREENSHOT_FAILED,
     SELECTOR_NOT_FOUND,
     SELECTOR_AMBIGUOUS,
     INVALID_COORDINATE,

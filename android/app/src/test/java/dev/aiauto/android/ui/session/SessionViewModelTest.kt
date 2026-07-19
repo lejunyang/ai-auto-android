@@ -67,6 +67,35 @@ class SessionViewModelTest {
         assertEquals(SessionPhase.Idle, viewModel.uiState.value.session.phase)
     }
 
+    @Test
+    fun `screenshot authorization defaults off and locks after session starts BitsUT`() =
+        runTest(dispatcher) {
+            val engine = blockingEngine()
+            val viewModel = SessionViewModel(FakeFactory(Result.success(engine)))
+            assertTrue(!viewModel.uiState.value.screenshotsAllowed)
+            viewModel.updateScreenshotsAllowed(true)
+            viewModel.updateTask("Open inbox")
+            viewModel.updateTargetPackage(TARGET_PACKAGE)
+
+            viewModel.start()
+            runCurrent()
+
+            assertTrue(viewModel.uiState.value.screenshotsAllowed)
+            assertTrue(
+                dev.aiauto.android.automation.session.AutomationSessionRuntime
+                    .isScreenshotAuthorized(TARGET_PACKAGE),
+            )
+            viewModel.updateScreenshotsAllowed(false)
+            assertTrue(viewModel.uiState.value.screenshotsAllowed)
+
+            viewModel.stop()
+            runCurrent()
+            assertTrue(
+                !dev.aiauto.android.automation.session.AutomationSessionRuntime
+                    .isScreenshotAuthorized(TARGET_PACKAGE),
+            )
+        }
+
     private fun blockingEngine() = AutomationSessionEngine(
         observer = SessionObserver {
             SessionObservation(TARGET_PACKAGE, "package=$TARGET_PACKAGE")

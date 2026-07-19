@@ -33,6 +33,7 @@ data class SessionLimits(
 data class SessionRequest(
     val task: String,
     val targetPackage: String,
+    val screenshotsAllowed: Boolean = false,
 )
 
 data class SessionObservation(

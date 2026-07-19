@@ -389,12 +389,17 @@ class AndroidBridgeMethods(
             AccessibilityErrorCode.SERVICE_DISABLED,
             AccessibilityErrorCode.WINDOW_UNAVAILABLE,
             AccessibilityErrorCode.SNAPSHOT_FAILED,
+            AccessibilityErrorCode.SCREENSHOT_NOT_SUPPORTED,
+            AccessibilityErrorCode.SCREENSHOT_SECURE_WINDOW,
+            AccessibilityErrorCode.SCREENSHOT_FAILED,
             AccessibilityErrorCode.ACTION_NOT_SUPPORTED,
             -> BridgeErrorCode.CAPABILITY_UNAVAILABLE
 
             AccessibilityErrorCode.DISCLOSURE_REQUIRED,
             AccessibilityErrorCode.TARGET_PACKAGES_NOT_CONFIGURED,
             AccessibilityErrorCode.PACKAGE_NOT_ALLOWED,
+            AccessibilityErrorCode.SCREENSHOT_NOT_AUTHORIZED,
+            AccessibilityErrorCode.SCREENSHOT_SENSITIVE_CONTENT,
             -> BridgeErrorCode.PERMISSION_DENIED
 
             AccessibilityErrorCode.SELECTOR_NOT_FOUND -> BridgeErrorCode.SELECTOR_NOT_FOUND

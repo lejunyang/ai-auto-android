@@ -97,9 +97,9 @@
   - [x] SubTask 14.2: 增加 `ui.wait` 条件超时返回 `CONDITION_TIMEOUT` 且不执行动作的直接单测
   - [x] SubTask 14.3: 运行定向测试和全量验证，更新最终验收记录
 
-- [ ] Task 15: 补齐 App 端无障碍截图：实现规格要求的 API 30+ `AccessibilityService.takeScreenshot` 能力、敏感内容限制和直接测试。
+- [x] Task 15: 补齐 App 端无障碍截图：实现规格要求的 API 30+ `AccessibilityService.takeScreenshot` 能力、敏感内容限制和直接测试。
 
-- [ ] Task 16: 补齐用户触摸中止安全控制：将目标 App 中的用户触摸交互接入活动 AI 会话的同步停止入口，并验证停止后不再提交动作。
+- [x] Task 16: 补齐用户触摸中止安全控制：将目标 App 中的用户触摸交互接入活动 AI 会话的同步停止入口，并验证停止后不再提交动作。
 
 - [ ] Task 17: 补齐录制与回放 UI 测试：增加真实 Compose/instrumentation UI 测试及依赖，覆盖录制、步骤预览、secret 输入、回放和失败反馈交互。
 

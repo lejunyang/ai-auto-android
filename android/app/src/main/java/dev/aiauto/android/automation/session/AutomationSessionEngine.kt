@@ -1,6 +1,7 @@
 package dev.aiauto.android.automation.session
 
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 import dev.aiauto.android.provider.ProviderAction
 import kotlinx.coroutines.CancellationException
@@ -28,6 +29,7 @@ class AutomationSessionEngine(
     private val control = MutableStateFlow(Control.Running)
     private val confirmation = MutableStateFlow<ConfirmationResponse?>(null)
     private val stopRequested = AtomicBoolean(false)
+    private val executionState = AtomicReference(ExecutionState.Idle)
     private var auditSequence = 0
     private var confirmationSequence = 0
     @Volatile
@@ -44,6 +46,11 @@ class AutomationSessionEngine(
             "Target package has an invalid Android package name."
         }
         sessionJob = currentCoroutineContext()[Job]
+        val runtimeRegistration = AutomationSessionRuntime.register(
+            targetPackage = request.targetPackage,
+            screenshotsAllowed = request.screenshotsAllowed,
+            stopHandler = UserTouchStopHandler(::stopForUserTouch),
+        )
 
         try {
             transition(
@@ -81,6 +88,7 @@ class AutomationSessionEngine(
                 fail(error.message ?: "The automation session failed.")
             }
         } finally {
+            runtimeRegistration.close()
             sessionJob = null
             confirmation.value = null
         }
@@ -122,15 +130,24 @@ class AutomationSessionEngine(
     }
 
     fun stop() {
+        requestStop("Session stopped by the user.")
+    }
+
+    internal fun stopForUserTouch() {
+        requestStop("Session stopped because the user touched the target app.")
+    }
+
+    private fun requestStop(message: String) {
         if (mutableState.value.phase in TERMINAL_PHASES) {
             return
         }
         stopRequested.set(true)
+        executionState.set(ExecutionState.Stopped)
         control.value = Control.Stopped
         confirmation.value = null
         transition(
             phase = SessionPhase.Stopped,
-            message = "Session stopped by the user.",
+            message = message,
             currentActionType = null,
             pendingConfirmation = null,
             observationSummary = null,
@@ -239,9 +256,7 @@ class AutomationSessionEngine(
                 pendingConfirmation = null,
             )
             checkNotStopped()
-            val execution = timedStep("Execution") {
-                executor.execute(action, request.targetPackage)
-            }
+            val execution = executeApprovedAction(action, request.targetPackage)
 
             awaitRunning()
             transition(
@@ -271,6 +286,24 @@ class AutomationSessionEngine(
         }
         return result?.value
             ?: throw SessionFailureException("$name exceeded the per-step time limit.")
+    }
+
+    private suspend fun executeApprovedAction(
+        action: ProviderAction,
+        targetPackage: String,
+    ): SessionExecutionResult {
+        checkNotStopped()
+        if (!executionState.compareAndSet(ExecutionState.Idle, ExecutionState.Executing)) {
+            throw SessionStoppedException()
+        }
+        return try {
+            checkNotStopped()
+            timedStep("Execution") {
+                executor.execute(action, targetPackage)
+            }
+        } finally {
+            executionState.compareAndSet(ExecutionState.Executing, ExecutionState.Idle)
+        }
     }
 
     private fun ensureTargetPackage(
@@ -357,6 +390,12 @@ class AutomationSessionEngine(
     private enum class Control {
         Running,
         Paused,
+        Stopped,
+    }
+
+    private enum class ExecutionState {
+        Idle,
+        Executing,
         Stopped,
     }
 

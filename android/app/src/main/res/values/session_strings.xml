@@ -5,6 +5,8 @@
     <string name="session_task_supporting">每次只执行一个经本地策略校验的动作，执行后重新观察。</string>
     <string name="session_target_label">目标应用包名</string>
     <string name="session_authorized_targets">已授权目标</string>
+    <string name="session_screenshot_label">允许本次会话截图</string>
+    <string name="session_screenshot_supporting">默认关闭。仅在目标应用无敏感字段且 Android 未启用安全窗口时按需截取，离开本次会话即失效。</string>
     <string name="session_start">开始安全会话</string>
     <string name="session_pause">暂停</string>
     <string name="session_resume">继续</string>
