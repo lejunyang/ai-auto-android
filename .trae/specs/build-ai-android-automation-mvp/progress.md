@@ -91,3 +91,28 @@
   - Round 9 Android 截图 capability、会话截图观察/Provider 图像上下文、真实截图 instrumentation，以及 API 30-33 用户交互归因和对应测试。
   - `.trae/specs/build-ai-android-automation-mvp/tasks.md`
   - `.trae/specs/build-ai-android-automation-mvp/progress.md`
+
+## Round 10
+
+- Task(s) completed, tests passed, requirements fulfilled
+  - 完成 Task 20 和 Task 22：截图授权绑定会话代次，回调后复核授权/目标包/敏感语义，本地裁剪并限制为 1280 px/900 KiB。
+  - API 34 真机真实 `takeScreenshot` 返回 `SCREENSHOT_PASS`；自动化点击和用户手指点击分别返回 `AUTOMATION_CLICK_PASS`、`USER_TOUCH_PASS`。
+  - `make test`、`make verify`、`make build`、Go race、183 个 Android 单测、lint、debug/androidTest/release APK 构建全部通过。
+- Any issues discovered or fixed
+  - 目标 OPPO API 34 ROM 在服务请求 raw touchscreen MotionEvent 时会使正常触屏失效；已移除 `FLAG_SEND_MOTION_EVENTS`、触摸探索和 motion sources，改为所有 API 统一使用严格语义事件归因。
+  - Gradle 更新 APK 后该 ROM 会撤销无障碍授权；手动 instrumentation 默认 skip 且不绕过授权，改用不重装包的 debug-only 真机自检页取得运行时证据。
+  - **结论**: PARTIAL；截图三项已关闭，API 34 触摸归因已验证，但 API 30-33 设备验证仍缺失。
+- Key decisions made and reasoning
+  - 不为覆盖空白区域触摸而启用会改变普通触控语义的触摸探索或 raw motion observer；只覆盖点击、长按、滚动和文本等可观察语义交互。
+  - 保持 Task 21、Task 23 和跨 API 用户触摸 checkpoint 未勾选，直到 API 30-33 真机或模拟器完成同等验证。
+  - debug-only 验收 Activity/Service 不进入 release 变体；release APK 已实际构建验证。
+- Files changed
+  - Android 截图控制器、本地图像处理、会话运行时和 Provider 适配器。
+  - Android 触摸监控、动作后端/路由、无障碍服务及对应单元和设备测试。
+  - debug-only 手动真机验收页。
+  - `docs/validation.md`、双格式评审报告和规格任务/清单/进度文件。
+
+### Round 10 续验补充
+
+- API 34 `connectedDebugAndroidTest` 最终通过：3 个录制 UI 测试通过，2 个需显式
+  `manualAccessibility=true` 的手动无障碍测试按设计跳过，0 failure/error。

@@ -136,3 +136,56 @@ ANDROID_HOME="$ANDROID_HOME" make android-test android-lint android-build
 设备条件重新检测结果不变：ADB 37.0.0 健康，5037 与 mDNS 正常，但设备数为
 0，且没有 emulator 二进制、system image 或 AVD。真实设备端到端 smoke 仍为
 条件不可用，未执行，也不声明通过。
+
+## Tasks 20-23 定向复验
+
+复验日期：2026-07-19。环境为 macOS arm64、Android SDK 36、Build Tools
+36.0.0、Platform-Tools 37.0.0，以及一台 OPPO Android 14 / API 34 USB 设备。
+设备序列号按隐私规则不写入仓库文档。
+
+### 自动验证
+
+| 范围 | 命令 | 结果 |
+| --- | --- | --- |
+| 仓库测试 | `make test` | 通过；协议 10 个 Schema/29 项检查、3 个 Skills 及 Go 全仓测试通过 |
+| 集成与元数据 | `make verify` | 通过 |
+| CLI 构建 | `make build` | 通过 |
+| Go race | `go test -race ./...` | 全部包通过 |
+| Android | `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease` | 183 个单测通过；lint 0 issue；debug、androidTest、release APK 构建成功 |
+| API 34 真机测试 | `ANDROID_SERIAL=... ./gradlew :app:connectedDebugAndroidTest` | 3 个录制 UI 测试通过；2 个手动无障碍测试按设计跳过；0 failure/error |
+| Diff | `git diff --check` | 通过 |
+
+### 截图闭环
+
+- 截图授权改为绑定不可复用的活动会话 ID，避免同包新会话重新授权旧截图；
+- 截图回调后重新校验同一授权、当前包和敏感语义，失败路径立即清零 PNG；
+- 原图先裁剪到授权目标根区域，长边限制为 1280 px，PNG 限制为 900 KiB；
+- Provider 的 1 MiB 校验继续作为独立防御边界；
+- API 34 真机通过 debug-only 手动验收页执行真实
+  `AccessibilityService.takeScreenshot`，只读 hierarchy 返回
+  `SCREENSHOT_PASS`，未保存或上传截图文件。
+
+### 用户交互归因
+
+- 自动化归因 token 绑定 session ID、window ID、node identity、事件集合、时间窗
+  和提交/中止生命周期；
+- 坐标手势仅在命中唯一可点击或可滚动节点时执行，无法建立强身份时 fail closed；
+- 不再请求 `FLAG_SEND_MOTION_EVENTS`、touch exploration 或 raw touchscreen
+  source。早期版本在目标 OPPO API 34 设备上启用 raw touchscreen observer 后会
+  使正常触屏失效；移除后用户确认服务启用期间触屏持续正常；
+- API 34 真机手动验收返回 `AUTOMATION_CLICK_PASS`，证明自动化自身点击未误停；
+  用户随后用手指点击不同节点，返回 `USER_TOUCH_PASS`，证明用户同类事件未被
+  自动化预期吞掉；
+- 会话引擎单测继续验证收到目标包用户交互后同步进入 stopped，且不再提交动作。
+
+### 未关闭边界
+
+- 当前设备仅为 API 34。Task 21/23 要求的 API 30-33 真机或模拟器验证尚未执行，
+  因此跨 API 用户触摸 checkpoint 保持未勾选；
+- 两个手动无障碍 instrumentation 用例默认 skip，只有传入
+  `manualAccessibility=true` 才运行。目标 OPPO 在 APK 更新后会撤销无障碍授权，
+  `connectedDebugAndroidTest` 无法稳定跨越该厂商生命周期；测试没有自动修改
+  `Settings.Secure` 或绕过用户授权。普通 connected suite 已确认 3 个录制 UI
+  用例通过，2 个手动用例按设计跳过；
+- 空白区域且不产生 View accessibility event 的触摸无法在不改变普通触控语义的
+  前提下可靠观察。当前安全控制覆盖点击、长按、滚动和文本等可观察语义交互。

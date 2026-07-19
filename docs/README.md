@@ -10,6 +10,7 @@
 | [故障排查](troubleshooting.md) | ADB、USB/Wi-Fi、Bridge、选择器和录制错误处理 |
 | [备选方案](alternatives.md) | Shizuku、DPC、设备农场、视觉、getevent、远程 Provider 和 scrcpy |
 | [验证记录](validation.md) | Task 13 实际命令、测试数量、发布制品及设备条件性跳过 |
+| [Round 10 评审](review-round-10.md) | 截图加固、事件归因、API 34 真机证据和剩余 API 30-33 边界 |
 
 初次使用从根目录 [README](../README.md) 的安装、快速开始、MCP 配置、Skills
 路径和 Android 权限开始。实现约束以

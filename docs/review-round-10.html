@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Round 10 代码与安全评审</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f6f8fa; color: #1f2328; }
+    main { max-width: 960px; margin: 32px auto; padding: 28px; background: #fff; border-radius: 12px; }
+    h1, h2 { color: #0d47a1; }
+    .status { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #c8e6c9; color: #1a5e20; font-weight: 700; }
+    .partial { background: #fff3e0; color: #e65100; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 28px; }
+    th, td { padding: 10px 12px; border: 1px solid #d0d7de; text-align: left; vertical-align: top; }
+    th { background: #ddf4ff; color: #0d47a1; }
+    code { background: #eff1f3; padding: 2px 5px; border-radius: 4px; }
+    li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Round 10 代码与安全评审</h1>
+  <p>评审日期：2026-07-19</p>
+  <p><span class="status">代码/安全审查通过</span> <span class="status partial">跨 API 触摸验收部分完成</span></p>
+
+  <h2>结论</h2>
+  <ul>
+    <li>未发现阻断提交的代码正确性问题。</li>
+    <li>未发现可利用的 source-to-sink 安全漏洞链。</li>
+    <li>截图闭环和 API 34 严格事件归因通过；API 30-33 设备验证待完成。</li>
+  </ul>
+
+  <h2>关键变更</h2>
+  <table>
+    <tr><th>范围</th><th>实现</th></tr>
+    <tr><td>截图授权</td><td>绑定活动会话 ID，阻断同包新会话复用旧授权。</td></tr>
+    <tr><td>截图竞态</td><td>回调后复核授权、前台包和敏感语义，失败立即清零。</td></tr>
+    <tr><td>图像最小化</td><td>裁剪目标根区域，长边 1280 px，PNG 900 KiB。</td></tr>
+    <tr><td>事件归因</td><td>绑定 session、window、node identity、event set 和生命周期。</td></tr>
+    <tr><td>触控安全</td><td>不启用触摸探索、raw motion flag 或 motion sources。</td></tr>
+    <tr><td>发布隔离</td><td>设备自检宿主只进入 debug source set。</td></tr>
+  </table>
+
+  <h2>验证结果</h2>
+  <table>
+    <tr><th>验证</th><th>结果</th></tr>
+    <tr><td><code>make test / verify / build</code></td><td>通过</td></tr>
+    <tr><td><code>go test -race ./...</code></td><td>通过</td></tr>
+    <tr><td>Android 单测</td><td>183 个通过，0 failure/error/skip</td></tr>
+    <tr><td><code>lintDebug</code></td><td>0 issue</td></tr>
+    <tr><td>debug/androidTest/release APK</td><td>全部构建成功</td></tr>
+    <tr><td>API 34 <code>connectedDebugAndroidTest</code></td><td>3 个录制 UI 测试通过；2 个手动无障碍测试按设计跳过；0 failure/error</td></tr>
+    <tr><td>API 34 真机截图</td><td><code>SCREENSHOT_PASS</code></td></tr>
+    <tr><td>API 34 自动化归因</td><td><code>AUTOMATION_CLICK_PASS</code></td></tr>
+    <tr><td>API 34 用户手指交互</td><td><code>USER_TOUCH_PASS</code></td></tr>
+  </table>
+
+  <h2>残余边界</h2>
+  <ul>
+    <li>API 30-33 尚无对应设备或模拟器，Task 21/23 保持未完成。</li>
+    <li>空白区域且不产生 View accessibility event 的触摸无法可靠观测。</li>
+    <li>目标 OPPO 在 APK 更新后撤销无障碍授权；测试不绕过用户授权。</li>
+  </ul>
+</main>
+</body>
+</html>
