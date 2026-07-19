@@ -25,7 +25,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.json.buildJsonObject
 
 internal class SessionStopVerificationHarness(
     private val targetPackage: String,
@@ -49,8 +48,8 @@ internal class SessionStopVerificationHarness(
         riskPolicy = AutomationRiskPolicy(setOf(targetPackage)),
         limits = SessionLimits(
             maxSteps = 2,
-            stepTimeoutMs = SESSION_TIMEOUT_MS,
-            totalTimeoutMs = SESSION_TIMEOUT_MS,
+            stepTimeoutMs = MANUAL_SESSION_TIMEOUT_MS,
+            totalTimeoutMs = MANUAL_SESSION_TIMEOUT_MS,
         ),
     )
     private var sessionJob: Job? = null
@@ -65,7 +64,7 @@ internal class SessionStopVerificationHarness(
                 ),
             )
         }
-        return withTimeoutOrNull(SESSION_TIMEOUT_MS) {
+        return withTimeoutOrNull(ASSERTION_TIMEOUT_MS) {
             engine.state.first { it.phase == SessionPhase.Planning }
             true
         } == true
@@ -81,17 +80,11 @@ internal class SessionStopVerificationHarness(
     }
 
     suspend fun verifyStopped(): String {
-        val stopped = withTimeoutOrNull(SESSION_TIMEOUT_MS) {
+        val stopped = withTimeoutOrNull(ASSERTION_TIMEOUT_MS) {
             engine.state.first { it.phase == SessionPhase.Stopped }
             true
         } == true
-        plannerGate.complete(
-            ProviderAction(
-                type = "ui.back",
-                params = buildJsonObject {},
-            ),
-        )
-        withTimeoutOrNull(SESSION_TIMEOUT_MS) {
+        withTimeoutOrNull(ASSERTION_TIMEOUT_MS) {
             sessionJob?.join()
         }
         delay(POST_STOP_SETTLE_MS)
@@ -99,7 +92,8 @@ internal class SessionStopVerificationHarness(
         val state = engine.state.value
         val calls = executorCalls.get()
         val hasUserTouchAudit = state.audit.any {
-            it.message.contains("user touched the target app")
+            it.phase == SessionPhase.Stopped &&
+                it.message == USER_TOUCH_STOP_MESSAGE
         }
         val runtimeCleared = AutomationSessionRuntime.activeSessionId(targetPackage) == null
         return if (
@@ -124,8 +118,11 @@ internal class SessionStopVerificationHarness(
         scope.cancel()
     }
 
-    private companion object {
-        const val SESSION_TIMEOUT_MS = 10_000L
+    internal companion object {
+        const val MANUAL_SESSION_TIMEOUT_MS = 120_000L
+        const val ASSERTION_TIMEOUT_MS = 10_000L
         const val POST_STOP_SETTLE_MS = 500L
+        const val USER_TOUCH_STOP_MESSAGE =
+            "Session stopped because the user touched the target app."
     }
 }

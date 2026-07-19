@@ -7,6 +7,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 import dev.aiauto.android.accessibility.model.AccessibilityErrorCode
@@ -19,6 +20,7 @@ import dev.aiauto.android.automation.session.AutomationSessionRuntime
 class ScreenshotTestAccessibilityService : AccessibilityService() {
     private lateinit var userTouchMonitor: UserTouchMonitor
     private val userTouchCount = AtomicInteger()
+    private val runtimeStopHandled = AtomicBoolean()
     @Volatile
     private var userTouchLatch = CountDownLatch(1)
 
@@ -28,7 +30,9 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
             notifyUserTouch = { packageName ->
                 userTouchCount.incrementAndGet()
                 userTouchLatch.countDown()
-                AutomationSessionRuntime.notifyUserTouch(packageName)
+                val handled = AutomationSessionRuntime.notifyUserTouch(packageName)
+                runtimeStopHandled.set(handled)
+                handled
             },
             currentSessionId = AutomationSessionRuntime::activeSessionId,
         )
@@ -112,10 +116,13 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
     fun resetUserTouchSignal() {
         userTouchMonitor.clearAutomationActions()
         userTouchCount.set(0)
+        runtimeStopHandled.set(false)
         userTouchLatch = CountDownLatch(1)
     }
 
     fun userTouchNotificationCount(): Int = userTouchCount.get()
+
+    fun runtimeStopHandled(): Boolean = runtimeStopHandled.get()
 
     fun awaitUserTouch(timeoutSeconds: Long): Boolean =
         userTouchLatch.await(timeoutSeconds, TimeUnit.SECONDS)

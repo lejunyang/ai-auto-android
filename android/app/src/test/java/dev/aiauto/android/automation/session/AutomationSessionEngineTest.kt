@@ -392,15 +392,22 @@ class AutomationSessionEngineTest {
         assertEquals(SessionPhase.Planning, engine.state.value.phase)
 
         assertTrue(AutomationSessionRuntime.notifyUserTouch(TARGET_PACKAGE))
+        assertEquals(SessionPhase.Stopped, engine.state.value.phase)
+        assertEquals(
+            "Session stopped because the user touched the target app.",
+            engine.state.value.audit.last().message,
+        )
         plannedAction.complete(action("ui.back"))
         advanceUntilIdle()
 
         assertEquals(SessionPhase.Stopped, engine.state.value.phase)
-        assertTrue(
-            engine.state.value.audit.last().message.contains("touched the target app"),
+        assertEquals(
+            "Session stopped because the user touched the target app.",
+            engine.state.value.audit.last().message,
         )
         assertTrue(executor.actionTypes.isEmpty())
         assertFalse(AutomationSessionRuntime.isScreenshotAuthorized(TARGET_PACKAGE))
+        assertEquals(null, AutomationSessionRuntime.activeSessionId(TARGET_PACKAGE))
         job.join()
     }
 

@@ -54,11 +54,14 @@ class UserTouchDeviceTest {
 
             assertTrue(service.awaitUserTouch(TIMEOUT_SECONDS))
             assertEquals(1, service.userTouchNotificationCount())
+            assertTrue(service.runtimeStopHandled())
             assertTrue(
                 awaitStatus(testActivity) {
                     it == SESSION_STOP_PASS_STATUS
                 },
             )
+            assertEquals(SESSION_STOP_PASS_STATUS, testActivity.currentVerificationStatus())
+            SystemClock.sleep(STATUS_STABILITY_WINDOW_MS)
             assertEquals(SESSION_STOP_PASS_STATUS, testActivity.currentVerificationStatus())
         } finally {
             activity?.finish()
@@ -119,6 +122,7 @@ class UserTouchDeviceTest {
         const val TIMEOUT_SECONDS = 60L
         const val MANUAL_ACCESSIBILITY_ARGUMENT = "manualAccessibility"
         const val STATUS_POLL_INTERVAL_MS = 100L
+        const val STATUS_STABILITY_WINDOW_MS = 500L
         const val TOUCH_DURATION_MS = 50L
         const val AUTOMATION_CLICK_READY_STATUS = "AUTOMATION_CLICK_PASS TAP_USER_TARGET"
         const val SESSION_STOP_PASS_STATUS =
