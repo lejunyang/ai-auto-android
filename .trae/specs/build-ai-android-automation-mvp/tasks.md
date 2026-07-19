@@ -111,6 +111,10 @@
 
 - [ ] Task 21: 修复 API 30-33 用户触摸中止：使用该版本范围内真实可产生且不改变普通触摸语义的信号，在真机或模拟器上验证用户触摸目标 App 后会话立即停止且不再提交动作。
 
+- [ ] Task 22: 加固截图异步闭环：截图完成后重新校验当前包、活跃会话授权和敏感语义，校验失败时立即清零；在本地按尺寸与字节预算降采样或裁剪到授权目标区域，不依赖 Provider 的 `detail=low` 代替图像最小化；补充单元测试和真实 `takeScreenshot` instrumentation 测试。
+
+- [ ] Task 23: 加固 API 30-33 自动化事件归因：加入 window/source/node identity 或动作 token，支持单动作预期事件集合与严格生命周期，确保用户同类事件不会被误吞；补充 API 30-33/API 34+ 设备测试，验证用户触摸后会话停止且不再提交动作。
+
 # Task Dependencies
 
 - Task 2 depends on Task 1.
@@ -124,6 +128,9 @@
 - Task 12 depends on Tasks 1-11.
 - Task 13 depends on Tasks 1-12.
 - Task 14 depends on Task 13.
+- Task 22 depends on Task 20.
+- Task 23 depends on Task 21.
+- Task 22 and Task 23 can run in parallel.
 
 # Commit Policy
 

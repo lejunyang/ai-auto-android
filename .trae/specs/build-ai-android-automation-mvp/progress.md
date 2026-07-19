@@ -71,3 +71,23 @@
   - 测试/覆盖率: 失败；协议 29 项、Go 174 个测试/子测试事件（92 个顶层测试）、Go race、3 个 Skills、ADB 注入和 MCP 风险门对抗测试通过；截图 capability 与 API 30-33 触摸事件前提探针均失败，当前无设备或 AVD，instrumentation 与真机 smoke 未执行
   - 清单审计: 50/53 通过，3 项失败
 - **风险与问题**: 2 项 major：API 30+ App 截图运行时闭环不可用；API 30-33 用户触摸不能可靠中止活动 AI 会话。现有单测只模拟平台回调或直接注入触摸事件，未覆盖服务 capability 和系统事件产生前提
+
+## Round 9
+
+- Task(s) completed, tests passed, requirements fulfilled
+  - 集成提交 `f6cb420`（App 截图运行时闭环）和 `521c8b3`（API 30-33 用户触摸中止）。
+  - `go test ./...`、`go test -race ./...`、10 个 Schema/29 项协议检查、3 个 Skills 校验和 `git diff --check` 通过。
+- Any issues discovered or fixed
+  - **结论**: FAIL。
+  - 截图完成后未重新校验当前包、活跃会话授权和敏感语义，存在 post-capture 竞态。
+  - 截图未在本地按尺寸或字节预算降采样/裁剪，仅使用 Provider `detail=low`，不满足图像最小化要求。
+  - API 30-33 自动化事件归因仅按事件类型、包名和宽泛的 1 秒窗口匹配，可能误吞用户同类事件。
+  - 已新增未完成的 Task 22 和 Task 23，分别跟踪截图异步闭环与 legacy 自动化事件归因加固。
+  - 当前缺少 Android SDK 36、ADB、emulator 和已连接设备，Android 构建、instrumentation 与设备测试未运行。
+- Key decisions made and reasoning
+  - 保持 Task 20、Task 21 和三个 Android 验收项未勾选，直到新增的安全缺口修复并完成可用环境下的设备验证。
+  - Task 22 与 Task 23 依赖各自前置任务且可并行实施。
+- Files changed
+  - Round 9 Android 截图 capability、会话截图观察/Provider 图像上下文、真实截图 instrumentation，以及 API 30-33 用户交互归因和对应测试。
+  - `.trae/specs/build-ai-android-automation-mvp/tasks.md`
+  - `.trae/specs/build-ai-android-automation-mvp/progress.md`
