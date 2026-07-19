@@ -3,7 +3,7 @@
     <application>
         <activity
             android:name="dev.aiauto.android.accessibility.ScreenshotTestActivity"
-            android:exported="false"
+            android:exported="true"
             android:theme="@android:style/Theme.Material.Light.NoActionBar" />
 
         <service
