@@ -38,30 +38,46 @@ class UserTouchDeviceTest {
             activity = testActivity
             instrumentation.waitForIdleSync()
 
-            service.resetUserTouchSignal()
+            instrumentation.runOnMainSync {
+                testActivity.startSessionStopVerification()
+            }
             assertTrue(
-                service.performAttributedClick(
-                    ScreenshotTestActivity.AUTOMATION_TARGET_DESCRIPTION,
-                ),
+                awaitStatus(testActivity) {
+                    it == AUTOMATION_CLICK_READY_STATUS
+                },
             )
-            SystemClock.sleep(AUTOMATION_EVENT_SETTLE_MS)
+            assertEquals(AUTOMATION_CLICK_READY_STATUS, testActivity.currentVerificationStatus())
             assertEquals(0, service.userTouchNotificationCount())
 
-            service.resetUserTouchSignal()
-            assertTrue(
-                service.armClickExpectation(
-                    ScreenshotTestActivity.AUTOMATION_TARGET_DESCRIPTION,
-                ),
-            )
             val (x, y) = testActivity.userTouchTargetCenter()
             injectTouch(automation, x, y)
 
             assertTrue(service.awaitUserTouch(TIMEOUT_SECONDS))
             assertEquals(1, service.userTouchNotificationCount())
+            assertTrue(
+                awaitStatus(testActivity) {
+                    it == SESSION_STOP_PASS_STATUS
+                },
+            )
+            assertEquals(SESSION_STOP_PASS_STATUS, testActivity.currentVerificationStatus())
         } finally {
             activity?.finish()
             instrumentation.waitForIdleSync()
         }
+    }
+
+    private fun awaitStatus(
+        activity: ScreenshotTestActivity,
+        predicate: (String) -> Boolean,
+    ): Boolean {
+        val deadline = SystemClock.uptimeMillis() + TIMEOUT_SECONDS * 1_000
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (predicate(activity.currentVerificationStatus())) {
+                return true
+            }
+            SystemClock.sleep(STATUS_POLL_INTERVAL_MS)
+        }
+        return false
     }
 
     private fun injectTouch(
@@ -102,7 +118,10 @@ class UserTouchDeviceTest {
     private companion object {
         const val TIMEOUT_SECONDS = 60L
         const val MANUAL_ACCESSIBILITY_ARGUMENT = "manualAccessibility"
-        const val AUTOMATION_EVENT_SETTLE_MS = 500L
+        const val STATUS_POLL_INTERVAL_MS = 100L
         const val TOUCH_DURATION_MS = 50L
+        const val AUTOMATION_CLICK_READY_STATUS = "AUTOMATION_CLICK_PASS TAP_USER_TARGET"
+        const val SESSION_STOP_PASS_STATUS =
+            "SESSION_STOP_PASS phase=Stopped executorCalls=0"
     }
 }

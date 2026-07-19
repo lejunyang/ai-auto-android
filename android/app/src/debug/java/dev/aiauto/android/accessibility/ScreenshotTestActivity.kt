@@ -6,13 +6,23 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 import dev.aiauto.android.accessibility.model.AccessibilityResult
 
 class ScreenshotTestActivity : Activity() {
+    private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var userTouchTarget: Button
     private lateinit var statusView: TextView
+    private var sessionStopHarness: SessionStopVerificationHarness? = null
+    @Volatile
+    private var currentStatus = "READY"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,8 +44,8 @@ class ScreenshotTestActivity : Activity() {
                 )
                 addView(
                     Button(context).apply {
-                        text = "Run attributed automation click"
-                        setOnClickListener { runAutomationClickVerification(this) }
+                        text = "Run session stop verification"
+                        setOnClickListener { startSessionStopVerification() }
                     },
                 )
                 addView(
@@ -55,24 +65,7 @@ class ScreenshotTestActivity : Activity() {
                         text = "User touch target"
                         contentDescription = USER_TARGET_DESCRIPTION
                         userTouchTarget = this
-                        setOnClickListener {
-                            postDelayed(
-                                {
-                                    setStatus(
-                                        if (
-                                            ScreenshotTestAccessibilityService
-                                                .connectedService
-                                                ?.userTouchNotificationCount() == 1
-                                        ) {
-                                            "USER_TOUCH_PASS"
-                                        } else {
-                                            "USER_TOUCH_FAIL"
-                                        },
-                                    )
-                                },
-                                EVENT_SETTLE_MS,
-                            )
-                        }
+                        setOnClickListener { verifyUserTouchResult() }
                     },
                 )
                 addView(
@@ -84,6 +77,13 @@ class ScreenshotTestActivity : Activity() {
                 )
             },
         )
+    }
+
+    override fun onDestroy() {
+        sessionStopHarness?.close()
+        sessionStopHarness = null
+        activityScope.cancel()
+        super.onDestroy()
     }
 
     private fun runScreenshotVerification() {
@@ -124,35 +124,50 @@ class ScreenshotTestActivity : Activity() {
         }.start()
     }
 
-    private fun runAutomationClickVerification(button: Button) {
-        setStatus("AUTOMATION_CLICK_RUNNING")
-        button.postDelayed(
-            {
-                val service = ScreenshotTestAccessibilityService.connectedService
-                if (service == null) {
-                    setStatus("SERVICE_NOT_CONNECTED")
-                    return@postDelayed
-                }
-                service.resetUserTouchSignal()
-                val performed = service.performAttributedClick(AUTOMATION_TARGET_DESCRIPTION)
-                statusView.postDelayed(
-                    {
-                        setStatus(
-                            if (performed && service.userTouchNotificationCount() == 0) {
-                                "AUTOMATION_CLICK_PASS"
-                            } else {
-                                "AUTOMATION_CLICK_FAIL"
-                            },
-                        )
-                    },
-                    EVENT_SETTLE_MS,
+    fun startSessionStopVerification() {
+        val service = ScreenshotTestAccessibilityService.connectedService
+        if (service == null) {
+            setStatus("SERVICE_NOT_CONNECTED")
+            return
+        }
+        sessionStopHarness?.close()
+        val harness = SessionStopVerificationHarness(packageName)
+        sessionStopHarness = harness
+        setStatus("SESSION_STARTING")
+        activityScope.launch {
+            delay(EVENT_SETTLE_MS)
+            if (sessionStopHarness !== harness) {
+                return@launch
+            }
+            service.resetUserTouchSignal()
+            if (!harness.start()) {
+                setStatus("SESSION_START_FAIL")
+                harness.close()
+                return@launch
+            }
+            setStatus("SESSION_PLANNING")
+            val performed = service.performAttributedClick(AUTOMATION_TARGET_DESCRIPTION)
+            delay(EVENT_SETTLE_MS)
+            if (sessionStopHarness !== harness) {
+                return@launch
+            }
+            if (
+                harness.recordAutomationClick(
+                    performed = performed,
+                    userTouchNotifications = service.userTouchNotificationCount(),
                 )
-            },
-            EVENT_SETTLE_MS,
-        )
+            ) {
+                setStatus("AUTOMATION_CLICK_PASS TAP_USER_TARGET")
+            } else {
+                setStatus("AUTOMATION_CLICK_FAIL")
+                harness.close()
+            }
+        }
     }
 
     private fun armUserTouchVerification(button: Button) {
+        sessionStopHarness?.close()
+        sessionStopHarness = null
         setStatus("USER_TOUCH_ARMING")
         button.postDelayed(
             {
@@ -172,10 +187,39 @@ class ScreenshotTestActivity : Activity() {
         )
     }
 
+    private fun verifyUserTouchResult() {
+        val harness = sessionStopHarness
+        if (harness == null) {
+            userTouchTarget.postDelayed(
+                {
+                    setStatus(
+                        if (
+                            ScreenshotTestAccessibilityService
+                                .connectedService
+                                ?.userTouchNotificationCount() == 1
+                        ) {
+                            "USER_TOUCH_PASS"
+                        } else {
+                            "USER_TOUCH_FAIL"
+                        },
+                    )
+                },
+                EVENT_SETTLE_MS,
+            )
+            return
+        }
+        activityScope.launch {
+            setStatus(harness.verifyStopped())
+        }
+    }
+
     private fun setStatus(status: String) {
+        currentStatus = status
         statusView.text = status
         statusView.contentDescription = status
     }
+
+    fun currentVerificationStatus(): String = currentStatus
 
     fun userTouchTargetCenter(): Pair<Float, Float> {
         val location = IntArray(2)

@@ -14,6 +14,7 @@ import dev.aiauto.android.accessibility.model.AccessibilityResult
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import dev.aiauto.android.accessibility.snapshot.AccessibilitySnapshotter
 import dev.aiauto.android.accessibility.snapshot.recycleSafely
+import dev.aiauto.android.automation.session.AutomationSessionRuntime
 
 class ScreenshotTestAccessibilityService : AccessibilityService() {
     private lateinit var userTouchMonitor: UserTouchMonitor
@@ -24,11 +25,12 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         userTouchMonitor = UserTouchMonitor(
-            notifyUserTouch = {
+            notifyUserTouch = { packageName ->
                 userTouchCount.incrementAndGet()
                 userTouchLatch.countDown()
-                true
+                AutomationSessionRuntime.notifyUserTouch(packageName)
             },
+            currentSessionId = AutomationSessionRuntime::activeSessionId,
         )
         val currentServiceInfo = serviceInfo
         val touchConfiguration = userTouchMonitor.configuration(
