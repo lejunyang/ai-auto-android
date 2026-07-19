@@ -39,3 +39,25 @@
   - 测试/覆盖率: 失败；协议 29 项、Go 173 个测试/子测试事件（92 个顶层测试）、Android 146 个单测、3 个 Skills 和恶意 ADB 路径/参数测试通过，lint 0 error/16 warning；真实 Compose/instrumentation 录制 UI 测试仍缺失
   - 清单审计: 47/52 通过，5 项失败
 - **风险与问题**: 5 项 major：Round 5 的 3 项实现/测试缺口未关闭；录制故障排查仍包含两条与当前实现相反的说明；真机指南未明确三种 USB 模式选择，也未提供从开发者选项、USB 调试、RSA 到无障碍、Bridge、录制回放的连续 smoke 清单。当前 ADB 设备数为 0，未执行真机端到端 smoke 且不作为本轮新增失败项
+
+## Round 7
+
+- Task(s) completed, tests passed, requirements fulfilled
+  - 完成 Tasks 15-19：补齐 API 30+ 无障碍截图、用户触摸中止、录制与回放 instrumentation UI 测试、录制故障排查和真机 USB 验收指南。
+  - `make test`、`go test -race ./...`、`make verify` 和 `make build` 通过；协议 29 项、Go 174 个测试事件（92 个顶层测试）、3 组 Skills 及镜像通过。
+  - Android 163 个单测通过，0 failure/error/skip；lint 0 error/18 warning；debug APK 和 androidTest APK 构建成功。
+- Any issues discovered or fixed
+  - 独立验收发现 1 秒自动输入抑制窗口可能吞掉真实用户触摸；已移除时间抑制，并以 Task 15/16 定向测试 26/26 通过确认目标包触摸会立即停止且不再提交动作。
+  - Compose instrumentation 测试已实现并成功编译为测试 APK；当前未连接设备，因此未执行 `connectedDebugAndroidTest`。
+  - `aactl doctor` 显示 ADB 37、5037 和 mDNS 健康，但设备数为 0；真机 smoke 未执行且不声明通过。
+- Key decisions made and reasoning
+  - 截图默认关闭，只在单次会话明确授权、目标包匹配且语义树无敏感节点时按需调用；安全窗口由 Android 平台拒绝。
+  - 用户触摸检测不启用会改变交互语义的触摸探索模式；API 34+ 使用 MotionEvent，API 30-33 使用系统兼容事件并保留真机兼容性验证要求。
+  - 真机与 instrumentation 设备执行采用条件验收，测试 APK 编译成功不等同于设备端执行通过。
+- Files changed
+  - Android 无障碍截图、触摸监控、会话运行时、会话 UI 和对应单元测试。
+  - 录制与回放 Compose instrumentation 测试、测试标签和 Gradle 测试依赖。
+  - `docs/device-usb-acceptance.md`、录制故障排查、文档导航及 Skills 镜像。
+  - `.trae/specs/build-ai-android-automation-mvp/tasks.md`
+  - `.trae/specs/build-ai-android-automation-mvp/checklist.md`
+  - `.trae/specs/build-ai-android-automation-mvp/progress.md`
