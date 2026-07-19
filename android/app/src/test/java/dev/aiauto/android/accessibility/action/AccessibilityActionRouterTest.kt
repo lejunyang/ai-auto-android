@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility.action
 
+import android.view.accessibility.AccessibilityEvent
+
 import dev.aiauto.android.accessibility.model.AccessibilityCommand
 import dev.aiauto.android.accessibility.model.AccessibilityErrorCode
 import dev.aiauto.android.accessibility.model.AccessibilityResult
@@ -38,6 +40,10 @@ class AccessibilityActionRouterTest {
         assertEquals(ActionRoute.NODE_ACTION, second.execution().route)
         assertEquals(2, backend.openSessionCount)
         assertEquals(listOf(NodeAction.CLICK, NodeAction.CLICK), backend.performedNodeActions)
+        assertEquals(
+            mapOf(AccessibilityEvent.TYPE_VIEW_CLICKED to 1),
+            backend.lastExpectedEventBudgets,
+        )
         assertTrue(backend.dispatchedGestures.isEmpty())
     }
 
@@ -226,6 +232,7 @@ class AccessibilityActionRouterTest {
         var nodeActionResult = false
         var globalActionResult = false
         var lastText: String? = null
+        var lastExpectedEventBudgets: Map<Int, Int> = emptyMap()
         val gestureResults = ArrayDeque<Boolean>()
         val performedNodeActions = mutableListOf<NodeAction>()
         val performedGlobalActions = mutableListOf<GlobalAction>()
@@ -253,9 +260,12 @@ class AccessibilityActionRouterTest {
                         path: NodePath,
                         action: NodeAction,
                         text: String?,
+                        expectedEventBudgets: Map<Int, Int>,
+                        timeoutMs: Long,
                     ): Boolean {
                         performedNodeActions += action
                         lastText = text
+                        lastExpectedEventBudgets = expectedEventBudgets
                         return nodeActionResult
                     }
 
@@ -264,8 +274,14 @@ class AccessibilityActionRouterTest {
             )
         }
 
-        override fun dispatch(gesture: Gesture): Boolean {
+        override fun dispatch(
+            gesture: Gesture,
+            sourcePath: NodePath?,
+            expectedEventBudgets: Map<Int, Int>,
+            timeoutMs: Long,
+        ): Boolean {
             dispatchedGestures += gesture
+            lastExpectedEventBudgets = expectedEventBudgets
             return gestureResults.removeFirstOrNull() ?: false
         }
 

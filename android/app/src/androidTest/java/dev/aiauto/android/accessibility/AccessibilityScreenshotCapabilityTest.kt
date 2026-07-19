@@ -1,10 +1,8 @@
 package dev.aiauto.android.accessibility
 
-import android.Manifest
 import android.app.Activity
-import android.content.ComponentName
 import android.content.Intent
-import android.provider.Settings
+import android.graphics.BitmapFactory
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -22,6 +20,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -30,51 +29,19 @@ class AccessibilityScreenshotCapabilityTest {
     @Test
     fun realScreenshotFlowsThroughProductionPlannerToProvider() = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val testContext = instrumentation.context
-        val resolver = testContext.contentResolver
-        val automation = instrumentation.uiAutomation
-        val originalServices = Settings.Secure.getString(
-            resolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        assumeTrue(
+            "Manual accessibility tests require manualAccessibility=true",
+            InstrumentationRegistry.getArguments()
+                .getString(MANUAL_ACCESSIBILITY_ARGUMENT) == "true",
         )
-        val originalEnabled = Settings.Secure.getString(
-            resolver,
-            Settings.Secure.ACCESSIBILITY_ENABLED,
-        )
+        val targetContext = instrumentation.targetContext
         var activity: Activity? = null
+        var provider: CapturingProvider? = null
 
-        automation.adoptShellPermissionIdentity(Manifest.permission.WRITE_SECURE_SETTINGS)
         try {
-            ScreenshotTestAccessibilityService.reset()
-            val serviceComponent = ComponentName(
-                testContext,
-                ScreenshotTestAccessibilityService::class.java,
-            ).flattenToString()
-            val enabledServices = originalServices
-                .orEmpty()
-                .split(':')
-                .filter(String::isNotBlank)
-                .plus(serviceComponent)
-                .distinct()
-                .joinToString(":")
-            check(
-                Settings.Secure.putString(
-                    resolver,
-                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-                    enabledServices,
-                ),
-            )
-            check(
-                Settings.Secure.putInt(
-                    resolver,
-                    Settings.Secure.ACCESSIBILITY_ENABLED,
-                    1,
-                ),
-            )
-
             val service = ScreenshotTestAccessibilityService.awaitConnected(TIMEOUT_SECONDS)
             activity = instrumentation.startActivitySync(
-                Intent(testContext, ScreenshotTestActivity::class.java)
+                Intent(targetContext, ScreenshotTestActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
             instrumentation.waitForIdleSync()
@@ -85,20 +52,20 @@ class AccessibilityScreenshotCapabilityTest {
                     callbackExecutor = service.mainExecutor,
                 ),
                 snapshot = service::snapshot,
-                isAuthorized = { it == testContext.packageName },
+                isAuthorized = { it == targetContext.packageName },
             )
-            val provider = CapturingProvider()
+            val capturingProvider = CapturingProvider().also { provider = it }
             val planner = ProviderSessionPlanner(
-                provider = provider,
+                provider = capturingProvider,
                 screenshotCapture = controller::capture,
             )
 
             planner.plan(
                 SessionPlanRequest(
                     task = "Inspect the test surface",
-                    targetPackage = testContext.packageName,
+                    targetPackage = targetContext.packageName,
                     observation = SessionObservation(
-                        activePackage = testContext.packageName,
+                        activePackage = targetContext.packageName,
                         uiSummary = "Non-sensitive screenshot test surface",
                     ),
                     previousActionSummary = null,
@@ -106,24 +73,24 @@ class AccessibilityScreenshotCapabilityTest {
                 ),
             )
 
-            val png = checkNotNull(provider.screenshotPng)
+            val png = checkNotNull(capturingProvider.screenshotPng)
             assertTrue("Expected a non-empty PNG", png.size > PNG_SIGNATURE.size)
             assertArrayEquals(PNG_SIGNATURE, png.copyOf(PNG_SIGNATURE.size))
+            assertTrue(
+                "Expected screenshot to stay within the local byte budget",
+                png.size <= ScreenshotImagePolicy().maxPngBytes,
+            )
+            val bounds = BitmapFactory.Options().also { it.inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(png, 0, png.size, bounds)
+            assertTrue(
+                "Expected screenshot dimensions to be locally minimized",
+                maxOf(bounds.outWidth, bounds.outHeight) <=
+                    ScreenshotImagePolicy().maxLongEdgePx,
+            )
         } finally {
+            provider?.clearScreenshot()
             activity?.finish()
-            Settings.Secure.putString(
-                resolver,
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-                originalServices,
-            )
-            Settings.Secure.putString(
-                resolver,
-                Settings.Secure.ACCESSIBILITY_ENABLED,
-                originalEnabled,
-            )
-            automation.dropShellPermissionIdentity()
             instrumentation.waitForIdleSync()
-            ScreenshotTestAccessibilityService.reset()
         }
     }
 
@@ -144,10 +111,16 @@ class AccessibilityScreenshotCapabilityTest {
 
         override suspend fun testConnection(): ProviderConnectionResult =
             ProviderConnectionResult.Success
+
+        fun clearScreenshot() {
+            screenshotPng?.fill(0)
+            screenshotPng = null
+        }
     }
 
     private companion object {
-        const val TIMEOUT_SECONDS = 10L
+        const val TIMEOUT_SECONDS = 60L
+        const val MANUAL_ACCESSIBILITY_ARGUMENT = "manualAccessibility"
         val PNG_SIGNATURE = byteArrayOf(
             0x89.toByte(),
             0x50,

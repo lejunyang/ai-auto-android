@@ -4,13 +4,13 @@
         <activity
             android:name="dev.aiauto.android.accessibility.ScreenshotTestActivity"
             android:exported="false"
-            android:theme="@style/Theme.AiAutoAndroid" />
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
 
         <service
             android:name="dev.aiauto.android.accessibility.ScreenshotTestAccessibilityService"
-            android:description="@string/accessibility_service_description"
+            android:description="@string/test_accessibility_service_description"
             android:exported="true"
-            android:label="@string/accessibility_service_label"
+            android:label="Accessibility device test"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
@@ -18,7 +18,7 @@
 
             <meta-data
                 android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
+                android:resource="@xml/test_accessibility_service_config" />
         </service>
     </application>
 </manifest>

@@ -3,8 +3,10 @@ package dev.aiauto.android.accessibility
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
 import dev.aiauto.android.accessibility.action.AccessibilityActionBackend
@@ -16,6 +18,7 @@ import dev.aiauto.android.accessibility.model.GlobalAction
 import dev.aiauto.android.accessibility.model.NodeAction
 import dev.aiauto.android.accessibility.model.NodePath
 import dev.aiauto.android.accessibility.model.ScreenBounds
+import dev.aiauto.android.accessibility.model.ScreenPoint
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import dev.aiauto.android.accessibility.settings.AccessibilitySettings
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
@@ -27,6 +30,7 @@ internal class AndroidAccessibilityBackend(
     private val service: AccessibilityService,
     private val settingsRepository: AccessibilitySettingsRepository,
     private val snapshotter: AccessibilitySnapshotter,
+    private val userTouchMonitor: UserTouchMonitor? = null,
 ) : AccessibilityActionBackend {
     override fun validateTarget(expectedPackage: String?): AccessibilityResult<Unit> {
         val settings = settingsRepository.load()
@@ -98,12 +102,62 @@ internal class AndroidAccessibilityBackend(
             }
 
             is AccessibilityResult.Success -> AccessibilityResult.Success(
-                AndroidNodeSession(root = root, rootSnapshot = snapshot.value),
+                AndroidNodeSession(
+                    root = root,
+                    rootSnapshot = snapshot.value,
+                    userTouchMonitor = userTouchMonitor,
+                ),
             )
         }
     }
 
-    override fun dispatch(gesture: Gesture): Boolean {
+    override fun dispatch(
+        gesture: Gesture,
+        sourcePath: NodePath?,
+        expectedEventBudgets: Map<Int, Int>,
+        timeoutMs: Long,
+    ): Boolean {
+        val source = sourcePath?.let(::findNodeInActiveWindow)
+            ?: findUniqueNodeAt(gesture)
+        val requiresAttribution = userTouchMonitor?.requiresStrictAttribution() == true
+        if (requiresAttribution && source == null) {
+            return false
+        }
+        return try {
+            val dispatchAction = {
+                dispatchGesture(gesture)
+            }
+            if (source != null && requiresAttribution) {
+                userTouchMonitor?.runAttributedAction(
+                    source = source,
+                    eventBudgets = expectedEventBudgets.ifEmpty {
+                        gesture.expectedEventBudgets()
+                    },
+                    timeoutMs = timeoutMs,
+                    action = dispatchAction,
+                ) ?: false
+            } else {
+                dispatchAction()
+            }
+        } finally {
+            source?.recycleSafely()
+        }
+    }
+
+    private fun Gesture.anchorPoint(): ScreenPoint = when (this) {
+        is Gesture.Tap -> point
+        is Gesture.Swipe -> ScreenPoint(
+            x = start.x + (end.x - start.x) / 2,
+            y = start.y + (end.y - start.y) / 2,
+        )
+    }
+
+    private fun Gesture.expectedEventBudgets(): Map<Int, Int> = when (this) {
+        is Gesture.Tap -> mapOf(AccessibilityEvent.TYPE_VIEW_CLICKED to 1)
+        is Gesture.Swipe -> mapOf(AccessibilityEvent.TYPE_VIEW_SCROLLED to GESTURE_EVENT_BUDGET)
+    }
+
+    private fun dispatchGesture(gesture: Gesture): Boolean {
         val path = Path()
         val durationMs: Long
         when (gesture) {
@@ -122,6 +176,66 @@ internal class AndroidAccessibilityBackend(
             .addStroke(GestureDescription.StrokeDescription(path, 0, durationMs))
             .build()
         return service.dispatchGesture(description, null, null)
+    }
+
+    private fun findNodeInActiveWindow(path: NodePath): AccessibilityNodeInfo? {
+        var current = service.rootInActiveWindow ?: return null
+        var currentOwned = true
+        path.indices.forEach { index ->
+            val child = current.getChild(index)
+            if (currentOwned) {
+                current.recycleSafely()
+            }
+            if (child == null) {
+                return null
+            }
+            current = child
+            currentOwned = true
+        }
+        return current
+    }
+
+    private fun findUniqueNodeAt(gesture: Gesture): AccessibilityNodeInfo? {
+        val point = gesture.anchorPoint()
+        val root = service.rootInActiveWindow ?: return null
+        val candidates = ArrayDeque<AccessibilityNodeInfo>().apply { add(root) }
+        var best: AccessibilityNodeInfo? = null
+        var bestArea = Long.MAX_VALUE
+        var ambiguous = false
+        while (candidates.isNotEmpty()) {
+            val node = candidates.removeFirst()
+            val bounds = Rect()
+            node.getBoundsInScreen(bounds)
+            val containsPoint = point.x in bounds.left until bounds.right &&
+                point.y in bounds.top until bounds.bottom
+            val area = bounds.width().toLong() * bounds.height().toLong()
+            if (containsPoint && node.isVisibleToUser && gesture.accepts(node) && area > 0) {
+                when {
+                    area < bestArea -> {
+                        best?.recycleSafely()
+                        best = AccessibilityNodeInfo(node)
+                        bestArea = area
+                        ambiguous = false
+                    }
+
+                    area == bestArea -> ambiguous = true
+                }
+            }
+            repeat(node.childCount) { index ->
+                node.getChild(index)?.let(candidates::addLast)
+            }
+            node.recycleSafely()
+        }
+        if (ambiguous) {
+            best?.recycleSafely()
+            return null
+        }
+        return best
+    }
+
+    private fun Gesture.accepts(node: AccessibilityNodeInfo): Boolean = when (this) {
+        is Gesture.Tap -> node.isClickable || node.isLongClickable
+        is Gesture.Swipe -> node.isScrollable
     }
 
     override fun performGlobal(action: GlobalAction): Boolean {
@@ -179,36 +293,57 @@ internal class AndroidAccessibilityBackend(
     private class AndroidNodeSession(
         private val root: AccessibilityNodeInfo,
         override val rootSnapshot: UiNodeSnapshot,
+        private val userTouchMonitor: UserTouchMonitor?,
     ) : AccessibilityNodeSession {
         override fun perform(
             path: NodePath,
             action: NodeAction,
             text: String?,
+            expectedEventBudgets: Map<Int, Int>,
+            timeoutMs: Long,
         ): Boolean {
             val node = findNode(path) ?: return false
             return try {
-                when (action) {
-                    NodeAction.SET_TEXT -> {
-                        if (text == null) {
-                            false
-                        } else {
-                            val arguments = Bundle().apply {
-                                putCharSequence(
-                                    AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                                    text,
-                                )
-                            }
-                            node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
-                        }
-                    }
-
-                    else -> node.performAction(action.toPlatformAction())
+                val performAction = {
+                    performNodeAction(node, action, text)
+                }
+                if (expectedEventBudgets.isNotEmpty()) {
+                    userTouchMonitor?.runAttributedAction(
+                        source = node,
+                        eventBudgets = expectedEventBudgets,
+                        timeoutMs = timeoutMs,
+                        action = performAction,
+                    ) ?: false
+                } else {
+                    performAction()
                 }
             } finally {
                 if (node !== root) {
                     node.recycleSafely()
                 }
             }
+        }
+
+        private fun performNodeAction(
+            node: AccessibilityNodeInfo,
+            action: NodeAction,
+            text: String?,
+        ): Boolean = when (action) {
+            NodeAction.SET_TEXT -> {
+                if (text == null) {
+                    false
+                } else {
+                    val arguments = Bundle().apply {
+                        putCharSequence(
+                            AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                            text,
+                        )
+                    }
+                    node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+                }
+            }
+
+            else -> node.performAction(action.toPlatformAction())
         }
 
         override fun close() {
@@ -250,5 +385,9 @@ internal class AndroidAccessibilityBackend(
             NodeAction.SCROLL_RIGHT ->
                 AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_RIGHT.id
         }
+    }
+
+    private companion object {
+        const val GESTURE_EVENT_BUDGET = 3
     }
 }

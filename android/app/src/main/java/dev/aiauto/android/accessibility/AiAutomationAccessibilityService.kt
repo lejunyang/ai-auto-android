@@ -3,8 +3,10 @@ package dev.aiauto.android.accessibility
 import android.accessibilityservice.AccessibilityService
 import android.content.SharedPreferences
 import android.os.Build
-import android.view.MotionEvent
 import android.view.accessibility.AccessibilityEvent
+
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 import dev.aiauto.android.accessibility.action.AccessibilityActionRouter
 import dev.aiauto.android.accessibility.model.AccessibilityCommand
@@ -27,29 +29,40 @@ class AiAutomationAccessibilityService :
     private lateinit var backend: AndroidAccessibilityBackend
     private lateinit var actionRouter: AccessibilityActionRouter
     private lateinit var screenshotController: AccessibilityScreenshotController
+    private lateinit var screenshotExecutor: ExecutorService
     private lateinit var userTouchMonitor: UserTouchMonitor
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         settingsRepository = AccessibilitySettingsRepository.from(this)
+        userTouchMonitor = UserTouchMonitor(
+            notifyUserTouch = AutomationSessionRuntime::notifyUserTouch,
+            currentSessionId = AutomationSessionRuntime::activeSessionId,
+        )
         backend = AndroidAccessibilityBackend(
             service = this,
             settingsRepository = settingsRepository,
             snapshotter = AccessibilitySnapshotter(),
+            userTouchMonitor = userTouchMonitor,
         )
         actionRouter = AccessibilityActionRouter(
             backend = backend,
             selectorMatcher = SelectorMatcher(),
         )
+        screenshotExecutor = Executors.newSingleThreadExecutor { task ->
+            Thread(task, "accessibility-screenshot").apply {
+                isDaemon = true
+            }
+        }
         screenshotController = AccessibilityScreenshotController(
             platform = AndroidScreenshotPlatform(
                 service = this,
-                callbackExecutor = mainExecutor,
+                callbackExecutor = screenshotExecutor,
             ),
             snapshot = ::snapshot,
-            isAuthorized = AutomationSessionRuntime::isScreenshotAuthorized,
+            acquireAuthorization = AutomationSessionRuntime::acquireScreenshotAuthorization,
+            isAuthorizationActive = AutomationSessionRuntime::isScreenshotAuthorizationActive,
         )
-        userTouchMonitor = UserTouchMonitor(AutomationSessionRuntime::notifyUserTouch)
         settingsRepository.registerListener(this)
         applyTargetPackages()
         AccessibilityRuntime.attach(this)
@@ -59,10 +72,7 @@ class AiAutomationAccessibilityService :
         if (event == null) {
             return
         }
-        userTouchMonitor.onAccessibilityEvent(
-            eventType = event.eventType,
-            packageName = event.packageName?.toString() ?: activePackageName(),
-        )
+        userTouchMonitor.onAccessibilityEvent(event)
         if (!RecordingRuntime.isListening()) {
             return
         }
@@ -81,14 +91,6 @@ class AiAutomationAccessibilityService :
         }
     }
 
-    override fun onMotionEvent(event: MotionEvent) {
-        userTouchMonitor.onMotionEvent(
-            action = event.actionMasked,
-            source = event.source,
-            packageName = activePackageName(),
-        )
-    }
-
     override fun onInterrupt() = Unit
 
     override fun onSharedPreferenceChanged(
@@ -102,6 +104,12 @@ class AiAutomationAccessibilityService :
         AccessibilityRuntime.detach(this)
         if (::settingsRepository.isInitialized) {
             settingsRepository.unregisterListener(this)
+        }
+        if (::screenshotExecutor.isInitialized) {
+            screenshotExecutor.shutdownNow()
+        }
+        if (::userTouchMonitor.isInitialized) {
+            userTouchMonitor.clearAutomationActions()
         }
         super.onDestroy()
     }
@@ -123,10 +131,7 @@ class AiAutomationAccessibilityService :
 
     internal fun execute(
         command: AccessibilityCommand,
-    ): AccessibilityResult<ActionExecution> = AccessibilityCommandAttributor(
-        userTouchMonitor = userTouchMonitor,
-        currentPackageName = ::activePackageName,
-    ).execute(command, actionRouter::execute)
+    ): AccessibilityResult<ActionExecution> = actionRouter.execute(command)
 
     internal suspend fun captureScreenshot(
         expectedPackage: String,
@@ -168,42 +173,6 @@ class AiAutomationAccessibilityService :
         } finally {
             root.recycleSafely()
         }
-    }
-
-}
-
-internal class AccessibilityCommandAttributor(
-    private val userTouchMonitor: UserTouchMonitor,
-    private val currentPackageName: () -> String?,
-) {
-    fun execute(
-        command: AccessibilityCommand,
-        executeCommand: (AccessibilityCommand) -> AccessibilityResult<ActionExecution>,
-    ): AccessibilityResult<ActionExecution> {
-        val expectedEventType = command.expectedAccessibilityEventType()
-        if (expectedEventType == null) {
-            return executeCommand(command)
-        }
-        val targetPackage = currentPackageName()
-        if (!targetPackage.isNullOrBlank()) {
-            userTouchMonitor.expectAutomationEvent(
-                eventType = expectedEventType,
-                packageName = targetPackage,
-            )
-        }
-        return executeCommand(command).also { result ->
-            if (result is AccessibilityResult.Failure) {
-                userTouchMonitor.clearExpectedAutomationEvent()
-            }
-        }
-    }
-
-    private fun AccessibilityCommand.expectedAccessibilityEventType(): Int? = when (this) {
-        is AccessibilityCommand.Click -> AccessibilityEvent.TYPE_VIEW_CLICKED
-        is AccessibilityCommand.LongClick -> AccessibilityEvent.TYPE_VIEW_LONG_CLICKED
-        is AccessibilityCommand.Scroll -> AccessibilityEvent.TYPE_VIEW_SCROLLED
-        is AccessibilityCommand.SetText -> AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
-        else -> null
     }
 }
 

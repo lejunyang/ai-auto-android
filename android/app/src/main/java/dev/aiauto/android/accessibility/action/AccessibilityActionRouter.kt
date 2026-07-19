@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility.action
 
+import android.view.accessibility.AccessibilityEvent
+
 import dev.aiauto.android.accessibility.model.AccessibilityCommand
 import dev.aiauto.android.accessibility.model.AccessibilityErrorCode
 import dev.aiauto.android.accessibility.model.AccessibilityResult
@@ -25,6 +27,8 @@ interface AccessibilityNodeSession : AutoCloseable {
         path: NodePath,
         action: NodeAction,
         text: String? = null,
+        expectedEventBudgets: Map<Int, Int> = emptyMap(),
+        timeoutMs: Long = 1_000L,
     ): Boolean
 }
 
@@ -33,7 +37,12 @@ interface AccessibilityActionBackend {
 
     fun openNodeSession(expectedPackage: String?): AccessibilityResult<AccessibilityNodeSession>
 
-    fun dispatch(gesture: Gesture): Boolean
+    fun dispatch(
+        gesture: Gesture,
+        sourcePath: NodePath? = null,
+        expectedEventBudgets: Map<Int, Int> = emptyMap(),
+        timeoutMs: Long = 1_000L,
+    ): Boolean
 
     fun performGlobal(action: GlobalAction): Boolean
 
@@ -69,6 +78,7 @@ class AccessibilityActionRouter(
                 point = command.point,
                 durationMs = TAP_DURATION_MS,
                 route = ActionRoute.SCREEN_GESTURE,
+                expectedEventBudgets = emptyMap(),
             )
 
             is AccessibilityCommand.Swipe -> executeSwipe(command)
@@ -88,6 +98,9 @@ class AccessibilityActionRouter(
                     durationMs = TAP_DURATION_MS,
                     route = ActionRoute.NODE_GESTURE,
                     match = attempt.match,
+                    expectedEventBudgets = eventBudgets(
+                        AccessibilityEvent.TYPE_VIEW_CLICKED to 1,
+                    ),
                 )
                 if (nodeGesture is AccessibilityResult.Success) {
                     return nodeGesture
@@ -135,6 +148,9 @@ class AccessibilityActionRouter(
                     durationMs = command.durationMs,
                     route = ActionRoute.NODE_GESTURE,
                     match = attempt.match,
+                    expectedEventBudgets = eventBudgets(
+                        AccessibilityEvent.TYPE_VIEW_LONG_CLICKED to 1,
+                    ),
                 )
                 if (nodeGesture is AccessibilityResult.Success) {
                     return nodeGesture
@@ -313,7 +329,12 @@ class AccessibilityActionRouter(
                     val supportedAction = actions.firstOrNull { it in match.node.actions }
                     if (
                         supportedAction != null &&
-                        session.perform(match.path, supportedAction, text)
+                        session.perform(
+                            path = match.path,
+                            action = supportedAction,
+                            text = text,
+                            expectedEventBudgets = supportedAction.expectedEventBudgets(),
+                        )
                     ) {
                         NodeAttempt.Performed(match)
                     } else {
@@ -342,6 +363,7 @@ class AccessibilityActionRouter(
                 point = point.value,
                 durationMs = durationMs,
                 route = ActionRoute.COORDINATE_GESTURE,
+                expectedEventBudgets = emptyMap(),
             )
         }
     }
@@ -368,12 +390,20 @@ class AccessibilityActionRouter(
         durationMs: Long,
         route: ActionRoute,
         match: SelectorMatch.Found? = null,
+        expectedEventBudgets: Map<Int, Int>,
     ): AccessibilityResult<ActionExecution> {
         when (val validated = CoordinateTransformer.validate(point, backend.screenBounds())) {
             is AccessibilityResult.Failure -> return validated
             is AccessibilityResult.Success -> Unit
         }
-        return if (backend.dispatch(Gesture.Tap(point, durationMs))) {
+        return if (
+            backend.dispatch(
+                gesture = Gesture.Tap(point, durationMs),
+                sourcePath = match?.path,
+                expectedEventBudgets = expectedEventBudgets,
+                timeoutMs = durationMs + EVENT_TIMEOUT_GRACE_MS,
+            )
+        ) {
             AccessibilityResult.Success(
                 ActionExecution(
                     route = route,
@@ -404,7 +434,18 @@ class AccessibilityActionRouter(
         if (validEnd is AccessibilityResult.Failure) {
             return validEnd
         }
-        return if (backend.dispatch(gesture)) {
+        return if (
+            backend.dispatch(
+                gesture = gesture,
+                sourcePath = match?.path,
+                expectedEventBudgets = if (match == null) {
+                    emptyMap()
+                } else {
+                    eventBudgets(AccessibilityEvent.TYPE_VIEW_SCROLLED to SCROLL_EVENT_BUDGET)
+                },
+                timeoutMs = gesture.durationMs + EVENT_TIMEOUT_GRACE_MS,
+            )
+        ) {
             AccessibilityResult.Success(
                 ActionExecution(
                     route = route,
@@ -468,6 +509,25 @@ class AccessibilityActionRouter(
         ScrollDirection.BACKWARD -> listOf(NodeAction.SCROLL_BACKWARD)
     }
 
+    private fun NodeAction.expectedEventBudgets(): Map<Int, Int> = when (this) {
+        NodeAction.CLICK -> eventBudgets(AccessibilityEvent.TYPE_VIEW_CLICKED to 1)
+        NodeAction.LONG_CLICK -> eventBudgets(AccessibilityEvent.TYPE_VIEW_LONG_CLICKED to 1)
+        NodeAction.SET_TEXT ->
+            eventBudgets(AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED to TEXT_EVENT_BUDGET)
+
+        NodeAction.SCROLL_FORWARD,
+        NodeAction.SCROLL_BACKWARD,
+        NodeAction.SCROLL_UP,
+        NodeAction.SCROLL_DOWN,
+        NodeAction.SCROLL_LEFT,
+        NodeAction.SCROLL_RIGHT,
+        -> eventBudgets(AccessibilityEvent.TYPE_VIEW_SCROLLED to SCROLL_EVENT_BUDGET)
+    }
+
+    private fun eventBudgets(
+        vararg budgets: Pair<Int, Int>,
+    ): Map<Int, Int> = mapOf(*budgets)
+
     private fun UiBounds.intersect(screen: ScreenBounds): ScreenBounds? {
         val intersection = ScreenBounds(
             left = maxOf(left, screen.left),
@@ -518,6 +578,9 @@ class AccessibilityActionRouter(
     private companion object {
         const val TAP_DURATION_MS = 100L
         const val MIN_LONG_CLICK_MS = 300L
+        const val EVENT_TIMEOUT_GRACE_MS = 1_000L
+        const val TEXT_EVENT_BUDGET = 2
+        const val SCROLL_EVENT_BUDGET = 3
         const val MAX_LONG_CLICK_MS = 10_000L
         const val MIN_SWIPE_MS = 1L
         const val MAX_SWIPE_MS = 60_000L
