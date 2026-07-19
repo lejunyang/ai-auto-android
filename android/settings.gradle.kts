@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "AiAutoAndroid"
 include(":app")
+include(":device-fixture")
