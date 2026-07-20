@@ -204,6 +204,41 @@ func TestClientMapsDisconnectBeforeResponse(t *testing.T) {
 	assertBridgeErrorCode(t, err, apperr.CodeDeviceUnreachable)
 }
 
+func TestClientAcceptsCompleteCloseResponseBeforeEOF(t *testing.T) {
+	token := "random-token-value-that-is-longer-than-32-bytes"
+	dialer := pipeDialer(func(connection net.Conn) {
+		hello := readRequest(t, connection)
+		writeResponse(t, connection, successfulResponse(hello, `{
+			"serverVersion":"0.1.0",
+			"selectedProtocolVersion":"1.0",
+			"capabilities":[]
+		}`))
+		request := readRequest(t, connection)
+		if request.Method != "session.close" || request.Token != token {
+			t.Errorf("request = %#v", request)
+		}
+		writeResponse(t, connection, successfulResponse(request, `{"closed":true}`))
+		_ = connection.Close()
+	})
+	client := NewClientWithDialer(dialer, time.Second)
+
+	var result SessionCloseResult
+	err := client.Call(
+		context.Background(),
+		41237,
+		token,
+		"session.close",
+		map[string]any{},
+		&result,
+	)
+	if err != nil {
+		t.Fatalf("Call() error = %v", err)
+	}
+	if !result.Closed {
+		t.Fatalf("result = %#v", result)
+	}
+}
+
 func TestValidateResponseRejectsUnknownErrorsAndNonObjectResults(t *testing.T) {
 	request := Request{
 		ID:              "11111111-1111-4111-8111-111111111111",

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -137,6 +138,141 @@ func TestServiceCloseCleansForwardEvenWhenPeerDisconnected(t *testing.T) {
 	assertBridgeErrorCode(t, err, apperr.CodeDeviceUnreachable)
 	if !result.ForwardRemoved || store.hasSession {
 		t.Fatalf("cleanup result = %#v, hasSession = %v", result, store.hasSession)
+	}
+}
+
+func TestServiceCloseKeepsForwardWhenSessionDeleteFails(t *testing.T) {
+	operations := make([]string, 0, 2)
+	forwarder := &fakeForwarder{operations: &operations}
+	client := &fakeRPCClient{}
+	store := newMemoryStore()
+	store.operations = &operations
+	store.deleteErr = apperr.New(
+		apperr.CodeInternal,
+		"delete failed",
+		false,
+		nil,
+	)
+	store.Save(validSessionAt("2026-07-18T00:15:00Z"))
+	service := testService(forwarder, client, store)
+
+	result, err := service.Close(context.Background(), "SERIAL")
+	assertBridgeErrorCode(t, err, apperr.CodeInternal)
+	if len(forwarder.removed) != 0 {
+		t.Fatalf("removed forwards = %#v, want none", forwarder.removed)
+	}
+	if !store.hasSession {
+		t.Fatal("delete failure discarded the retryable local session")
+	}
+	if result.ForwardRemoved {
+		t.Fatalf("result = %#v, forward was not removed", result)
+	}
+	if len(operations) != 1 || operations[0] != "store.delete" {
+		t.Fatalf("operations = %#v, want only store.delete", operations)
+	}
+}
+
+func TestServiceCloseDeletesSessionBeforeRemovingForward(t *testing.T) {
+	operations := make([]string, 0, 2)
+	forwarder := &fakeForwarder{operations: &operations}
+	client := &fakeRPCClient{}
+	store := newMemoryStore()
+	store.operations = &operations
+	store.Save(validSessionAt("2026-07-18T00:15:00Z"))
+	service := testService(forwarder, client, store)
+
+	result, err := service.Close(context.Background(), "SERIAL")
+	if err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	if !result.SessionClosed || !result.ForwardRemoved {
+		t.Fatalf("result = %#v", result)
+	}
+	want := []string{"store.delete", "forward.remove"}
+	if !reflect.DeepEqual(operations, want) {
+		t.Fatalf("operations = %#v, want %#v", operations, want)
+	}
+}
+
+func TestServiceCloseDoesNotRestoreSessionWhenForwardRemovalFails(t *testing.T) {
+	forwardErr := apperr.New(
+		apperr.CodeDeviceUnreachable,
+		"forward cleanup failed",
+		true,
+		nil,
+	)
+	forwarder := &fakeForwarder{removeErr: forwardErr}
+	client := &fakeRPCClient{}
+	store := newMemoryStore()
+	store.Save(validSessionAt("2026-07-18T00:15:00Z"))
+	service := testService(forwarder, client, store)
+
+	result, err := service.Close(context.Background(), "SERIAL")
+	assertBridgeErrorCode(t, err, apperr.CodeDeviceUnreachable)
+	if store.hasSession {
+		t.Fatal("forward failure restored a local session whose token was already revoked")
+	}
+	if !result.SessionClosed || result.ForwardRemoved {
+		t.Fatalf("result = %#v", result)
+	}
+}
+
+func TestServiceCloseIsIdempotentOnSecondCall(t *testing.T) {
+	forwarder := &fakeForwarder{}
+	client := &fakeRPCClient{}
+	store := newMemoryStore()
+	store.Save(validSessionAt("2026-07-18T00:15:00Z"))
+	service := testService(forwarder, client, store)
+
+	first, err := service.Close(context.Background(), "SERIAL")
+	if err != nil {
+		t.Fatalf("first Close() error = %v", err)
+	}
+	if !first.SessionClosed || !first.ForwardRemoved || first.AlreadyClean {
+		t.Fatalf("first result = %#v", first)
+	}
+
+	result, err := service.Close(context.Background(), "SERIAL")
+	if err != nil {
+		t.Fatalf("second Close() error = %v", err)
+	}
+	if result.Device != "SERIAL" || !result.ForwardRemoved || !result.AlreadyClean {
+		t.Fatalf("second result = %#v", result)
+	}
+	if client.callCount != 1 || len(forwarder.removed) != 1 {
+		t.Fatalf("RPC calls = %d, removed forwards = %#v", client.callCount, forwarder.removed)
+	}
+}
+
+func TestServiceClosePreservesRemoteErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		code string
+	}{
+		{name: "auth invalid", code: apperr.CodeAuthInvalid},
+		{name: "auth expired", code: apperr.CodeAuthExpired},
+		{name: "protocol", code: apperr.CodeProtocol},
+		{name: "remote internal", code: apperr.CodeInternal},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			forwarder := &fakeForwarder{}
+			client := &fakeRPCClient{
+				callErr: apperr.New(test.code, "remote close failed", false, nil),
+			}
+			store := newMemoryStore()
+			store.Save(validSessionAt("2026-07-18T00:15:00Z"))
+			service := testService(forwarder, client, store)
+
+			result, err := service.Close(context.Background(), "SERIAL")
+			assertBridgeErrorCode(t, err, test.code)
+			if result.SessionClosed || !result.ForwardRemoved {
+				t.Fatalf("result = %#v", result)
+			}
+			if store.hasSession || len(forwarder.removed) != 1 {
+				t.Fatal("remote error did not clean local state")
+			}
+		})
 	}
 }
 
@@ -286,6 +422,7 @@ type fakeForwarder struct {
 	forwardErr error
 	removeErr  error
 	removed    []int
+	operations *[]string
 }
 
 func (f *fakeForwarder) Forward(
@@ -301,6 +438,9 @@ func (f *fakeForwarder) RemoveForward(
 	_ string,
 	localPort int,
 ) error {
+	if f.operations != nil {
+		*f.operations = append(*f.operations, "forward.remove")
+	}
 	f.removed = append(f.removed, localPort)
 	return f.removeErr
 }
@@ -357,6 +497,7 @@ type memoryStore struct {
 	hasSession bool
 	saveErr    error
 	deleteErr  error
+	operations *[]string
 }
 
 func newMemoryStore() *memoryStore {
@@ -388,6 +529,12 @@ func (s *memoryStore) Load(device string) (Session, error) {
 }
 
 func (s *memoryStore) Delete(string) error {
+	if s.operations != nil {
+		*s.operations = append(*s.operations, "store.delete")
+	}
+	if s.deleteErr != nil {
+		return s.deleteErr
+	}
 	s.hasSession = false
-	return s.deleteErr
+	return nil
 }

@@ -182,6 +182,15 @@ class BridgeDispatcherTest {
             "REQUEST_REPLAYED",
             dispatch("session.close", buildJsonObject {}, token, requestId).errorCode(),
         )
+        assertEquals(
+            "AUTH_INVALID",
+            dispatch(
+                "session.close",
+                buildJsonObject {},
+                token,
+                UUID.randomUUID().toString(),
+            ).errorCode(),
+        )
     }
 
     @Test

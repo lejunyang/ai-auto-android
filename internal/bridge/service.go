@@ -57,11 +57,12 @@ type OpenResult struct {
 	ServerVersion   string `json:"serverVersion"`
 }
 
-// CloseResult 分别报告远端会话和本地转发的清理结果。
+// CloseResult 分别报告远端会话、本地转发和重复关闭的清理结果。
 type CloseResult struct {
 	Device         string `json:"device"`
 	SessionClosed  bool   `json:"sessionClosed"`
 	ForwardRemoved bool   `json:"forwardRemoved"`
+	AlreadyClean   bool   `json:"alreadyClean,omitempty"`
 }
 
 // NewService 使用指定转发器、RPC 客户端和会话存储创建服务。
@@ -269,6 +270,13 @@ func (s *Service) Replay(
 func (s *Service) Close(ctx context.Context, device string) (CloseResult, error) {
 	session, err := s.store.Load(device)
 	if err != nil {
+		if isAuthRequired(err) {
+			return CloseResult{
+				Device:         device,
+				ForwardRemoved: true,
+				AlreadyClean:   true,
+			}, nil
+		}
 		return CloseResult{}, err
 	}
 
@@ -333,21 +341,17 @@ func (s *Service) call(
 }
 
 func (s *Service) cleanup(ctx context.Context, session Session) error {
+	// 先删除本地 token，失败时保留仍可重试的 forward；token 删除成功后不再恢复。
+	if err := s.store.Delete(session.Device); err != nil {
+		return err
+	}
 	cleanupContext, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	forwardErr := s.forwarder.RemoveForward(
+	return s.forwarder.RemoveForward(
 		cleanupContext,
 		session.Device,
 		session.LocalPort,
 	)
-	storeErr := s.store.Delete(session.Device)
-	if forwardErr != nil && storeErr != nil {
-		return errors.Join(forwardErr, storeErr)
-	}
-	if forwardErr != nil {
-		return forwardErr
-	}
-	return storeErr
 }
 
 func isAuthRequired(err error) bool {
