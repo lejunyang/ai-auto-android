@@ -1,90 +1,81 @@
-# Observation Commands
+# 设备观察命令
 
-## Device Information
+## 设备信息
 
 ```bash
 aactl device info --device SERIAL --json
 ```
 
-Verify `state` is `device` and inspect the returned capabilities before
-capturing UI data.
+采集 UI 数据前，确认 `state` 为 `device`，并检查返回的 capabilities。
 
-## PNG Screenshot
+## PNG 截图
 
-Use an approved local output path. `aactl` writes the file with owner-only
-permissions and returns its absolute path, format, byte size, and SHA-256:
+使用获准的本地输出路径。`aactl` 使用仅所有者可访问的权限写入文件，并返回绝对路径、格式、字节数和 SHA-256：
 
 ```bash
 aactl observe screenshot --device SERIAL --output screen.png --json
 ```
 
-The image itself is not embedded in the CLI JSON response.
+图像本身不会嵌入 CLI JSON 响应。
 
-With MCP, call `android_observe`:
+使用 MCP 时，调用 `android_observe`：
 
 ```json
 {"device":"SERIAL","kind":"screenshot"}
 ```
 
-MCP returns image content plus structured metadata. Treat the client-managed
-image as a sensitive artifact.
+MCP 返回图像内容和结构化元数据。将客户端管理的图像视为敏感产物。
 
-## UIAutomator Hierarchy
+## UIAutomator 层级
 
 ```bash
 aactl observe hierarchy --device SERIAL --json
 ```
 
-The CLI JSON data includes `format: "uiautomator-xml"`, `xml`, `sizeBytes`, and
-`sha256`. There is no CLI output-file option for hierarchy.
+CLI JSON 数据包含 `format: "uiautomator-xml"`、`xml`、`sizeBytes` 和 `sha256`。CLI 没有 hierarchy 输出文件选项。
 
-With MCP:
+使用 MCP 时：
 
 ```json
 {"device":"SERIAL","kind":"hierarchy"}
 ```
 
-## App Bridge Semantic Snapshot
+## App Bridge 语义快照
 
-In the Android App, the user must first enable the desktop bridge and generate
-a fresh one-time code. Omit `--code` so the CLI reads it interactively:
+用户必须先在 Android App 中启用桌面桥，并生成新的单次验证码。省略 `--code`，让 CLI 通过交互方式读取：
 
 ```bash
 aactl bridge open --device SERIAL --json
 ```
 
-Inspect the established bridge's device information:
+检查已建立 Bridge 的设备信息：
 
 ```bash
 aactl bridge info --device SERIAL --json
 ```
 
-Capture a package-scoped semantic tree:
+采集限定到指定包的语义树：
 
 ```bash
 aactl bridge snapshot --device SERIAL --package com.example.app --max-depth 64 --json
 ```
 
-`--package` is optional. `--max-depth` is optional and accepts 1 through 100;
-the shared service defaults to 64.
+`--package` 可选。`--max-depth` 可选，接受 1 到 100；共享服务默认值为 64。
 
-With MCP, an already established bridge session is required:
+使用 MCP 时，需要已有的 Bridge session：
 
 ```json
 {"device":"SERIAL","kind":"semantic","targetPackage":"com.example.app","maxDepth":64}
 ```
 
-When finished with bridge work:
+完成 Bridge 工作后：
 
 ```bash
 aactl bridge close --device SERIAL --json
 ```
 
-MCP does not expose bridge open, info, action, or close. Establish and close
-sessions through the CLI with direct user participation.
+MCP 不暴露 Bridge 的 open、info、action 或 close。必须在用户直接参与下通过 CLI 建立和关闭 session。
 
-## Current Command Boundary
+## 当前命令边界
 
-The CLI supports only `observe screenshot` and `observe hierarchy`. Semantic
-observation uses `bridge snapshot`; MCP unifies all three sources under
-`android_observe`.
+CLI 仅支持 `observe screenshot` 和 `observe hierarchy`。语义观察使用 `bridge snapshot`；MCP 通过 `android_observe` 统一三种数据源。

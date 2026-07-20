@@ -1,68 +1,53 @@
-# Privacy and Artifact Handling
+# 隐私与产物处理
 
-## Before Capture
+## 采集前
 
-1. State what source is needed and why.
-2. Confirm the exact device and, for semantic snapshots, the target package.
-3. Prefer metadata or semantic structure over pixels.
-4. Ask the user to leave password, one-time-code, payment, health, financial,
-   private-message, and account-recovery screens.
-5. Choose an artifact path outside source control and shared sync folders.
+1. 说明所需数据源及原因。
+2. 确认精确设备；采集语义快照时还要确认目标包。
+3. 优先选择元数据或语义结构，而不是像素。
+4. 要求用户离开密码、一次性验证码、支付、健康、金融、私人消息和账号恢复页面。
+5. 选择位于源码控制和共享同步文件夹之外的产物路径。
 
-## Source Classification
+## 数据源分类
 
-### Screenshot
+### 截图
 
-A screenshot is raw sensitive data. It can contain notifications, account
-identifiers, private text, photos, keyboard suggestions, and system overlays.
-Do not upload, log, or commit it. Crop or redact only in an approved downstream
-tool, and preserve the original hash separately if audit integrity is required.
+截图属于原始敏感数据，可能包含通知、账号标识符、私人文本、照片、键盘建议和系统浮层。不得上传、记录到日志或提交截图。仅在获准的下游工具中裁剪或脱敏；如果审计完整性有要求，应单独保留原始哈希。
 
-### UIAutomator Hierarchy
+### UIAutomator 层级
 
-The XML can contain visible text, content descriptions, resource IDs, package
-names, and bounds. It has no App-level sensitive-node redaction guarantee.
-Summarize required nodes and discard the raw response when no longer needed.
+XML 可能包含可见文本、内容描述、resource ID、包名和边界。它不提供 App 级敏感节点脱敏保证。仅汇总所需节点，并在不再需要时丢弃原始响应。
 
-### Bridge Semantic Snapshot
+### Bridge 语义快照
 
-The Android App filters password and sensitive node text before returning the
-tree. This reduces exposure but does not make the tree public. Labels, package
-names, layout, state, and non-marked text can still identify a user or task.
+Android App 返回树之前会过滤密码和敏感节点文本。这能降低暴露风险，但不代表该树可以公开。标签、包名、布局、状态和未标记文本仍可能识别用户或任务。
 
-### Device Information
+### 设备信息
 
-Serials and network endpoints identify devices and infrastructure. Keep them
-out of public reports unless explicitly required.
+Serial 和网络端点可以标识设备与基础设施。除非明确要求，否则不得将其写入公开报告。
 
-## Redaction
+## 脱敏
 
-Remove or replace:
+移除或替换以下内容：
 
-- Passwords, one-time codes, API keys, tokens, pairing codes, and session data.
-- Email addresses, phone numbers, account IDs, personal names, and message
-  bodies not required by the task.
-- Wi-Fi endpoints and device serials in externally shared output.
-- Payment, banking, health, authentication, and recovery content.
+- 密码、一次性验证码、API key、token、配对码和 session 数据。
+- 任务不需要的电子邮箱、电话号码、账号 ID、个人姓名和消息正文。
+- 对外共享输出中的 Wi-Fi 端点和设备 serial。
+- 支付、银行、健康、身份验证和恢复内容。
 
-Do not claim redaction by visual inspection alone. When uncertain, do not share
-the raw artifact.
+不得仅凭肉眼检查就声称已完成脱敏。不确定时，不得共享原始产物。
 
-## Retention
+## 保留
 
-- Keep the minimum number of captures.
-- Record path, source, selected serial, timestamp, SHA-256 when available, and
-  intended retention.
-- Delete temporary screenshots after extracting approved facts.
-- Do not add screenshots, hierarchy payloads, or semantic snapshots to Git.
-- Close bridge sessions after the workflow so the ADB forward and local session
-  record are removed.
+- 保留最少数量的采集结果。
+- 记录路径、数据源、所选 serial、时间戳、可用时的 SHA-256，以及预期保留期限。
+- 提取获准事实后删除临时截图。
+- 不得将截图、hierarchy payload 或语义快照加入 Git。
+- 工作流结束后关闭 Bridge session，以移除 ADB forward 和本地 session 记录。
 
-## Failure Handling
+## 失败处理
 
-- Empty or protected screenshot: report it; do not bypass `FLAG_SECURE`.
-- Truncated or invalid PNG/XML: discard it and retry once after confirming the
-  device is online.
-- Bridge `AUTH_REQUIRED` or `AUTH_EXPIRED`: require a fresh user-generated code.
-- `PERMISSION_DENIED` or unavailable accessibility capability: ask the user to
-  enable the service manually in Android settings. Never automate authorization.
+- 空白或受保护的截图：报告该情况，不得绕过 `FLAG_SECURE`。
+- 截断或无效的 PNG/XML：丢弃产物，确认设备在线后最多重试一次。
+- Bridge 返回 `AUTH_REQUIRED` 或 `AUTH_EXPIRED`：要求用户生成新的验证码。
+- 返回 `PERMISSION_DENIED` 或无障碍 capability 不可用：要求用户在 Android 设置中手动启用服务。不得自动完成授权。

@@ -1,104 +1,84 @@
-# Safety and Recovery
+# 安全与恢复
 
-## Decision Order
+## 决策顺序
 
-Evaluate each action in this order:
+按以下顺序评估每个动作：
 
-1. Is the serial explicit and currently online?
-2. Is the package explicitly authorized and still foreground?
-3. Is the action available through a typed CLI, MCP, or bridge interface?
-4. Does it touch a prohibited target or secret?
-5. Does it send, submit, publish, delete, remove, stop, navigate away, or change
-   external data?
-6. Is there a fresh observation and an objective postcondition?
+1. serial 是否明确且当前在线？
+2. 包是否已明确授权且仍在前台？
+3. 动作是否可通过类型化 CLI、MCP 或 Bridge 接口执行？
+4. 动作是否触及禁止目标或 secret？
+5. 动作是否会发送、提交、发布、删除、移除、停止、离开当前页面或更改外部数据？
+6. 是否具有最新观察和客观后置条件？
 
-Refuse at step 3 or 4. Require explicit confirmation at step 5. Execute only
-after step 6 is defined.
+第 3 或第 4 步不满足时拒绝执行。第 5 步涉及的动作需要明确确认。只有定义第 6 步后才能执行。
 
-## Confirmation Record
+## 确认记录
 
-Before a confirmation-required action, present:
+执行需要确认的动作前，展示：
 
-- Device serial and transport.
-- Target package and visible target label.
-- Exact typed action and parameters.
-- External or destructive effect.
-- Verification condition and recovery limit.
+- 设备 serial 和 transport。
+- 目标包和可见目标标签。
+- 准确的类型化动作及参数。
+- 外部或破坏性效果。
+- 验证条件和恢复限制。
 
-Accept only an explicit response to that concrete action. Do not reuse consent
-from pairing, bridge setup, task creation, or an earlier step.
+仅接受针对该具体动作的明确回复。不得重复使用配对、Bridge 设置、创建任务或之前步骤中的同意。
 
-## Retry Policy
+## 重试策略
 
-- Read-only observation can be retried once after confirming the device state.
-- An action with a confirmed failed result can be retried once only after a
-  fresh observation still shows the original precondition.
-- An action with an unknown result must not be retried. Observe and reconcile
-  first to avoid duplicate sends, submissions, deletions, or replay.
-- Never replace an ambiguous semantic selector with a guessed coordinate.
-- Never broaden the target package or reduce safety checks to make progress.
+- 确认设备状态后，只读观察可以重试一次。
+- 结果已确认失败的动作，只有在最新观察仍显示原始前置条件时才能重试一次。
+- 结果未知的动作不得重试。先观察并核对结果，避免重复发送、提交、删除或回放。
+- 不得用猜测坐标代替有歧义的语义选择器。
+- 不得为了推进任务而扩大目标包范围或减少安全检查。
 
-## Error Recovery
+## 错误恢复
 
 ### `ADB_UNAUTHORIZED`
 
-Stop. Require the user to approve the workstation RSA fingerprint on-device,
-then rediscover the device. Do not automate approval.
+停止。要求用户在设备上批准工作站 RSA 指纹，然后重新发现设备。不得自动批准。
 
 ### `DEVICE_OFFLINE`, `DEVICE_NOT_FOUND`, `DEVICE_UNREACHABLE`
 
-Stop actions. Return to device discovery, repair the transport, and obtain a
-fresh observation before resuming.
+停止动作。返回设备发现流程，修复传输连接，并在恢复前取得最新观察。
 
 ### `MULTIPLE_DEVICES`
 
-Require an exact serial. Never choose by list order.
+要求提供精确 serial。不得按列表顺序选择。
 
 ### `AUTH_REQUIRED`, `AUTH_INVALID`, `AUTH_EXPIRED`
 
-Stop bridge work. Require the user to generate a fresh one-time code in the App
-and open a new bridge session. Do not reuse or reveal old credentials.
+停止 Bridge 工作。要求用户在 App 中生成新的单次验证码并打开新的 Bridge session。不得重复使用或暴露旧凭据。
 
 ### `CAPABILITY_UNAVAILABLE`
 
-Do not emulate the missing capability with shell. Choose a documented typed
-backend or ask the user to perform the step manually.
+不得使用 shell 模拟缺失的 capability。选择有文档说明的类型化后端，或要求用户手动完成该步骤。
 
 ### `ACTION_NOT_ALLOWED`, `PERMISSION_DENIED`
 
-Do not retry. Report the blocked policy or permission. The user must grant any
-legitimate Android permission manually outside automation.
+不得重试。报告阻止操作的策略或权限。任何合理的 Android 权限都必须由用户在自动化之外手动授予。
 
 ### `SELECTOR_NOT_FOUND`
 
-Capture a fresh package-scoped semantic snapshot. Retry only if the same unique
-target can be identified from new data; otherwise request intervention.
+采集限定到指定包的最新语义快照。仅当新数据仍能识别同一唯一目标时重试，否则请求人工介入。
 
 ### `SELECTOR_AMBIGUOUS`
 
-Stop and request intervention. Do not select the first candidate or tap a
-center coordinate.
+停止并请求人工介入。不得选择第一个候选项或点击中心坐标。
 
 ### `ACTION_FAILED`, `DEADLINE_EXCEEDED`
 
-Observe before retrying. A timeout can have an unknown outcome. If the action
-could change external data, do not retry until the result is reconciled.
+重试前先观察。超时可能导致结果未知。如果动作可能更改外部数据，在核对结果之前不得重试。
 
 ### `SCRIPT_NOT_FOUND`
 
-List sanitized summaries with
-`aactl recording list --device SERIAL --json`, then ask the user to select and
-review an existing recording in the Android App. The list does not expose
-steps, variables, or secrets.
+使用 `aactl recording list --device SERIAL --json` 列出脱敏摘要，然后要求用户在 Android App 中选择并审核已有录制。该列表不暴露步骤、变量或 secret。
 
-### Replay Failure
+### 回放失败
 
-Stop when `succeeded` is false or `requiresIntervention` is true. Report the
-first failed step and its route, score, attempts, code, and message. Do not skip
-failed steps or launch an unreviewed alternate script.
+当 `succeeded` 为 false 或 `requiresIntervention` 为 true 时停止。报告第一个失败步骤及其 route、score、attempts、code 和 message。不得跳过失败步骤，也不得启动未经审核的替代脚本。
 
-## Emergency Stop
+## 紧急停止
 
-On a stop request, submit no new action, replay, or retry. Close the bridge when
-it is safe to do so, discard pending action data and temporary screenshots, and
-report the last verified state.
+收到停止请求后，不再提交新动作、回放或重试。在安全时关闭 Bridge，丢弃待处理动作数据和临时截图，并报告最后一次已验证状态。

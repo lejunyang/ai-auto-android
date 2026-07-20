@@ -1,78 +1,70 @@
-# Discovery Commands
+# 设备发现命令
 
 ## CLI
 
-Check the installed CLI without requiring ADB:
+在不依赖 ADB 的情况下检查已安装的 CLI：
 
 ```bash
 aactl version --json
 ```
 
-Diagnose the ADB executable, server status, loopback port 5037, and mDNS:
+诊断 ADB 可执行文件、server 状态、loopback 端口 5037 和 mDNS：
 
 ```bash
 aactl doctor --json
 ```
 
-List normalized USB, Wi-Fi, and emulator devices:
+列出规范化的 USB、Wi-Fi 和模拟器设备：
 
 ```bash
 aactl devices list --json
 ```
 
-Get details and capabilities for one explicit serial:
+获取一个明确 serial 的详细信息与 capabilities：
 
 ```bash
 aactl device info --device SERIAL --json
 ```
 
-For Android 11+ Wireless debugging, first pair with the pairing endpoint shown
-by Android. The command prompts on stderr and reads the six-digit code from
-stdin so the code does not enter process arguments:
+使用 Android 11+ 无线调试时，先通过 Android 显示的配对端点完成配对。命令在 stderr 中提示，并从 stdin 读取六位验证码，使其不会进入进程参数：
 
 ```bash
 aactl devices pair 192.0.2.10:37123 --json
 ```
 
-Then connect with the connection endpoint shown by Android. Its port commonly
-differs from the pairing port:
+然后连接 Android 显示的连接端点。连接端口通常不同于配对端口：
 
 ```bash
 aactl devices connect 192.0.2.10:40117 --json
 ```
 
-Run `devices list` again and use the returned serial exactly. There is no
-`devices watch` command in the current CLI.
+重新运行 `devices list`，并精确使用返回的 serial。当前 CLI 不提供 `devices watch` 命令。
 
-All JSON CLI responses use the protocol envelope:
+所有 JSON CLI 响应都使用协议信封：
 
 ```text
 schemaVersion, requestId, ok, data, error, meta
 ```
 
-Treat `error.code` as stable. Human-readable messages can gain detail without
-changing the code.
+将 `error.code` 视为稳定字段。可读消息可以增加细节，而无需更改该错误码。
 
 ## MCP
 
-The MCP server exposes:
+MCP server 暴露以下工具：
 
 - `android_devices_list` with `{}`.
 - `android_device_get` with `{"device":"SERIAL"}`.
 
-Configure the MCP client to start this long-running stdio command:
+配置 MCP 客户端启动以下长时间运行的 stdio 命令：
 
 ```bash
 aactl mcp serve
 ```
 
-Do not invoke the server as a one-shot interactive command.
+不得将该 server 作为一次性交互命令调用。
 
-MCP does not expose `doctor`, `pair`, `connect`, trust changes, or arbitrary
-shell.
+MCP 不暴露 `doctor`、`pair`、`connect`、信任变更或任意 shell。
 
-## Selection Contract
+## 设备选择契约
 
-Record the selected serial as data, not prose. Every later command must include
-`--device SERIAL`, and every later MCP call must include `"device":"SERIAL"`.
-Never substitute a model name for a serial.
+将所选 serial 记录为数据，而不是自然语言说明。后续每条命令都必须包含 `--device SERIAL`，后续每次 MCP 调用都必须包含 `"device":"SERIAL"`。不得使用型号名称代替 serial。

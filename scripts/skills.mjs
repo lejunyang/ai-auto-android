@@ -19,26 +19,26 @@ const requiredContent = {
     "aactl devices connect",
     "unauthorized",
     "offline",
-    "multiple devices",
+    "多台设备",
   ],
   "android-device-observation": [
     "aactl device info",
     "aactl observe screenshot",
     "aactl observe hierarchy",
     "aactl bridge snapshot",
-    "privacy",
-    "redact",
-    "artifact",
+    "隐私",
+    "脱敏",
+    "产物",
   ],
   "android-device-automation": [
     "aactl action tap",
     "aactl bridge action",
     "aactl recording replay",
-    "confirmation",
-    "arbitrary shell",
-    "automatically approving",
-    "payment",
-    "recovery",
+    "确认",
+    "任意 shell",
+    "自动批准",
+    "支付",
+    "恢复",
   ],
 };
 
@@ -134,15 +134,16 @@ const validateSkill = async (baseRoot, skillName) => {
   ) {
     fail(`${relativeRoot}/${skillName}/SKILL.md has an invalid name`);
   }
+  const descriptionLength = Array.from(properties.description).length;
   if (
-    properties.description.length === 0
-    || properties.description.length >= 200
-    || !/^[\x20-\x7E]+$/.test(properties.description)
-    || !properties.description.includes("Use when ")
+    descriptionLength === 0
+    || descriptionLength >= 200
+    || !/\p{Script=Han}/u.test(properties.description)
+    || !/(?:使用时|时使用|用于|适用于)/u.test(properties.description)
   ) {
     fail(
-      `${relativeRoot}/${skillName}/SKILL.md description must be English ASCII, `
-      + `under 200 characters, and include "Use when"`,
+      `${relativeRoot}/${skillName}/SKILL.md description must contain Chinese, `
+      + `be under 200 Unicode characters, and describe when it is used`,
     );
   }
   if (!body.trimStart().startsWith("# ") || body.trim().length < 200) {

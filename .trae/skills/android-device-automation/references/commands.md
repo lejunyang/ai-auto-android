@@ -1,8 +1,8 @@
-# Automation Commands
+# 自动化命令
 
-## Direct CLI Actions
+## CLI 直接动作
 
-Every command requires an explicit device serial:
+每条命令都需要明确的设备 serial：
 
 ```bash
 aactl action tap --device SERIAL --x 200 --y 400 --json
@@ -14,19 +14,15 @@ aactl action launch --device SERIAL --package com.example.app --activity .MainAc
 aactl action stop --device SERIAL --package com.example.app --json
 ```
 
-Coordinates accept 0 through 100000. Swipe duration accepts 1 through 60000 ms
-and defaults to 300 ms. Direct text accepts at most 10000 ASCII bytes from
-letters, numbers, spaces, and `@._+-,:/`.
+坐标接受 0 到 100000。滑动时长接受 1 到 60000 ms，默认值为 300 ms。直接文本最多接受 10000 个 ASCII 字节，可使用字母、数字、空格和 `@._+-,:/`。
 
-Supported keys are `BACK`, `HOME`, `RECENTS`, `ENTER`, `TAB`, `ESCAPE`,
-`SPACE`, `DELETE`, `FORWARD_DEL`, `DPAD_UP`, `DPAD_DOWN`, `DPAD_LEFT`,
-`DPAD_RIGHT`, `DPAD_CENTER`, `VOLUME_UP`, `VOLUME_DOWN`, and `VOLUME_MUTE`.
+支持的按键为 `BACK`、`HOME`、`RECENTS`、`ENTER`、`TAB`、`ESCAPE`、`SPACE`、`DELETE`、`FORWARD_DEL`、`DPAD_UP`、`DPAD_DOWN`、`DPAD_LEFT`、`DPAD_RIGHT`、`DPAD_CENTER`、`VOLUME_UP`、`VOLUME_DOWN` 和 `VOLUME_MUTE`。
 
-These commands map to fixed ADB argument arrays. There is no shell command.
+这些命令映射到固定的 ADB 参数数组，不提供 shell 命令。
 
-## MCP Direct Actions
+## MCP 直接动作
 
-Call `android_action_execute` with exactly one supported shape:
+使用以下一种受支持的形式调用 `android_action_execute`：
 
 ```json
 {"device":"SERIAL","action":"ui.tap","x":200,"y":400}
@@ -52,74 +48,62 @@ Call `android_action_execute` with exactly one supported shape:
 {"device":"SERIAL","action":"app.stop","package":"com.example.app"}
 ```
 
-MCP direct actions have the same validation and backend semantics as their CLI
-equivalents. MCP does not expose arbitrary shell or bridge action execution.
+MCP 直接动作与对应 CLI 命令具有相同的校验和后端语义。MCP 不暴露任意 shell 或 Bridge 动作执行。
 
-## App Bridge Actions
+## App Bridge 动作
 
-The user must enable the Android App desktop bridge and open a short-lived
-session:
+用户必须启用 Android App 桌面桥，并打开短期 session：
 
 ```bash
 aactl bridge open --device SERIAL --json
 ```
 
-Take a fresh semantic snapshot before selecting a target:
+选择目标前采集新的语义快照：
 
 ```bash
 aactl bridge snapshot --device SERIAL --package com.example.app --max-depth 64 --json
 ```
 
-Execute one protocol v1 action object. A global back action has no target:
+执行一个 protocol v1 动作对象。全局返回动作没有 target：
 
 ```bash
 aactl bridge action --device SERIAL --action '{"type":"ui.back","params":{}}' --json
 ```
 
-A semantic click uses selector candidates from the latest snapshot:
+语义点击使用最新快照中的选择器候选：
 
 ```bash
 aactl bridge action --device SERIAL --action '{"type":"ui.click","params":{"target":{"packageName":"com.example.app","selectorCandidates":[{"strategy":"resourceId","value":"com.example.app:id/continue","weight":1,"required":true}]}}}' --json
 ```
 
-The current bridge executes `ui.click`, `ui.longClick`, `ui.setText` with
-literal non-sensitive text, `ui.scroll`, `ui.tap`, `ui.swipe`, `ui.back`,
-`ui.home`, and `ui.recents`. Other protocol v1 actions can be valid schema but
-return `CAPABILITY_UNAVAILABLE` at this bridge.
+当前 Bridge 可执行 `ui.click`、`ui.longClick`、使用非敏感字面文本的 `ui.setText`、`ui.scroll`、`ui.tap`、`ui.swipe`、`ui.back`、`ui.home` 和 `ui.recents`。其他 protocol v1 动作可能符合 schema，但会在此 Bridge 返回 `CAPABILITY_UNAVAILABLE`。
 
-Close the session after bridge work:
+完成 Bridge 工作后关闭 session：
 
 ```bash
 aactl bridge close --device SERIAL --json
 ```
 
-## Recording List and Replay
+## 录制列表与回放
 
-The current CLI can list sanitized recording summaries and replay one explicit
-UUID, but it cannot edit recordings or inspect their steps, variables, or
-secrets. An existing bridge session is required:
+当前 CLI 可以列出经过脱敏的录制摘要，并回放一个明确的 UUID，但不能编辑录制，也不能检查其中的步骤、变量或 secret。需要已有的 Bridge session：
 
 ```bash
 aactl recording list --device SERIAL --json
 ```
 
-Require the user to review and select the script in the Android App before
-replay:
+回放前，要求用户在 Android App 中审核并选择脚本：
 
 ```bash
 aactl recording replay --device SERIAL --script 123e4567-e89b-42d3-a456-426614174000 --json
 ```
 
-With MCP, sanitized summaries are available through the read-only
-`android_observe` tool:
+使用 MCP 时，可通过只读 `android_observe` 工具获取脱敏摘要：
 
 ```json
 {"device":"SERIAL","kind":"recordings"}
 ```
 
-The compatibility `android_recording_replay` MCP tool always returns
-`CONFIRMATION_REQUIRED` in this MVP and does not execute a replay. Use the CLI
-only after direct human review and confirmation.
+兼容性 MCP 工具 `android_recording_replay` 在此 MVP 中始终返回 `CONFIRMATION_REQUIRED`，不会执行回放。只有在人工直接审核并确认后才能使用 CLI。
 
-Inspect `succeeded`, `requiresIntervention`, and every step's `status`,
-`attempts`, `route`, `matchScore`, `errorCode`, and `message`.
+检查 `succeeded`、`requiresIntervention`，以及每个步骤的 `status`、`attempts`、`route`、`matchScore`、`errorCode` 和 `message`。

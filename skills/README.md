@@ -1,4 +1,4 @@
-# Agent Skills
+# Agent 技能
 
 `skills/` 是可移植 Agent Skills 的发布源：
 

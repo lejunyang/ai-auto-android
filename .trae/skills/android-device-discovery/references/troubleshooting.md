@@ -1,62 +1,54 @@
-# Discovery Troubleshooting
+# 设备发现故障排查
 
 ## `ADB_NOT_FOUND`
 
-Install official Android SDK Platform-Tools or set `AACTL_ADB_PATH` to the ADB
-executable. Run doctor again. Do not download an unverified ADB binary.
+安装官方 Android SDK Platform-Tools，或将 `AACTL_ADB_PATH` 设置为 ADB 可执行文件。重新运行诊断。不得下载未经验证的 ADB 二进制文件。
 
-## Doctor Is Unhealthy
+## 诊断状态异常
 
-Report the failed check by name:
+按名称报告未通过的检查项：
 
-- `adb.version`: the executable output is missing or unsupported.
-- `adb.server`: server status could not be queried.
-- `adb.port.5037`: no ADB server is listening on loopback.
-- `adb.mdns`: Wireless debugging discovery is unavailable.
+- `adb.version`：可执行文件输出缺失或不受支持。
+- `adb.server`：无法查询 server 状态。
+- `adb.port.5037`：loopback 上没有 ADB server 监听。
+- `adb.mdns`：无线调试发现不可用。
 
-Do not automatically run `adb kill-server`. Ask the user to repair their
-Platform-Tools installation, driver, cable, network, or ADB server outside the
-skill, then rerun doctor.
+不得自动运行 `adb kill-server`。要求用户在技能之外修复 Platform-Tools 安装、驱动、数据线、网络或 ADB server，然后重新运行诊断。
 
 ## `ADB_UNAUTHORIZED`
 
-1. Keep the device unlocked.
-2. Ask the user to compare and accept the workstation RSA fingerprint on the
-   device.
-3. Reconnect the USB cable if the prompt is not visible.
-4. Run the device list again.
+1. 保持设备解锁。
+2. 要求用户在设备上比对并接受工作站 RSA 指纹。
+3. 如果未显示提示，重新连接 USB 数据线。
+4. 再次列出设备。
 
-Never bypass the prompt or modify the device trust store.
+不得绕过提示或修改设备信任存储。
 
 ## `DEVICE_OFFLINE`
 
-1. Stop all automation attempts.
-2. Ask the user to reconnect the cable or toggle Wireless debugging.
-3. For Wi-Fi, reconnect using the current connection endpoint.
-4. Run doctor and list devices again.
+1. 停止所有自动化尝试。
+2. 要求用户重新连接数据线或重新开关无线调试。
+3. 对于 Wi-Fi，使用当前连接端点重新连接。
+4. 重新运行诊断并列出设备。
 
-Do not retry actions while the state is `offline`.
+state 为 `offline` 时不得重试动作。
 
 ## `DEVICE_NOT_FOUND`
 
-Confirm the cable, USB mode, Wireless debugging network, emulator state, and
-the exact serial. A Wi-Fi endpoint can change after Wireless debugging is
-restarted.
+确认数据线、USB 模式、无线调试网络、模拟器状态和精确 serial。重新启动无线调试后，Wi-Fi 端点可能发生变化。
 
 ## `MULTIPLE_DEVICES`
 
-Display each serial with its model, transport, and state. Require the user or
-the calling workflow to choose one exact serial. Never choose the first entry.
+展示每个 serial 及其型号、transport 和 state。要求用户或调用工作流选择一个精确 serial。不得选择列表中的第一项。
 
-## Wi-Fi Pairing Failure
+## Wi-Fi 配对失败
 
-- Confirm Android 11+ and that Wireless debugging remains open.
-- Distinguish the pairing endpoint from the connection endpoint.
-- Use a fresh six-digit code before it expires.
-- Keep workstation and device on a network that permits local peer traffic.
-- Do not save, echo, or reuse the pairing code.
+- 确认设备为 Android 11+，且无线调试保持开启。
+- 区分配对端点和连接端点。
+- 在验证码过期前使用新的六位验证码。
+- 保持工作站与设备位于允许本地对等流量的网络中。
+- 不得保存、回显或重复使用配对码。
 
-## Retry Rule
+## 重试规则
 
-Retry only after the state or environment has changed. Re-run discovery before
-handing the serial to observation or automation.
+仅在状态或环境发生变化后重试。将 serial 交给观察或自动化流程前，重新运行设备发现。

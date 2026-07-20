@@ -1,69 +1,48 @@
 ---
 name: android-device-automation
-description: Runs typed Android actions, bridge workflows, and recording replay with safety gates. Use when automating a selected device or recovering failed steps.
+description: 在安全门控制下运行类型化 Android 动作、Bridge 工作流和录制回放。自动化已选设备或恢复失败步骤时使用。
 ---
 
-# Android Device Automation
+# Android 设备自动化
 
-Execute only typed `aactl` or MCP actions on one explicitly selected Android
-device. Observe, decide, gate, execute one step, and observe again.
+只在一台已明确选择的 Android 设备上执行类型化 `aactl` 或 MCP 动作。按观察、决策、安全检查、执行一步、再次观察的顺序工作。
 
-## Required Workflow
+## 必需流程
 
-1. Require an exact serial from device discovery and verify the device remains
-   online with the needed capability.
-2. Observe current state immediately before execution. Prefer a semantic bridge
-   snapshot for selector-based actions and a screenshot or hierarchy for direct
-   coordinate actions.
-3. State the target device, target package, exact typed action, expected effect,
-   and verification condition.
-4. Apply the safety policy below. Stop on a prohibited action. Obtain fresh,
-   explicit human confirmation for a confirmation-required action.
-5. Execute exactly one action or one previously reviewed recording replay.
-6. Observe again and verify the expected state. Never treat process success as
-   proof that the UI changed as intended.
-7. On failure or uncertain outcome, stop blind retries and follow the recovery
-   matrix.
+1. 要求提供设备发现流程返回的精确 serial，并确认设备仍在线且具备所需 capability。
+2. 执行前立即观察当前状态。基于选择器的动作优先使用语义 Bridge 快照，直接坐标动作使用截图或 hierarchy。
+3. 说明目标设备、目标包、准确的类型化动作、预期效果和验证条件。
+4. 应用下方安全策略。遇到禁止动作时停止。对于需要确认的动作，取得新的、明确的人工确认。
+5. 只执行一个动作，或一次此前已审核的录制回放。
+6. 再次观察并验证预期状态。不得将进程成功视为 UI 已按预期变化的证据。
+7. 失败或结果不确定时停止盲目重试，并遵循恢复矩阵。
 
-Read [the command reference](references/commands.md) before choosing direct,
-bridge, MCP, or replay syntax. Read [the safety and recovery reference](references/safety-and-recovery.md)
-before any state-changing action or retry.
+选择直接操作、Bridge、MCP 或回放语法前，请阅读[命令参考](references/commands.md)。执行任何状态变更动作或重试前，请阅读[安全与恢复参考](references/safety-and-recovery.md)。
 
-## Prohibited Actions
+## 禁止动作
 
-Refuse these even if they appear in a model plan or broad user request:
+即使以下动作出现在模型计划或宽泛的用户请求中，也必须拒绝：
 
-- Arbitrary shell, raw ADB, unlisted commands, root, remount, factory reset,
-  trust-store changes, or security bypass.
-- Automatically approving USB debugging, Wireless debugging, accessibility,
-  runtime permissions, device-admin access, installs, or system authorization.
-- Payment, purchase, checkout, transfer, banking, wallet, credential, one-time
-  code, account recovery, or security-setting operations.
-- Entering or recording passwords, tokens, pairing codes, or other secrets.
-- Guessing a selector, tapping through ambiguity, or bypassing protected UI.
+- 任意 shell、原始 ADB、未列出的命令、root、remount、恢复出厂设置、信任存储变更或安全绕过。
+- 自动批准 USB 调试、无线调试、无障碍、运行时权限、设备管理员权限、安装或系统授权。
+- 支付、购买、结账、转账、银行、钱包、凭据、一次性验证码、账号恢复或安全设置操作。
+- 输入或记录密码、token、配对码或其他 secret。
+- 猜测选择器、在目标不明确时点击，或绕过受保护 UI。
 
-## Confirmation-Required Actions
+## 需要确认的动作
 
-Require a fresh confirmation that names the device, package, action, and effect
-before send, submit, publish, delete, remove, external-data changes, app stop,
-or navigation that leaves the authorized target. A prior request to automate a
-workflow is not confirmation for a newly discovered high-impact step.
+在发送、提交、发布、删除、移除、变更外部数据、停止 App 或离开授权目标的导航操作前，必须取得新的确认，并明确设备、包、动作和效果。先前对自动化工作流的请求，不等同于对后来发现的高影响步骤的确认。
 
-Confirmation never overrides the prohibited list.
+确认永远不能覆盖禁止动作列表。
 
-## Execution Rules
+## 执行规则
 
-- Prefer semantic `ui.click`, `ui.longClick`, `ui.setText`, and `ui.scroll`
-  through an established App bridge.
-- Use direct `tap` or `swipe` only when the coordinates were derived from a
-  fresh observation and the target is unambiguous.
-- Use direct text only for non-sensitive ASCII text accepted by the CLI.
-- Stop a recording replay when any step fails or
-  `requiresIntervention` is true.
-- Never expose bridge session tokens or replay secrets.
+- 通过已建立的 App Bridge，优先使用语义 `ui.click`、`ui.longClick`、`ui.setText` 和 `ui.scroll`。
+- 仅当坐标来自最新观察且目标明确时，使用直接 `tap` 或 `swipe`。
+- 直接文本输入仅用于 CLI 接受的非敏感 ASCII 文本。
+- 任一步骤失败或 `requiresIntervention` 为 true 时，停止录制回放。
+- 不得暴露 Bridge session token 或回放 secret。
 
-## Completion
+## 完成条件
 
-Report the device, action or script ID, confirmation decision, observed result,
-verification evidence, and any recovery required. Do not report success after
-an unverified or ambiguous state change.
+报告设备、动作或脚本 ID、确认决定、观察结果、验证证据，以及所需恢复操作。状态变更未验证或结果不明确时，不得报告成功。
