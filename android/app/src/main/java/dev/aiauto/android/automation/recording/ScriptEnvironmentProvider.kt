@@ -38,7 +38,7 @@ class AndroidScriptEnvironmentProvider(
 
     @Suppress("DEPRECATION")
     private fun displayRotation(windowManager: WindowManager): Int? =
-        when ((context.display ?: windowManager.defaultDisplay).rotation) {
+        when (windowManager.defaultDisplay.rotation) {
             Surface.ROTATION_0 -> 0
             Surface.ROTATION_90 -> 90
             Surface.ROTATION_180 -> 180
