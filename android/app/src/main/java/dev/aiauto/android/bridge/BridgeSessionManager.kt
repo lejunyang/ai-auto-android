@@ -1,5 +1,7 @@
 package dev.aiauto.android.bridge
 
+// 功能用途：实现 BridgeSessionManager 对应的桌面端与 App 本地 Bridge 协议、认证或请求处理。
+
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Clock
@@ -62,6 +64,7 @@ class BridgeSessionManager(
             )
         }
 
+        // 配对码成功使用后立即失效；后续请求只接受随机短期会话 token。
         pairingCode = null
         val tokenBytes = ByteArray(32)
         secureRandom.nextBytes(tokenBytes)
@@ -153,6 +156,7 @@ class RequestReplayCache(
                 iterator.remove()
             }
         }
+        // requestId 在时间窗内只能使用一次，重试方必须生成新请求而不能重放旧动作。
         if (requestIds.containsKey(requestId)) {
             throw BridgeException(
                 code = BridgeErrorCode.REQUEST_REPLAYED,

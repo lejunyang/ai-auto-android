@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility.settings
 
+// 功能用途：实现 AccessibilitySettingsRepository 对应的无障碍服务状态与授权目标包配置。
+
 import android.content.Context
 import android.content.SharedPreferences
 

@@ -1,5 +1,7 @@
 package dev.aiauto.android.ui
 
+// 界面用途：组织 App 导航、页面状态与 Compose 根界面。
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue

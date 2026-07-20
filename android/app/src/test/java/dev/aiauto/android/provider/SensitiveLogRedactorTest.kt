@@ -1,5 +1,7 @@
 package dev.aiauto.android.provider
 
+// 测试用途：验证 SensitiveLogRedactor 的功能契约、失败语义及自动化安全边界。
+
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

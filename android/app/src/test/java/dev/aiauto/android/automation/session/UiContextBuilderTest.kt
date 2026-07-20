@@ -1,5 +1,7 @@
 package dev.aiauto.android.automation.session
 
+// 测试用途：验证 UiContextBuilder 的功能契约、失败语义及自动化安全边界。
+
 import dev.aiauto.android.accessibility.model.UiBounds
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import dev.aiauto.android.accessibility.model.UiNodeState

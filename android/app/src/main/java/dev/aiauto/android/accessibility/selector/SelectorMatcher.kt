@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility.selector
 
+// 功能用途：实现 SelectorMatcher 的语义选择器匹配与置信度约束，避免歧义目标被猜测执行。
+
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Locale

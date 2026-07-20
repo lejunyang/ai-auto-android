@@ -1,5 +1,7 @@
 package dev.aiauto.android.ui.session
 
+// 界面用途：实现 AI 自动化会话的状态展示、确认、暂停与停止交互。
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope

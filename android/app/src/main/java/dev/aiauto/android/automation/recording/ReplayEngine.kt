@@ -1,5 +1,7 @@
 package dev.aiauto.android.automation.recording
 
+// 功能用途：实现 ReplayEngine 对应的语义录制、脚本持久化或确定性回放能力。
+
 import dev.aiauto.android.accessibility.AccessibilityRuntime
 import dev.aiauto.android.accessibility.model.AccessibilityCommand
 import dev.aiauto.android.accessibility.model.AccessibilityError

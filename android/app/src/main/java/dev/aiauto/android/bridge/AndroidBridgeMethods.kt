@@ -1,5 +1,7 @@
 package dev.aiauto.android.bridge
 
+// 功能用途：实现 AndroidBridgeMethods 对应的桌面端与 App 本地 Bridge 协议、认证或请求处理。
+
 import android.content.Context
 import android.os.Build
 

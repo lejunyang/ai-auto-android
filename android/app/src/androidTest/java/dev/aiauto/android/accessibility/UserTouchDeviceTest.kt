@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility
 
+// 设备测试用途：在真实 Android 运行时验证 UserTouchDevice 的设备能力、权限前提与生命周期边界。
+
 import android.app.Activity
 import android.content.Intent
 import android.os.SystemClock

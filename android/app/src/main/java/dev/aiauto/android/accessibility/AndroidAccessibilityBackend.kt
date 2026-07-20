@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility
 
+// 功能用途：实现 AndroidAccessibilityBackend 对应的无障碍观察、截图、动作或用户触摸安全控制。
+
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path

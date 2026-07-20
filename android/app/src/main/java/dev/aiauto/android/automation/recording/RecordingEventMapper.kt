@@ -1,5 +1,7 @@
 package dev.aiauto.android.automation.recording
 
+// 功能用途：实现 RecordingEventMapper 对应的语义录制、脚本持久化或确定性回放能力。
+
 import java.util.Locale
 
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot

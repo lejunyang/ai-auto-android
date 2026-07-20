@@ -1,5 +1,7 @@
 package dev.aiauto.android.provider
 
+// 功能用途：实现 OpenAICompatibleProvider 对应的 AI Provider 配置、调用、动作解析或敏感日志保护。
+
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream

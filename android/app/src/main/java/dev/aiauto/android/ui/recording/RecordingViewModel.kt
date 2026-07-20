@@ -1,5 +1,7 @@
 package dev.aiauto.android.ui.recording
 
+// 界面用途：实现 RecordingViewModel 对应的录制、脚本预览、保存与回放交互。
+
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -195,6 +197,7 @@ class RecordingViewModel(
     }
 
     override fun onCleared() {
+        // ViewModel 离开导航栈时必须释放录制 sink 和协程，避免后台继续接收目标 App 事件。
         coordinator.close()
         super.onCleared()
     }

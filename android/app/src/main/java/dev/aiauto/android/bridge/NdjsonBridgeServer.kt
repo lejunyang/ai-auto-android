@@ -1,5 +1,7 @@
 package dev.aiauto.android.bridge
 
+// 功能用途：实现 NdjsonBridgeServer 对应的桌面端与 App 本地 Bridge 协议、认证或请求处理。
+
 import java.io.ByteArrayOutputStream
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -58,6 +60,7 @@ class NdjsonBridgeServer(
     @Synchronized
     fun start() {
         check(!running.get()) { "Bridge server is already running" }
+        // 服务只绑定设备 loopback；桌面端必须通过指定设备的 ADB forward 建立外层信任。
         val loopback = InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1))
         val socket = ServerSocket()
         try {
@@ -295,6 +298,7 @@ class NdjsonBridgeServer(
                 return BoundedLine.Truncated
             }
             byteCount += 1
+            // 在完整分配或解析 JSON 前执行字节上限，避免畸形帧消耗不受控内存。
             if (byteCount > BridgeLimits.MAX_MESSAGE_BYTES) {
                 return BoundedLine.Oversized
             }

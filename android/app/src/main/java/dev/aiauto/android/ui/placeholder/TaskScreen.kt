@@ -1,5 +1,7 @@
 package dev.aiauto.android.ui.placeholder
 
+// 界面用途：提供任务入口的占位页面并维持导航结构完整。
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize

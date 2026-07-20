@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility.action
 
+// 功能用途：实现 AccessibilityActionRouter 对应的无障碍动作路由与坐标规划，供受控设备操作复用。
+
 import android.view.accessibility.AccessibilityEvent
 
 import dev.aiauto.android.accessibility.model.AccessibilityCommand
@@ -87,6 +89,7 @@ class AccessibilityActionRouter(
     }
 
     private fun executeClick(target: NodeTarget): AccessibilityResult<ActionExecution> {
+        // 每次执行都从最新快照重新匹配节点；失败时按节点手势、坐标回退的受控顺序降级。
         val attempt = performNodeAction(target, NodeAction.CLICK)
         when (attempt) {
             is NodeAttempt.Performed -> return attempt.execution(ActionRoute.NODE_ACTION)

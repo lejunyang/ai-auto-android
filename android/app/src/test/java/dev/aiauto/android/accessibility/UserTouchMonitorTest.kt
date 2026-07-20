@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility
 
+// 测试用途：验证 UserTouchMonitor 的功能契约、失败语义及自动化安全边界。
+
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.view.InputDevice
 import android.view.accessibility.AccessibilityEvent

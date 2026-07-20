@@ -1,5 +1,7 @@
 package dev.aiauto.android.ui.home
 
+// 界面用途：展示自动化能力状态与核心功能入口。
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues

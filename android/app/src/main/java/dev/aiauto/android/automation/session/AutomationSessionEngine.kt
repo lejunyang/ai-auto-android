@@ -1,5 +1,7 @@
 package dev.aiauto.android.automation.session
 
+// 功能用途：实现 AutomationSessionEngine 对应的受控 AI 自动化会话、风险判断与生命周期管理。
+
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
@@ -141,6 +143,7 @@ class AutomationSessionEngine(
         if (mutableState.value.phase in TERMINAL_PHASES) {
             return
         }
+        // 先同步封闭执行门，再发布 Stopped 状态并取消协程，确保停止后不会提交新动作。
         stopRequested.set(true)
         executionState.set(ExecutionState.Stopped)
         control.value = Control.Stopped
@@ -294,6 +297,7 @@ class AutomationSessionEngine(
         targetPackage: String,
     ): SessionExecutionResult {
         checkNotStopped()
+        // 原子执行门与停止路径共享，消除“已停止但动作刚开始提交”的竞态。
         if (!executionState.compareAndSet(ExecutionState.Idle, ExecutionState.Executing)) {
             throw SessionStoppedException()
         }

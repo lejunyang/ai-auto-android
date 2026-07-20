@@ -1,5 +1,7 @@
 package dev.aiauto.android.automation.recording
 
+// 功能用途：实现 RecordingRuntime 对应的语义录制、脚本持久化或确定性回放能力。
+
 import android.view.accessibility.AccessibilityEvent
 
 import dev.aiauto.android.accessibility.model.GlobalAction
@@ -12,6 +14,7 @@ fun interface RecordingEventSink {
 }
 
 object RecordingRuntime {
+    // 进程内只允许一个活动录制接收器，避免多个页面同时消费同一批无障碍事件。
     @Volatile
     private var sink: RecordingEventSink? = null
 
@@ -64,6 +67,7 @@ object AndroidRecordingEventAdapter {
 
             else -> return null
         }
+        // 敏感输入只保留事件类型和引用所需元数据，原始文本绝不进入录制草稿。
         val sensitive = event.isPassword ||
             source?.state?.password == true ||
             source?.state?.sensitive == true

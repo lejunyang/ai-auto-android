@@ -1,5 +1,7 @@
 package dev.aiauto.android.automation.session
 
+// 功能用途：实现 AutomationSessionRuntime 对应的受控 AI 自动化会话、风险判断与生命周期管理。
+
 internal fun interface UserTouchStopHandler {
     fun stopForUserTouch()
 }
@@ -20,6 +22,7 @@ internal class ActiveAutomationSessionRegistry {
         stopHandler: UserTouchStopHandler,
     ): AutoCloseable = synchronized(lock) {
         check(activeSession == null) { "Another automation session is already active." }
+        // 单调递增的会话代次会绑定截图授权，旧回调不能借新会话继续通过校验。
         val session = ActiveSession(
             sessionId = nextSessionId++,
             targetPackage = targetPackage,
@@ -71,6 +74,7 @@ internal class ActiveAutomationSessionRegistry {
     }
 
     fun notifyUserTouch(targetPackage: String): Boolean {
+        // 锁内只提取停止句柄，实际停止在锁外同步执行，避免状态机回调造成锁重入。
         val stopHandler = synchronized(lock) {
             activeSession
                 ?.takeIf { it.targetPackage == targetPackage }

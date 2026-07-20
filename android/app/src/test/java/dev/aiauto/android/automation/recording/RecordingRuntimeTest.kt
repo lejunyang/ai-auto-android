@@ -1,5 +1,7 @@
 package dev.aiauto.android.automation.recording
 
+// 测试用途：验证 RecordingRuntime 的功能契约、失败语义及自动化安全边界。
+
 import android.view.accessibility.AccessibilityEvent
 
 import dev.aiauto.android.accessibility.model.UiBounds

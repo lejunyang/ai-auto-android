@@ -1,5 +1,7 @@
 package dev.aiauto.android.provider
 
+// 功能用途：实现 ProviderActionParser 对应的 AI Provider 配置、调用、动作解析或敏感日志保护。
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

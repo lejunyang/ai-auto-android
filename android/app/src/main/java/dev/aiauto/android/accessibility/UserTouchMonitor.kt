@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility
 
+// 功能用途：实现 UserTouchMonitor 对应的无障碍观察、截图、动作或用户触摸安全控制。
+
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.graphics.Rect
 import android.os.Build
@@ -68,6 +70,7 @@ internal class UserTouchMonitor(
         flags: Int,
         motionEventSources: Int,
     ): TouchMonitoringConfiguration = TouchMonitoringConfiguration(
+        // 只观察普通 View 语义事件；触摸探索和原始 MotionEvent 会改变部分设备的正常触控语义。
         eventTypes = eventTypes or LEGACY_INTERACTION_EVENTS,
         flags = flags and
             AccessibilityServiceInfo.FLAG_SEND_MOTION_EVENTS.inv() and
@@ -185,6 +188,7 @@ internal class UserTouchMonitor(
     }
 
     fun onLegacyInteraction(signal: LegacyInteractionSignal): Boolean {
+        // 只有会话、窗口、节点身份、事件预算和生命周期全部匹配时，事件才归因给自动化动作。
         val automationEvent = synchronized(this) {
             clearExpiredActionLocked()
             val expected = expectedAction

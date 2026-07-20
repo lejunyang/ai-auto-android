@@ -1,5 +1,7 @@
 package dev.aiauto.android.automation.recording
 
+// 功能用途：实现 RecordingScriptStore 对应的语义录制、脚本持久化或确定性回放能力。
+
 import android.content.Context
 import java.io.File
 import java.io.FileOutputStream
@@ -99,6 +101,7 @@ class RecordingScriptStore(
     }
 
     private fun writeAtomically(destination: File, content: String) {
+        // 先落临时文件并同步到磁盘，再替换正式脚本，避免进程中断留下半写 JSON。
         val temporary = File(directory, ".${destination.name}.tmp")
         try {
             FileOutputStream(temporary).use { output ->
@@ -142,6 +145,7 @@ class RecordingScriptStore(
             require(SCRIPT_ID_PATTERN.matches(step.id))
             require(step.recordedAtMs >= 0)
             if (step.action.type == "ui.setText") {
+                // 文本动作必须在明文和 secret 引用之间二选一，禁止两种来源混存。
                 val hasText = step.action.params.containsKey("text")
                 val hasSecret = step.action.params.containsKey("secretRef")
                 require(hasText.xor(hasSecret)) {

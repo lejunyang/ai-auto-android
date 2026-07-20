@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility
 
+// 调试用途：提供 ScreenshotTestAccessibilityService 的设备验收入口，仅用于 debug 变体且不进入 release 制品。
+
 import android.accessibilityservice.AccessibilityService
 import android.os.Build
 import android.view.accessibility.AccessibilityEvent

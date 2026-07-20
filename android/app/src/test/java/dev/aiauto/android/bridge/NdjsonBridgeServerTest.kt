@@ -1,5 +1,7 @@
 package dev.aiauto.android.bridge
 
+// 测试用途：验证 NdjsonBridgeServer 的功能契约、失败语义及自动化安全边界。
+
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.Socket

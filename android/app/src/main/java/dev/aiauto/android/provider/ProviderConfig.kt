@@ -1,5 +1,7 @@
 package dev.aiauto.android.provider
 
+// 功能用途：实现 ProviderConfig 对应的 AI Provider 配置、调用、动作解析或敏感日志保护。
+
 data class ProviderConfig(
     val baseUrl: String = "https://api.openai.com/v1",
     val model: String = "gpt-4.1-mini",

@@ -1,5 +1,7 @@
 package dev.aiauto.android.accessibility
 
+// 功能用途：实现 AccessibilityScreenshotController 对应的无障碍观察、截图、动作或用户触摸安全控制。
+
 import android.accessibilityservice.AccessibilityService
 import android.graphics.ColorSpace
 import android.hardware.HardwareBuffer
@@ -136,6 +138,7 @@ internal class AccessibilityScreenshotController(
             is AccessibilityResult.Success -> result.value
         }
 
+        // 截图异步返回时必须重新校验会话代次、前台包和敏感节点，避免授权窗口被竞态复用。
         return suspendCancellableCoroutine { continuation ->
             platform.capture(root.bounds) callback@{ result ->
                 if (!continuation.isActive) {
@@ -192,6 +195,7 @@ internal class AccessibilityScreenshotController(
             }
         }
         if (failure != null) {
+            // 所有拒绝路径都立即清零并关闭截图，防止未授权图像继续驻留在内存中。
             screenshot.close()
             return failure
         }
