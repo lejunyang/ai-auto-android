@@ -1,0 +1,58 @@
+.github/workflows/release.yml
+  s_f25e8ac3859bf8::t_7c5016f0135137 1
+android/build.gradle.kts
+  s_f25e8ac3859bf8::t_5cfb63b995ece8 1
+scripts/verify-toolchains.sh
+  s_f25e8ac3859bf8::t_9939759a3b9861 3
+scripts/release.sh
+  s_f25e8ac3859bf8::t_b2bd39dc6d384d 3
+android/gradle/wrapper/gradle-wrapper.properties
+  s_f25e8ac3859bf8::t_376e63c5014141 1
+Makefile
+  s_f25e8ac3859bf8::t_6367ca118ade86 1
+.github/workflows/verify.yml
+  s_f25e8ac3859bf8::t_64eb2e7fe87ce2 1
+android/gradle.properties
+  s_f25e8ac3859bf8::t_a38aed320faa9a 1
+android/device-fixture/build.gradle.kts
+  s_f25e8ac3859bf8::t_574f536bad32b0 1,35
+android/app/build.gradle.kts
+  s_f25e8ac3859bf8::t_81b74057b1664c 1
+android/gradle/libs.versions.toml
+  s_f25e8ac3859bf8::t_9872031150a5ad 1
+android/settings.gradle.kts
+  s_f25e8ac3859bf8::t_075e0479fabc61 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b7d8796af1e77f62ca8aed7ccde147d47a859dbf",
+  "prompts": {},
+  "sessions": {
+    "s_f25e8ac3859bf8": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5a66941c04f77597bfb545",
+        "model": "gpt-5.6-sol__max"
+      },
+      "human_author": "lejunyang <lejunyang@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {
+    "s_f25e8ac3859bf8": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_f25e8ac3859bf8::t_91857fc42d8eb3": {
+      "tool": "trae",
+      "conversation_id": "6a5a66941c04f77597bfb545",
+      "session_id": "6a5a66941c04f77597bfb545",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
