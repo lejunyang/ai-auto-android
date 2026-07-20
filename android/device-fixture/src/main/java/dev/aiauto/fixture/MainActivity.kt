@@ -1,6 +1,8 @@
 package dev.aiauto.fixture
 
-// 验收用途：提供无网络、无敏感数据的本地开关页面，供设备动作、Bridge、录制和回放冒烟测试使用。
+/**
+ * 验收用途：提供无网络、无敏感数据的本地开关页面，供设备动作、Bridge、录制和回放冒烟测试使用。
+ */
 
 import android.app.Activity
 import android.os.Bundle

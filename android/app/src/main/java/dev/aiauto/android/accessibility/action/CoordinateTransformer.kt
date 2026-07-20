@@ -1,6 +1,8 @@
 package dev.aiauto.android.accessibility.action
 
-// 功能用途：实现 CoordinateTransformer 对应的无障碍动作路由与坐标规划，供受控设备操作复用。
+/**
+ * 功能用途：实现 CoordinateTransformer 对应的无障碍动作路由与坐标规划，供受控设备操作复用。
+ */
 
 import kotlin.math.floor
 

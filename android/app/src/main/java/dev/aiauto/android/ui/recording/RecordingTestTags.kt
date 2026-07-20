@@ -1,6 +1,8 @@
 package dev.aiauto.android.ui.recording
 
-// 界面用途：实现 RecordingTestTags 对应的录制、脚本预览、保存与回放交互。
+/**
+ * 界面用途：实现 RecordingTestTags 对应的录制、脚本预览、保存与回放交互。
+ */
 
 internal object RecordingTestTags {
     const val START = "recording-start"

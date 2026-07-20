@@ -34,6 +34,7 @@ skills-check: skills-smoke
 
 comments:
 	@node scripts/check-comment-coverage.mjs
+	@node scripts/check-comment-coverage.mjs --self-test
 
 go-fmt:
 	@files=$$(gofmt -l .); \

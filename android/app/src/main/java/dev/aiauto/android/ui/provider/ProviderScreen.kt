@@ -1,6 +1,8 @@
 package dev.aiauto.android.ui.provider
 
-// 功能用途：实现 ProviderScreen 对应的 AI Provider 配置、调用、动作解析或敏感日志保护。
+/**
+ * 功能用途：实现 ProviderScreen 对应的 AI Provider 配置、调用、动作解析或敏感日志保护。
+ */
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

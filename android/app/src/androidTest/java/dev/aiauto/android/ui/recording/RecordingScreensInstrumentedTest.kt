@@ -1,6 +1,8 @@
 package dev.aiauto.android.ui.recording
 
-// 设备测试用途：在真实 Android 运行时验证 RecordingScreensInstrumented 的设备能力、权限前提与生命周期边界。
+/**
+ * 设备测试用途：在真实 Android 运行时验证 RecordingScreensInstrumented 的设备能力、权限前提与生命周期边界。
+ */
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue

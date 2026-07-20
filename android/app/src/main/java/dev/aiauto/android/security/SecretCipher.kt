@@ -1,6 +1,8 @@
 package dev.aiauto.android.security
 
-// 功能用途：实现 SecretCipher 对应的 API Key 加密存储与密钥抽象。
+/**
+ * 功能用途：实现 SecretCipher 对应的 API Key 加密存储与密钥抽象。
+ */
 
 data class EncryptedSecret(
     val ciphertext: String,

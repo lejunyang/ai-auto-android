@@ -1,6 +1,8 @@
 package dev.aiauto.android.ui.components
 
-// 界面用途：提供 ScreenScaffold 通用 Compose 组件，统一页面结构与状态表达。
+/**
+ * 界面用途：提供 ScreenScaffold 通用 Compose 组件，统一页面结构与状态表达。
+ */
 
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize

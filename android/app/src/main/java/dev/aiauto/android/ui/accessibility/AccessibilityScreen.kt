@@ -1,6 +1,8 @@
 package dev.aiauto.android.ui.accessibility
 
-// 功能用途：实现 AccessibilityScreen 对应的无障碍观察、截图、动作或用户触摸安全控制。
+/**
+ * 功能用途：实现 AccessibilityScreen 对应的无障碍观察、截图、动作或用户触摸安全控制。
+ */
 
 import android.content.ActivityNotFoundException
 import android.content.Intent

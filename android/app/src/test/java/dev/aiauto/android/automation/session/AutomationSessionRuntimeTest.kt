@@ -1,6 +1,8 @@
 package dev.aiauto.android.automation.session
 
-// 测试用途：验证 AutomationSessionRuntime 的功能契约、失败语义及自动化安全边界。
+/**
+ * 测试用途：验证 AutomationSessionRuntime 的功能契约、失败语义及自动化安全边界。
+ */
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

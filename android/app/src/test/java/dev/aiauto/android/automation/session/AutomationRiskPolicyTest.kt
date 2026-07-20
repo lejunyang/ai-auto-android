@@ -1,6 +1,8 @@
 package dev.aiauto.android.automation.session
 
-// 测试用途：验证 AutomationRiskPolicy 的功能契约、失败语义及自动化安全边界。
+/**
+ * 测试用途：验证 AutomationRiskPolicy 的功能契约、失败语义及自动化安全边界。
+ */
 
 import dev.aiauto.android.provider.ProviderAction
 import kotlinx.serialization.json.JsonPrimitive

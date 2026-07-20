@@ -1,6 +1,8 @@
 package dev.aiauto.android.automation.recording
 
-// 功能用途：实现 RecordingRuntime 对应的语义录制、脚本持久化或确定性回放能力。
+/**
+ * 功能用途：实现 RecordingRuntime 对应的语义录制、脚本持久化或确定性回放能力。
+ */
 
 import android.view.accessibility.AccessibilityEvent
 

@@ -1,6 +1,8 @@
 package dev.aiauto.android.accessibility
 
-// 调试用途：提供 SessionStopVerificationHarness 的设备验收入口，仅用于 debug 变体且不进入 release 制品。
+/**
+ * 调试用途：提供 SessionStopVerificationHarness 的设备验收入口，仅用于 debug 变体且不进入 release 制品。
+ */
 
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger

@@ -1,6 +1,8 @@
 package dev.aiauto.android.security
 
-// 功能用途：实现 AndroidKeystoreSecretCipher 对应的 API Key 加密存储与密钥抽象。
+/**
+ * 功能用途：实现 AndroidKeystoreSecretCipher 对应的 API Key 加密存储与密钥抽象。
+ */
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties

@@ -1,6 +1,8 @@
 package dev.aiauto.android.ui.recording
 
-// 测试用途：验证 RecordingViewModel 的功能契约、失败语义及自动化安全边界。
+/**
+ * 测试用途：验证 RecordingViewModel 的功能契约、失败语义及自动化安全边界。
+ */
 
 import androidx.lifecycle.ViewModelStore
 

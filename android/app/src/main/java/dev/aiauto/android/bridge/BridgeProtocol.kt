@@ -1,6 +1,8 @@
 package dev.aiauto.android.bridge
 
-// 功能用途：实现 BridgeProtocol 对应的桌面端与 App 本地 Bridge 协议、认证或请求处理。
+/**
+ * 功能用途：实现 BridgeProtocol 对应的桌面端与 App 本地 Bridge 协议、认证或请求处理。
+ */
 
 import kotlinx.serialization.json.JsonObject
 

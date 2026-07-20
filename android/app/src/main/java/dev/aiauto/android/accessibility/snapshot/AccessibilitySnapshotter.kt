@@ -1,6 +1,8 @@
 package dev.aiauto.android.accessibility.snapshot
 
-// 功能用途：实现 AccessibilitySnapshotter 对应的无障碍节点快照与敏感信息最小化处理。
+/**
+ * 功能用途：实现 AccessibilitySnapshotter 对应的无障碍节点快照与敏感信息最小化处理。
+ */
 
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo

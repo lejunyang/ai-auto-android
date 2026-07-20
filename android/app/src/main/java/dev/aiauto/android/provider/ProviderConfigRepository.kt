@@ -1,6 +1,8 @@
 package dev.aiauto.android.provider
 
-// 功能用途：实现 ProviderConfigRepository 对应的 AI Provider 配置、调用、动作解析或敏感日志保护。
+/**
+ * 功能用途：实现 ProviderConfigRepository 对应的 AI Provider 配置、调用、动作解析或敏感日志保护。
+ */
 
 import android.content.SharedPreferences
 import java.io.IOException

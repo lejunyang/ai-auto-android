@@ -1,6 +1,8 @@
 package dev.aiauto.android.automation.session
 
-// 功能用途：实现 AutomationSessionRuntime 对应的受控 AI 自动化会话、风险判断与生命周期管理。
+/**
+ * 功能用途：实现 AutomationSessionRuntime 对应的受控 AI 自动化会话、风险判断与生命周期管理。
+ */
 
 internal fun interface UserTouchStopHandler {
     fun stopForUserTouch()

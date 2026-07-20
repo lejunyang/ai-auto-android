@@ -1,6 +1,8 @@
 package dev.aiauto.android.provider
 
-// 测试用途：验证 OpenAICompatibleProvider 的功能契约、失败语义及自动化安全边界。
+/**
+ * 测试用途：验证 OpenAICompatibleProvider 的功能契约、失败语义及自动化安全边界。
+ */
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream

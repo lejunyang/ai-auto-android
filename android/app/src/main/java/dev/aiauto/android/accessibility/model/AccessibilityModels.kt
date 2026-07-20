@@ -1,6 +1,8 @@
 package dev.aiauto.android.accessibility.model
 
-// 功能用途：定义 AccessibilityModels 中无障碍观察、选择器与动作执行共享的领域模型。
+/**
+ * 功能用途：定义 AccessibilityModels 中无障碍观察、选择器与动作执行共享的领域模型。
+ */
 
 data class UiBounds(
     val left: Int,

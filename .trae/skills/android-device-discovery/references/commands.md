@@ -52,8 +52,8 @@ schemaVersion, requestId, ok, data, error, meta
 
 MCP server 暴露以下工具：
 
-- `android_devices_list` with `{}`.
-- `android_device_get` with `{"device":"SERIAL"}`.
+- 使用 `{}` 调用 `android_devices_list`。
+- 使用 `{"device":"SERIAL"}` 调用 `android_device_get`。
 
 配置 MCP 客户端启动以下长时间运行的 stdio 命令：
 
