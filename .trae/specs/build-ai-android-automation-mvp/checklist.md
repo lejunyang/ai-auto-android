@@ -3,6 +3,7 @@
 ## 仓库与交付
 
 - [x] Git 仓库已初始化，主分支和忽略规则正确，规格文件被保留
+- [ ] 根 `AGENTS.md` 明确项目协作语言、文档语言、中文注释质量、适用范围和排除项
 - [x] Go、JDK、Android SDK、Gradle/AGP 版本已固定且开发命令可重复
 - [x] 每个实现任务都有独立 Conventional Commit，历史中没有密钥或构建缓存
 - [x] 文档明确说明 MVP 范围、已知限制、安装方法和故障排查
@@ -59,9 +60,12 @@
 - [x] MCP 不暴露配对、撤销信任、任意 shell 或默认高风险操作
 - [x] 三个 Agent Skills 通过规范校验，frontmatter、引用和命令均可用
 - [x] Skills 始终先确认目标设备和 capabilities，并遵守风险确认规则
+- [ ] `skills/` 的 README、三个 `SKILL.md` 和六个 references 说明文案均为中文，同时保持 frontmatter `name`、命令、标识符和协议值原样
+- [ ] `skills/` 与 `.trae/skills/` 镜像内容一致，且中文化后仍通过 Skills validator
 
 ## 测试、兼容与发布
 
+- [ ] 所有可注释的手写生产代码、测试、构建配置、CI 与脚本均有中文功能/用途注释覆盖，且自动检查可发现遗漏并排除 JSON/JSON Schema、生成物、缓存和二进制
 - [x] Go 单测和 fake ADB 集成测试覆盖成功、超时、恶意参数和多设备
 - [x] Android 单测覆盖选择器、坐标、状态机、风险策略、录制和回放
 - [x] 协议、MCP 和 App Bridge 具有契约测试
