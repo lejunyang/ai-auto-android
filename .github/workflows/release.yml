@@ -1,3 +1,4 @@
+# 构建、校验并发布带 SHA-256 清单的跨平台 CLI 与 Android debug APK。
 name: Release
 
 on:

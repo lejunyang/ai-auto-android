@@ -1,3 +1,4 @@
+# 在受支持平台验证工具链元数据、Go、协议、Skills 和 Android 构建。
 name: CI
 
 on:

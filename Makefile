@@ -1,3 +1,4 @@
+# 统一封装本地与 CI 的协议、Skills、Go、Android 构建和发布入口。
 SHELL := /bin/sh
 GO ?= go
 VERSION ?= dev

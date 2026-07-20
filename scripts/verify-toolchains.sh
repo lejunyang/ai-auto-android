@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# 校验仓库布局与固定工具链版本；metadata-only 模式供无需本机 SDK 的快速检查使用。
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)

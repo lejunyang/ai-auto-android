@@ -1,3 +1,4 @@
+// 固定插件与依赖仓库，并注册主 App 和无副作用设备验收 fixture。
 pluginManagement {
     repositories {
         google()
