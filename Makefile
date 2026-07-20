@@ -6,10 +6,10 @@ DIST_DIR ?= dist
 ANDROID_GRADLEW ?= ./android/gradlew
 ANDROID_GRADLE_FLAGS ?= --no-daemon
 
-.PHONY: verify doctor fake-adb-smoke protocol-smoke protocol-test skills-sync skills-smoke skills-check
+.PHONY: verify doctor fake-adb-smoke protocol-smoke protocol-test skills-sync skills-smoke skills-check comments-check
 .PHONY: go-fmt go-test go-vet test build android-test android-lint android-build release
 
-verify: fake-adb-smoke protocol-smoke skills-smoke
+verify: fake-adb-smoke protocol-smoke skills-smoke comments-check
 	@./scripts/verify-toolchains.sh --metadata-only
 
 doctor:
@@ -31,6 +31,9 @@ skills-smoke:
 	@$(GO) test ./internal/cli -run '^TestSkillAactlCommandExamplesMatchCurrentCLI$$'
 
 skills-check: skills-smoke
+
+comments-check:
+	@node scripts/check-comments.mjs
 
 go-fmt:
 	@files=$$(gofmt -l .); \

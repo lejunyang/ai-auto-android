@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 禁止新版云备份与设备迁移导出自动化配置和敏感状态。 -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" path="." />

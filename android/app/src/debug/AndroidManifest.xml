@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 注册仅供 debug 设备验收使用的 Activity 与无障碍服务。 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity

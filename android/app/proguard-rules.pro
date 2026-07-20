@@ -1,1 +1,1 @@
-# Rules are added when release shrinking is enabled.
+# 主 App 启用 release 压缩时，在此维护项目专用的保留与优化规则。

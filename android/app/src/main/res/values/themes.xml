@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 配置主 App 的基础主题、状态栏与导航栏外观。 -->
 <resources>
     <style name="Theme.AiAutoAndroid" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>

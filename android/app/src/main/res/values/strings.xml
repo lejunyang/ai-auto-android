@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 定义应用名称与生产无障碍服务的披露文案。 -->
 <resources>
     <string name="app_name">AI 安卓自动化</string>
     <string name="accessibility_service_label">AI 安卓自动化执行服务</string>

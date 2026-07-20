@@ -1,3 +1,4 @@
+<!-- 定义设备 Fixture 的本地状态与无障碍描述，不包含用户数据。 -->
 <resources>
     <string name="app_name">Device Fixture</string>
     <string name="status_on">ON</string>

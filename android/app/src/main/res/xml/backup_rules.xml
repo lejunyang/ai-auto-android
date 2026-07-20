@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 禁止旧版 Android 备份自动化配置、脚本与敏感本地状态。 -->
 <full-backup-content>
     <exclude domain="root" path="." />
     <exclude domain="file" path="." />
