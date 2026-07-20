@@ -131,13 +131,13 @@
   - [ ] SubTask 24.2: 在 API 33 emulator 验证直接 screenshot/action，以及 App Bridge hello、info、snapshot、semantic action 和 close 闭环；clean smoke 中 capabilities、list 和语义复位已通过，但 `session.close` 返回 `INTERNAL_ERROR`，随后 info 返回 `DEVICE_UNREACHABLE`
   - [ ] SubTask 24.3: 在 API 33 emulator 录制 fixture toggle，验证 recording list、replay、步骤结果和最终 UI 状态；clean smoke 中唯一两步脚本无 secret，fixture 以 `nodeAction`、score `1.0` 从 ON 复位为 OFF，回放 step 1 成功且 attempts=1，step 2 以 attempts=0、`SELECTOR_LOW_CONFIDENCE` 失败
 
-- [x] Task 25: 将 `/skills` 三组 Agent Skills 的全部说明文案改为中文，并保持机器可读标识与命令语义稳定。
+- [ ] Task 25: 将 `/skills` 三组 Agent Skills 的全部说明文案改为中文，并保持机器可读标识与命令语义稳定；实现已完成，独立复验发现英文自然语言残留，待 Task 28 加固验收后关闭。
   - [x] SubTask 25.1: 将 `skills/README.md` 与三个 `SKILL.md` 的标题、说明、流程和安全提示改为中文，保持 frontmatter `name`、命令、参数、标识符和协议值原样
   - [x] SubTask 25.2: 将六个 `references/*.md` 的解释、操作指导和故障排查文案改为中文，保留代码块、错误码、环境变量、路径和协议常量
   - [x] SubTask 25.3: 将 `skills/` 完整同步到 `.trae/skills/` 镜像，并自动校验两套目录内容一致
   - [x] SubTask 25.4: 运行 Skills validator，验证 frontmatter、引用深度、命令示例和安全约束未因中文化退化
 
-- [x] Task 26: 建立项目协作语言与注释规范，并为现有可注释的手写代码和测试补齐中文功能/用途注释。
+- [ ] Task 26: 建立项目协作语言与注释规范，并为现有可注释的手写代码和测试补齐中文功能/用途注释；实现已完成，独立复验发现检查器未验证注释语义与语言特定结构，待 Task 28 加固验收后关闭。
   - [x] SubTask 26.1: 盘点可注释的手写源文件与测试，在根 `AGENTS.md` 规定项目协作语言、文档语言和注释质量要求；明确排除 JSON/JSON Schema、生成物、构建缓存和二进制，并禁止逐行复述代码
   - [x] SubTask 26.2: 为现有 Go 手写代码与测试补齐中文 package doc，以及必要的导出 API、关键约束和复杂逻辑说明
   - [x] SubTask 26.3: 为现有 Android/Kotlin 手写代码与测试补齐中文文件/类型/关键复杂逻辑 KDoc，覆盖生产代码、debug/device fixture 和测试用途
@@ -148,6 +148,11 @@
   - [ ] SubTask 27.1: 诊断并确保 fixture 普通 View 点击录制稳定保存 `resourceId`、`contentDescription` 和 fingerprint，使回放达到既有置信度阈值且不放宽歧义安全策略；补充单元测试和设备测试
   - [ ] SubTask 27.2: 使 `session.close` 响应、连接关闭和 ADB forward 清理顺序确定且幂等，确保成功关闭不返回 `INTERNAL_ERROR`；补充 Go 与 Android 契约测试
   - [ ] SubTask 27.3: 在 clean API 33 emulator 重新录制 fixture toggle，并验证 recording list、replay 全步骤、最终 UI 状态和 Bridge close 全部通过，同时关闭 SubTask 24.2 和 24.3
+
+- [ ] Task 28: 加固 Skills 中文化与代码注释的语义验收，确保独立复验能够识别英文残留和无信息量注释。
+  - [ ] SubTask 28.1: 清除 Skills 自然语言英文残留，保持机器标识与命令不变，同步 `skills/` 与 `.trae/skills/` 镜像并通过 Skills validator
+  - [ ] SubTask 28.2: 按语言加固注释检查器，验证 Go package doc、Kotlin KDoc/文件用途、测试用途，以及功能/用途/约束/验证语义；增加反例 fixture，确保 `// 临时` 等无信息量注释失败，并保持 173 个以上手写文件的覆盖范围
+  - [ ] SubTask 28.3: 独立复验 Skills 中文内容、镜像、validator、注释语义规则和反例 fixture；通过后关闭 Task 25、Task 26 及相关 checklist
 
 # Task Dependencies
 
@@ -168,6 +173,7 @@
 - Task 25 depends on Task 11.
 - Task 26 depends on Tasks 1-12.
 - Task 27 depends on SubTask 24.1 and Tasks 7 and 9.
+- Task 28 依赖 Task 25 和 Task 26 已完成的实现。
 - SubTasks 24.2 and 24.3 are completed by Task 27.3.
 - Task 22 and Task 23 can run in parallel.
 - Task 24 is independent of Tasks 25 and 26; Tasks 25 and 26 can run in parallel.
