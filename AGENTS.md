@@ -13,7 +13,7 @@
 - Kotlin/Java 使用文件或主要类型 KDoc；测试类注释说明被验证的能力、风险或回归场景。
 - Gradle、Shell、Node 脚本、Workflow、XML 和其他配置文件在合法位置说明模块用途或非显然约束。
 - 注释解释“为什么、用途和边界”，不得逐行复述代码，也不得用无信息量注释凑覆盖。
-- 修改行为时同步更新相关注释；新增手写文件必须纳入 `make comments-check`。
+- 修改行为时同步更新相关注释；新增手写文件必须纳入 `make comments`。
 
 ## 排除项
 
@@ -22,5 +22,5 @@
 
 ## 验证
 
-- 运行 `make comments-check` 检查受管手写文件的中文注释覆盖。
+- 运行 `make comments` 检查受管手写文件的中文注释覆盖。
 - 提交前按改动范围运行定向测试，并在最终验收运行 `make test`、`make verify`、`make build` 与 Android 单测、lint 和构建任务。

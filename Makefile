@@ -6,10 +6,10 @@ DIST_DIR ?= dist
 ANDROID_GRADLEW ?= ./android/gradlew
 ANDROID_GRADLE_FLAGS ?= --no-daemon
 
-.PHONY: verify doctor fake-adb-smoke protocol-smoke protocol-test skills-sync skills-smoke skills-check comments-check
+.PHONY: verify doctor fake-adb-smoke protocol-smoke protocol-test skills-sync skills-smoke skills-check comments
 .PHONY: go-fmt go-test go-vet test build android-test android-lint android-build release
 
-verify: fake-adb-smoke protocol-smoke skills-smoke comments-check
+verify: fake-adb-smoke protocol-smoke skills-smoke comments
 	@./scripts/verify-toolchains.sh --metadata-only
 
 doctor:
@@ -32,8 +32,8 @@ skills-smoke:
 
 skills-check: skills-smoke
 
-comments-check:
-	@node scripts/check-comments.mjs
+comments:
+	@node scripts/check-comment-coverage.mjs
 
 go-fmt:
 	@files=$$(gofmt -l .); \
