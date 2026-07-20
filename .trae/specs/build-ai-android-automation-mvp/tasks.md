@@ -128,8 +128,8 @@
 
 - [ ] Task 24: 建立独立无副作用 Android device fixture，并在 API 33 emulator 完成直接设备、App Bridge 与录制回放端到端冒烟。
   - [x] SubTask 24.1: 实现仅包含本地 toggle、稳定 `resourceId`、无网络和无敏感数据的独立 Android device fixture，并验证可重复复位（提交 `511a242`，fixture 构建通过）
-  - [ ] SubTask 24.2: 在 API 33 emulator 验证直接 screenshot/action，以及 App Bridge hello、info、snapshot、semantic action 和 close 闭环
-  - [ ] SubTask 24.3: 在 API 33 emulator 录制 fixture toggle，验证 recording list、replay、步骤结果和最终 UI 状态
+  - [ ] SubTask 24.2: 在 API 33 emulator 验证直接 screenshot/action，以及 App Bridge hello、info、snapshot、semantic action 和 close 闭环；clean smoke 中 capabilities、list 和语义复位已通过，但 `session.close` 返回 `INTERNAL_ERROR`，随后 info 返回 `DEVICE_UNREACHABLE`
+  - [ ] SubTask 24.3: 在 API 33 emulator 录制 fixture toggle，验证 recording list、replay、步骤结果和最终 UI 状态；clean smoke 中唯一两步脚本无 secret，fixture 以 `nodeAction`、score `1.0` 从 ON 复位为 OFF，回放 step 1 成功且 attempts=1，step 2 以 attempts=0、`SELECTOR_LOW_CONFIDENCE` 失败
 
 - [x] Task 25: 将 `/skills` 三组 Agent Skills 的全部说明文案改为中文，并保持机器可读标识与命令语义稳定。
   - [x] SubTask 25.1: 将 `skills/README.md` 与三个 `SKILL.md` 的标题、说明、流程和安全提示改为中文，保持 frontmatter `name`、命令、参数、标识符和协议值原样
@@ -143,6 +143,11 @@
   - [x] SubTask 26.3: 为现有 Android/Kotlin 手写代码与测试补齐中文文件/类型/关键复杂逻辑 KDoc，覆盖生产代码、debug/device fixture 和测试用途
   - [x] SubTask 26.4: 为 Gradle、Shell、GitHub Workflow 及其他可注释构建/CI/脚本文件补齐中文模块用途与非显然约束说明
   - [x] SubTask 26.5: 增加可重复的注释覆盖检查脚本或验证命令，校验盘点范围、排除项和关键注释要求，并运行全量构建、测试、lint 与格式检查
+
+- [ ] Task 27: 修复设备 smoke 暴露的录制选择器稳定性与 Bridge close 生命周期问题，并重新完成 clean API 33 端到端验收。
+  - [ ] SubTask 27.1: 诊断并确保 fixture 普通 View 点击录制稳定保存 `resourceId`、`contentDescription` 和 fingerprint，使回放达到既有置信度阈值且不放宽歧义安全策略；补充单元测试和设备测试
+  - [ ] SubTask 27.2: 使 `session.close` 响应、连接关闭和 ADB forward 清理顺序确定且幂等，确保成功关闭不返回 `INTERNAL_ERROR`；补充 Go 与 Android 契约测试
+  - [ ] SubTask 27.3: 在 clean API 33 emulator 重新录制 fixture toggle，并验证 recording list、replay 全步骤、最终 UI 状态和 Bridge close 全部通过，同时关闭 SubTask 24.2 和 24.3
 
 # Task Dependencies
 
@@ -162,6 +167,8 @@
 - Task 24 depends on Task 23.
 - Task 25 depends on Task 11.
 - Task 26 depends on Tasks 1-12.
+- Task 27 depends on SubTask 24.1 and Tasks 7 and 9.
+- SubTasks 24.2 and 24.3 are completed by Task 27.3.
 - Task 22 and Task 23 can run in parallel.
 - Task 24 is independent of Tasks 25 and 26; Tasks 25 and 26 can run in parallel.
 

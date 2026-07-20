@@ -73,7 +73,7 @@
 - [x] CI 验证 Android lint、单测和 debug APK 构建
 - [x] 录制与回放具有真实 Compose/instrumentation UI 交互测试
 - [x] 真机测试指南明确 USB 模式选择，并覆盖开发者选项、USB 调试、RSA、无障碍、Bridge 和录制回放 smoke
-- [ ] 可用环境下完成 Emulator 或真机的截图、动作、桥接和录制回放冒烟（API 33 emulator 的直接 screenshot/action 已通过；App Bridge 与 recording list/replay 待 Task 24）
+- [ ] 可用环境下完成 Emulator 或真机的截图、动作、桥接和录制回放冒烟（API 33 emulator 的直接 screenshot/action、Bridge capabilities/list 及 fixture `nodeAction` 语义复位已通过；唯一两步无 secret 脚本回放 step 1 成功且 attempts=1，step 2 以 attempts=0、`SELECTOR_LOW_CONFIDENCE` 失败；`session.close` 返回 `INTERNAL_ERROR` 后 info 返回 `DEVICE_UNREACHABLE`，待 Task 27 修复并由 SubTask 27.3 重验）
 - [x] 发布产出 macOS arm64/amd64、Windows amd64 CLI、debug APK 和 SHA-256
 - [x] 文档明确 Google Play 自主 Accessibility AI 的政策禁区及合规变体
 - [x] 备选方案文档覆盖 Shizuku、Device Owner、UI Automator、视觉层、getevent、蓝牙/厂商互联、设备农场和 scrcpy
