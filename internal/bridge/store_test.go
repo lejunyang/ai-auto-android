@@ -1,5 +1,7 @@
 package bridge
 
+// 本文件验证短期 token 文件权限、路径类型校验和缺失会话错误语义。
+
 import (
 	"errors"
 	"os"

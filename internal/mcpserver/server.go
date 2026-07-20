@@ -1,5 +1,7 @@
 package mcpserver
 
+// 本文件注册五个类型化 MCP 工具，并把调用映射到共享自动化服务。
+
 import (
 	"context"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// ToolDevicesList 等常量是对 MCP 客户端稳定公开的工具名称。
 const (
 	ToolDevicesList     = "android_devices_list"
 	ToolDeviceGet       = "android_device_get"
@@ -19,6 +22,7 @@ const (
 	observeKindRecordings = "recordings"
 )
 
+// ToolNames 列出服务器允许暴露的完整工具集合。
 var ToolNames = []string{
 	ToolDevicesList,
 	ToolDeviceGet,
@@ -73,6 +77,7 @@ type recordingReplayInput struct {
 	ScriptID string `json:"scriptId"`
 }
 
+// New 创建只暴露设备查询、观察、低风险动作和受确认保护回放的 MCP 服务器。
 func New(automation service.Automation, version string) *mcp.Server {
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "aactl", Version: version},
@@ -212,6 +217,7 @@ func New(automation service.Automation, version string) *mcp.Server {
 	return server
 }
 
+// Run 在指定传输上运行 MCP 服务器，直到上下文取消或传输失败。
 func Run(
 	ctx context.Context,
 	automation service.Automation,

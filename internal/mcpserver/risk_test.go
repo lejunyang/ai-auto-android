@@ -1,5 +1,7 @@
 package mcpserver
 
+// 本文件验证模型动作显式白名单和录制回放强制人工确认边界。
+
 import (
 	"strings"
 	"testing"

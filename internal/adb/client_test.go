@@ -1,5 +1,7 @@
 package adb
 
+// 本文件验证 ADB 诊断、设备状态、无线配对脱敏和参数注入防护契约。
+
 import (
 	"context"
 	"encoding/json"

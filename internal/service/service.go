@@ -1,3 +1,4 @@
+// Package service 为 CLI 与 MCP 提供共享的类型化设备自动化语义。
 package service
 
 import (
@@ -12,6 +13,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/protocol"
 )
 
+// ObserveScreenshot 等常量定义共享服务支持的观察类型和直接动作白名单。
 const (
 	ObserveScreenshot = "screenshot"
 	ObserveHierarchy  = "hierarchy"
@@ -32,7 +34,7 @@ var scriptIDPattern = regexp.MustCompile(
 	`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$`,
 )
 
-// DirectBackend is the safe, typed subset of ADB used by automation clients.
+// DirectBackend 是自动化客户端可使用的安全、类型化 ADB 子集。
 type DirectBackend interface {
 	Devices(context.Context) ([]protocol.Device, error)
 	DeviceInfo(context.Context, string) (protocol.Device, error)
@@ -46,8 +48,7 @@ type DirectBackend interface {
 	Stop(context.Context, string, string) (adb.ActionResult, error)
 }
 
-// BridgeBackend contains only established-session operations. Pairing and trust
-// management intentionally live outside this interface.
+// BridgeBackend 只包含已建立会话后的操作；配对和信任管理有意留在接口之外。
 type BridgeBackend interface {
 	Snapshot(context.Context, string, string, int) (json.RawMessage, error)
 	Action(context.Context, string, json.RawMessage) (json.RawMessage, error)
@@ -55,7 +56,7 @@ type BridgeBackend interface {
 	Replay(context.Context, string, string) (json.RawMessage, error)
 }
 
-// Automation is shared by the CLI and MCP adapters.
+// Automation 是 CLI 与 MCP 适配器共享的完整服务契约。
 type Automation interface {
 	ListDevices(context.Context) (DeviceListResult, error)
 	GetDevice(context.Context, string) (protocol.Device, error)
@@ -66,16 +67,19 @@ type Automation interface {
 	ReplayRecording(context.Context, ReplayRecordingRequest) (ReplayRecordingResult, error)
 }
 
+// Service 在调用后端前集中执行设备、动作和 Bridge 响应校验。
 type Service struct {
 	direct DirectBackend
 	bridge BridgeBackend
 }
 
+// DeviceListResult 返回规范化设备集合及对应计数。
 type DeviceListResult struct {
 	Devices []protocol.Device `json:"devices"`
 	Count   int               `json:"count"`
 }
 
+// ObserveRequest 描述一次明确设备上的直接或语义观察。
 type ObserveRequest struct {
 	Device        string `json:"device"`
 	Kind          string `json:"kind"`
@@ -83,6 +87,7 @@ type ObserveRequest struct {
 	MaxDepth      int    `json:"maxDepth,omitempty"`
 }
 
+// ObserveResult 统一表示截图、UIAutomator XML 或无障碍语义树。
 type ObserveResult struct {
 	Device    string            `json:"device"`
 	Kind      string            `json:"kind"`
@@ -94,11 +99,13 @@ type ObserveResult struct {
 	Snapshot  *SemanticSnapshot `json:"snapshot,omitempty"`
 }
 
+// SemanticSnapshot 保存有深度上限的无障碍节点树。
 type SemanticSnapshot struct {
 	Root     SemanticNode `json:"root"`
 	MaxDepth int          `json:"maxDepth"`
 }
 
+// SemanticNode 是可序列化且不持有平台节点对象的语义节点。
 type SemanticNode struct {
 	PackageName        string         `json:"packageName,omitempty"`
 	ClassName          string         `json:"className,omitempty"`
@@ -111,6 +118,7 @@ type SemanticNode struct {
 	Children           []SemanticNode `json:"children"`
 }
 
+// Bounds 表示节点在设备逻辑坐标系中的矩形范围。
 type Bounds struct {
 	Left   int `json:"left"`
 	Top    int `json:"top"`
@@ -118,6 +126,7 @@ type Bounds struct {
 	Bottom int `json:"bottom"`
 }
 
+// SemanticState 汇总节点可交互性、可见性和敏感状态。
 type SemanticState struct {
 	Checkable     bool `json:"checkable"`
 	Checked       bool `json:"checked"`
@@ -134,6 +143,7 @@ type SemanticState struct {
 	Sensitive     bool `json:"sensitive"`
 }
 
+// ActionRequest 描述一个白名单直接动作及其类型化参数。
 type ActionRequest struct {
 	Device     string `json:"device"`
 	Action     string `json:"action"`
@@ -150,12 +160,14 @@ type ActionRequest struct {
 	Activity   string `json:"activity,omitempty"`
 }
 
+// RecordingListResult 返回经协议校验和脱敏的录制摘要。
 type RecordingListResult struct {
 	Device     string             `json:"device"`
 	Recordings []RecordingSummary `json:"recordings"`
 	Count      int                `json:"count"`
 }
 
+// RecordingSummary 只包含列举脚本所需的非秘密元数据。
 type RecordingSummary struct {
 	ID             string                `json:"id"`
 	Name           string                `json:"name"`
@@ -165,16 +177,19 @@ type RecordingSummary struct {
 	Requirements   RecordingRequirements `json:"requirements"`
 }
 
+// RecordingRequirements 描述脚本回放需要的最低 API 与设备能力。
 type RecordingRequirements struct {
 	MinAPILevel  int      `json:"minApiLevel"`
 	Capabilities []string `json:"capabilities"`
 }
 
+// ReplayRecordingRequest 标识明确设备和待回放脚本。
 type ReplayRecordingRequest struct {
 	Device   string `json:"device"`
 	ScriptID string `json:"scriptId"`
 }
 
+// ReplayRecordingResult 汇总脚本回放状态、人工接管需求和步骤结果。
 type ReplayRecordingResult struct {
 	Device               string             `json:"device"`
 	ScriptID             string             `json:"scriptId"`
@@ -185,6 +200,7 @@ type ReplayRecordingResult struct {
 	Steps                []ReplayStepResult `json:"steps"`
 }
 
+// ReplayStepResult 记录单步尝试次数、执行路由、匹配分数和稳定错误。
 type ReplayStepResult struct {
 	StepID     string  `json:"stepId"`
 	Status     string  `json:"status"`
@@ -195,10 +211,12 @@ type ReplayStepResult struct {
 	Message    string  `json:"message,omitempty"`
 }
 
+// New 使用可选直接后端和 Bridge 后端创建共享服务。
 func New(direct DirectBackend, bridge BridgeBackend) *Service {
 	return &Service{direct: direct, bridge: bridge}
 }
 
+// ListDevices 列出直接后端可见的规范化设备。
 func (s *Service) ListDevices(ctx context.Context) (DeviceListResult, error) {
 	if s.direct == nil {
 		return DeviceListResult{}, unavailable("ADB device discovery")
@@ -210,6 +228,7 @@ func (s *Service) ListDevices(ctx context.Context) (DeviceListResult, error) {
 	return DeviceListResult{Devices: devices, Count: len(devices)}, nil
 }
 
+// GetDevice 在校验序列号后读取一个明确设备的信息。
 func (s *Service) GetDevice(ctx context.Context, device string) (protocol.Device, error) {
 	if err := adb.ValidateSerial(device); err != nil {
 		return protocol.Device{}, err
@@ -220,6 +239,7 @@ func (s *Service) GetDevice(ctx context.Context, device string) (protocol.Device
 	return s.direct.DeviceInfo(ctx, device)
 }
 
+// Observe 按观察类型选择直接 ADB 或已建立 Bridge，并严格校验选项组合。
 func (s *Service) Observe(ctx context.Context, request ObserveRequest) (ObserveResult, error) {
 	if err := adb.ValidateSerial(request.Device); err != nil {
 		return ObserveResult{}, err
@@ -303,6 +323,7 @@ func (s *Service) Observe(ctx context.Context, request ObserveRequest) (ObserveR
 	}
 }
 
+// ExecuteAction 只把白名单动作映射到类型化直接后端。
 func (s *Service) ExecuteAction(
 	ctx context.Context,
 	request ActionRequest,
@@ -348,6 +369,7 @@ func (s *Service) ExecuteAction(
 	}
 }
 
+// ExecuteBridgeAction 在明确设备的现有会话中执行语义动作。
 func (s *Service) ExecuteBridgeAction(
 	ctx context.Context,
 	device string,
@@ -362,6 +384,7 @@ func (s *Service) ExecuteBridgeAction(
 	return s.bridge.Action(ctx, device, action)
 }
 
+// ListRecordings 校验 App 返回的 UUID、包名、时间和资源上限后再公开摘要。
 func (s *Service) ListRecordings(
 	ctx context.Context,
 	device string,
@@ -432,6 +455,7 @@ func (s *Service) ListRecordings(
 	}, nil
 }
 
+// ReplayRecording 校验脚本标识，并确保回放报告对应原请求。
 func (s *Service) ReplayRecording(
 	ctx context.Context,
 	request ReplayRecordingRequest,

@@ -1,5 +1,7 @@
 package cli
 
+// 本文件将录制列表和回放子命令映射到共享自动化服务。
+
 import (
 	"context"
 

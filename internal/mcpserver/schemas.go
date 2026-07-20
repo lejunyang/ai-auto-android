@@ -1,5 +1,7 @@
 package mcpserver
 
+// 本文件集中构造 MCP 工具输入输出 JSON Schema，保持附加字段默认拒绝。
+
 import "encoding/json"
 
 func devicesListSchema() json.RawMessage {

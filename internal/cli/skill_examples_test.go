@@ -1,5 +1,7 @@
 package cli
 
+// 本文件把 Skills 中的 aactl 示例作为契约，防止文档命令与真实 CLI 漂移。
+
 import (
 	"context"
 	"errors"

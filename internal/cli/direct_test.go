@@ -1,5 +1,7 @@
 package cli
 
+// 本文件验证截图文件权限、直接动作映射及未知或注入选项的前置拒绝。
+
 import (
 	"bytes"
 	"context"

@@ -1,5 +1,7 @@
 package adb
 
+// 本文件管理绑定到明确设备的 ADB 临时 TCP 转发。
+
 import (
 	"context"
 	"fmt"
@@ -10,14 +12,17 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/process"
 )
 
+// MaxTCPPort 是 ADB 转发允许的最大 TCP 端口。
 const MaxTCPPort = 65535
 
+// Forward 描述 ADB 分配的本地端口和设备端目标端口。
 type Forward struct {
 	Device     string `json:"device"`
 	LocalPort  int    `json:"localPort"`
 	RemotePort int    `json:"remotePort"`
 }
 
+// Forward 为在线设备请求一个由 ADB 分配的临时本地端口。
 func (c *Client) Forward(ctx context.Context, serial string, remotePort int) (Forward, error) {
 	if err := validateForward(ctx, c, serial, remotePort); err != nil {
 		return Forward{}, err
@@ -59,6 +64,7 @@ func (c *Client) Forward(ctx context.Context, serial string, remotePort int) (Fo
 	}, nil
 }
 
+// RemoveForward 仅移除明确设备上的指定本地端口转发。
 func (c *Client) RemoveForward(ctx context.Context, serial string, localPort int) error {
 	if err := ValidateSerial(serial); err != nil {
 		return err

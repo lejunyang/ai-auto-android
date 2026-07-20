@@ -1,3 +1,4 @@
+// Package cli 解析 aactl 命令，并通过共享服务层输出稳定 JSON 信封。
 package cli
 
 import (
@@ -18,12 +19,15 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// Version 在构建时注入 aactl 版本，开发构建默认为 dev。
 var Version = "dev"
 
+// PathResolver 抽象 ADB 路径发现，确保 version 等无设备命令无需解析 ADB。
 type PathResolver interface {
 	Resolve() (string, error)
 }
 
+// App 聚合 CLI 的可替换依赖、输入输出流和 MCP 传输。
 type App struct {
 	Locator      PathResolver
 	Executor     process.Executor
@@ -36,6 +40,7 @@ type App struct {
 	MCPTransport sdkmcp.Transport
 }
 
+// DefaultApp 创建使用真实 ADB、Bridge 和进程执行器的命令行应用。
 func DefaultApp(stdin io.Reader, stdout, stderr io.Writer) *App {
 	locator := adb.DefaultLocator()
 	return &App{
@@ -48,6 +53,7 @@ func DefaultApp(stdin io.Reader, stdout, stderr io.Writer) *App {
 	}
 }
 
+// Run 执行一条命令并确保 stdout 只包含协议输出。
 func (a *App) Run(ctx context.Context, args []string) int {
 	if len(args) == 2 && args[0] == "mcp" && args[1] == "serve" {
 		if err := a.serveMCP(ctx); err != nil {

@@ -1,5 +1,7 @@
 package bridge
 
+// 本文件以受限权限持久化短期 Bridge token，并校验文件类型和会话字段。
+
 import (
 	"crypto/sha256"
 	"encoding/hex"
@@ -14,6 +16,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
 )
 
+// Session 保存指定设备当前 Bridge 会话的本地连接元数据和短期 token。
 type Session struct {
 	Device     string    `json:"device"`
 	LocalPort  int       `json:"localPort"`
@@ -24,16 +27,19 @@ type Session struct {
 	HostName   string    `json:"hostName"`
 }
 
+// SessionStore 定义按设备保存、读取和删除单个短期会话的契约。
 type SessionStore interface {
 	Save(session Session) error
 	Load(device string) (Session, error)
 	Delete(device string) error
 }
 
+// FileSessionStore 将会话写入用户配置目录中的受限权限文件。
 type FileSessionStore struct {
 	directory string
 }
 
+// DefaultSessionStore 返回当前用户配置目录下的默认会话存储。
 func DefaultSessionStore() (*FileSessionStore, error) {
 	configDirectory, err := os.UserConfigDir()
 	if err != nil {
@@ -47,10 +53,12 @@ func DefaultSessionStore() (*FileSessionStore, error) {
 	return NewFileSessionStore(filepath.Join(configDirectory, "aactl", "bridge")), nil
 }
 
+// NewFileSessionStore 使用明确目录创建会话存储，主要用于隔离测试。
 func NewFileSessionStore(directory string) *FileSessionStore {
 	return &FileSessionStore{directory: directory}
 }
 
+// Save 通过临时文件原子替换会话，并强制目录 0700、文件 0600 权限。
 func (s *FileSessionStore) Save(session Session) error {
 	if err := validateSession(session); err != nil {
 		return err
@@ -102,6 +110,7 @@ func (s *FileSessionStore) Save(session Session) error {
 	return nil
 }
 
+// Load 拒绝符号链接、非普通文件、宽松权限和设备不匹配的会话。
 func (s *FileSessionStore) Load(device string) (Session, error) {
 	path := s.path(device)
 	info, err := os.Lstat(path)
@@ -148,6 +157,7 @@ func (s *FileSessionStore) Load(device string) (Session, error) {
 	return session, nil
 }
 
+// Delete 删除指定设备的本地会话，不存在时视为已清理。
 func (s *FileSessionStore) Delete(device string) error {
 	err := os.Remove(s.path(device))
 	if err == nil || errors.Is(err, os.ErrNotExist) {

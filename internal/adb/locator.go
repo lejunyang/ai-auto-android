@@ -1,5 +1,7 @@
 package adb
 
+// 本文件按显式配置、PATH 和标准 SDK 目录顺序定位官方 ADB。
+
 import (
 	"fmt"
 	"os"
@@ -12,6 +14,7 @@ import (
 
 const envADBPath = "AACTL_ADB_PATH"
 
+// Locator 抽象文件系统和平台依赖，便于验证跨平台发现顺序。
 type Locator struct {
 	LookPath func(string) (string, error)
 	Getenv   func(string) string
@@ -19,6 +22,7 @@ type Locator struct {
 	GOOS     string
 }
 
+// DefaultLocator 返回使用当前操作系统环境的 ADB 定位器。
 func DefaultLocator() Locator {
 	return Locator{
 		LookPath: exec.LookPath,
@@ -28,6 +32,7 @@ func DefaultLocator() Locator {
 	}
 }
 
+// Resolve 返回已校验的绝对 ADB 路径，并优先尊重 AACTL_ADB_PATH。
 func (l Locator) Resolve() (string, error) {
 	executable := "adb"
 	if l.GOOS == "windows" {

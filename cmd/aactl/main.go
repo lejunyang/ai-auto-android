@@ -1,3 +1,4 @@
+// Package main 提供 aactl 命令行程序入口，并把中断信号传递给统一 CLI 执行器。
 package main
 
 import (

@@ -1,5 +1,7 @@
 package cli
 
+// 本文件验证 Bridge CLI 不泄露配对秘密、失败时清理转发并拒绝非法参数。
+
 import (
 	"context"
 	"encoding/json"

@@ -1,5 +1,7 @@
 package bridge
 
+// 本文件编排 ADB forward、Bridge RPC 和本地短期会话的完整生命周期。
+
 import (
 	"context"
 	"encoding/json"
@@ -12,11 +14,13 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/output"
 )
 
+// Forwarder 提供绑定到明确设备的端口转发创建与清理。
 type Forwarder interface {
 	Forward(ctx context.Context, serial string, remotePort int) (adb.Forward, error)
 	RemoveForward(ctx context.Context, serial string, localPort int) error
 }
 
+// RPCClient 提供建立会话及会话内 RPC 调用能力。
 type RPCClient interface {
 	Open(
 		ctx context.Context,
@@ -34,6 +38,7 @@ type RPCClient interface {
 	) error
 }
 
+// Service 确保远端会话、本地 token 文件和 ADB forward 同步创建与清理。
 type Service struct {
 	forwarder Forwarder
 	client    RPCClient
@@ -42,6 +47,7 @@ type Service struct {
 	hostName  func() (string, error)
 }
 
+// OpenResult 返回不含会话 token 的安全会话元数据。
 type OpenResult struct {
 	Device          string `json:"device"`
 	LocalPort       int    `json:"localPort"`
@@ -51,12 +57,14 @@ type OpenResult struct {
 	ServerVersion   string `json:"serverVersion"`
 }
 
+// CloseResult 分别报告远端会话和本地转发的清理结果。
 type CloseResult struct {
 	Device         string `json:"device"`
 	SessionClosed  bool   `json:"sessionClosed"`
 	ForwardRemoved bool   `json:"forwardRemoved"`
 }
 
+// NewService 使用指定转发器、RPC 客户端和会话存储创建服务。
 func NewService(forwarder Forwarder, client RPCClient, store SessionStore) *Service {
 	return &Service{
 		forwarder: forwarder,
@@ -67,6 +75,7 @@ func NewService(forwarder Forwarder, client RPCClient, store SessionStore) *Serv
 	}
 }
 
+// Open 替换同设备旧会话，并在任一步失败时回收 token 和端口转发。
 func (s *Service) Open(
 	ctx context.Context,
 	device string,
@@ -175,10 +184,12 @@ func (s *Service) Open(
 	}, nil
 }
 
+// Info 读取当前 Bridge 会话可见的设备信息。
 func (s *Service) Info(ctx context.Context, device string) (json.RawMessage, error) {
 	return s.call(ctx, device, "device.info", map[string]any{})
 }
 
+// Snapshot 获取目标包和深度约束下的语义 UI 快照。
 func (s *Service) Snapshot(
 	ctx context.Context,
 	device string,
@@ -195,6 +206,7 @@ func (s *Service) Snapshot(
 	return s.call(ctx, device, "ui.snapshot", params)
 }
 
+// Action 为语义动作加入幂等键后发送到当前 Bridge 会话。
 func (s *Service) Action(
 	ctx context.Context,
 	device string,
@@ -224,6 +236,7 @@ func (s *Service) Action(
 	)
 }
 
+// ListRecordings 列出当前 App Bridge 会话可见的录制摘要。
 func (s *Service) ListRecordings(
 	ctx context.Context,
 	device string,
@@ -231,6 +244,7 @@ func (s *Service) ListRecordings(
 	return s.call(ctx, device, "recording.list", map[string]any{})
 }
 
+// Replay 为指定脚本回放加入幂等键并发送请求。
 func (s *Service) Replay(
 	ctx context.Context,
 	device string,
@@ -251,6 +265,7 @@ func (s *Service) Replay(
 	)
 }
 
+// Close 关闭远端会话，并无条件尝试移除转发和本地 token。
 func (s *Service) Close(ctx context.Context, device string) (CloseResult, error) {
 	session, err := s.store.Load(device)
 	if err != nil {

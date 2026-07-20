@@ -1,3 +1,4 @@
+// Package adb 封装官方 ADB 的设备诊断、发现、观察、动作和端口转发能力。
 package adb
 
 import (
@@ -20,6 +21,7 @@ const (
 	defaultMaxOutput = 1024 * 1024
 )
 
+// Client 通过受限进程执行器调用指定 ADB，并统一校验设备状态和错误。
 type Client struct {
 	path      string
 	executor  process.Executor
@@ -29,6 +31,7 @@ type Client struct {
 	goos      string
 }
 
+// DoctorCheck 表示一项可独立定位故障的 ADB 诊断结果。
 type DoctorCheck struct {
 	Name    string         `json:"name"`
 	Passed  bool           `json:"passed"`
@@ -36,6 +39,7 @@ type DoctorCheck struct {
 	Details map[string]any `json:"details,omitempty"`
 }
 
+// DoctorReport 汇总 ADB 可执行文件、服务端口、mDNS 和平台诊断信息。
 type DoctorReport struct {
 	Healthy    bool           `json:"healthy"`
 	ADBPath    string         `json:"adbPath"`
@@ -45,16 +49,19 @@ type DoctorReport struct {
 	Guidance   DoctorGuidance `json:"guidance"`
 }
 
+// DoctorGuidance 提供 USB 与当前桌面平台对应的恢复建议。
 type DoctorGuidance struct {
 	USB      []string `json:"usb"`
 	Platform []string `json:"platform,omitempty"`
 }
 
+// ConnectionResult 返回无线配对或连接的规范化结果。
 type ConnectionResult struct {
 	Endpoint string `json:"endpoint"`
 	Message  string `json:"message"`
 }
 
+// NewClient 使用明确的 ADB 路径和进程执行器创建客户端。
 func NewClient(path string, executor process.Executor) *Client {
 	return &Client{
 		path:      path,
@@ -66,6 +73,7 @@ func NewClient(path string, executor process.Executor) *Client {
 	}
 }
 
+// Doctor 检查 ADB 版本、服务状态、5037 端口和 mDNS，不主动重启共享服务。
 func (c *Client) Doctor(ctx context.Context) (DoctorReport, error) {
 	report := DoctorReport{
 		Healthy:  true,
@@ -174,6 +182,7 @@ func doctorGuidance(goos string) DoctorGuidance {
 	return guidance
 }
 
+// Devices 返回经过传输类型和能力归一化的所有 ADB 设备。
 func (c *Client) Devices(ctx context.Context) ([]protocol.Device, error) {
 	result, err := c.run(ctx, []string{"devices", "-l"}, process.Options{})
 	if err != nil {
@@ -189,6 +198,7 @@ func (c *Client) Devices(ctx context.Context) ([]protocol.Device, error) {
 	return devices, nil
 }
 
+// Pair 通过标准输入向 ADB 传递一次性无线配对码，并确保输出脱敏。
 func (c *Client) Pair(ctx context.Context, endpoint, pairingCode string) (ConnectionResult, error) {
 	if err := ValidateEndpoint(endpoint); err != nil {
 		return ConnectionResult{}, err
@@ -219,6 +229,7 @@ func (c *Client) Pair(ctx context.Context, endpoint, pairingCode string) (Connec
 	return ConnectionResult{Endpoint: endpoint, Message: firstNonEmpty(message, "Paired successfully.")}, nil
 }
 
+// Connect 连接已完成信任建立的 ADB 无线调试端点。
 func (c *Client) Connect(ctx context.Context, endpoint string) (ConnectionResult, error) {
 	if err := ValidateEndpoint(endpoint); err != nil {
 		return ConnectionResult{}, err
@@ -243,6 +254,7 @@ func (c *Client) Connect(ctx context.Context, endpoint string) (ConnectionResult
 	return ConnectionResult{Endpoint: endpoint, Message: firstNonEmpty(message, "Connected successfully.")}, nil
 }
 
+// DeviceInfo 获取明确选定且在线设备的系统属性和规范化能力。
 func (c *Client) DeviceInfo(ctx context.Context, serial string) (protocol.Device, error) {
 	if err := ValidateSerial(serial); err != nil {
 		return protocol.Device{}, err

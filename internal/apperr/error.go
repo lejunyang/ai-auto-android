@@ -1,3 +1,4 @@
+// Package apperr 统一应用错误、协议错误与进程退出码之间的稳定映射。
 package apperr
 
 import (
@@ -7,6 +8,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/protocol"
 )
 
+// CodeInvalidArgument 等常量是 CLI、Bridge 与 MCP 共享的稳定机器错误码。
 const (
 	CodeInvalidArgument   = "INVALID_ARGUMENT"
 	CodeADBNotFound       = "ADB_NOT_FOUND"
@@ -34,6 +36,7 @@ const (
 	CodeInternal          = "INTERNAL_ERROR"
 )
 
+// ExitSuccess 等常量定义 aactl 对脚本和 Agent 稳定公开的进程退出码。
 const (
 	ExitSuccess     = 0
 	ExitArgument    = 2
@@ -44,6 +47,7 @@ const (
 	ExitInternal    = 10
 )
 
+// Error 携带稳定错误码、重试语义和可安全公开的结构化详情。
 type Error struct {
 	Code      string
 	Message   string
@@ -52,6 +56,7 @@ type Error struct {
 	Cause     error
 }
 
+// Error 返回适合日志定位的消息，并在本地保留底层原因链。
 func (e *Error) Error() string {
 	if e.Cause == nil {
 		return e.Message
@@ -59,18 +64,22 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %v", e.Message, e.Cause)
 }
 
+// Unwrap 允许 errors.Is 和 errors.As 检查底层原因。
 func (e *Error) Unwrap() error {
 	return e.Cause
 }
 
+// New 创建不包装底层原因的应用错误。
 func New(code, message string, retryable bool, details map[string]any) *Error {
 	return &Error{Code: code, Message: message, Retryable: retryable, Details: details}
 }
 
+// Wrap 创建保留底层原因、但对外仍使用稳定错误语义的应用错误。
 func Wrap(code, message string, retryable bool, cause error) *Error {
 	return &Error{Code: code, Message: message, Retryable: retryable, Cause: cause}
 }
 
+// Protocol 将任意错误转换为协议可序列化错误，并隐藏未知内部细节。
 func Protocol(err error) *protocol.Error {
 	var appError *Error
 	if errors.As(err, &appError) {
@@ -88,6 +97,7 @@ func Protocol(err error) *protocol.Error {
 	}
 }
 
+// ExitCode 将应用错误分类为稳定的命令行退出码。
 func ExitCode(err error) int {
 	var appError *Error
 	if !errors.As(err, &appError) {

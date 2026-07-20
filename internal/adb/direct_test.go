@@ -1,5 +1,7 @@
 package adb
 
+// 本文件验证截图与层级产物完整性、类型化动作 argv 映射和输入白名单。
+
 import (
 	"bytes"
 	"context"

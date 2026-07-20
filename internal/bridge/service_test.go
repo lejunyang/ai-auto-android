@@ -1,5 +1,7 @@
 package bridge
 
+// 本文件验证会话建立失败回滚、过期清理、幂等键和录制 RPC 编排。
+
 import (
 	"context"
 	"encoding/json"

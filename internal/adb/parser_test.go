@@ -1,5 +1,7 @@
 package adb
 
+// 本文件验证设备传输归一化、版本/属性解析和恶意序列号拒绝规则。
+
 import (
 	"testing"
 )

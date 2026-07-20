@@ -1,5 +1,7 @@
 package adb
 
+// 本文件解析 ADB 文本输出，并在任何进程调用前校验外部参数。
+
 import (
 	"bufio"
 	"fmt"
@@ -23,6 +25,7 @@ var (
 
 const mdnsConnectService = "_adb-tls-connect._tcp"
 
+// ParseDevices 将 adb devices -l 输出归一化为稳定设备模型。
 func ParseDevices(output string) ([]protocol.Device, error) {
 	devices := make([]protocol.Device, 0)
 	scanner := bufio.NewScanner(strings.NewReader(output))
@@ -67,6 +70,7 @@ func ParseDevices(output string) ([]protocol.Device, error) {
 	return devices, nil
 }
 
+// ParseVersion 从 adb version 输出提取 Platform-Tools 版本。
 func ParseVersion(output string) string {
 	match := platformToolsVersionPattern.FindStringSubmatch(output)
 	if len(match) != 2 {
@@ -75,6 +79,7 @@ func ParseVersion(output string) string {
 	return match[1]
 }
 
+// ParseServerStatus 将 adb server-status 的键名归一化为稳定格式。
 func ParseServerStatus(output string) map[string]string {
 	status := make(map[string]string)
 	scanner := bufio.NewScanner(strings.NewReader(output))
@@ -92,6 +97,7 @@ func ParseServerStatus(output string) map[string]string {
 	return status
 }
 
+// ParseProperties 解析 Android getprop 的方括号键值格式。
 func ParseProperties(output string) map[string]string {
 	properties := make(map[string]string)
 	scanner := bufio.NewScanner(strings.NewReader(output))
@@ -104,6 +110,7 @@ func ParseProperties(output string) map[string]string {
 	return properties
 }
 
+// ValidateSerial 限制设备序列号字符集，防止其成为命令选项或注入载荷。
 func ValidateSerial(serial string) error {
 	if !serialPattern.MatchString(serial) {
 		return apperr.New(
@@ -116,6 +123,7 @@ func ValidateSerial(serial string) error {
 	return nil
 }
 
+// ValidateEndpoint 校验无线调试 HOST:PORT 端点及有效端口范围。
 func ValidateEndpoint(endpoint string) error {
 	host, portText, err := net.SplitHostPort(endpoint)
 	if err != nil {
@@ -146,6 +154,7 @@ func ValidateEndpoint(endpoint string) error {
 	return nil
 }
 
+// ValidatePairingCode 仅接受 Android 无线调试使用的六位数字配对码。
 func ValidatePairingCode(code string) error {
 	if !pairCodePattern.MatchString(code) {
 		return apperr.New(
@@ -189,8 +198,7 @@ func detectTransport(serial string, attributes map[string]string) string {
 	case attributes["usb"] != "":
 		return "usb"
 	default:
-		// ADB uses plain hardware serials for physical USB devices and does not
-		// guarantee that devices -l includes a usb: topology attribute.
+		// ADB 对物理 USB 设备使用硬件序列号，且不保证 devices -l 含 usb: 拓扑属性。
 		return "usb"
 	}
 }

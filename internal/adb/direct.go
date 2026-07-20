@@ -1,5 +1,7 @@
 package adb
 
+// 本文件实现无需 App Bridge 的截图、UI 层级和白名单输入动作。
+
 import (
 	"bytes"
 	"context"
@@ -56,22 +58,26 @@ var allowedKeys = map[string]string{
 	"VOLUME_MUTE": "KEYCODE_VOLUME_MUTE",
 }
 
+// Screenshot 保存已验证 PNG 的原始字节和内容摘要。
 type Screenshot struct {
 	Bytes  []byte
 	SHA256 string
 }
 
+// Hierarchy 保存已验证 UIAutomator XML 及其大小和摘要。
 type Hierarchy struct {
 	XML    string `json:"xml"`
 	Bytes  int    `json:"sizeBytes"`
 	SHA256 string `json:"sha256"`
 }
 
+// ActionResult 标识已执行类型化动作的目标设备和动作名称。
 type ActionResult struct {
 	Device string `json:"device"`
 	Action string `json:"action"`
 }
 
+// Screenshot 从明确在线设备读取并完整校验 PNG 截图。
 func (c *Client) Screenshot(ctx context.Context, serial string) (Screenshot, error) {
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return Screenshot{}, err
@@ -95,6 +101,7 @@ func (c *Client) Screenshot(ctx context.Context, serial string) (Screenshot, err
 	return Screenshot{Bytes: result.Stdout, SHA256: hex.EncodeToString(sum[:])}, nil
 }
 
+// Hierarchy 使用固定远端路径读取 UIAutomator 层级，并始终尝试清理临时文件。
 func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierarchy, returnErr error) {
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return Hierarchy{}, err
@@ -106,7 +113,7 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 		return Hierarchy{}, err
 	}
 	defer func() {
-		// The path and command are fixed constants; callers cannot inject remote shell input.
+		// 路径和命令均为固定常量，调用方无法向远端 Shell 注入输入。
 		_, _ = c.run(context.WithoutCancel(ctx), []string{
 			"-s", serial, "shell", "rm", "-f", hierarchyRemotePath,
 		}, process.Options{Timeout: 5 * time.Second})
@@ -134,6 +141,7 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 	}, nil
 }
 
+// Tap 在参数校验后向明确设备发送一次坐标点击。
 func (c *Client) Tap(ctx context.Context, serial string, x, y int) (ActionResult, error) {
 	if err := validatePoint(x, y); err != nil {
 		return ActionResult{}, err
@@ -141,6 +149,7 @@ func (c *Client) Tap(ctx context.Context, serial string, x, y int) (ActionResult
 	return c.inputAction(ctx, serial, "ui.tap", "tap", strconv.Itoa(x), strconv.Itoa(y))
 }
 
+// Swipe 在坐标和时长预算内向明确设备发送一次滑动。
 func (c *Client) Swipe(
 	ctx context.Context,
 	serial string,
@@ -168,6 +177,7 @@ func (c *Client) Swipe(
 	)
 }
 
+// Text 只接受受限 ASCII 文本并按 ADB input 规则编码空格。
 func (c *Client) Text(ctx context.Context, serial, text string) (ActionResult, error) {
 	if len(text) > maxTextLength {
 		return ActionResult{}, invalidField("text", fmt.Sprintf("must be at most %d bytes", maxTextLength))
@@ -182,6 +192,7 @@ func (c *Client) Text(ctx context.Context, serial, text string) (ActionResult, e
 	return c.inputAction(ctx, serial, "ui.setText", "text", encoded)
 }
 
+// Key 只执行预定义键值白名单中的全局或导航按键。
 func (c *Client) Key(ctx context.Context, serial, key string) (ActionResult, error) {
 	keyCode, ok := allowedKeys[strings.ToUpper(key)]
 	if !ok {
@@ -190,6 +201,7 @@ func (c *Client) Key(ctx context.Context, serial, key string) (ActionResult, err
 	return c.inputAction(ctx, serial, "ui.pressKey", "keyevent", keyCode)
 }
 
+// Launch 启动已校验包的 Launcher 入口或同包内明确 Activity。
 func (c *Client) Launch(ctx context.Context, serial, packageName, activity string) (ActionResult, error) {
 	if err := ValidatePackageName(packageName); err != nil {
 		return ActionResult{}, err
@@ -220,6 +232,7 @@ func (c *Client) Launch(ctx context.Context, serial, packageName, activity strin
 	return ActionResult{Device: serial, Action: "app.launch"}, nil
 }
 
+// Stop 对已校验包执行 force-stop，不接受任意 Shell 片段。
 func (c *Client) Stop(ctx context.Context, serial, packageName string) (ActionResult, error) {
 	if err := ValidatePackageName(packageName); err != nil {
 		return ActionResult{}, err
@@ -287,6 +300,7 @@ func (c *Client) requireOnlineDevice(ctx context.Context, serial string) error {
 	return ensureOnline(device)
 }
 
+// ValidatePackageName 拒绝不符合 Android 包名语法或长度预算的输入。
 func ValidatePackageName(packageName string) error {
 	if len(packageName) > 255 || !packagePattern.MatchString(packageName) {
 		return invalidField("package", "has an invalid Android package name")

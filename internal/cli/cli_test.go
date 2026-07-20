@@ -1,5 +1,7 @@
 package cli
 
+// 本文件验证统一响应信封、稳定退出码、显式设备选择和标准输入配对契约。
+
 import (
 	"bytes"
 	"context"

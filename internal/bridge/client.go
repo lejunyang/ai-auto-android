@@ -1,3 +1,4 @@
+// Package bridge 实现桌面端与 Android App loopback Bridge 的受控会话协议。
 package bridge
 
 import (
@@ -17,15 +18,18 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/protocol"
 )
 
+// Dialer 抽象仅连接本机 ADB forward 端口的网络建立行为。
 type Dialer interface {
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
 
+// Client 执行有界 NDJSON JSON-RPC 调用并校验响应与原请求一致。
 type Client struct {
 	dialer  Dialer
 	timeout time.Duration
 }
 
+// NewClient 创建使用本机 TCP 拨号和默认截止时间的 Bridge 客户端。
 func NewClient() *Client {
 	return &Client{
 		dialer:  &net.Dialer{Timeout: 10 * time.Second},
@@ -33,10 +37,12 @@ func NewClient() *Client {
 	}
 }
 
+// NewClientWithDialer 注入拨号器和超时，供隔离网络行为的测试使用。
 func NewClientWithDialer(dialer Dialer, timeout time.Duration) *Client {
 	return &Client{dialer: dialer, timeout: timeout}
 }
 
+// Open 先协商协议，再使用一次性码打开短期会话。
 func (c *Client) Open(
 	ctx context.Context,
 	localPort int,
@@ -84,6 +90,7 @@ func (c *Client) Open(
 	return hello, opened, nil
 }
 
+// Call 使用已建立会话的 token 调用一个 Bridge 方法。
 func (c *Client) Call(
 	ctx context.Context,
 	localPort int,

@@ -1,3 +1,4 @@
+// Package mcpserver 将共享自动化服务暴露为受严格模式和风险门约束的 MCP 工具。
 package mcpserver
 
 import (
@@ -15,6 +16,7 @@ type modelToolError struct {
 	Retryable bool   `json:"retryable"`
 }
 
+// Error 将模型工具错误编码为 MCP 可传递的结构化 JSON。
 func (e modelToolError) Error() string {
 	payload, err := json.Marshal(e)
 	if err != nil {
@@ -24,6 +26,7 @@ func (e modelToolError) Error() string {
 }
 
 func requireModelActionAllowed(action string) error {
+	// 模型只能触发显式低风险白名单；停止 App 等动作即使在 CLI 可用也不会透传。
 	switch action {
 	case service.ActionTap,
 		service.ActionSwipe,

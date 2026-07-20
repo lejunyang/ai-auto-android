@@ -1,5 +1,7 @@
 package cli
 
+// 本文件解析直接观察与动作参数，并安全写入截图产物。
+
 import (
 	"context"
 	"fmt"

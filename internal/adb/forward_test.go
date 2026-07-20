@@ -1,5 +1,7 @@
 package adb
 
+// 本文件验证临时端口分配、精确转发清理及调用 ADB 前的参数校验。
+
 import (
 	"context"
 	"testing"

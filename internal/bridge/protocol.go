@@ -1,5 +1,7 @@
 package bridge
 
+// 本文件定义桌面 Bridge 的版本、消息边界和 JSON-RPC 数据模型。
+
 import (
 	"bytes"
 	"encoding/json"
@@ -9,6 +11,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/protocol"
 )
 
+// ProtocolVersion 等常量固定双方协商版本、设备端口和资源上限。
 const (
 	ProtocolVersion   = "1.0"
 	ClientVersion     = "0.1.0"
@@ -19,6 +22,7 @@ const (
 	SessionTokenTTL   = 900
 )
 
+// Request 是附带稳定请求标识、截止时间和可选会话 token 的 RPC 请求。
 type Request struct {
 	JSONRPC         string `json:"jsonrpc"`
 	ID              string `json:"id"`
@@ -30,6 +34,7 @@ type Request struct {
 	Token           string `json:"token,omitempty"`
 }
 
+// Response 是必须与原请求标识和协议版本一致的 RPC 响应。
 type Response struct {
 	JSONRPC         string          `json:"jsonrpc"`
 	ID              string          `json:"id"`
@@ -39,39 +44,46 @@ type Response struct {
 	Error           *RPCError       `json:"error,omitempty"`
 }
 
+// RPCError 同时携带 JSON-RPC 保留错误码和稳定协议错误数据。
 type RPCError struct {
 	Code    int             `json:"code"`
 	Message string          `json:"message"`
 	Data    *protocol.Error `json:"data"`
 }
 
+// HelloParams 声明桌面客户端版本及可接受协议版本和能力。
 type HelloParams struct {
 	ClientVersion             string                `json:"clientVersion"`
 	SupportedProtocolVersions []string              `json:"supportedProtocolVersions"`
 	Capabilities              []protocol.Capability `json:"capabilities"`
 }
 
+// HelloResult 返回 App 端版本、选定协议版本和能力集合。
 type HelloResult struct {
 	ServerVersion           string                `json:"serverVersion"`
 	SelectedProtocolVersion string                `json:"selectedProtocolVersion"`
 	Capabilities            []protocol.Capability `json:"capabilities"`
 }
 
+// SessionOpenParams 携带仅用于本次建立会话的一次性配对码。
 type SessionOpenParams struct {
 	PairingCode string `json:"pairingCode"`
 	HostName    string `json:"hostName"`
 }
 
+// SessionOpenResult 返回短期 token 及其过期时间和协议版本。
 type SessionOpenResult struct {
 	Token           string `json:"token"`
 	ExpiresAt       string `json:"expiresAt"`
 	ProtocolVersion string `json:"protocolVersion"`
 }
 
+// SessionCloseResult 表示 App 是否确认关闭远端会话。
 type SessionCloseResult struct {
 	Closed bool `json:"closed"`
 }
 
+// DecodeResult 将成功结果解码到目标对象，或恢复稳定的 App 错误。
 func (r Response) DecodeResult(destination any) error {
 	if r.Error != nil {
 		if r.Error.Data != nil {
@@ -111,6 +123,7 @@ func (r Response) DecodeResult(destination any) error {
 	return nil
 }
 
+// ValidateResponse 拒绝错配标识、未知错误码及结果/错误结构冲突。
 func ValidateResponse(response Response, request Request) error {
 	if response.JSONRPC != "2.0" {
 		return protocolError("response jsonrpc is not 2.0")
