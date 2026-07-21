@@ -560,16 +560,225 @@ CLI JSON 信封、稳定错误码、确认规则和脚本动作保持不变；�
 - [Android Open Accessory 2.0 HID](https://source.android.com/docs/core/interaction/accessories/aoa2)
 - [Android ADB](https://developer.android.com/tools/adb)
 
+## 下一阶段优先级与新增方案
+
+本节是尚未实现的下一阶段路线图，不代表当前产品能力或完成承诺。实施时继续复用
+协议 v1、显式设备选择、类型化动作、风险门和脱敏审计；不得为提高覆盖率而开放
+任意 shell、绕过系统授权或降低选择器置信度阈值。
+
+### A. 优先级
+
+| 优先级 | 方案 | 决策与原因 |
+| --- | --- | --- |
+| P0：现在做 | UI Automator 与固定 AVD 控制面 | 自动运行跨 App、系统导航和无障碍场景，优先减少人工验证；固定 API、镜像、分辨率、语言、导航模式和快照 |
+| P0：现在做 | 无线 ADB 生命周期 | 补齐 Android 11+ 配对发现、`pair`/`connect`、mDNS、可信设备档案、端口变化和断线重连；继续沿用官方 ADB 信任边界 |
+| P0：现在做 | 录制编辑器 | 允许人工修正语义选择器、坐标、等待、重试、顺序和失败策略，是 WebView、Canvas 和动态真实 App 可维护回放的前提 |
+| P0：现在做 | WebView/Canvas fixture | 用离线、可复位、可断言的受控页面建立语义、混合和纯视觉测试基线 |
+| P0：现在做 | 视觉 `Observer` | 在语义树不可用时提供受限截图、候选区域、置信度和坐标证据；实际执行仍走现有类型化动作和风险策略 |
+| P0：现在做 | 真实 App 兼容矩阵 | 用固定版本的哔哩哔哩、抖音和小黑盒验证多页面、多动作与动态 UI，但不作为完全确定性的 CI 门禁 |
+| P1：条件推进 | App LAN QR Bridge | 当无线 ADB 向导仍不能满足低门槛连接时，实现 App 主动出站的同局域网加密 Bridge；先完成威胁模型和跨平台网络诊断 |
+| P1：条件推进 | 设备农场 Provider | 本地 API 矩阵稳定后接入一个设备农场，扩大 OEM 和系统版本覆盖；复用同一脚本、错误码和结果模型 |
+| P1：条件推进 | scrcpy sidecar | 仅用于人工接管、演示和恢复，不作为语义观察器、录制器或 Agent 默认执行内核 |
+| P2：按部署模型 | Shizuku | 仅高级侧载版确需额外系统能力时实施；不能变成普通用户依赖，也不能向 Agent 暴露任意 shell |
+| P2：按部署模型 | Device Owner/DPC | 仅企业自有、专用或 kiosk 设备具备预配和管理面时实施；不适用于普通个人设备 |
+| P2：按业务模型 | 互联网远程 Provider | 只有门店或实验室出现明确租约、多租户、区域和审计需求后建设 |
+| P3：暂缓 | TypeScript CLI 重写 | 当前 Go CLI、MCP、跨平台制品和安全边界已稳定，重写没有近期用户收益 |
+| P3：暂缓 | `getevent`/`sendevent` | 依赖 root、固定驱动和 SELinux 策略，仅适合隔离实验室，不能进入通用 Agent 动作面 |
+| P3：暂缓 | 厂商互联与专用蓝牙桥 | 需要明确 OEM SDK 或专用硬件场景；普通蓝牙不是通用 ADB transport |
+
+### B. 无线连接与扫码的两层设计
+
+#### 第一层：官方无线 ADB
+
+近期先完善 Android 11+ 官方无线调试路线：
+
+1. 通过 `_adb-tls-pairing._tcp` 与 `_adb-tls-connect._tcp` mDNS 服务发现配对和连接
+   端点。
+2. 使用现有类型化 `adb pair` 与 `adb connect`，从交互式 stdin 读取系统显示的
+   配对码，禁止把配对码放入 argv、日志或任务文档。
+3. 配对后校验设备身份、transport 和 capabilities，保存不含秘密的可信设备档案；
+   端口变化或短暂断网后通过 mDNS 恢复，禁止按模糊型号串错设备。
+4. 在 macOS 和 Windows 覆盖多网卡、VPN、mDNS 被禁、网络切换、防火墙和多设备
+   冲突；无法恢复时返回可操作错误，不自动降级到未加密 `adb tcpip 5555`。
+
+本项目不逆向、不依赖，也不承诺兼容 Android Studio 的 QR 配对私有实现。系统无线
+调试页提供的配对码与连接端点是稳定基础；未来若 Android SDK 提供受支持的通用 QR
+协议，再通过独立 capability 接入。
+
+#### 第二层：App 主动出站的 LAN QR Bridge
+
+若要提供“电脑展示二维码、手机扫码后连接”的产品体验，推荐新建独立的 LAN Bridge，
+而不是把当前设备 loopback Bridge 直接暴露到局域网：
+
+```text
+电脑临时 listener 展示 QR
+  -> App 扫码并校验邀请
+  -> App 主动向电脑候选地址发起连接
+  -> 临时密钥协商与指纹确认
+  -> 复用版本化 JSON-RPC、capability、风险门和短期会话
+```
+
+QR invitation 只包含：
+
+- 协议版本和 invitation ID；
+- 桌面局域网地址候选与临时端口；
+- 一次性 session nonce、签发时间和短 TTL；
+- 桌面 X25519 临时公钥及供人工核对的短指纹。
+
+QR 不包含最终 session token、API Key、长期设备密钥或录制 secret。双方使用
+X25519 交换临时密钥，经 HKDF 派生会话密钥，并绑定 invitation、nonce、双方临时
+公钥、协议版本和过期时间。实现必须拒绝过期邀请、nonce 重放、指纹变化、公网或
+错误网卡地址、未协商 capability 和静默降级。
+
+桌面端应明确选择监听网卡，检测 VPN、热点、IPv4/IPv6 和防火墙阻断；二维码地址均
+不可达时，回退为可人工输入的一次性邀请码和地址，不回退为无认证端口。App 使用
+摄像头扫码需要用户授权，也必须提供不依赖摄像头的手工邀请码路径。
+
+扫码只简化应用层发现与会话建立，不能绕过 App 安装、Android 无障碍服务启用、
+MediaProjection、运行时权限、USB/Wi-Fi ADB RSA 或 OEM 安全确认。
+
+### C. 真实 App 实验室
+
+哔哩哔哩、抖音和小黑盒应作为兼容性矩阵运行，而不是替代可重复 fixture：
+
+- 为每个 APK 建立仓库内文本 manifest，固定 package、`versionName`、
+  `versionCode`、ABI、`minSdk`、许可来源和 SHA-256。
+- APK 保存在仓库外受控 cache，不提交、不重新分发，也不自动从商店或非授权站点
+  抓取；只接受用户提供或官方许可来源。
+- 每轮从干净 AVD 快照开始，校验 hash 后安装；场景结束清除 App 数据、Bridge
+  session、截图和测试账号状态。
+- 使用未登录、无外部副作用的公开内容，覆盖文本输入、点击、长按、上下滚动、横向
+  swipe、至少两级页面、Back、Home、Recents 和跨 App 任务切换。
+- 每个动作后重新抓取 hierarchy 或截图并验证后置条件，不能把命令退出码当作 UI
+  成功。
+- 广告、A/B 实验、地区差异、Play Integrity、模拟器检测、ABI 限制和服务端变化
+  单独分类；真实 App 结果报告兼容率和失败原因，不作为完全确定性的提交门禁。
+
+三个 App 的适配场景可由独立子 Agent 并行开发，但共享 runner、APK manifest 和
+结果 Schema 的文件必须由单一负责人维护，避免并行覆盖。
+
+### D. WebView 与小程序的分级支持
+
+WebView 首先使用其暴露的虚拟 Accessibility 节点。受控 fixture 应包含本地 HTML
+按钮、文本框、长按、滚动、页面跳转、动态 DOM 和 iframe，并按 WebView 版本记录
+节点、事件和动作矩阵。
+
+小程序运行在宿主 App 包和运行时中，本项目通常不能直接读取通用 DOM 或注入
+JavaScript。WebView、小程序和混合页面统一按以下等级报告：
+
+| 等级 | 可见能力 | 支持结论 |
+| --- | --- | --- |
+| 完整语义 | 关键控件均有稳定虚拟节点和事件 | 可使用语义录制与确定性回放 |
+| 混合 | 部分节点稳定，部分区域仅可截图定位 | 使用语义步骤与显式视觉步骤混合回放 |
+| 仅视觉 | 页面主要表现为单一 Canvas、Surface 或不可分解节点 | 只允许截图候选和显式坐标步骤 |
+| 不支持 | `FLAG_SECURE`、DRM、敏感限制或无法验证后置条件 | 失败关闭或请求人工接管 |
+
+某个宿主或小程序的成功案例不能声明为通用 DOM、小程序或 WebView 支持。宿主私有
+调试接口、远程调试端口和 DOM 注入不作为生产通用方案。
+
+### E. Canvas、视觉与可编辑录制
+
+生产路线采用以下受控闭环：
+
+```text
+语义快照
+  -> 无稳定节点
+  -> 安全截图
+  -> OCR/模板/视觉模型提出候选区域、点位和置信度
+  -> 归一化坐标与屏幕元数据校验
+  -> 目标包和风险门
+  -> 单个类型化 tap/long-click/swipe
+  -> 重新截图或获取语义树验证
+```
+
+视觉候选至少记录来源、归一化点或边界、置信度、屏幕宽高、旋转、前台包、
+observation ID、图像 SHA-256 和生成时间。原始截图不写入脚本；执行时必须确认当前
+观察仍有效，并重新映射旋转、分辨率、系统栏和窗口偏移。低置信度、多候选接近、
+前台包变化或无法验证结果时不执行。
+
+不能把以下能力误写为通用触摸录制：
+
+- MediaProjection 只提供画面，不提供用户触点或触摸时间线；
+- 透明 overlay 若捕获触摸，会先改变或截断目标 App 的原始交互语义；
+- Accessibility raw motion 依赖 API 和 ROM，已有设备证据表明相关 flag 可能破坏
+  正常触控；
+- `getevent`/`sendevent` 通常要求 root、定制 SELinux 和固定驱动，只能留在隔离
+  实验室插件。
+
+因此生产方案是“语义录制 + 录制编辑器 + 显式视觉/坐标步骤”。编辑器应支持脚本
+revision、步骤新增/删除/复制/排序/启停、selector 与坐标互转、tap/long-click/
+swipe、等待、重试、失败策略、截图点选、Undo/Redo、导入导出和 dry-run。导出不
+包含 secret 或截图；dry-run 只做匹配、坐标预览和条件检查，不提交动作。
+
+桌面 Skill 和 MCP 应把同一 observation ID 下的 PNG `ImageContent` 与屏幕尺寸、
+旋转、前台包和脱敏 hierarchy 一起交给视觉模型。模型只能提出候选，实际动作继续
+通过 `android_action_execute`，并执行“截图 -> 候选 -> 确认/策略门 -> 单动作 ->
+再观察”。
+
+### F. Emulator-first 自动验收
+
+下一阶段先建设测试控制面，再扩大第三方 App 数量：
+
+1. 固定 API 30、33、34 的 system image、AVD 配置、分辨率、语言、导航模式和
+   WebView 版本；每个场景从 clean snapshot 启动。
+2. 使用 UI Automator 2.4 的跨 App、系统导航、稳定等待、截图和结果报告能力，覆盖
+   文本、长按、滚动、手势、多页面、Back、Home、Recents 和任务切换。
+3. debug/test 变体可以通过一次性测试 token 预置无敏感数据脚本、生成 Bridge
+   配对状态和读取自检结果；这些端点、测试服务和 shell 配置能力不得进入 release。
+4. 只在 disposable emulator 且校验 serial、AVD fingerprint、debug 签名和
+   test-only marker 后，使用测试 shell 身份启用测试无障碍服务；禁止把同一路径用于
+   普通真机。
+5. 失败产物限额收集脱敏截图、hierarchy、短时间窗日志、设备元数据和动作时间线，
+   设置保留期并在成功后自动清理。
+6. 核心 fixture 在 API 矩阵连续运行 20 次并报告成功率、耗时、重试和 flaky 分类；
+   真实 App 单独报告兼容率。
+
+即使 emulator 可以无人值守运行，真机首次 USB/Wi-Fi ADB RSA、无障碍服务启用与
+醒目披露、MediaProjection、安装确认、Shizuku、Device Owner、敏感运行时权限、
+生物识别、CAPTCHA、支付和 OEM 安全设置仍不得自动绕过，也不能用模拟器结果宣称
+真机授权已自动化。
+
+### G. 主要来源
+
+- [Android ADB：无线调试、配对、mDNS 与端口转发](https://developer.android.com/tools/adb)
+- [Android UI Automator 2.4+ 指南](https://developer.android.com/training/testing/other-components/ui-automator)
+- [AndroidX Test UI Automator 发布说明](https://developer.android.com/jetpack/androidx/releases/test-uiautomator)
+- [Android Accessibility 自动与分析测试](https://developer.android.com/guide/topics/ui/accessibility/testing)
+- [Android MediaProjection](https://developer.android.com/media/grow/media-projection)
+- [Android WebView 中构建可访问 Web 内容](https://developer.android.com/guide/webapps/webview)
+- [WindowManager `FLAG_SECURE`](https://developer.android.com/reference/android/view/WindowManager.LayoutParams#FLAG_SECURE)
+- [AOSP `getevent`](https://source.android.com/docs/core/interaction/input/getevent)
+
 ## 推荐演进顺序
 
-1. 先保持 Go、协议 v1 和现有安全边界，建立 Provider conformance suite。
-2. 优先落地 UI Automator/设备农场测试后端，扩大回归覆盖而不增加生产权限。
-3. 以视觉 `Observer` 补足语义树盲区，但保持低置信度失败关闭。
-4. 根据部署模型二选一：高级侧载走 Shizuku，企业专用设备走 DPC；两者都不成为通用
+1. **P0：本地测试控制面。** 保持 Go、协议 v1 和现有安全边界，先落地 UI
+   Automator 与固定 AVD 本地矩阵，在 API 30/33/34 建立可重复、可清理且不增加
+   生产权限的回归基线。
+2. **P0：无线 ADB 生命周期。** 完成官方 Android 11+ 配对发现、mDNS、可信设备
+   档案、端口变化和断线恢复，并在 macOS 与 Windows 验证不会串错设备。
+3. **P0：脚本 1.1 与录制编辑器。** 先实现 revision、provenance、
+   `visualTarget`、迁移和原子保存，再完成步骤编辑、Undo/Redo、截图点选和 dry-run，
+   为动态页面提供可维护的人工修正路径。
+4. **P0：WebView/Canvas fixture 与语义兼容。** 建立离线、可复位 fixture，先验证
+   WebView 虚拟节点与多页面录制回放，再明确小程序和 Canvas 的语义、混合、仅视觉
+   与不支持边界。
+5. **P0：视觉 `Observer` 与坐标回放。** 在语义树不可用时提供有界截图、候选区域、
+   置信度和 observation 证据，支持受控的规范化 tap、long-click 和 swipe；始终
+   保持低置信度、多候选和无法验证结果时失败关闭。
+6. **P0：真实 App 兼容矩阵。** 在上述稳定基础上，用固定版本、ABI、来源和
+   SHA-256 的哔哩哔哩、抖音和小黑盒验证多动作、多页面及任务切换，并独立报告
+   动态内容、广告、A/B 实验和模拟器检测造成的失败。
+7. **P1：LAN QR Bridge。** 只有无线 ADB 向导仍不能满足连接体验时，才实现 App
+   主动出站、临时密钥协商和短期邀请的同局域网扫码连接。
+8. **P1：设备农场与 scrcpy。** 本地 API 矩阵稳定后，条件接入一个设备农场
+   Provider 扩大 OEM 覆盖；scrcpy 只作为人工接管、演示和恢复 sidecar，不进入
+   自动执行内核。
+9. **P2：按部署模型选择。** 仅在明确的高级侧载、企业专用设备或远程实验室需求下，
+   分别评估 Shizuku、Device Owner/DPC 和互联网远程 Provider，不将它们变成通用
    MVP 依赖。
-5. 将 scrcpy 作为人工接管和恢复 sidecar，而不是自动化主执行器。
-6. 厂商、专用蓝牙和互联网 Provider 只在有明确设备/业务约束时建设。
-7. `getevent` 原始回放最后评估，并严格限制在 root/定制 SELinux 的隔离实验室。
+10. **P3：继续暂缓。** TypeScript CLI 重写、厂商互联、专用蓝牙桥和
+    `getevent`/`sendevent` 原始回放只有出现不可替代价值时才立项；原始输入方案
+    继续限制在 root、固定驱动和定制 SELinux 的隔离实验室。
 
 任何阶段都不得通过新增 Provider 放宽动作白名单、目标设备显式选择、目标包限制、
 高风险确认、紧急停止、敏感数据过滤或审计要求。

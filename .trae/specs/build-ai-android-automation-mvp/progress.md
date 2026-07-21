@@ -123,3 +123,10 @@
 - Any issues discovered or fixed：补齐设备端完整会话停止证据；修复人工验收 10 秒超时和 Planner 同步竞态，定向 harness 连续 3 次直接通过。
 - Key decisions made and reasoning：继续仅使用普通 View accessibility events，不启用会改变触控语义的触摸探索或 raw motion；debug-only 自检不进入 release，临时 API 33 AVD 不作为发布制品。
 - Files changed：Round 11 debug-only 自检与测试提交 `d64cca1`、`dbc7384`、`835f931`；本轮更新 `tasks.md`、`checklist.md`、`progress.md`、`docs/validation.md`、`docs/review-round-11.md`、`docs/review-round-11.html` 和 `docs/README.md`。
+
+## Round 15
+
+- Task(s) completed, tests passed, requirements fulfilled：完成 Task 24-31；API 33 clean 模拟器通过截图、动作、Bridge、2/2 录制回放、最终状态和 close 验收；Android 187 个单测、Go 98 个顶层测试及 184 个测试/子测试事件、Go race、协议 29 项、3 组 Skills、lint 0 error/22 warning 和全部构建通过。
+- Any issues discovered or fixed：修复录制环境 Context 崩溃、动态选择器低置信度、Bridge close 清理顺序、Launcher 重入导致的孤儿录制，以及中文注释检查器可被空洞注释绕过的问题；清理旧 worktree 后仅保留 main，删除已等价落地的 Task 20 临时分支，保留未合并的 `round9/task21-touch-retry` 分支。
+- Key decisions made and reasoning：下一阶段优先采用 emulator-first、无线 ADB 生命周期、录制编辑器、WebView/Canvas fixture、视觉观察和真实 App 兼容矩阵；局域网 QR Bridge、设备农场和 scrcpy 条件推进，高权限或低收益方案继续暂缓，N31-N54 均不计入当前 MVP 完成状态。
+- Files changed：完善 `AGENTS.md` 的规格、worktree、Sub-Agent、测试和授权规则；扩展 `docs/alternatives.md` 的优先级与无线/扫码、真实 App、WebView/小程序、Canvas 和自动验收方案；新增 `docs/next-phase-tasks.md` N31-N54 路线图，并更新 `tasks.md`、`checklist.md` 和 `progress.md`。

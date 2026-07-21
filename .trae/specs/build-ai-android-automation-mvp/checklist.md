@@ -3,7 +3,7 @@
 ## 仓库与交付
 
 - [x] Git 仓库已初始化，主分支和忽略规则正确，规格文件被保留
-- [ ] 根 `AGENTS.md` 明确项目协作语言、文档语言、中文注释质量、适用范围和排除项（实现已完成，待 Task 30 独立复验后统一关闭）
+- [x] 根 `AGENTS.md` 明确项目协作语言、文档语言、中文注释质量、适用范围和排除项
 - [x] Go、JDK、Android SDK、Gradle/AGP 版本已固定且开发命令可重复
 - [x] 每个实现任务都有独立 Conventional Commit，历史中没有密钥或构建缓存
 - [x] 文档明确说明 MVP 范围、已知限制、安装方法和故障排查
@@ -60,12 +60,12 @@
 - [x] MCP 不暴露配对、撤销信任、任意 shell 或默认高风险操作
 - [x] 三个 Agent Skills 通过规范校验，frontmatter、引用和命令均可用
 - [x] Skills 始终先确认目标设备和 capabilities，并遵守风险确认规则
-- [ ] `skills/` 的 README、三个 `SKILL.md` 和六个 references 说明文案均为中文，同时保持 frontmatter `name`、命令、标识符和协议值原样（Task 28 实现已通过，待 Task 30 独立复验后统一关闭）
-- [ ] `skills/` 与 `.trae/skills/` 镜像内容一致，且中文化后仍通过 Skills validator（Task 28 实现已通过，待 Task 30 独立复验后统一关闭）
+- [x] `skills/` 的 README、三个 `SKILL.md` 和六个 references 说明文案均为中文，同时保持 frontmatter `name`、命令、标识符和协议值原样
+- [x] `skills/` 与 `.trae/skills/` 镜像内容一致，且中文化后通过 3 个 Skills validator
 
 ## 测试、兼容与发布
 
-- [ ] 所有可注释的手写生产代码、测试、构建配置、CI 与脚本均有中文功能/用途注释覆盖，且自动检查可发现遗漏并排除 JSON/JSON Schema、生成物、缓存和二进制（Round 12 最终审计确认实际注释通过，但检查器仍可被 `// 用途`、`// 实现`、`/** 测试 */` 绕过，待 Task 30 加固固定前缀、非空正文、最小信息量和反例验收）
+- [x] 所有可注释的手写生产代码、测试、构建配置、CI 与脚本均有中文功能/用途注释覆盖；174 个受管文件和 14 个正反例通过语义检查，并排除 JSON/JSON Schema、生成物、缓存和二进制
 - [x] Go 单测和 fake ADB 集成测试覆盖成功、超时、恶意参数和多设备
 - [x] Android 单测覆盖选择器、坐标、状态机、风险策略、录制和回放
 - [x] 协议、MCP 和 App Bridge 具有契约测试
@@ -73,7 +73,7 @@
 - [x] CI 验证 Android lint、单测和 debug APK 构建
 - [x] 录制与回放具有真实 Compose/instrumentation UI 交互测试
 - [x] 真机测试指南明确 USB 模式选择，并覆盖开发者选项、USB 调试、RSA、无障碍、Bridge 和录制回放 smoke
-- [ ] 可用环境下完成 Emulator 或真机的截图、动作、桥接和录制回放冒烟（API 33 clean 链路已完成 2/2 回放、`NODE_ACTION`、score `0.8261`、最终 `ON` 及 close 后 `AUTH_REQUIRED`；Round 12 独立设备审计在并行 Gradle 负载下因 ADB timeout 未能只读复核 fixture 的稳定描述与最终 `ON`，待 Task 30.2 在负载结束后非破坏重验）
+- [x] API 33 clean 模拟器完成截图、动作、Bridge 与录制回放冒烟：2/2 回放成功，`NODE_ACTION` score `0.8261`，最终状态 `ON`，close 后返回 `AUTH_REQUIRED`，且独立只读复核通过
 - [x] 发布产出 macOS arm64/amd64、Windows amd64 CLI、debug APK 和 SHA-256
 - [x] 文档明确 Google Play 自主 Accessibility AI 的政策禁区及合规变体
 - [x] 备选方案文档覆盖 Shizuku、Device Owner、UI Automator、视觉层、getevent、蓝牙/厂商互联、设备农场和 scrcpy

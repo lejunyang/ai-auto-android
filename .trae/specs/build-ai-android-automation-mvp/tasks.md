@@ -126,43 +126,48 @@
   - [x] 移除会在目标 OPPO API 34 设备上破坏正常触控的 raw touchscreen motion observer
   - [x] API 33 模拟器确认自动化点击不被误判，用户语义点击停止真实会话、写入停止审计、保持 executor 为 0 并清理 Runtime
 
-- [ ] Task 24: 建立独立无副作用 Android device fixture，并在 API 33 emulator 完成直接设备、App Bridge 与录制回放端到端冒烟。
+- [x] Task 24: 建立独立无副作用 Android device fixture，并在 API 33 emulator 完成直接设备、App Bridge 与录制回放端到端冒烟。
   - [x] SubTask 24.1: 实现仅包含本地 toggle、稳定 `resourceId`、无网络和无敏感数据的独立 Android device fixture，并验证可重复复位（提交 `511a242`，fixture 构建通过）
-  - [ ] SubTask 24.2: 在 API 33 emulator 验证直接 screenshot/action，以及 App Bridge hello、info、snapshot、semantic action 和 close 闭环；clean smoke 中 capabilities、list 和语义复位已通过，但 `session.close` 返回 `INTERNAL_ERROR`，随后 info 返回 `DEVICE_UNREACHABLE`
-  - [ ] SubTask 24.3: 在 API 33 emulator 录制 fixture toggle，验证 recording list、replay、步骤结果和最终 UI 状态；clean smoke 中唯一两步脚本无 secret，fixture 以 `nodeAction`、score `1.0` 从 ON 复位为 OFF，回放 step 1 成功且 attempts=1，step 2 以 attempts=0、`SELECTOR_LOW_CONFIDENCE` 失败
+  - [x] SubTask 24.2: API 33 直接截图返回有效 PNG，类型化 launch 通过；Bridge hello、info、snapshot、语义动作和 close 闭环通过，close 后 `info` 返回 `AUTH_REQUIRED`
+  - [x] SubTask 24.3: clean 脚本 `orphan-postfix` 唯一、2 步且无 secret；回放 2/2 成功，click `attempts=1`、`NODE_ACTION`、score `0.8261`，最终 toggle 为 `ON`
 
-- [ ] Task 25: 将 `/skills` 三组 Agent Skills 的全部说明文案改为中文，并保持机器可读标识与命令语义稳定；实现已完成，独立复验发现英文自然语言残留，待 Task 28 加固验收后关闭。
+- [x] Task 25: 将 `/skills` 三组 Agent Skills 的全部说明文案改为中文，并保持机器可读标识与命令语义稳定；根目录与镜像逐字节一致，3 个 Skills validator 通过。
   - [x] SubTask 25.1: 将 `skills/README.md` 与三个 `SKILL.md` 的标题、说明、流程和安全提示改为中文，保持 frontmatter `name`、命令、参数、标识符和协议值原样
   - [x] SubTask 25.2: 将六个 `references/*.md` 的解释、操作指导和故障排查文案改为中文，保留代码块、错误码、环境变量、路径和协议常量
   - [x] SubTask 25.3: 将 `skills/` 完整同步到 `.trae/skills/` 镜像，并自动校验两套目录内容一致
   - [x] SubTask 25.4: 运行 Skills validator，验证 frontmatter、引用深度、命令示例和安全约束未因中文化退化
 
-- [ ] Task 26: 建立项目协作语言与注释规范，并为现有可注释的手写代码和测试补齐中文功能/用途注释；实现已完成，独立复验发现检查器未验证注释语义与语言特定结构，待 Task 28 加固验收后关闭。
+- [x] Task 26: 建立项目协作语言与注释规范，并为现有可注释的手写代码和测试补齐中文功能/用途注释；根 `AGENTS.md` 已生效，174 个受管手写文件通过语义检查。
   - [x] SubTask 26.1: 盘点可注释的手写源文件与测试，在根 `AGENTS.md` 规定项目协作语言、文档语言和注释质量要求；明确排除 JSON/JSON Schema、生成物、构建缓存和二进制，并禁止逐行复述代码
   - [x] SubTask 26.2: 为现有 Go 手写代码与测试补齐中文 package doc，以及必要的导出 API、关键约束和复杂逻辑说明
   - [x] SubTask 26.3: 为现有 Android/Kotlin 手写代码与测试补齐中文文件/类型/关键复杂逻辑 KDoc，覆盖生产代码、debug/device fixture 和测试用途
   - [x] SubTask 26.4: 为 Gradle、Shell、GitHub Workflow 及其他可注释构建/CI/脚本文件补齐中文模块用途与非显然约束说明
   - [x] SubTask 26.5: 增加可重复的注释覆盖检查脚本或验证命令，校验盘点范围、排除项和关键注释要求，并运行全量构建、测试、lint 与格式检查
 
-- [ ] Task 27: 修复设备 smoke 暴露的录制选择器稳定性与 Bridge close 生命周期问题，并重新完成 clean API 33 端到端验收。
-  - [ ] SubTask 27.1: 诊断并确保 fixture 普通 View 点击录制稳定保存 `resourceId`、`contentDescription` 和 fingerprint，使回放达到既有置信度阈值且不放宽歧义安全策略；补充单元测试和设备测试
-  - [ ] SubTask 27.2: 使 `session.close` 响应、连接关闭和 ADB forward 清理顺序确定且幂等，确保成功关闭不返回 `INTERNAL_ERROR`；补充 Go 与 Android 契约测试
-  - [ ] SubTask 27.3: 在 clean API 33 emulator 重新录制 fixture toggle，并验证 recording list、replay 全步骤、最终 UI 状态和 Bridge close 全部通过，同时关闭 SubTask 24.2 和 24.3
+- [x] Task 27: 修复设备 smoke 暴露的录制选择器稳定性与 Bridge close 生命周期问题，并重新完成 clean API 33 端到端验收。
+  - [x] SubTask 27.1: 提交 `21ebb52` 固定 fixture `contentDescription`，不降低 `0.70` 阈值；反状态回放匹配 score 为 `0.8261`
+  - [x] SubTask 27.2: 提交 `4c191a8` 使本地 session 删除、forward 清理和重复 close 顺序确定且幂等，相关 Go/Android 契约测试通过
+  - [x] SubTask 27.3: API 33 clean 脚本 list、2/2 replay、最终 `ON`、close 成功及 close 后 `AUTH_REQUIRED` 全部通过
 
-- [ ] Task 28: 加固 Skills 中文化与代码注释的语义验收，确保独立复验能够识别英文残留和无信息量注释。
-  - [ ] SubTask 28.1: 清除 Skills 自然语言英文残留，保持机器标识与命令不变，同步 `skills/` 与 `.trae/skills/` 镜像并通过 Skills validator
-  - [ ] SubTask 28.2: 按语言加固注释检查器，验证 Go package doc、Kotlin KDoc/文件用途、测试用途，以及功能/用途/约束/验证语义；增加反例 fixture，确保 `// 临时` 等无信息量注释失败，并保持 173 个以上手写文件的覆盖范围
-  - [ ] SubTask 28.3: 独立复验 Skills 中文内容、镜像、validator、注释语义规则和反例 fixture；通过后关闭 Task 25、Task 26 及相关 checklist
+- [x] Task 28: 加固 Skills 中文化与代码注释的语义验收，确保独立复验能够识别英文残留和无信息量注释。
+  - [x] SubTask 28.1: Skills 自然语言已中文化，机器标识与命令不变；`skills/` 与 `.trae/skills/` 镜像一致并通过 3 个 validator
+  - [x] SubTask 28.2: 检查器验证 Go package doc、Kotlin KDoc、测试用途和语义正文；174 个受管文件及内置反例通过
+  - [x] SubTask 28.3: 独立复验 Skills、镜像、validator、注释结构和反例全部通过
 
-- [ ] Task 29: 修复活动录制 UI 在任务切换或 Activity 重建后的可恢复控制，禁止出现 Runtime 仍有活动录制但用户无法暂停、保存或停止的 orphan 会话。
-  - [ ] SubTask 29.1: 收集运行时证据，区分 PID、task、Activity、NavBackStackEntry、ViewModel 和 RecordingRuntime sink 的生命周期，定位录制控制 UI 丢失而活动 sink 保留的路径
-  - [ ] SubTask 29.2: 实现最小修复，使返回主 App 时恢复活动录制的 SESSION 控制页，或在无法恢复时安全 detach 并结束会话；补充生命周期、ViewModel 和 UI 回归测试，确保不产生 orphan
-  - [ ] SubTask 29.3: 在 clean API 33 emulator 验证录制跨任务返回后仍可 pause/save，并完成 recording list、replay、最终 UI 状态和 Bridge close；同时完成 SubTask 27.3
+- [x] Task 29: 修复活动录制 UI 在任务切换或 Activity 重建后的可恢复控制，禁止出现 Runtime 仍有活动录制但用户无法暂停、保存或停止的 orphan 会话。
+  - [x] SubTask 29.1: 运行时证据确认 Launcher 在同 PID/task 新建首页 Activity，而旧 ViewModel/sink 仍活动；进程重启假设被排除
+  - [x] SubTask 29.2: 提交 `0ed52b2` 将唯一主入口设为 `singleTask`；Launcher 重入改走同 Activity 的 `onNewIntent`，设备测试已编译
+  - [x] SubTask 29.3: API 33 手工真实路径确认活动录制页保留且可 pause/save，随后 list、replay、最终状态与 close 全部通过
 
-- [ ] Task 30: 关闭 Round 12 最终审计发现的注释信息量和设备只读复核缺口；全量回归已通过 Go 98 个顶层测试/184 个测试与子测试事件、Go race、协议 29 项、3 组 Skills、Android 187 个单测、lint 0 error/22 warning 及全部构建。
-  - [ ] SubTask 30.1: 加固中文注释检查器，要求固定合格前缀、非空说明正文和最小信息量；加入 `// 用途`、`// 实现`、`/** 测试 */` 三个失败反例，并确认实际 174 个以上受管手写文件仍通过
-  - [ ] SubTask 30.2: 在并行 Gradle 负载结束后，使用设备发现与观察能力进行非破坏恢复，在 API 33 emulator 独立复核 fixture 的稳定 `contentDescription`、最终 `ON` 状态和 Bridge `AUTH_REQUIRED`
-  - [ ] SubTask 30.3: 独立复验注释信息量规则、Skills/镜像/validator、API 33 设备只读证据与全量回归；通过后关闭 Task 28 及所有剩余 tasks/checklist
+- [x] Task 30: 关闭 Round 12 最终审计发现的注释信息量和设备只读复核缺口；全量回归已通过 Go 98 个顶层测试/184 个测试与子测试事件、Go race、协议 29 项、3 组 Skills、Android 187 个单测、lint 0 error/22 warning 及全部构建。
+  - [x] SubTask 30.1: 提交 `37f9057` 要求固定前缀、非空正文和最小信息量；14 个正反例及 174 个受管文件通过
+  - [x] SubTask 30.2: API 33 独立只读复核确认 `local_toggle`、`Local test toggle`、`checked=true`、`ON` 和 Bridge `AUTH_REQUIRED`
+  - [x] SubTask 30.3: 独立复验注释规则、Skills/镜像/validator、设备证据和全量回归全部通过
+
+- [x] Task 31: 修复下一阶段路线图审计一致性并完成本轮文档交付；路线图经过三轮独立审计，最终结论为 PASS。
+  - [x] SubTask 31.1: N32 与 N34 已拆分为互斥目录所有权，共享集成文件由单一负责人串行处理
+  - [x] SubTask 31.2: N52 本地 API 矩阵、N53 条件性设备农场和 N54 scrcpy 已拆分，优先级、推荐顺序、并行波次和 N50 路径均已统一
+  - [x] SubTask 31.3: 已关闭过期 checklist 项，append-only 追加 Round 15，并完成路线图、依赖、目录所有权与安全边界的独立复验
 
 # Task Dependencies
 
@@ -186,10 +191,15 @@
 - Task 28 依赖 Task 25 和 Task 26 已完成的实现。
 - Task 29 depends on Task 9 and SubTasks 27.1 and 27.2.
 - Task 30 依赖 Task 28 已完成的实现。
+- Task 31 依赖 Task 30。
 - SubTasks 24.2 and 24.3 are completed by Task 27.3.
 - SubTask 27.3 is completed by SubTask 29.3.
 - Task 22 and Task 23 can run in parallel.
 - Task 24 is independent of Tasks 25 and 26; Tasks 25 and 26 can run in parallel.
+
+## 后续路线图
+
+`docs/next-phase-tasks.md` 中的 N31-N54 全部尚未实现，供下一会话或其他机器按并行波次执行，不属于当前 MVP 的完成状态。
 
 # Commit Policy
 
