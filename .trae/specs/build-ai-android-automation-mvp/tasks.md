@@ -159,6 +159,11 @@
   - [ ] SubTask 29.2: 实现最小修复，使返回主 App 时恢复活动录制的 SESSION 控制页，或在无法恢复时安全 detach 并结束会话；补充生命周期、ViewModel 和 UI 回归测试，确保不产生 orphan
   - [ ] SubTask 29.3: 在 clean API 33 emulator 验证录制跨任务返回后仍可 pause/save，并完成 recording list、replay、最终 UI 状态和 Bridge close；同时完成 SubTask 27.3
 
+- [ ] Task 30: 关闭 Round 12 最终审计发现的注释信息量和设备只读复核缺口；全量回归已通过 Go 98 个顶层测试/184 个测试与子测试事件、Go race、协议 29 项、3 组 Skills、Android 187 个单测、lint 0 error/22 warning 及全部构建。
+  - [ ] SubTask 30.1: 加固中文注释检查器，要求固定合格前缀、非空说明正文和最小信息量；加入 `// 用途`、`// 实现`、`/** 测试 */` 三个失败反例，并确认实际 174 个以上受管手写文件仍通过
+  - [ ] SubTask 30.2: 在并行 Gradle 负载结束后，使用设备发现与观察能力进行非破坏恢复，在 API 33 emulator 独立复核 fixture 的稳定 `contentDescription`、最终 `ON` 状态和 Bridge `AUTH_REQUIRED`
+  - [ ] SubTask 30.3: 独立复验注释信息量规则、Skills/镜像/validator、API 33 设备只读证据与全量回归；通过后关闭 Task 28 及所有剩余 tasks/checklist
+
 # Task Dependencies
 
 - Task 2 depends on Task 1.
@@ -180,6 +185,7 @@
 - Task 27 depends on SubTask 24.1 and Tasks 7 and 9.
 - Task 28 依赖 Task 25 和 Task 26 已完成的实现。
 - Task 29 depends on Task 9 and SubTasks 27.1 and 27.2.
+- Task 30 依赖 Task 28 已完成的实现。
 - SubTasks 24.2 and 24.3 are completed by Task 27.3.
 - SubTask 27.3 is completed by SubTask 29.3.
 - Task 22 and Task 23 can run in parallel.
