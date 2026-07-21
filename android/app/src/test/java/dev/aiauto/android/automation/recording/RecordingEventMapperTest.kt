@@ -110,6 +110,28 @@ class RecordingEventMapperTest {
         assertNull(mapper.map(event(type = RecordingEventType.CLICK, source = null)))
     }
 
+    @Test
+    fun `click with contentDescription includes fingerprint in target`() {
+        val mapped = mapper.map(
+            event(
+                type = RecordingEventType.CLICK,
+                source = node(
+                    resourceId = "dev.aiauto.fixture:id/local_toggle",
+                    text = "ON",
+                    contentDescription = "Local test toggle",
+                    className = "android.widget.ToggleButton",
+                ),
+            ),
+        )
+
+        assertNotNull(mapped)
+        val target = mapped!!.action.params.getValue("target").toString()
+        assertEquals("ui.click", mapped.action.type)
+        assertTrue(target.contains("resourceId"))
+        assertTrue(target.contains("contentDescription"))
+        assertTrue(target.contains("fingerprint"))
+    }
+
     private fun event(
         type: RecordingEventType,
         source: UiNodeSnapshot?,
@@ -129,6 +151,7 @@ class RecordingEventMapperTest {
     private fun node(
         resourceId: String? = null,
         text: String? = null,
+        contentDescription: String? = null,
         className: String = "android.widget.TextView",
         state: UiNodeState = UiNodeState(
             enabled = true,
@@ -139,7 +162,7 @@ class RecordingEventMapperTest {
         className = className,
         resourceId = resourceId,
         text = text,
-        contentDescription = null,
+        contentDescription = contentDescription,
         bounds = UiBounds(left = 10, top = 20, right = 110, bottom = 70),
         actions = setOf(NodeAction.CLICK),
         state = state,

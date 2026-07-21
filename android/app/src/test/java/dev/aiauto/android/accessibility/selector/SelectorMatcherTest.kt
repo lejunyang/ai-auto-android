@@ -12,6 +12,7 @@ import dev.aiauto.android.accessibility.model.SelectorStrategy
 import dev.aiauto.android.accessibility.model.UiBounds
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import dev.aiauto.android.accessibility.model.UiNodeState
+import dev.aiauto.android.accessibility.selector.NodeFingerprint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -142,6 +143,40 @@ class SelectorMatcherTest {
         assertTrue(matchingResult is SelectorMatch.Found)
         assertEquals(NodePath(listOf(0)), (matchingResult as SelectorMatch.Found).path)
         assertTrue(wrongPackageResult is SelectorMatch.NotFound)
+    }
+
+    @Test
+    fun `matches toggle button with mixed selector candidates`() {
+        val currentNode = node(
+            resourceId = "dev.aiauto.fixture:id/local_toggle",
+            text = "OFF",
+            contentDescription = "Local test toggle",
+            className = "android.widget.ToggleButton",
+            actions = setOf(NodeAction.CLICK),
+        )
+        val root = node(
+            className = "android.widget.FrameLayout",
+            children = listOf(currentNode),
+        )
+
+        val target = NodeTarget(
+            packageName = "com.example",
+            selectorCandidates = listOf(
+                candidate(SelectorStrategy.RESOURCE_ID, "dev.aiauto.fixture:id/local_toggle", 0.45, required = true),
+                candidate(SelectorStrategy.CONTENT_DESCRIPTION, "Local test toggle", 0.25),
+                candidate(SelectorStrategy.TEXT, "ON", 0.20),
+                candidate(SelectorStrategy.ROLE, "button", 0.10),
+                candidate(SelectorStrategy.FINGERPRINT, NodeFingerprint.create(currentNode), 0.15),
+            ),
+        )
+
+        val result = matcher.match(root, target)
+
+        assertTrue(result is SelectorMatch.Found)
+        result as SelectorMatch.Found
+        assertEquals(NodePath(listOf(0)), result.path)
+        assertEquals(0.95 / 1.15, result.score, 0.0001)
+        assertTrue(result.score > 0.70)
     }
 
     private fun candidate(

@@ -3,6 +3,5 @@
     <string name="app_name">Device Fixture</string>
     <string name="status_on">ON</string>
     <string name="status_off">OFF</string>
-    <string name="toggle_accessibility_on">Toggle is ON</string>
-    <string name="toggle_accessibility_off">Toggle is OFF</string>
+    <string name="local_toggle_description">Local test toggle</string>
 </resources>
