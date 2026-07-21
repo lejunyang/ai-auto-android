@@ -1,7 +1,7 @@
 package dev.aiauto.android
 
 /**
- * 设备测试用途：验证 Launcher 重入复用唯一主 Activity，并保留当前录制导航页面。
+ * 测试用途：验证 Launcher 重入复用唯一主 Activity，并保留当前录制导航页面。
  */
 
 import android.content.ComponentName

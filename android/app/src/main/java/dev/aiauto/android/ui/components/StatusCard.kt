@@ -1,7 +1,7 @@
 package dev.aiauto.android.ui.components
 
 /**
- * 界面用途：提供 StatusCard 通用 Compose 组件，统一页面结构与状态表达。
+ * 功能用途：提供 StatusCard 通用 Compose 组件，统一页面结构与状态表达。
  */
 
 import androidx.compose.foundation.layout.Arrangement

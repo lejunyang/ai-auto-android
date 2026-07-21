@@ -1,6 +1,6 @@
 package cli
 
-// 本文件验证录制列表依赖已建立 Bridge 会话并始终要求明确设备。
+// 测试用途：本文件验证录制列表依赖已建立 Bridge 会话并始终要求明确设备。
 
 import (
 	"context"

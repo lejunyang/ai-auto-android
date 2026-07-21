@@ -1,6 +1,6 @@
 package cli
 
-// 本文件解析 Bridge 会话、语义观察和动作命令，并在 RPC 前完成参数校验。
+// 功能用途：本文件解析 Bridge 会话、语义观察和动作命令，并在 RPC 前完成参数校验。
 
 import (
 	"context"

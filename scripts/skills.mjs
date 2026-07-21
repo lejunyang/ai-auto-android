@@ -1,4 +1,4 @@
-// 校验发布 Skills 的结构、安全内容与项目级 Trae 镜像一致性。
+// 脚本用途：校验发布 Skills 的结构、安全内容与项目级 Trae 镜像一致性。
 import { cp, lstat, mkdir, readdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

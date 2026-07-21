@@ -1,6 +1,6 @@
 package adb
 
-// 本文件按显式配置、PATH 和标准 SDK 目录顺序定位官方 ADB。
+// 功能用途：本文件按显式配置、PATH 和标准 SDK 目录顺序定位官方 ADB。
 
 import (
 	"fmt"

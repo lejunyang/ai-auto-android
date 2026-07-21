@@ -30,10 +30,18 @@ const isManaged = (file) =>
     || commentableXml.test(file)
   );
 
-const chinese = /\p{Script=Han}/u;
-const purposeKeyword =
-  /功能|用途|负责|用于|验证|覆盖|约束|回归|契约|构建|配置|执行|检查|校验|生成|实现|提供|确保|防止|定义|声明|注册|维护|封装|测试|管理|处理|解析|转换|映射|路由|记录|加载|保存|连接|同步|清理|输出|输入|诊断|发现|观察|保护|控制|绘制|组合|限定|固定/u;
-const testKeyword = /验证|覆盖|测试|回归|契约/u;
+const chinese = /\p{Script=Han}/gu;
+const semanticAction =
+  /实现|提供|验证|覆盖|约束|构建|配置|执行|检查|校验|生成|确保|防止|定义|声明|注册|维护|封装|管理|处理|解析|转换|映射|路由|记录|加载|保存|连接|同步|清理|输出|输入|诊断|发现|观察|保护|控制|绘制|组合|限定|固定|锁定|拒绝|允许|协调|编排|持久化|恢复|读取|写入|发布|统一|暴露|承载|组织|展示/u;
+const testSemanticAction = /验证|覆盖|回归|检查|校验|确保|防止|拒绝|测试/u;
+const purposePrefixes = [
+  "功能用途：",
+  "模块用途：",
+  "配置用途：",
+  "脚本用途：",
+  "安全约束：",
+];
+const testPrefix = "测试用途：";
 
 const slashComments = (content) =>
   content.match(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g) ?? [];
@@ -42,14 +50,43 @@ const hashComments = (content) =>
   content.match(/^[ \t]*#[^\n]*|<#[\s\S]*?#>/gm) ?? [];
 const xmlComments = (content) => content.match(/<!--[\s\S]*?-->/g) ?? [];
 
-const isPurposeComment = (comment) =>
-  chinese.test(comment) && purposeKeyword.test(comment);
-const isTestPurposeComment = (comment) =>
-  chinese.test(comment) && testKeyword.test(comment);
 const isTestFile = (file) =>
   file.endsWith("_test.go")
   || /(?:^|\/)(?:test|androidTest)(?:\/|$)/.test(file)
   || /(?:Test|Tests)\.(?:kt|java)$/.test(file);
+
+const stripCommentSyntax = (comment) =>
+  comment
+    .replace(/^\/\*\*?/, "")
+    .replace(/\*\/$/, "")
+    .replace(/^<!--/, "")
+    .replace(/-->$/, "")
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/^[ \t]*\/\/[ \t]?/, "")
+        .replace(/^[ \t]*#[ \t]?/, "")
+        .replace(/^[ \t]*\*[ \t]?/, ""),
+    )
+    .join(" ")
+    .trim();
+
+const extractPrefixedBody = (comment, prefixes) => {
+  const normalized = stripCommentSyntax(comment);
+  const prefix = prefixes.find((candidate) => normalized.startsWith(candidate));
+  return prefix === undefined ? null : normalized.slice(prefix.length).trim();
+};
+
+const meaningfulBody = (body, semanticPattern) => {
+  if (body === null) return false;
+  const hanCharacters = body.match(chinese) ?? [];
+  const hanCount = hanCharacters.length;
+  const distinctHanCount = new Set(hanCharacters).size;
+  const nonWhitespaceCount = body.replace(/\s/gu, "").length;
+  return (hanCount >= 8 || nonWhitespaceCount >= 12)
+    && distinctHanCount >= 6
+    && semanticPattern.test(body);
+};
 
 const commentsFor = (file, content) => {
   if (file.endsWith(".xml")) return xmlComments(content);
@@ -74,24 +111,47 @@ const packageDoc = (content) => {
   const [, comment, packageName] = match;
   const firstLine = comment.split("\n")[0];
   if (!firstLine.startsWith(`// Package ${packageName} `)) return null;
-  return isPurposeComment(comment) ? packageName : null;
+  const body = stripCommentSyntax(comment).slice(`Package ${packageName} `.length).trim();
+  return meaningfulBody(body, semanticAction) ? packageName : null;
 };
 
 const validateContent = (file, content) => {
   const comments = commentsFor(file, content);
   const errors = [];
+  const testFile = isTestFile(file);
+  const kotlinOrJava = file.endsWith(".kt") || file.endsWith(".java");
+  const goFile = file.endsWith(".go");
+  const requiredPrefixes = testFile
+    ? [testPrefix]
+    : kotlinOrJava
+      ? ["功能用途："]
+      : purposePrefixes;
+  const requiredSemanticAction = testFile
+    ? testSemanticAction
+    : semanticAction;
+  const hasMeaningfulPurpose = comments.some((comment) =>
+    meaningfulBody(
+      extractPrefixedBody(comment, requiredPrefixes),
+      requiredSemanticAction,
+    ),
+  );
 
-  if (!comments.some(isPurposeComment)) {
-    errors.push("缺少含中文用途语义关键词的合法注释");
+  if (!hasMeaningfulPurpose && !(goFile && !testFile && packageDoc(content))) {
+    errors.push(
+      testFile
+        ? "缺少以 `测试用途：` 开头且正文信息充分的测试用途注释"
+        : "缺少固定用途前缀且正文信息充分的中文用途注释",
+    );
   }
-  if (
-    (file.endsWith(".kt") || file.endsWith(".java"))
-    && kdocComments(content).length === 0
-  ) {
-    errors.push("Kotlin/Java 文件缺少中文 KDoc");
+  if (kotlinOrJava && !hasMeaningfulPurpose) {
+    errors.push(
+      testFile
+        ? "Kotlin/Java 测试文件缺少合格的 `测试用途：` KDoc"
+        : "Kotlin/Java 生产文件缺少合格的 `功能用途：` KDoc",
+    );
   }
-  if (isTestFile(file) && !comments.some(isTestPurposeComment)) {
-    errors.push("测试文件缺少验证、覆盖、测试、回归或契约用途说明");
+  if (goFile && testFile && !hasMeaningfulPurpose) {
+    errors.push("Go 测试文件缺少合格的 `测试用途：` 行注释");
   }
   return errors;
 };
@@ -102,6 +162,42 @@ const runSelfTest = () => {
       name: "拒绝无信息量中文注释",
       file: "scripts/temporary.mjs",
       content: "// 临时\nconst value = 1;\n",
+      valid: false,
+    },
+    {
+      name: "拒绝只有用途二字",
+      file: "scripts/purpose-only.mjs",
+      content: "// 用途\nconst value = 1;\n",
+      valid: false,
+    },
+    {
+      name: "拒绝只有实现二字",
+      file: "scripts/implementation-only.mjs",
+      content: "// 实现\nconst value = 1;\n",
+      valid: false,
+    },
+    {
+      name: "拒绝只有测试二字",
+      file: "sample/src/test/SampleTest.kt",
+      content: "package sample\n\n/** 测试 */\nclass SampleTest\n",
+      valid: false,
+    },
+    {
+      name: "拒绝固定前缀后的空洞正文",
+      file: "scripts/temporary-purpose.mjs",
+      content: "// 功能用途：临时\nconst value = 1;\n",
+      valid: false,
+    },
+    {
+      name: "拒绝重复用途词填充正文",
+      file: "scripts/repeated-purpose.mjs",
+      content: "// 功能用途：用途用途用途用途用途用途\nconst value = 1;\n",
+      valid: false,
+    },
+    {
+      name: "拒绝重复动作词填充正文",
+      file: "scripts/repeated-action.mjs",
+      content: "// 功能用途：实现实现实现实现实现实现\nconst value = 1;\n",
       valid: false,
     },
     {
@@ -118,6 +214,13 @@ const runSelfTest = () => {
       requirePackageDoc: true,
     },
     {
+      name: "拒绝 Go package doc 的过短正文",
+      file: "sample/sample.go",
+      content: "// Package sample 实现\npackage sample\n",
+      valid: false,
+      requirePackageDoc: true,
+    },
+    {
       name: "拒绝 Kotlin 普通中文行注释",
       file: "sample/Sample.kt",
       content: "package sample\n\n// 功能用途：提供示例能力。\nclass Sample\n",
@@ -126,20 +229,20 @@ const runSelfTest = () => {
     {
       name: "接受合格 Go package doc",
       file: "sample/sample.go",
-      content: "// Package sample 用于提供自测样例。\npackage sample\n",
+      content: "// Package sample 提供检查器自测使用的完整示例能力。\npackage sample\n",
       valid: true,
       requirePackageDoc: true,
     },
     {
       name: "接受合格 Kotlin 测试 KDoc",
       file: "sample/src/test/SampleTest.kt",
-      content: "package sample\n\n/** 测试用途：验证示例契约。 */\nclass SampleTest\n",
+      content: "package sample\n\n/** 测试用途：验证示例输入能够生成稳定且完整的契约结果。 */\nclass SampleTest\n",
       valid: true,
     },
     {
       name: "接受合格脚本用途注释",
       file: "scripts/valid.mjs",
-      content: "// 功能用途：检查受管文件的注释契约。\nconst value = 1;\n",
+      content: "// 脚本用途：检查受管手写文件的中文注释结构与信息量契约。\nconst value = 1;\n",
       valid: true,
     },
   ];

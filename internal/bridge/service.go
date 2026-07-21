@@ -1,6 +1,6 @@
 package bridge
 
-// 本文件编排 ADB forward、Bridge RPC 和本地短期会话的完整生命周期。
+// 功能用途：本文件编排 ADB forward、Bridge RPC 和本地短期会话的完整生命周期。
 
 import (
 	"context"

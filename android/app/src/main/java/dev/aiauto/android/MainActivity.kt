@@ -1,7 +1,7 @@
 package dev.aiauto.android
 
 /**
- * 应用用途：承载 Android App 的 Compose 根界面与主导航入口。
+ * 功能用途：承载 Android App 的 Compose 根界面与主导航入口。
  */
 
 import android.os.Bundle

@@ -1,4 +1,4 @@
-// 验证协议 Schema、合法/非法夹具以及版本协商兼容性。
+// 脚本用途：验证协议 Schema、合法/非法夹具以及版本协商兼容性。
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

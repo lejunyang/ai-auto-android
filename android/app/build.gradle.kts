@@ -1,4 +1,4 @@
-// 配置主 Android App 的 Compose、序列化、测试与发布构建依赖。
+// 配置用途：配置主 Android App 的 Compose、序列化、测试与发布构建依赖。
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)

@@ -1,4 +1,4 @@
-// 构建仅用于设备端冒烟的本地 toggle fixture，不引入网络或持久化依赖。
+// 配置用途：构建仅用于设备端冒烟的本地 toggle fixture，不引入网络或持久化依赖。
 plugins {
     alias(libs.plugins.android.application)
 }

@@ -1,6 +1,6 @@
 package process
 
-// 本文件验证 argv 不经 Shell、超时与输出预算生效，并确保标准输入秘密被脱敏。
+// 测试用途：本文件验证 argv 不经 Shell、超时与输出预算生效，并确保标准输入秘密被脱敏。
 
 import (
 	"context"

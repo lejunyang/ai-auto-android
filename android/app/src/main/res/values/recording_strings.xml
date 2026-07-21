@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 集中定义语义录制、脚本详情与回放界面的用户文案。 -->
+<!-- 配置用途：集中定义语义录制、脚本详情与回放界面的用户文案。 -->
 <resources>
     <string name="recording_title">操作录制</string>
     <string name="recording_session_title">录制新流程</string>

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# 构建跨平台 CLI 与 Android debug APK，并在临时目录中生成完整校验和后原子发布。
+# 脚本用途：构建跨平台 CLI 与 Android debug APK，并在临时目录中生成完整校验和后原子发布。
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)

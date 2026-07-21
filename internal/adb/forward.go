@@ -1,6 +1,6 @@
 package adb
 
-// 本文件管理绑定到明确设备的 ADB 临时 TCP 转发。
+// 功能用途：本文件管理绑定到明确设备的 ADB 临时 TCP 转发。
 
 import (
 	"context"

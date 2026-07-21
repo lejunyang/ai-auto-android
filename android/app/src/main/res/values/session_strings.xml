@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 集中定义受控 AI 自动化会话及风险确认界面的用户文案。 -->
+<!-- 配置用途：集中定义受控 AI 自动化会话及风险确认界面的用户文案。 -->
 <resources>
     <string name="session_title">AI 自动化会话</string>
     <string name="session_task_label">任务目标</string>

@@ -1,6 +1,6 @@
 package bridge
 
-// 本文件定义桌面 Bridge 的版本、消息边界和 JSON-RPC 数据模型。
+// 功能用途：本文件定义桌面 Bridge 的版本、消息边界和 JSON-RPC 数据模型。
 
 import (
 	"bytes"

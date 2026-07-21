@@ -1,6 +1,6 @@
 package adb
 
-// 本文件实现无需 App Bridge 的截图、UI 层级和白名单输入动作。
+// 功能用途：本文件实现无需 App Bridge 的截图、UI 层级和白名单输入动作。
 
 import (
 	"bytes"

@@ -1,6 +1,6 @@
 package bridge
 
-// 本文件验证 hello/open 顺序、标识匹配、消息上限、超时和断连错误契约。
+// 测试用途：本文件验证 hello/open 顺序、标识匹配、消息上限、超时和断连错误契约。
 
 import (
 	"bufio"

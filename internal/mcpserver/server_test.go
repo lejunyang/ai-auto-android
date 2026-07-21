@@ -1,6 +1,6 @@
 package mcpserver
 
-// 本文件验证工具数量、严格 Schema、结构化结果及服务调用前的风险拒绝。
+// 测试用途：本文件验证工具数量、严格 Schema、结构化结果及服务调用前的风险拒绝。
 
 import (
 	"context"

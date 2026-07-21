@@ -1,6 +1,6 @@
 package cli
 
-// 本文件验证 CLI 与 MCP 共享相同服务语义，且 MCP stdout 不混入日志。
+// 测试用途：本文件验证 CLI 与 MCP 共享相同服务语义，且 MCP stdout 不混入日志。
 
 import (
 	"context"

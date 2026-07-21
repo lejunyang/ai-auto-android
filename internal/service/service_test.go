@@ -1,6 +1,6 @@
 package service
 
-// 本文件验证共享服务的后端路由、前置安全校验和 Bridge 数据最小化契约。
+// 测试用途：本文件验证共享服务的后端路由、前置安全校验和 Bridge 数据最小化契约。
 
 import (
 	"context"

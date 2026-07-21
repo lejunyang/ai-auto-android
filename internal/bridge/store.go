@@ -1,6 +1,6 @@
 package bridge
 
-// 本文件以受限权限持久化短期 Bridge token，并校验文件类型和会话字段。
+// 功能用途：本文件以受限权限持久化短期 Bridge token，并校验文件类型和会话字段。
 
 import (
 	"crypto/sha256"

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 声明主 App、网络能力、入口 Activity 与生产无障碍服务。 -->
+<!-- 配置用途：声明主 App、网络能力、入口 Activity 与生产无障碍服务。 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -13,7 +13,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AiAutoAndroid"
         android:usesCleartextTraffic="false">
-        <!-- 唯一主入口复用原 Activity/NavHost，并通过 onNewIntent 接收 Launcher 或显式启动。 -->
+        <!-- 配置用途：唯一主入口复用原 Activity/NavHost，并通过 onNewIntent 接收 Launcher 或显式启动。 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

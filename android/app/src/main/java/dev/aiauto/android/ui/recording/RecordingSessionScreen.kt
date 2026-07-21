@@ -1,7 +1,7 @@
 package dev.aiauto.android.ui.recording
 
 /**
- * 界面用途：实现 RecordingSessionScreen 对应的录制、脚本预览、保存与回放交互。
+ * 功能用途：实现 RecordingSessionScreen 对应的录制、脚本预览、保存与回放交互。
  */
 
 import androidx.compose.foundation.layout.Arrangement
