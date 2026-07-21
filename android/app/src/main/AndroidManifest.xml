@@ -13,9 +13,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AiAutoAndroid"
         android:usesCleartextTraffic="false">
+        <!-- 唯一主入口复用原 Activity/NavHost，并通过 onNewIntent 接收 Launcher 或显式启动。 -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
