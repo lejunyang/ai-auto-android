@@ -154,6 +154,11 @@
   - [ ] SubTask 28.2: 按语言加固注释检查器，验证 Go package doc、Kotlin KDoc/文件用途、测试用途，以及功能/用途/约束/验证语义；增加反例 fixture，确保 `// 临时` 等无信息量注释失败，并保持 173 个以上手写文件的覆盖范围
   - [ ] SubTask 28.3: 独立复验 Skills 中文内容、镜像、validator、注释语义规则和反例 fixture；通过后关闭 Task 25、Task 26 及相关 checklist
 
+- [ ] Task 29: 修复活动录制 UI 在任务切换或 Activity 重建后的可恢复控制，禁止出现 Runtime 仍有活动录制但用户无法暂停、保存或停止的 orphan 会话。
+  - [ ] SubTask 29.1: 收集运行时证据，区分 PID、task、Activity、NavBackStackEntry、ViewModel 和 RecordingRuntime sink 的生命周期，定位录制控制 UI 丢失而活动 sink 保留的路径
+  - [ ] SubTask 29.2: 实现最小修复，使返回主 App 时恢复活动录制的 SESSION 控制页，或在无法恢复时安全 detach 并结束会话；补充生命周期、ViewModel 和 UI 回归测试，确保不产生 orphan
+  - [ ] SubTask 29.3: 在 clean API 33 emulator 验证录制跨任务返回后仍可 pause/save，并完成 recording list、replay、最终 UI 状态和 Bridge close；同时完成 SubTask 27.3
+
 # Task Dependencies
 
 - Task 2 depends on Task 1.
@@ -174,7 +179,9 @@
 - Task 26 depends on Tasks 1-12.
 - Task 27 depends on SubTask 24.1 and Tasks 7 and 9.
 - Task 28 依赖 Task 25 和 Task 26 已完成的实现。
+- Task 29 depends on Task 9 and SubTasks 27.1 and 27.2.
 - SubTasks 24.2 and 24.3 are completed by Task 27.3.
+- SubTask 27.3 is completed by SubTask 29.3.
 - Task 22 and Task 23 can run in parallel.
 - Task 24 is independent of Tasks 25 and 26; Tasks 25 and 26 can run in parallel.
 
