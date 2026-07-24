@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,8 +37,10 @@ type App struct {
 	Stderr       io.Writer
 	BridgeClient bridge.RPCClient
 	BridgeStore  bridge.SessionStore
-	Automation   service.Automation
-	MCPTransport sdkmcp.Transport
+	// TrustedDevices 允许测试替换可信无线设备档案存储；生产环境默认使用用户配置目录。
+	TrustedDevices adb.TrustedDeviceStore
+	Automation     service.Automation
+	MCPTransport   sdkmcp.Transport
 }
 
 // DefaultApp 创建使用真实 ADB、Bridge 和进程执行器的命令行应用。
@@ -145,7 +148,7 @@ func (a *App) executeDevices(
 	args []string,
 ) (any, error) {
 	if len(args) == 0 {
-		return nil, usageError("Usage: aactl devices list|pair|connect")
+		return nil, usageError("Usage: aactl devices list|watch|pair|connect|trust|trusted|reconnect|forget")
 	}
 	switch args[0] {
 	case "list":
@@ -153,6 +156,12 @@ func (a *App) executeDevices(
 			return nil, usageError("Usage: aactl devices list [--json]")
 		}
 		return automation.ListDevices(ctx)
+	case "watch":
+		options, err := parseWatchOptions(args[1:])
+		if err != nil {
+			return nil, err
+		}
+		return client.WatchDevices(ctx, options)
 	case "pair":
 		if len(args) != 2 {
 			return nil, usageError("Usage: aactl devices pair HOST:PORT [--json]")
@@ -168,8 +177,54 @@ func (a *App) executeDevices(
 			return nil, usageError("Usage: aactl devices connect HOST:PORT [--json]")
 		}
 		return client.Connect(ctx, args[1])
+	case "trust":
+		serial, err := parseDeviceOption(args[1:])
+		if err != nil {
+			return nil, usageError("Usage: aactl devices trust --device SERIAL [--json]")
+		}
+		store, err := a.trustedDeviceStore()
+		if err != nil {
+			return nil, err
+		}
+		return client.TrustWirelessDevice(ctx, serial, store)
+	case "trusted":
+		if len(args) != 1 {
+			return nil, usageError("Usage: aactl devices trusted [--json]")
+		}
+		store, err := a.trustedDeviceStore()
+		if err != nil {
+			return nil, err
+		}
+		profiles, err := store.List()
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"devices": profiles, "count": len(profiles)}, nil
+	case "reconnect":
+		identity, err := parseIdentityOption(args[1:])
+		if err != nil {
+			return nil, err
+		}
+		store, err := a.trustedDeviceStore()
+		if err != nil {
+			return nil, err
+		}
+		return client.ReconnectTrustedDevice(ctx, identity, store)
+	case "forget":
+		identity, err := parseIdentityOption(args[1:])
+		if err != nil {
+			return nil, err
+		}
+		store, err := a.trustedDeviceStore()
+		if err != nil {
+			return nil, err
+		}
+		if err := store.Delete(identity); err != nil {
+			return nil, err
+		}
+		return map[string]any{"identity": identity, "forgotten": true}, nil
 	default:
-		return nil, usageError("Unknown devices command. Supported commands: list, pair, connect.")
+		return nil, usageError("Unknown devices command. Supported commands: list, watch, pair, connect, trust, trusted, reconnect, forget.")
 	}
 }
 
@@ -269,6 +324,68 @@ func readPairingCode(reader io.Reader) (string, error) {
 		return "", validationErr
 	}
 	return code, nil
+}
+
+func (a *App) trustedDeviceStore() (adb.TrustedDeviceStore, error) {
+	if a.TrustedDevices != nil {
+		return a.TrustedDevices, nil
+	}
+	return adb.DefaultTrustedDeviceStore()
+}
+
+func parseWatchOptions(args []string) (adb.WatchOptions, error) {
+	options := adb.WatchOptions{}
+	for len(args) > 0 {
+		if len(args) < 2 {
+			return adb.WatchOptions{}, usageError(
+				"Usage: aactl devices watch [--duration DURATION] [--interval DURATION] [--max-events COUNT] [--json]",
+			)
+		}
+		name, value := args[0], args[1]
+		args = args[2:]
+		switch name {
+		case "--duration":
+			duration, err := time.ParseDuration(value)
+			if err != nil {
+				return adb.WatchOptions{}, usageError("Watch duration is invalid.")
+			}
+			options.Duration = duration
+		case "--interval":
+			interval, err := time.ParseDuration(value)
+			if err != nil {
+				return adb.WatchOptions{}, usageError("Watch interval is invalid.")
+			}
+			options.Interval = interval
+		case "--max-events":
+			maxEvents, err := strconv.Atoi(value)
+			if err != nil {
+				return adb.WatchOptions{}, usageError("Watch max-events is invalid.")
+			}
+			options.MaxEvents = maxEvents
+		default:
+			return adb.WatchOptions{}, usageError(
+				"Usage: aactl devices watch [--duration DURATION] [--interval DURATION] [--max-events COUNT] [--json]",
+			)
+		}
+	}
+	return options, nil
+}
+
+func parseIdentityOption(args []string) (string, error) {
+	identity := ""
+	if len(args) == 2 && args[0] == "--identity" && args[1] != "" {
+		identity = args[1]
+	}
+	if len(args) == 1 && strings.HasPrefix(args[0], "--identity=") {
+		identity = strings.TrimPrefix(args[0], "--identity=")
+	}
+	if identity != "" {
+		if err := adb.ValidateTrustedIdentity(identity); err != nil {
+			return "", err
+		}
+		return identity, nil
+	}
+	return "", usageError("Usage: aactl devices reconnect|forget --identity IDENTITY [--json]")
 }
 
 func usageError(message string) error {

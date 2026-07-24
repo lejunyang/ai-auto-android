@@ -20,6 +20,15 @@ aactl doctor --json
 aactl devices list --json
 ```
 
+在有限时间内观察设备插拔、状态和无线调试 mDNS 端点变化：
+
+```bash
+aactl devices watch --duration 30s --interval 1s --max-events 256 --json
+```
+
+`watch` 最长允许 5 分钟且事件数有上限；取消时返回已收集事件，不会运行
+`adb kill-server`。
+
 获取一个明确 serial 的详细信息与 capabilities：
 
 ```bash
@@ -38,7 +47,27 @@ aactl devices pair 192.0.2.10:37123 --json
 aactl devices connect 192.0.2.10:40117 --json
 ```
 
-重新运行 `devices list`，并精确使用返回的 serial。当前 CLI 不提供 `devices watch` 命令。
+重新运行 `devices list`，并精确使用返回的 mDNS Wi-Fi serial。用户确认设备身份后，
+可保存不含秘密的可信档案：
+
+```bash
+aactl devices trust --device 'adb-DEVICE._adb-tls-connect._tcp' --json
+aactl devices trusted --json
+```
+
+无线调试端口变化后，按档案中的稳定身份显式恢复：
+
+```bash
+aactl devices reconnect --identity adb-DEVICE --json
+```
+
+只有恰好一个私有或链路本地 mDNS 连接端点与 identity 匹配时才会连接。型号相同、
+身份不一致或同一身份出现在多个网卡时命令失败。删除本项目保存的档案不会撤销 Android
+的 ADB 信任：
+
+```bash
+aactl devices forget --identity adb-DEVICE --json
+```
 
 所有 JSON CLI 响应都使用协议信封：
 
@@ -63,7 +92,8 @@ aactl mcp serve
 
 不得将该 server 作为一次性交互命令调用。
 
-MCP 不暴露 `doctor`、`pair`、`connect`、信任变更或任意 shell。
+MCP 不暴露 `doctor`、`watch`、`pair`、`connect`、可信档案、重连、信任变更或任意
+shell。
 
 ## 设备选择契约
 

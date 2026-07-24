@@ -29,6 +29,7 @@ type Client struct {
 	maxOutput int
 	dial      func(network, address string, timeout time.Duration) (net.Conn, error)
 	goos      string
+	now       func() time.Time
 }
 
 // DoctorCheck 表示一项可独立定位故障的 ADB 诊断结果。
@@ -70,6 +71,7 @@ func NewClient(path string, executor process.Executor) *Client {
 		maxOutput: defaultMaxOutput,
 		dial:      net.DialTimeout,
 		goos:      runtime.GOOS,
+		now:       time.Now,
 	}
 }
 
@@ -198,6 +200,32 @@ func (c *Client) Devices(ctx context.Context) ([]protocol.Device, error) {
 	return devices, nil
 }
 
+// MDNSServices 返回 ADB 当前发现的局域网配对与连接服务。
+func (c *Client) MDNSServices(ctx context.Context) ([]MDNSService, error) {
+	result, err := c.run(ctx, []string{"mdns", "services"}, process.Options{})
+	if err != nil {
+		return nil, apperr.New(
+			apperr.CodeCapabilityMissing,
+			"ADB mDNS service discovery is unavailable.",
+			true,
+			nil,
+		)
+	}
+	if result.OutputTruncated {
+		return nil, apperr.New(
+			apperr.CodeInternal,
+			"ADB mDNS output exceeded the safety limit.",
+			false,
+			nil,
+		)
+	}
+	services, parseErr := ParseMDNSServices(string(result.Stdout))
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	return services, nil
+}
+
 // Pair 通过标准输入向 ADB 传递一次性无线配对码，并确保输出脱敏。
 func (c *Client) Pair(ctx context.Context, endpoint, pairingCode string) (ConnectionResult, error) {
 	if err := ValidateEndpoint(endpoint); err != nil {
@@ -252,6 +280,25 @@ func (c *Client) Connect(ctx context.Context, endpoint string) (ConnectionResult
 		)
 	}
 	return ConnectionResult{Endpoint: endpoint, Message: firstNonEmpty(message, "Connected successfully.")}, nil
+}
+
+// Disconnect 只移除明确无线端点的传输，不停止共享 ADB server 或撤销设备信任。
+func (c *Client) Disconnect(ctx context.Context, endpoint string) (ConnectionResult, error) {
+	if err := ValidateEndpoint(endpoint); err != nil {
+		return ConnectionResult{}, err
+	}
+	result, err := c.run(ctx, []string{"disconnect", endpoint}, process.Options{})
+	if err != nil {
+		return ConnectionResult{}, err
+	}
+	message := strings.TrimSpace(string(result.Stdout))
+	if message == "" {
+		message = strings.TrimSpace(string(result.Stderr))
+	}
+	return ConnectionResult{
+		Endpoint: endpoint,
+		Message:  firstNonEmpty(message, "Disconnected successfully."),
+	}, nil
 }
 
 // DeviceInfo 获取明确选定且在线设备的系统属性和规范化能力。

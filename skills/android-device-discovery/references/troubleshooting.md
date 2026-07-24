@@ -49,6 +49,19 @@ state 为 `offline` 时不得重试动作。
 - 保持工作站与设备位于允许本地对等流量的网络中。
 - 不得保存、回显或重复使用配对码。
 
+## mDNS 观察或可信重连失败
+
+- `CAPABILITY_UNAVAILABLE`：确认 Platform-Tools 支持 `adb mdns services`，且系统
+  mDNS、局域网对等流量和防火墙没有阻止发现；不得自动重启共享 ADB server。
+- `MULTIPLE_DEVICES`：同一 identity 同时出现在多个端点或网卡。停止恢复，关闭 VPN、
+  热点或多余网络后重新观察，不得按响应顺序选择。
+- `DEVICE_UNREACHABLE`：连接后的 serial、identity 或型号与可信档案不一致。立即停止，
+  重新通过设备端无线调试页和 `devices list` 核对身份。
+- 公网地址、未知服务类型和恶意 mDNS identity 会在连接前拒绝；不得改用未认证
+  `adb tcpip 5555` 规避检查。
+- 可信档案不包含 Android ADB 密钥或配对码。`devices forget` 只删除本地非秘密档案，
+  不撤销设备系统中的 ADB 信任。
+
 ## 重试规则
 
 仅在状态或环境发生变化后重试。将 serial 交给观察或自动化流程前，重新运行设备发现。
