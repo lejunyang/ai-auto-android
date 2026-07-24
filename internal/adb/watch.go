@@ -65,6 +65,10 @@ func (c *Client) WatchDevices(
 		return result, nil
 	}
 
+	// 从watch总时长派生带deadline的context，约束所有底层ADB调用，避免阻塞超过观察窗口
+	watchCtx, cancel := context.WithTimeout(ctx, normalized.Duration)
+	defer cancel()
+
 	deadline := time.NewTimer(normalized.Duration)
 	defer deadline.Stop()
 	ticker := time.NewTicker(normalized.Interval)
@@ -73,19 +77,31 @@ func (c *Client) WatchDevices(
 	var previousDevices map[string]protocol.Device
 	var previousServices map[string]MDNSService
 	for {
-		devices, snapshotErr := c.Devices(ctx)
+		devices, snapshotErr := c.Devices(watchCtx)
 		if snapshotErr != nil {
+			// 仅外部主动取消标记为cancelled，正常watch超时不标记
 			if ctx.Err() != nil {
 				result.Cancelled = true
 				result.FinishedAt = c.now().UTC()
 				return result, nil
 			}
+			// watch超时导致的底层调用取消，正常结束观察
+			if watchCtx.Err() != nil {
+				result.FinishedAt = c.now().UTC()
+				return result, nil
+			}
 			return DeviceWatchResult{}, snapshotErr
 		}
-		services, snapshotErr := c.MDNSServices(ctx)
+		services, snapshotErr := c.MDNSServices(watchCtx)
 		if snapshotErr != nil {
+			// 仅外部主动取消标记为cancelled，正常watch超时不标记
 			if ctx.Err() != nil {
 				result.Cancelled = true
+				result.FinishedAt = c.now().UTC()
+				return result, nil
+			}
+			// watch超时导致的底层调用取消，正常结束观察
+			if watchCtx.Err() != nil {
 				result.FinishedAt = c.now().UTC()
 				return result, nil
 			}

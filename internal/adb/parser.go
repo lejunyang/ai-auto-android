@@ -19,6 +19,7 @@ var (
 	statusKeySeparatorPattern   = regexp.MustCompile(`[^a-z0-9]+`)
 	serialPattern               = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:%+\-\[\]]{0,254}$`)
 	hostPattern                 = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$`)
+	zonePattern                 = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 	pairCodePattern             = regexp.MustCompile(`^[0-9]{6}$`)
 	getpropPattern              = regexp.MustCompile(`^\[([^\]]+)\]: \[(.*)\]$`)
 )
@@ -123,21 +124,13 @@ func ValidateSerial(serial string) error {
 	return nil
 }
 
-// ValidateEndpoint 校验无线调试 HOST:PORT 端点及有效端口范围。
+// ValidateEndpoint 校验无线调试 HOST:PORT 端点及有效端口范围，支持IPv6 link-local scoped地址。
 func ValidateEndpoint(endpoint string) error {
 	host, portText, err := net.SplitHostPort(endpoint)
 	if err != nil {
 		return apperr.New(
 			apperr.CodeInvalidArgument,
 			"Endpoint must use HOST:PORT format.",
-			false,
-			map[string]any{"field": "endpoint"},
-		)
-	}
-	if host == "" || (net.ParseIP(host) == nil && !hostPattern.MatchString(host)) {
-		return apperr.New(
-			apperr.CodeInvalidArgument,
-			"Endpoint host is invalid.",
 			false,
 			map[string]any{"field": "endpoint"},
 		)
@@ -151,6 +144,41 @@ func ValidateEndpoint(endpoint string) error {
 			map[string]any{"field": "endpoint"},
 		)
 	}
+	if host == "" {
+		return apperr.New(
+			apperr.CodeInvalidArgument,
+			"Endpoint host is invalid.",
+			false,
+			map[string]any{"field": "endpoint"},
+		)
+	}
+	// 处理IPv6 zone（链路本地地址范围）
+	rawHost := strings.Trim(host, "[]")
+	zone := ""
+	if zoneIndex := strings.LastIndex(rawHost, "%"); zoneIndex >= 0 {
+		zone = rawHost[zoneIndex+1:]
+		rawHost = rawHost[:zoneIndex]
+		if !zonePattern.MatchString(zone) {
+			return apperr.New(
+				apperr.CodeInvalidArgument,
+				"Endpoint network zone is invalid.",
+				false,
+				map[string]any{"field": "endpoint"},
+			)
+		}
+	}
+	// 校验IP或hostname
+	ip := net.ParseIP(rawHost)
+	if ip == nil && !hostPattern.MatchString(rawHost) {
+		return apperr.New(
+			apperr.CodeInvalidArgument,
+			"Endpoint host is invalid.",
+			false,
+			map[string]any{"field": "endpoint"},
+		)
+	}
+	// 保存拆分后的信息供后续私有地址校验使用（通过闭包或返回值？不，当前函数只做格式校验，私有地址校验在validateLocalMDNSEndpoint）
+	_ = zone
 	return nil
 }
 

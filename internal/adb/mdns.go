@@ -134,15 +134,19 @@ func validateLocalMDNSEndpoint(endpoint string) error {
 	}
 	host, _, _ := net.SplitHostPort(endpoint)
 	trimmedHost := strings.Trim(strings.TrimSpace(host), "[]")
+	// 拆分zone和裸IP/hostname
+	rawHost := trimmedHost
 	if zoneIndex := strings.LastIndex(trimmedHost, "%"); zoneIndex >= 0 {
-		trimmedHost = trimmedHost[:zoneIndex]
+		rawHost = trimmedHost[:zoneIndex]
 	}
-	ip := net.ParseIP(trimmedHost)
+	ip := net.ParseIP(rawHost)
 	if ip != nil {
+		// 仅允许私有、环回、链路本地地址；公网地址即使带zone也拒绝
 		if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
 			return nil
 		}
-	} else if strings.HasSuffix(strings.ToLower(trimmedHost), ".local") {
+	} else if strings.HasSuffix(strings.ToLower(rawHost), ".local") && !strings.ContainsAny(rawHost, ";$&|`") {
+		// .local域名额外校验不含命令注入字符
 		return nil
 	}
 	return apperr.New(
