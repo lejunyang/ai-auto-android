@@ -32,6 +32,7 @@ import dev.aiauto.android.ui.components.ScreenScaffold
 fun DesktopBridgeScreen(
     controller: DesktopBridgeController,
     onBack: () -> Unit,
+    onLanPairing: () -> Unit,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
 
@@ -82,6 +83,32 @@ fun DesktopBridgeScreen(
                         text = "一次性码有效 2 分钟且成功使用后立即失效；会话 token 最长有效 15 分钟，不会显示在界面或写入日志。",
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                }
+            }
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "同一局域网主动连接",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = "从桌面 CLI 获取一次性 invitation，手工输入后核对网卡、" +
+                            "地址和短指纹。LAN 会话与本机 ADB Bridge 相互独立。",
+                    )
+                    OutlinedButton(
+                        onClick = onLanPairing,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("打开 LAN 配对")
+                    }
                 }
             }
             state.pairingCode?.let { code ->

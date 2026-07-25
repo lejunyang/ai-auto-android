@@ -26,6 +26,7 @@ enum class ScannerAvailability {
     PERMISSION_REQUIRED,
     PERMISSION_DENIED,
     NO_CAMERA,
+    PROVIDER_UNAVAILABLE,
 }
 
 enum class InvitationInputSource {
@@ -110,6 +111,13 @@ class LanPairingStateMachine(
                 permission == CameraPermission.DENIED -> ScannerAvailability.PERMISSION_DENIED
                 else -> ScannerAvailability.PERMISSION_REQUIRED
             },
+            manualEntryAvailable = true,
+        )
+    }
+
+    fun onScannerUnavailable() {
+        state = state.copy(
+            scannerAvailability = ScannerAvailability.PROVIDER_UNAVAILABLE,
             manualEntryAvailable = true,
         )
     }

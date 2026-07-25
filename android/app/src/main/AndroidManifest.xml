@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 配置用途：声明主 App、网络能力、入口 Activity 与生产无障碍服务。 -->
+<!-- 配置用途：声明主 App 的网络连接/状态读取、入口 Activity 与生产无障碍服务。 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="false"

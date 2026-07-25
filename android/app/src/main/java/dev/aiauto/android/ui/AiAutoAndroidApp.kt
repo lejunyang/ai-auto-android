@@ -27,6 +27,8 @@ import dev.aiauto.android.bridge.DesktopBridgeController
 import dev.aiauto.android.provider.ProviderConfigRepository
 import dev.aiauto.android.ui.accessibility.AccessibilityScreen
 import dev.aiauto.android.ui.bridge.DesktopBridgeScreen
+import dev.aiauto.android.ui.bridge.lan.LanPairingHost
+import dev.aiauto.android.ui.bridge.lan.LanPairingViewModel
 import dev.aiauto.android.ui.home.HomeScreen
 import dev.aiauto.android.ui.provider.ProviderScreen
 import dev.aiauto.android.ui.recording.RecordingHost
@@ -39,6 +41,7 @@ private object Route {
     const val ACCESSIBILITY = "accessibility"
     const val PROVIDER = "provider"
     const val BRIDGE = "bridge"
+    const val LAN_PAIRING = "lan-pairing"
     const val TASK = "task"
     const val RECORDING = "recording"
 }
@@ -126,6 +129,16 @@ fun AiAutoAndroidApp(
         composable(Route.BRIDGE) {
             DesktopBridgeScreen(
                 controller = bridgeController,
+                onBack = navController::popBackStack,
+                onLanPairing = { navController.navigate(Route.LAN_PAIRING) },
+            )
+        }
+        composable(Route.LAN_PAIRING) {
+            val pairingViewModel: LanPairingViewModel = viewModel(
+                factory = LanPairingViewModel.factory(context),
+            )
+            LanPairingHost(
+                viewModel = pairingViewModel,
                 onBack = navController::popBackStack,
             )
         }

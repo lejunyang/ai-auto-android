@@ -435,6 +435,10 @@ class LanOutboundSessionTest {
             chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 
         fun LanEncryptedFrame.copyForTest() = LanEncryptedFrame(
+            version = version,
+            direction = direction,
+            sequence = sequence,
+            type = type,
             nonce = nonce.copyOf(),
             ciphertext = ciphertext.copyOf(),
         )

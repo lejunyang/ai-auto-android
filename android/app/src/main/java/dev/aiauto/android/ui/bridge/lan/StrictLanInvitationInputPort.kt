@@ -23,6 +23,17 @@ class StrictLanInvitationInputPort(
         payload: String,
     ) = run {
         clear()
+        if (payload.length > MAX_INVITATION_BYTES) {
+            throw LanProtocolException("LAN_FRAME_TOO_LARGE")
+        }
+        val payloadBytes = payload.encodeToByteArray()
+        try {
+            if (payloadBytes.size > MAX_INVITATION_BYTES) {
+                throw LanProtocolException("LAN_FRAME_TOO_LARGE")
+            }
+        } finally {
+            payloadBytes.fill(0)
+        }
         val invitation = LanInvitationParser.parse(payload)
         try {
             val preflight = LanInvitationPreflight.validate(
@@ -77,5 +88,9 @@ class StrictLanInvitationInputPort(
 
     override fun close() {
         clear()
+    }
+
+    private companion object {
+        const val MAX_INVITATION_BYTES = 64 * 1024
     }
 }

@@ -32,8 +32,8 @@ enum class LanConfirmationRole(val wireValue: String) {
 }
 
 enum class LanFrameDirection(val wireValue: String, val noncePrefix: Int) {
-    CLIENT_TO_DESKTOP("client-to-desktop", 1),
-    DESKTOP_TO_CLIENT("desktop-to-client", 2),
+    CLIENT_TO_DESKTOP("client-to-desktop", 0x43324401),
+    DESKTOP_TO_CLIENT("desktop-to-client", 0x44324301),
 }
 
 class LanSessionKeys internal constructor(
@@ -356,6 +356,10 @@ object LanCrypto {
 }
 
 class LanEncryptedFrame internal constructor(
+    internal val version: String,
+    internal val direction: LanFrameDirection,
+    internal val sequence: Long,
+    internal val type: String,
     internal val nonce: ByteArray,
     internal val ciphertext: ByteArray,
 ) {
@@ -379,12 +383,30 @@ class LanFrameCodec(
     }
 
     fun encrypt(sequence: Long, type: String, plaintext: ByteArray): LanEncryptedFrame {
+        if (sequence < 0) {
+            throw LanProtocolException("LAN_SESSION_CLOSED", "frame sequence is exhausted")
+        }
+        if (
+            plaintext.size > MAX_FRAME_PLAINTEXT_BYTES
+        ) {
+            throw LanProtocolException("LAN_FRAME_TOO_LARGE")
+        }
+        if (type.length !in 1..128 || !FRAME_TYPE_PATTERN.matches(type)) {
+            throw LanProtocolException("LAN_FRAME_INVALID")
+        }
         val nonce = nonce(sequence)
         val aad = aad(sequence, type)
         return try {
             val cipher = cipher(Cipher.ENCRYPT_MODE, nonce)
             cipher.updateAAD(aad)
-            LanEncryptedFrame(nonce, cipher.doFinal(plaintext))
+            LanEncryptedFrame(
+                version = "1.0",
+                direction = direction,
+                sequence = sequence,
+                type = type,
+                nonce = nonce,
+                ciphertext = cipher.doFinal(plaintext),
+            )
         } finally {
             aad.fill(0)
         }
@@ -426,18 +448,28 @@ class LanFrameCodec(
             .array()
 
     private fun aad(sequence: Long, type: String): ByteArray {
+        val domainBytes = FRAME_AAD_DOMAIN.encodeToByteArray()
         val directionBytes = direction.wireValue.encodeToByteArray()
         val typeBytes = type.encodeToByteArray()
         return ByteBuffer.allocate(
-            transcriptHash.size + 1 + directionBytes.size + Long.SIZE_BYTES +
-                Int.SIZE_BYTES + typeBytes.size,
+            domainBytes.size + 1 + transcriptHash.size + 1 + directionBytes.size + 1 +
+                Long.SIZE_BYTES + 1 + typeBytes.size,
         )
+            .put(domainBytes)
+            .put(0)
             .put(transcriptHash)
             .put(0)
             .put(directionBytes)
+            .put(0)
             .putLong(sequence)
-            .putInt(typeBytes.size)
+            .put(0)
             .put(typeBytes)
             .array()
+    }
+
+    private companion object {
+        const val MAX_FRAME_PLAINTEXT_BYTES = 1024 * 1024
+        const val FRAME_AAD_DOMAIN = "AIAUTO-LAN-BRIDGE-FRAME-AAD-V1"
+        val FRAME_TYPE_PATTERN = Regex("^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
     }
 }

@@ -60,7 +60,9 @@ fun LanPairingScreen(
         }
         OutlinedTextField(
             value = manualInvitation,
-            onValueChange = { manualInvitation = it },
+            onValueChange = {
+                manualInvitation = it.take(MAX_INVITATION_INPUT_CHARS)
+            },
             label = { Text("手工邀请码") },
             modifier = Modifier.fillMaxWidth(),
         )
@@ -105,7 +107,9 @@ fun LanPairingScreen(
             }
             OutlinedTextField(
                 value = fingerprintInput,
-                onValueChange = { fingerprintInput = it.uppercase() },
+                onValueChange = {
+                    fingerprintInput = it.uppercase().take(MAX_FINGERPRINT_INPUT_CHARS)
+                },
                 label = { Text("再次输入桌面短指纹") },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -158,4 +162,8 @@ private fun scannerStatusText(availability: ScannerAvailability): String = when 
     ScannerAvailability.PERMISSION_REQUIRED -> "扫码需要相机权限；不授权仍可手工输入。"
     ScannerAvailability.PERMISSION_DENIED -> "相机权限已拒绝，请改用手工邀请码。"
     ScannerAvailability.NO_CAMERA -> "设备无可用相机，请使用手工邀请码。"
+    ScannerAvailability.PROVIDER_UNAVAILABLE -> "当前版本未接入受测扫码组件，请使用手工邀请码。"
 }
+
+private const val MAX_INVITATION_INPUT_CHARS = 64 * 1024
+private const val MAX_FINGERPRINT_INPUT_CHARS = 19

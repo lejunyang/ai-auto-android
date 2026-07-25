@@ -129,6 +129,15 @@ class LanCryptoVectorTest {
         val frame = codec.encrypt(sequence = 7, type = "rpc", plaintext = plaintext)
 
         try {
+            assertEquals(
+                "433244010000000000000007",
+                frame.nonce.toHex(),
+            )
+            assertEquals(
+                "1448637c910fdad676db265c2800e11da1f4bb64c653861a29cb2f85567574c9d" +
+                    "1e43683f21c2e05fa3a8bad7633bc0225f80834815d194c",
+                frame.ciphertext.toHex(),
+            )
             assertTrue(
                 plaintext.contentEquals(codec.decrypt(sequence = 7, type = "rpc", frame = frame)),
             )

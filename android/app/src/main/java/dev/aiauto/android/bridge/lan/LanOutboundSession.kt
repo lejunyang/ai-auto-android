@@ -480,6 +480,9 @@ class LanOutboundSession private constructor(
         }
         val frame = try {
             codec!!.encrypt(sequence.getAndIncrement(), type, plaintext)
+        } catch (error: LanProtocolException) {
+            stop(error.code)
+            throw error
         } catch (error: Exception) {
             stop("LAN_CONFIRMATION_INVALID")
             throw error

@@ -49,6 +49,17 @@ class StrictLanInvitationInputPortTest {
         }
     }
 
+    @Test
+    fun `oversized manual payload is rejected before parser allocation`() {
+        val port = StrictLanInvitationInputPort(
+            clock = LanClock { Instant.parse("2026-07-25T10:00:30Z") },
+        )
+
+        assertFailure("LAN_FRAME_TOO_LARGE") {
+            port.parse(InvitationInputSource.MANUAL, "x".repeat(64 * 1024 + 1))
+        }
+    }
+
     private fun confirmedState(summary: dev.aiauto.android.bridge.lan.LanInvitationSummary) =
         LanPairingUiState(
             phase = LanPairingPhase.REVIEW,
