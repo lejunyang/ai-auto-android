@@ -37,3 +37,6 @@
 - 本轮完成服务层与独立 adapter。共享 MCP 正式注册、用户授权截图采集入口和 App
   AI 会话接入不在本 change spec 的允许范围，后续必须单独集成和验收，不能据此声称
   N44 的完整用户路径已经公开可用。
+- 主实现已提交为 `ad0a21c`，author/committer 均为
+  `lejunyang <lejunyang@qq.com>`，提交 trailer 仅一次；范围仅包含本 change spec
+  允许的 15 个文件，提交后 worktree 干净。

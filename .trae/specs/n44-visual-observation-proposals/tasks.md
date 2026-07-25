@@ -7,4 +7,4 @@
 - [x] 实现 Go 并发安全 registry、proposal 服务与严格 JSON 编解码
 - [x] 实现独立 visual schema 和只读 MCP adapter，不注册共享 server
 - [x] 运行 Android 定向、Go race、schema、comments 与 diff-check
-- [ ] 审查允许修改范围、提交边界和 worktree 清洁状态
+- [x] 审查允许修改范围、提交边界和 worktree 清洁状态

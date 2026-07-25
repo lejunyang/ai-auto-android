@@ -11,4 +11,4 @@
 - [x] Android 与 Go 通过独立 visual schema canonical example 保持一致
 - [x] MCP adapter 只读、独立测试且未修改共享 server/root 注册或 protocol manifest
 - [x] Android 定向、Go race、schema、comments 与 diff-check 通过
-- [ ] 提交范围正确且 worktree 干净
+- [x] 提交范围正确且 worktree 干净
