@@ -68,3 +68,9 @@
   `DeterministicScrollView` 报告为 `isScrollable=false`，测试在手势前再次停止。
   `UiObject2.scroll/swipe` 仍可对明确对象边界注入类型化手势，因此移除不可靠的元数据
   硬门；验收继续要求真实 offset 大于零和独立状态为 1，动作无效仍会失败关闭。
+- 移除元数据硬门后的单轮已实际调用 `UiObject2.scroll`，但 `VERTICAL_OFFSET` 仍为
+  0，证明该语义 helper 在嵌套自定义 ScrollView 上没有注入有效位移；runner 停止
+  `emulator-5558` 后再次确认零残留。
+- 下一路由从每轮最新 `UiObject2.visibleBounds` 计算目标内部 swipe 起止点，纵向由
+  下向上、横向由右向左，坐标不持久化也不跨越目标边界。测试同时要求输入注入返回
+  true、真实 offset 大于零和独立状态为 1，任何一个条件不满足都失败。

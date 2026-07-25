@@ -90,14 +90,14 @@ class NativeFixtureDeviceTest {
         awaitStateAfterReveal(R.id.vertical_scroll_offset, "VERTICAL_OFFSET:0")
         val vertical = revealScrollableTarget(R.id.vertical_scroll_target, VERTICAL_TARGET_HEIGHT_DP)
         assertEquals("Fixture vertical scroll target", vertical.contentDescription)
-        vertical.scroll(INNER_VERTICAL_DIRECTION, INNER_GESTURE_PERCENT)
+        swipeVerticallyWithin(vertical.visibleBounds)
         assertPositiveOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET")
         awaitStateAfterReveal(R.id.vertical_scroll_state, "VERTICAL_SCROLL:1")
 
         awaitStateAfterReveal(R.id.horizontal_swipe_offset, "HORIZONTAL_OFFSET:0")
         val horizontal = revealScrollableTarget(R.id.horizontal_swipe_target, HORIZONTAL_TARGET_HEIGHT_DP)
         assertEquals("Fixture horizontal swipe target", horizontal.contentDescription)
-        horizontal.swipe(INNER_HORIZONTAL_DIRECTION, INNER_GESTURE_PERCENT)
+        swipeHorizontallyWithin(horizontal.visibleBounds)
         assertPositiveOffset(R.id.horizontal_swipe_offset, "HORIZONTAL_OFFSET")
         awaitStateAfterReveal(R.id.horizontal_swipe_state, "HORIZONTAL_SWIPE:1")
 
@@ -268,6 +268,36 @@ class NativeFixtureDeviceTest {
             target.right <= container.right &&
             target.bottom <= container.bottom
 
+    private fun swipeVerticallyWithin(bounds: Rect) {
+        check(bounds.height() >= MIN_GESTURE_SIZE_PX)
+        val inset = bounds.height() / GESTURE_INSET_DIVISOR
+        assertTrue(
+            "Vertical swipe injection failed inside the latest target bounds",
+            device.swipe(
+                bounds.centerX(),
+                bounds.bottom - inset,
+                bounds.centerX(),
+                bounds.top + inset,
+                GESTURE_STEPS,
+            ),
+        )
+    }
+
+    private fun swipeHorizontallyWithin(bounds: Rect) {
+        check(bounds.width() >= MIN_GESTURE_SIZE_PX)
+        val inset = bounds.width() / GESTURE_INSET_DIVISOR
+        assertTrue(
+            "Horizontal swipe injection failed inside the latest target bounds",
+            device.swipe(
+                bounds.right - inset,
+                bounds.centerY(),
+                bounds.left + inset,
+                bounds.centerY(),
+                GESTURE_STEPS,
+            ),
+        )
+    }
+
     private fun dpToPixels(dp: Int): Int =
         (dp * targetContext.resources.displayMetrics.density).toInt()
 
@@ -404,10 +434,10 @@ class NativeFixtureDeviceTest {
         const val BOUNDS_TOLERANCE_PX = 2
         const val OUTER_SCROLL_PERCENT = 0.6f
         const val OUTER_ALIGNMENT_PERCENT = 0.25f
-        const val INNER_GESTURE_PERCENT = 0.8f
+        const val MIN_GESTURE_SIZE_PX = 24
+        const val GESTURE_INSET_DIVISOR = 5
+        const val GESTURE_STEPS = 20
         val OUTER_REVEAL_DIRECTION = Direction.UP
         val OUTER_RETURN_DIRECTION = Direction.DOWN
-        val INNER_VERTICAL_DIRECTION = Direction.UP
-        val INNER_HORIZONTAL_DIRECTION = Direction.LEFT
     }
 }
