@@ -491,12 +491,14 @@ crop 映射、会话代次、稳定 hierarchy、自然屏幕/crop 几何、低�
 **验收证据：** Compose 单测和 instrumentation 覆盖所有编辑命令、旋转恢复、冲突、
 截图点选及 dry-run；UI 自动测试不依赖人工点击。
 
-**实现记录（组件完成，导航与设备验收未完成）：** `main` 已包含可嵌入编辑器组件
-`9151360` 与规格证据 `71a4465`。JVM 定向 6/6、App 全量单测、AndroidTest APK
-编译、lint、comments 和 diff-check 通过；覆盖脚本复制、步骤重排/启停/删除/复制、
-完整表单原子提交、Undo/Redo、dirty/离开确认、revision conflict、dry-run 首失败
-定位和短生命周期 observation 点选。组件未修改导航根，真实授权 screenshot
-provider 尚未接线，Compose instrumentation 仅编译未在设备执行，因此保持未勾选。
+**实现记录（详情入口完成，真实截图点选和设备验收未完成）：** `main` 已包含可嵌入
+编辑器组件 `9151360`、详情入口 `1f11fc7` 及规格证据 `71a4465`、`647550d`。
+JVM 定向、App 全量单测、AndroidTest APK 编译、lint、comments 和 diff-check
+通过；覆盖脚本复制、步骤重排/启停/删除/复制、完整表单原子提交、Undo/Redo、
+dirty/离开确认、revision conflict、dry-run 首失败定位和短生命周期 observation
+点选。详情页现在使用 keyed ViewModel、真实 store revision CAS 和只读
+Accessibility dry-run；无活跃授权时明确不显示截图 surface。真实授权 screenshot
+provider 与 Compose instrumentation 设备执行尚未验收，因此保持未勾选。
 
 **失败清理：** 丢弃未保存事务和截图缓存，恢复已保存 revision。
 
@@ -558,12 +560,15 @@ APK 路径必须位于 `.gitignore` 覆盖的仓库外 cache。
 **验收证据：** 正确 APK 可安装；错误 hash、ABI、版本和来源缺失在安装前失败；
 Git 历史和工作区不包含 APK。
 
-**实现记录（离线验证完成，真实安装未完成）：** `main` 已包含 `725d628` 与规格证据
-`6e8317d`。32/32 零依赖 Node 测试通过，覆盖严格文本 manifest、仓库外 cache、
+**实现记录（真实工具链已接，合法 APK 与安装未完成）：** `main` 已包含离线 verifier
+`725d628`、固定工具 inspector `4d41fd6` 及规格证据 `6e8317d`、`4ecab06`。
+40/40 零依赖 Node 测试通过，覆盖严格文本 manifest、仓库外 cache、
 symlink/inode/hash/size 防替换、类型化 inspector、固定 ADB argv、clean/final
-snapshot 生命周期和安装前二次校验；工作区与全部 Git 历史的 APK/APKS/AAB/XAPK
-路径均为零。本轮未下载、生成、安装或提交 APK，合法真实制品的 aapt/apksigner
-核验与 API 30/33/34 clean AVD 安装尚未执行，因此主任务保持未勾选。
+snapshot 生命周期和安装前二次校验。inspector 固定并校验仓库外 `aapt2`、Java
+和 `apksigner.jar` identity，只以 `shell:false` 固定 argv 执行并严格解析六项
+元数据；SDK 三工具创建检查通过，未执行 wrapper。工作区与全部 Git 历史的
+APK/APKS/AAB/XAPK 路径均为零。本轮未下载、生成、安装或提交 APK，合法真实制品的
+真实输出兼容与 API 30/33/34 clean AVD 安装尚未执行，因此主任务保持未勾选。
 
 **失败清理：** 卸载或清除第三方 App、删除未验证 cache 条目并恢复快照。
 
