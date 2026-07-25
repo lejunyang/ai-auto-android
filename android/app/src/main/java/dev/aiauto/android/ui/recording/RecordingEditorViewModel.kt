@@ -4,7 +4,9 @@ package dev.aiauto.android.ui.recording
  * 功能用途：适配 N40 不可变编辑事务为 Compose 状态，并管理原子表单、保存冲突和 dry-run。
  */
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import dev.aiauto.android.automation.recording.AutomationScript
 import dev.aiauto.android.automation.recording.NormalizedPoint
 import dev.aiauto.android.automation.recording.RecordedPredicate
@@ -24,6 +26,8 @@ import dev.aiauto.android.automation.recording.editor.EditStepSelector
 import dev.aiauto.android.automation.recording.editor.EditStepWait
 import dev.aiauto.android.automation.recording.editor.EditorSavePort
 import dev.aiauto.android.automation.recording.editor.EditorSaveResult
+import dev.aiauto.android.automation.recording.editor.EditorPersistenceResult
+import dev.aiauto.android.automation.recording.editor.RecordingScriptStoreSavePort
 import dev.aiauto.android.automation.recording.editor.ReorderStep
 import dev.aiauto.android.automation.recording.editor.ScriptDryRunEngine
 import dev.aiauto.android.automation.recording.editor.ScriptEditorSession
@@ -81,7 +85,7 @@ data class RecordingEditorUiState(
 
 class RecordingEditorViewModel(
     initialScript: AutomationScript,
-    savePort: EditorSavePort? = null,
+    private val savePort: EditorSavePort? = null,
     private val dryRunEngine: ScriptDryRunEngine? = null,
     private val scriptIdFactory: () -> String = { UUID.randomUUID().toString() },
     private val stepIdFactory: () -> String = { UUID.randomUUID().toString() },
@@ -142,6 +146,27 @@ class RecordingEditorViewModel(
         )
         publish(copyCandidate = copied)
         return copied
+    }
+
+    fun saveCopy(name: String): EditorSaveResult {
+        val port = savePort ?: return EditorSaveResult.Unavailable
+        val copied = copyScript(name)
+        return when (val result = port.save(copied, expectedRevision = 0)) {
+            is EditorPersistenceResult.Saved -> {
+                publish(copyCandidate = result.script, formError = null)
+                EditorSaveResult.Saved(result.script)
+            }
+
+            is EditorPersistenceResult.Conflict -> {
+                val conflict = EditorSaveResult.Conflict(
+                    expectedRevision = result.expectedRevision,
+                    attempted = result.attempted,
+                    current = result.current,
+                )
+                publish(revisionConflict = conflict)
+                conflict
+            }
+        }
     }
 
     fun submitStepForm(): Boolean {
@@ -213,8 +238,9 @@ class RecordingEditorViewModel(
         refreshSelectedForm()
     }
 
-    fun save() {
-        when (val result = session.save()) {
+    fun save(): EditorSaveResult {
+        val result = session.save()
+        when (result) {
             is EditorSaveResult.Saved -> publish(
                 revisionConflict = null,
                 formError = null,
@@ -223,6 +249,7 @@ class RecordingEditorViewModel(
             is EditorSaveResult.Conflict -> publish(revisionConflict = result)
             EditorSaveResult.Unavailable -> publish(formError = "保存端口不可用")
         }
+        return result
     }
 
     fun runDryRun() {
@@ -291,6 +318,28 @@ class RecordingEditorViewModel(
             canRedo = session.redoDepth > 0,
             isDirty = session.isDirty,
         )
+    }
+
+    companion object {
+        fun factory(
+            context: Context,
+            initialScript: AutomationScript,
+        ): ViewModelProvider.Factory {
+            val applicationContext = context.applicationContext
+            return object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    require(modelClass.isAssignableFrom(RecordingEditorViewModel::class.java))
+                    val store = dev.aiauto.android.automation.recording.RecordingScriptStore
+                        .from(applicationContext)
+                    return RecordingEditorViewModel(
+                        initialScript = initialScript,
+                        savePort = RecordingScriptStoreSavePort(store),
+                        dryRunEngine = AndroidRecordingEditorDryRun.create(),
+                    ) as T
+                }
+            }
+        }
     }
 }
 

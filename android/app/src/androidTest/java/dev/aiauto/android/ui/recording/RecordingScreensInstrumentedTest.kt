@@ -111,6 +111,7 @@ class RecordingScreensInstrumentedTest {
                         }
                     },
                     onReplay = { replayCalls += 1 },
+                    onEdit = {},
                     onDelete = {},
                     onBack = {},
                 )
@@ -159,6 +160,7 @@ class RecordingScreensInstrumentedTest {
                     secretValues = emptyMap(),
                     onSecretChanged = { _, _ -> },
                     onReplay = {},
+                    onEdit = {},
                     onDelete = {},
                     onBack = {},
                 )

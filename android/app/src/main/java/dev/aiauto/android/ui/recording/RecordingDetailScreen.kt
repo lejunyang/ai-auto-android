@@ -40,6 +40,7 @@ fun RecordingDetailScreen(
     secretValues: Map<String, String>,
     onSecretChanged: (String, String) -> Unit,
     onReplay: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -101,6 +102,13 @@ fun RecordingDetailScreen(
                         .testTag(RecordingTestTags.REPLAY),
                 ) {
                     Text(stringResource(R.string.recording_replay))
+                }
+                OutlinedButton(
+                    onClick = onEdit,
+                    enabled = !busy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("编辑")
                 }
                 OutlinedButton(
                     onClick = onDelete,

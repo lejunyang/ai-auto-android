@@ -16,11 +16,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 import dev.aiauto.android.R
 import dev.aiauto.android.ui.components.ScreenScaffold
@@ -79,8 +81,72 @@ fun RecordingHost(
                             secretValues[alias] = value.take(MAX_SECRET_INPUT_LENGTH)
                         },
                         onReplay = { viewModel.replay(secretValues.toMap()) },
+                        onEdit = viewModel::openEditor,
                         onDelete = viewModel::deleteSelected,
                         onBack = viewModel::navigateBack,
+                    )
+                }
+            }
+        }
+
+        RecordingDestination.EDITOR -> {
+            val script = uiState.selectedScript
+            if (script == null) {
+                RecordingDetailLoadingScreen(
+                    errorMessage = recording.errorMessage,
+                    onBack = viewModel::navigateBack,
+                )
+            } else {
+                key(script.id) {
+                    val context = LocalContext.current
+                    val editor: RecordingEditorViewModel = viewModel(
+                        key = "recording-editor-${script.id}",
+                        factory = RecordingEditorViewModel.factory(context, script),
+                    )
+                    val editorState by editor.uiState.collectAsStateWithLifecycle()
+                    RecordingEditorScreen(
+                        state = editorState,
+                        observationHolder = null,
+                        onSelectStep = editor::selectStep,
+                        onMoveStep = editor::moveStep,
+                        onSetEnabled = editor::setStepEnabled,
+                        onDeleteStep = editor::deleteStep,
+                        onDuplicateStep = editor::duplicateStep,
+                        onUpdateForm = editor::updateStepForm,
+                        onSubmitForm = { editor.submitStepForm() },
+                        onUndo = editor::undo,
+                        onRedo = editor::redo,
+                        onSave = {
+                            when (val result = editor.save()) {
+                                is dev.aiauto.android.automation.recording.editor.EditorSaveResult.Saved ->
+                                    viewModel.closeEditor(result.script.id)
+
+                                else -> Unit
+                            }
+                        },
+                        onCopy = {
+                            when (
+                                val result = editor.saveCopy(
+                                    "${editorState.script.name} 副本",
+                                )
+                            ) {
+                                is dev.aiauto.android.automation.recording.editor.EditorSaveResult.Saved ->
+                                    viewModel.openSavedCopy(result.script.id)
+
+                                else -> Unit
+                            }
+                        },
+                        onDryRun = editor::runDryRun,
+                        onBack = {
+                            if (editor.requestClose()) {
+                                viewModel.closeEditor(editorState.script.id)
+                            }
+                        },
+                        onDiscard = {
+                            editor.discardChanges()
+                            viewModel.closeEditor(editorState.script.id)
+                        },
+                        onDismissDiscard = editor::dismissDiscardConfirmation,
                     )
                 }
             }

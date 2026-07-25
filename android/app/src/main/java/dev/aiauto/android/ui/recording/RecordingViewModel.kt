@@ -33,6 +33,7 @@ enum class RecordingDestination {
     LIST,
     SESSION,
     DETAIL,
+    EDITOR,
 }
 
 data class RecordingUiState(
@@ -185,6 +186,26 @@ class RecordingViewModel(
         }
     }
 
+    fun openEditor() {
+        if (mutableUiState.value.selectedScript != null) {
+            mutableUiState.update { it.copy(destination = RecordingDestination.EDITOR) }
+        }
+    }
+
+    fun closeEditor(scriptId: String) {
+        mutableUiState.update {
+            it.copy(
+                destination = RecordingDestination.DETAIL,
+                selectedScriptId = scriptId,
+            )
+        }
+        coordinator.select(scriptId)
+    }
+
+    fun openSavedCopy(scriptId: String) {
+        openScript(scriptId)
+    }
+
     fun navigateBack() {
         when (mutableUiState.value.destination) {
             RecordingDestination.LIST -> Unit
@@ -195,6 +216,7 @@ class RecordingViewModel(
                     selectedScriptId = null,
                 )
             }
+            RecordingDestination.EDITOR -> Unit
         }
     }
 

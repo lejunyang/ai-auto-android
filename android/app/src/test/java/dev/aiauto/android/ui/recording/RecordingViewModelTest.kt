@@ -165,6 +165,25 @@ class RecordingViewModelTest {
         }
 
     @Test
+    fun `detail enters editor and saved script returns to refreshed detail BitsUT`() =
+        runTest(dispatcher) {
+            val script = secretScript()
+            val coordinator = FakeRecordingCoordinator(mapOf(script.id to script))
+            val viewModel = viewModel(coordinator)
+            runCurrent()
+            viewModel.openScript(script.id)
+            runCurrent()
+
+            viewModel.openEditor()
+            assertEquals(RecordingDestination.EDITOR, viewModel.uiState.value.destination)
+
+            viewModel.closeEditor(script.id)
+            runCurrent()
+            assertEquals(RecordingDestination.DETAIL, viewModel.uiState.value.destination)
+            assertEquals(script.id, coordinator.selectedId)
+        }
+
+    @Test
     fun `clearing ViewModel closes recording coordinator BitsUT`() {
         val coordinator = FakeRecordingCoordinator()
         val store = ViewModelStore()
@@ -214,6 +233,7 @@ class RecordingViewModelTest {
         var cancelCalls = 0
         var finishedName: String? = null
         var deletedId: String? = null
+        var selectedId: String? = null
         var replayedScript: AutomationScript? = null
         var replayedSecrets: Map<String, String>? = null
         var closed = false
@@ -248,6 +268,7 @@ class RecordingViewModelTest {
         override fun refresh() = Unit
 
         override fun select(id: String) {
+            selectedId = id
             mutableState.value = mutableState.value.copy(
                 selectedScript = availableScripts[id],
             )
