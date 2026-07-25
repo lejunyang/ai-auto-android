@@ -8,7 +8,7 @@
 - [x] 实现 Bridge semantic action 和 direct launch executor
 - [x] 实现注入式 lifecycle、values 和 artifact adapter
 - [x] 运行 adapter、N47、comments 与 diff-check 门禁
-- [ ] 审查允许范围并提交
+- [x] 审查允许范围并提交
 
 ## 建议提交
 

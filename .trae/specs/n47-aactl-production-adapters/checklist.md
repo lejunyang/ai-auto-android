@@ -14,4 +14,5 @@
 - [x] adapter + N47 全包 51 项、N34 49 项、comments 和 diff-check 通过
 - [ ] 真实 emulator/Bridge/N45 visual adapter 保持未验收
 - [ ] aactl 固定 stdin action 模式和 production input adapter 保持未完成
-- [ ] 提交身份、trailer 与 worktree 状态正确
+- [x] 实现提交身份、唯一 trailer 与 worktree 状态正确
+- [ ] 规格证据提交身份和唯一 trailer 正确

@@ -60,3 +60,10 @@
 - 当前尚未在真实 emulator 上建立 Bridge 并运行场景；N45 visual production
   adapter 也未接入，input 因缺少安全 stdin action 模式保持失败关闭。不能把 fake
   execFile 证据描述为设备验收，N47 路线图仍保持未完成。
+
+## Round 5
+
+- 实现提交 `680c9db`（`test(lab): connect scenario runner adapters`）包含 adapter
+  change spec、固定 aactl adapter、README 和全部测试。
+- 提交 author/committer 均为 `lejunyang <lejunyang@qq.com>`，消息含且仅含一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`；实现提交后 worktree 干净。
