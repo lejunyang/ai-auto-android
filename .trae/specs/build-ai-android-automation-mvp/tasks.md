@@ -169,6 +169,8 @@
   - [x] SubTask 31.2: N52 本地 API 矩阵、N53 条件性设备农场和 N54 scrcpy 已拆分，优先级、推荐顺序、并行波次和 N50 路径均已统一
   - [x] SubTask 31.3: 已关闭过期 checklist 项，append-only 追加 Round 15，并完成路线图、依赖、目录所有权与安全边界的独立复验
 
+- [ ] Task 32: 以 append-only 方式纠正 Round 25 对 N31-N54“未实现”的笼统表述，不得改写历史 Round 25；准确记录 N35 已集成但正式验收未完成、N31 有未集成实现且有已知 Major、其余任务未完成。
+
 # Task Dependencies
 
 - Task 2 depends on Task 1.
@@ -192,6 +194,7 @@
 - Task 29 depends on Task 9 and SubTasks 27.1 and 27.2.
 - Task 30 依赖 Task 28 已完成的实现。
 - Task 31 依赖 Task 30。
+- Task 32 depends on Task 31.
 - SubTasks 24.2 and 24.3 are completed by Task 27.3.
 - SubTask 27.3 is completed by SubTask 29.3.
 - Task 22 and Task 23 can run in parallel.
