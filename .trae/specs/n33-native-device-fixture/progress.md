@@ -64,3 +64,7 @@
   设备、runtime 和 lease 再次为零。
 - reveal 逻辑改为先验证目标边界；目标已完整可见时直接使用，只有目标被裁剪时才要求
   外层提供语义滚动并执行对齐。内层真实 offset 和状态断言保持不变。
+- 下一次 API 30 单轮 smoke 已进入内层目标，但平台节点把自定义
+  `DeterministicScrollView` 报告为 `isScrollable=false`，测试在手势前再次停止。
+  `UiObject2.scroll/swipe` 仍可对明确对象边界注入类型化手势，因此移除不可靠的元数据
+  硬门；验收继续要求真实 offset 大于零和独立状态为 1，动作无效仍会失败关闭。
