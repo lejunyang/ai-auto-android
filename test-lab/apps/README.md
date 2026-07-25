@@ -28,13 +28,22 @@ manifest 是不可直接使用的占位模板，所有身份、来源、大小�
 
 ## 调用
 
-Node ESM 调用方先加载 manifest，再注入可信的类型化 inspector：
+Node ESM 调用方先加载 manifest，再以具体 Android build-tools 版本目录创建离线
+inspector。目录和工具必须位于仓库外，且路径链不能包含符号链接：
 
 ```js
+import { createAndroidApkInspector } from "../../scripts/test-lab/src/apk-inspector.mjs";
 import { loadExternalAppManifest } from "../../scripts/test-lab/src/manifest.mjs";
 import { verifyExternalAppArtifact } from "../../scripts/test-lab/src/verifier.mjs";
 
 const manifest = await loadExternalAppManifest("test-lab/apps/manifests/app.json");
+const inspector = await createAndroidApkInspector({
+  repositoryRoot: "/absolute/repository",
+  buildToolsDirectory:
+    "/Volumes/aigo S7 Media/SDK/android-tools/android-sdk/build-tools/36.0.0",
+  javaPath:
+    "/Volumes/aigo S7 Media/SDK/android-tools/jdk-temurin-21.0.7+6/Contents/Home/bin/java",
+});
 const descriptor = await verifyExternalAppArtifact({
   manifest,
   cacheRoot: "/absolute/repository-external/cache",
@@ -43,11 +52,25 @@ const descriptor = await verifyExternalAppArtifact({
 });
 ```
 
-`inspector.inspect()` 必须由可信调用进程实现，可封装固定 `aapt2` 与 `apksigner`
-参数，但本模块不会执行 inspector、shell 或 manifest 中的命令。验证成功只返回
-`verified-external-app` descriptor，不安装 App。后续 runner 若接入安装，必须使用
-显式 serial、clean snapshot 和 `lifecycle.mjs` 的类型化端口；没有 runner 时默认
-保持 verified-only。
+也可同时显式传入固定的 `aapt2Path`、`apksignerJarPath` 和 `javaPath`，但不能与
+`buildToolsDirectory` 混用。inspector 不执行 `apksigner` shell wrapper，只通过
+`execFile` 执行固定的二进制与 jar：
+
+```text
+aapt2 dump badging <artifact>
+java -Xmx256M -jar <fixed-apksigner.jar> verify --print-certs <artifact>
+```
+
+调用方不能提供 executable、argv、shell 或额外参数；`aapt2`/`java` 必须是仓库外、
+非符号链接且名称固定的普通可执行文件，apksigner jar 同样必须固定且非符号链接。
+每次调用都限制时间和输出，并在调用前后校验三者 identity。解析结果严格包含
+package、version、versionCode、ABI、minSdk 和签名证书
+SHA-256，任何缺失、重复、未知 ABI 或多签名歧义都会失败关闭。公开错误只返回稳定
+错误码，不包含工具输出或路径。
+
+验证成功只返回 `verified-external-app` descriptor，不安装 App。后续 runner 若接入
+安装，必须使用显式 serial、clean snapshot 和 `lifecycle.mjs` 的类型化端口；没有
+runner 时默认保持 verified-only。
 
 ## 验证
 
@@ -57,4 +80,6 @@ make comments
 git diff --check
 ```
 
-真实 APK 安装和 API 30/33/34 clean AVD 场景不属于该离线模块的自动测试证据。
+自动测试使用 fake executable、注入的 `execFile` 和无 `.apk` 扩展名的非 APK
+fixture。真实 APK 的 badging/签名输出、真实安装以及 API 30/33/34 clean AVD 场景
+不属于该离线模块的自动测试证据。
