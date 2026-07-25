@@ -13,7 +13,6 @@ import android.os.Bundle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
-import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
@@ -199,7 +198,7 @@ class NativeFixtureDeviceTest {
             it.click()
         }
         awaitStateAfterReveal(R.id.reset_state, "RESET:DONE")
-        awaitStateAfterReveal(R.id.page_state, "PAGE:MAIN", OUTER_RETURN_DIRECTION)
+        awaitStateAfterReveal(R.id.page_state, "PAGE:MAIN")
     }
 
     private fun markExternalNavigation(targetId: Int, description: String, kind: String) {
@@ -226,39 +225,17 @@ class NativeFixtureDeviceTest {
     }
 
     private fun revealScrollableTarget(targetId: Int, expectedHeightDp: Int): UiObject2 {
-        val container = requireObject(R.id.fixture_scroll_container)
-        assertEquals("android.widget.ScrollView", container.className)
         val minimumHeight = dpToPixels(expectedHeightDp) - BOUNDS_TOLERANCE_PX
-
-        repeat(MAX_REVEAL_SCROLLS) {
-            val target = device.findObject(By.res(packageName, resourceName(targetId)))
-            if (
-                target != null &&
-                target.visibleBounds.height() >= minimumHeight &&
-                isFullyVisibleWithin(target.visibleBounds, container.visibleBounds)
-            ) {
-                return target
-            }
-            assertTrue(
-                "Outer container must scroll when the target is not fully visible",
-                container.isScrollable,
-            )
-            val direction = if (
-                target != null &&
-                target.visibleBounds.top <= container.visibleBounds.top
-            ) {
-                OUTER_RETURN_DIRECTION
-            } else {
-                OUTER_REVEAL_DIRECTION
-            }
-            container.scroll(direction, OUTER_ALIGNMENT_PERCENT)
-            device.waitForIdle()
-        }
-        val target = device.findObject(By.res(packageName, resourceName(targetId)))
-        throw AssertionError(
+        val target = requireObject(targetId)
+        val screen = Rect(0, 0, device.displayWidth, device.displayHeight)
+        check(
+            target.visibleBounds.height() >= minimumHeight &&
+                isFullyVisibleWithin(target.visibleBounds, screen),
+        ) {
             "Target ${resourceName(targetId)} is not fully visible: " +
-                "target=${target?.visibleBounds}, container=${container.visibleBounds}",
-        )
+                "target=${target.visibleBounds}, screen=$screen"
+        }
+        return target
     }
 
     private fun isFullyVisibleWithin(target: Rect, container: Rect): Boolean =
@@ -305,7 +282,7 @@ class NativeFixtureDeviceTest {
         val selector = By.res(packageName, resourceName(id))
         val deadline = System.currentTimeMillis() + TIMEOUT
         while (System.currentTimeMillis() < deadline) {
-            val observed = revealObjectBelowOrNull(id)
+            val observed = device.findObject(selector)
             val value = observed?.text
                 ?.removePrefix("$prefix:")
                 ?.toIntOrNull()
@@ -322,11 +299,11 @@ class NativeFixtureDeviceTest {
     private fun awaitStateAfterReveal(
         id: Int,
         expected: String,
-        direction: Direction = OUTER_REVEAL_DIRECTION,
     ): UiObject2 {
+        val selector = By.res(packageName, resourceName(id))
         val deadline = System.currentTimeMillis() + TIMEOUT
         while (System.currentTimeMillis() < deadline) {
-            val observed = revealObjectOrNull(id, direction)
+            val observed = device.findObject(selector)
             if (observed?.text == expected) {
                 return observed
             }
@@ -336,24 +313,7 @@ class NativeFixtureDeviceTest {
     }
 
     private fun revealObjectBelow(id: Int): UiObject2 =
-        revealObjectOrNull(id, OUTER_REVEAL_DIRECTION)
-            ?: throw AssertionError("Unable to reveal node ${resourceName(id)}")
-
-    private fun revealObjectBelowOrNull(id: Int): UiObject2? =
-        revealObjectOrNull(id, OUTER_REVEAL_DIRECTION)
-
-    private fun revealObjectOrNull(id: Int, direction: Direction): UiObject2? {
-        val selector = By.res(packageName, resourceName(id))
-        device.findObject(selector)?.let { return it }
-        val container = device.findObject(By.res(packageName, resourceName(R.id.fixture_scroll_container)))
-            ?: return null
-        repeat(MAX_REVEAL_SCROLLS) {
-            container.scroll(direction, OUTER_SCROLL_PERCENT)
-            device.waitForIdle()
-            device.findObject(selector)?.let { return it }
-        }
-        return null
-    }
+        requireObject(id)
 
     private fun awaitState(id: Int, expected: String): UiObject2 =
         requireObject(id, expected).also {
@@ -428,16 +388,11 @@ class NativeFixtureDeviceTest {
 
     private companion object {
         const val TIMEOUT = 10_000L
-        const val MAX_REVEAL_SCROLLS = 8
         const val VERTICAL_TARGET_HEIGHT_DP = 100
         const val HORIZONTAL_TARGET_HEIGHT_DP = 72
         const val BOUNDS_TOLERANCE_PX = 2
-        const val OUTER_SCROLL_PERCENT = 0.6f
-        const val OUTER_ALIGNMENT_PERCENT = 0.25f
         const val MIN_GESTURE_SIZE_PX = 24
         const val GESTURE_INSET_DIVISOR = 5
         const val GESTURE_STEPS = 20
-        val OUTER_REVEAL_DIRECTION = Direction.UP
-        val OUTER_RETURN_DIRECTION = Direction.DOWN
     }
 }

@@ -78,3 +78,9 @@
   触摸路由而非目标定位。`DeterministicScrollView` 现只根据真实
   `MotionEvent.ACTION_MOVE` 的 y delta 调用 `scrollBy`；它不写测试状态，状态仍由
   Activity 的真实 `scrollY` 变化监听器产生。
+- 即使自定义 View 处理 MOVE，双 ScrollView 结构下 API 30 的内层 offset 仍为 0。
+  固定 1080x2400/420dpi profile 能完整容纳全部控件，因此移除无必要的外层
+  ScrollView，恢复单层页面，让事件直接命中内层纵/横目标。
+- 单层测试不再尝试调整页面位置；每轮要求目标直接存在、达到固定高度并完整位于最新
+  屏幕边界内，再执行目标内 swipe 和 offset/state 双重验证。固定 profile 下目标
+  不可见会明确失败，不用猜测页面坐标。

@@ -1,18 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 配置用途：以稳定 resource ID、固定无障碍名称和独立状态节点承载全部原生自动化动作。 -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/fixture_scroll_container"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:importantForAccessibility="yes"
-    android:scrollbars="vertical">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp">
+    android:orientation="vertical"
+    android:padding="12dp">
 
         <TextView
             android:id="@+id/page_state"
@@ -255,5 +247,4 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/status_off" />
-    </LinearLayout>
-</ScrollView>
+</LinearLayout>

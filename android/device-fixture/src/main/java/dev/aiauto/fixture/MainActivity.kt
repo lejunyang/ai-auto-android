@@ -154,7 +154,6 @@ class MainActivity : Activity() {
 
     private fun bindReset() {
         findViewById<View>(R.id.reset_target).setOnClickListener {
-            findViewById<android.widget.ScrollView>(R.id.fixture_scroll_container).scrollTo(0, 0)
             findViewById<DeterministicScrollView>(R.id.vertical_scroll_target).scrollTo(0, 0)
             findViewById<HorizontalScrollView>(R.id.horizontal_swipe_target).scrollTo(0, 0)
             state.reset()

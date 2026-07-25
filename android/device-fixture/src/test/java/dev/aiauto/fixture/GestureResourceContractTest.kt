@@ -17,7 +17,8 @@ class GestureResourceContractTest {
             "src/main/java/dev/aiauto/fixture/DeterministicScrollView.kt",
         ).readText()
 
-        assertTrue(layout.contains("android:id=\"@+id/fixture_scroll_container\""))
+        assertTrue(layout.contains("<LinearLayout xmlns:android="))
+        assertTrue(!layout.contains("fixture_scroll_container"))
         assertTrue(layout.contains("<dev.aiauto.fixture.DeterministicScrollView"))
         assertTrue(layout.contains("android:id=\"@+id/vertical_scroll_target\""))
         assertTrue(layout.contains("android:layout_height=\"100dp\""))
@@ -40,7 +41,6 @@ class GestureResourceContractTest {
             "src/main/java/dev/aiauto/fixture/DeterministicScrollView.kt",
         ).readText()
 
-        assertTrue(deviceTest.contains("OUTER_REVEAL_DIRECTION = Direction.UP"))
         assertTrue(deviceTest.contains("swipeVerticallyWithin(vertical.visibleBounds)"))
         assertTrue(deviceTest.contains("swipeHorizontallyWithin(horizontal.visibleBounds)"))
         assertTrue(deviceTest.contains("assertPositiveOffset"))
