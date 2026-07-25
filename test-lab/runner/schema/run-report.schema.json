@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/test-lab/runner/v1/run-report.schema.json",
+  "title": "Cross App Scenario Run Report",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "scenarioId",
+    "iteration",
+    "startedAt",
+    "finishedAt",
+    "status",
+    "errorCode",
+    "durationMs",
+    "actionCommits",
+    "steps",
+    "cleanup"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "runId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "scenarioId": {
+      "$ref": "#/$defs/stableId"
+    },
+    "iteration": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finishedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "errorCode": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/errorCode"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 86400000
+    },
+    "actionCommits": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 200
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/stepResult"
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "required": [
+        "attempted",
+        "completed",
+        "errorCode"
+      ],
+      "properties": {
+        "attempted": {
+          "const": 4
+        },
+        "completed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "errorCode": {
+          "oneOf": [
+            {
+              "const": "SCENARIO_CLEANUP_FAILED"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "packageName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 255,
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$"
+    },
+    "errorCode": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 96,
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "pageClass": {
+      "enum": [
+        "normal",
+        "advertisement",
+        "update-prompt",
+        "ab-variant",
+        "emulator-detected",
+        "network-failure",
+        "login-wall",
+        "unknown"
+      ]
+    },
+    "route": {
+      "enum": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ]
+    },
+    "stepResult": {
+      "type": "object",
+      "required": [
+        "sequence",
+        "stepId",
+        "actionType",
+        "targetPackage",
+        "status",
+        "errorCode",
+        "pageClass",
+        "route",
+        "score",
+        "attempts",
+        "preObservationId",
+        "postObservationId",
+        "actionCommits",
+        "durationMs"
+      ],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "stepId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "actionType": {
+          "enum": [
+            "launch",
+            "tap",
+            "input",
+            "long-click",
+            "scroll",
+            "swipe",
+            "back",
+            "home",
+            "recents",
+            "switch-app"
+          ]
+        },
+        "targetPackage": {
+          "$ref": "#/$defs/packageName"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "errorCode": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/errorCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pageClass": {
+          "$ref": "#/$defs/pageClass"
+        },
+        "route": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/route"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "score": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "preObservationId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "postObservationId": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/stableId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actionCommits": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 120000
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

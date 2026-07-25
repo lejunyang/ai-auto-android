@@ -1,0 +1,375 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/test-lab/runner/v1/scenario.schema.json",
+  "title": "Cross App Scenario",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "title",
+    "sideEffectPolicy",
+    "targetPackages",
+    "defaultTimeoutMs",
+    "steps"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "id": {
+      "$ref": "#/$defs/stableId"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "sideEffectPolicy": {
+      "const": "none"
+    },
+    "targetPackages": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/packageName"
+      }
+    },
+    "defaultTimeoutMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 120000
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "packageName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 255,
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$"
+    },
+    "pageClass": {
+      "enum": [
+        "normal",
+        "advertisement",
+        "update-prompt",
+        "ab-variant",
+        "emulator-detected",
+        "network-failure",
+        "login-wall",
+        "unknown"
+      ]
+    },
+    "route": {
+      "enum": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ]
+    },
+    "condition": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "kind": {
+          "enum": [
+            "foreground-package",
+            "semantic-state",
+            "node-present",
+            "node-absent",
+            "visual-state"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "dynamicRegion": {
+      "type": "object",
+      "required": [
+        "id",
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "semanticTarget": {
+      "type": "object",
+      "required": [
+        "kind",
+        "name"
+      ],
+      "properties": {
+        "kind": {
+          "const": "semantic-name"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "additionalProperties": false
+    },
+    "launchAction": {
+      "type": "object",
+      "required": [
+        "type",
+        "package"
+      ],
+      "properties": {
+        "type": {
+          "const": "launch"
+        },
+        "package": {
+          "$ref": "#/$defs/packageName"
+        }
+      },
+      "additionalProperties": false
+    },
+    "targetAction": {
+      "type": "object",
+      "required": [
+        "type",
+        "target"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "tap",
+            "long-click"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/semanticTarget"
+        }
+      },
+      "additionalProperties": false
+    },
+    "inputAction": {
+      "type": "object",
+      "required": [
+        "type",
+        "target",
+        "valueRef"
+      ],
+      "properties": {
+        "type": {
+          "const": "input"
+        },
+        "target": {
+          "$ref": "#/$defs/semanticTarget"
+        },
+        "valueRef": {
+          "$ref": "#/$defs/stableId"
+        }
+      },
+      "additionalProperties": false
+    },
+    "directionAction": {
+      "type": "object",
+      "required": [
+        "type",
+        "target",
+        "direction"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "scroll",
+            "swipe"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/semanticTarget"
+        },
+        "direction": {
+          "enum": [
+            "up",
+            "down",
+            "left",
+            "right"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "systemAction": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "back",
+            "home",
+            "recents"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "switchAction": {
+      "type": "object",
+      "required": [
+        "type",
+        "package"
+      ],
+      "properties": {
+        "type": {
+          "const": "switch-app"
+        },
+        "package": {
+          "$ref": "#/$defs/packageName"
+        }
+      },
+      "additionalProperties": false
+    },
+    "action": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/launchAction"
+        },
+        {
+          "$ref": "#/$defs/targetAction"
+        },
+        {
+          "$ref": "#/$defs/inputAction"
+        },
+        {
+          "$ref": "#/$defs/directionAction"
+        },
+        {
+          "$ref": "#/$defs/systemAction"
+        },
+        {
+          "$ref": "#/$defs/switchAction"
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "required": [
+        "id",
+        "targetPackage",
+        "preconditions",
+        "action",
+        "postconditions",
+        "timeoutMs",
+        "allowedRoutes",
+        "minimumScore",
+        "acceptedPageClasses",
+        "dynamicRegions"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "targetPackage": {
+          "$ref": "#/$defs/packageName"
+        },
+        "preconditions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        },
+        "postconditions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 120000
+        },
+        "allowedRoutes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/route"
+          }
+        },
+        "minimumScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "acceptedPageClasses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/pageClass"
+          }
+        },
+        "dynamicRegions": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/dynamicRegion"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

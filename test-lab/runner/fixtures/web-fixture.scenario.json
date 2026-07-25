@@ -1,0 +1,177 @@
+{
+  "schemaVersion": "1.0",
+  "id": "web-fixture-routes",
+  "title": "Web fixture semantic hybrid visual routes",
+  "sideEffectPolicy": "none",
+  "targetPackages": [
+    "dev.aiauto.webfixture",
+    "dev.aiauto.fixture"
+  ],
+  "defaultTimeoutMs": 5000,
+  "steps": [
+    {
+      "id": "launch-web-full",
+      "targetPackage": "dev.aiauto.webfixture",
+      "preconditions": [
+        {
+          "id": "web-launch-allowed",
+          "kind": "foreground-package"
+        }
+      ],
+      "action": {
+        "type": "launch",
+        "package": "dev.aiauto.webfixture"
+      },
+      "postconditions": [
+        {
+          "id": "web-full-ready",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 5000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "tap-web-button",
+      "targetPackage": "dev.aiauto.webfixture",
+      "preconditions": [
+        {
+          "id": "web-click-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "tap",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture click button"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "web-clicked",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal",
+        "ab-variant"
+      ],
+      "dynamicRegions": [
+        {
+          "id": "dynamic-copy",
+          "x": 0,
+          "y": 0.75,
+          "width": 1,
+          "height": 0.25
+        }
+      ]
+    },
+    {
+      "id": "swipe-partial-region",
+      "targetPackage": "dev.aiauto.webfixture",
+      "preconditions": [
+        {
+          "id": "partial-ready",
+          "kind": "visual-state"
+        }
+      ],
+      "action": {
+        "type": "swipe",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Visual-only partial region"
+        },
+        "direction": "left"
+      },
+      "postconditions": [
+        {
+          "id": "partial-changed",
+          "kind": "visual-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "hybrid"
+      ],
+      "minimumScore": 0.9,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "tap-canvas-region",
+      "targetPackage": "dev.aiauto.webfixture",
+      "preconditions": [
+        {
+          "id": "canvas-ready",
+          "kind": "visual-state"
+        }
+      ],
+      "action": {
+        "type": "tap",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Canvas fixture canvas-result ready"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "canvas-tap",
+          "kind": "visual-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "visual"
+      ],
+      "minimumScore": 0.95,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "switch-native-fixture",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "switch-allowed",
+          "kind": "foreground-package"
+        }
+      ],
+      "action": {
+        "type": "switch-app",
+        "package": "dev.aiauto.fixture"
+      },
+      "postconditions": [
+        {
+          "id": "native-foreground",
+          "kind": "foreground-package"
+        }
+      ],
+      "timeoutMs": 5000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    }
+  ]
+}

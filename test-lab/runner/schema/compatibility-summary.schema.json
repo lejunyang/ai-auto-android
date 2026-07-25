@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/test-lab/runner/v1/compatibility-summary.schema.json",
+  "title": "Scenario Compatibility Summary",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "scenarioId",
+    "runs",
+    "passedRuns",
+    "failedRuns",
+    "cancelledRuns",
+    "successRate",
+    "stepCompatibilityRate",
+    "routeCounts",
+    "pageClassCounts",
+    "failureCategoryCounts",
+    "errorCodeCounts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "scenarioId": {
+      "$ref": "#/$defs/stableId"
+    },
+    "runs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "passedRuns": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "failedRuns": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "cancelledRuns": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "successRate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "stepCompatibilityRate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "routeCounts": {
+      "$ref": "#/$defs/countMap"
+    },
+    "pageClassCounts": {
+      "$ref": "#/$defs/countMap"
+    },
+    "failureCategoryCounts": {
+      "$ref": "#/$defs/countMap"
+    },
+    "errorCodeCounts": {
+      "$ref": "#/$defs/countMap"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "countMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1000000
+      }
+    }
+  }
+}

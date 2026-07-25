@@ -1,0 +1,414 @@
+{
+  "schemaVersion": "1.0",
+  "id": "native-fixture-all-actions",
+  "title": "Native fixture deterministic actions",
+  "sideEffectPolicy": "none",
+  "targetPackages": [
+    "dev.aiauto.fixture"
+  ],
+  "defaultTimeoutMs": 5000,
+  "steps": [
+    {
+      "id": "launch-main",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "launch-allowed",
+          "kind": "foreground-package"
+        }
+      ],
+      "action": {
+        "type": "launch",
+        "package": "dev.aiauto.fixture"
+      },
+      "postconditions": [
+        {
+          "id": "main-page",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 5000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "tap-button",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "click-ready",
+          "kind": "semantic-state"
+        }
+      ],
+      "action": {
+        "type": "tap",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture click target"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "click-count-one",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "input-text",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "input-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "input",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture text input"
+        },
+        "valueRef": "fixture-input"
+      },
+      "postconditions": [
+        {
+          "id": "input-updated",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "long-click-target",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "long-click-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "long-click",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture long press target"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "long-click-one",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "scroll-vertical",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "vertical-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "scroll",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture vertical scroll target"
+        },
+        "direction": "down"
+      },
+      "postconditions": [
+        {
+          "id": "vertical-offset-positive",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "swipe-horizontal",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "horizontal-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "swipe",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture horizontal swipe target"
+        },
+        "direction": "left"
+      },
+      "postconditions": [
+        {
+          "id": "horizontal-offset-positive",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic",
+        "hybrid"
+      ],
+      "minimumScore": 0.9,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "open-second-page",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "main-before-page-two",
+          "kind": "semantic-state"
+        }
+      ],
+      "action": {
+        "type": "tap",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture open second page target"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "second-page",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "system-back",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "second-page",
+          "kind": "semantic-state"
+        }
+      ],
+      "action": {
+        "type": "back"
+      },
+      "postconditions": [
+        {
+          "id": "main-after-back",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "mark-home",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "main-before-home",
+          "kind": "semantic-state"
+        }
+      ],
+      "action": {
+        "type": "tap",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture mark Home navigation target"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "home-marked",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "system-home",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "home-marked",
+          "kind": "semantic-state"
+        }
+      ],
+      "action": {
+        "type": "home"
+      },
+      "postconditions": [
+        {
+          "id": "launcher-visible",
+          "kind": "foreground-package"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "return-after-home",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "launcher-before-return",
+          "kind": "foreground-package"
+        }
+      ],
+      "action": {
+        "type": "switch-app",
+        "package": "dev.aiauto.fixture"
+      },
+      "postconditions": [
+        {
+          "id": "home-return-recorded",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 5000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "mark-recents",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "main-before-recents",
+          "kind": "semantic-state"
+        }
+      ],
+      "action": {
+        "type": "tap",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture mark Recents navigation target"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "recents-marked",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "system-recents",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "recents-marked",
+          "kind": "semantic-state"
+        }
+      ],
+      "action": {
+        "type": "recents"
+      },
+      "postconditions": [
+        {
+          "id": "recents-visible",
+          "kind": "foreground-package"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    }
+  ]
+}
