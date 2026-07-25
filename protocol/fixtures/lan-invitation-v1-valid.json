@@ -1,0 +1,61 @@
+{
+  "kind": "ai-auto-lan-invitation",
+  "version": "1.0",
+  "invitationId": "647d42e0-47c3-4ac8-9e7f-8f8bcf716c41",
+  "issuedAt": "2026-07-25T10:00:00Z",
+  "expiresAt": "2026-07-25T10:01:30Z",
+  "ttlSeconds": 90,
+  "nonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+  "listener": {
+    "port": 47831,
+    "selectedInterface": {
+      "id": "if-wifi-en0-7f2a",
+      "name": "en0",
+      "kind": "wifi"
+    },
+    "addressCandidates": [
+      {
+        "host": "192.168.50.12",
+        "family": "ipv4",
+        "scope": "private",
+        "interfaceId": "if-wifi-en0-7f2a"
+      },
+      {
+        "host": "169.254.31.7",
+        "family": "ipv4",
+        "scope": "linkLocal",
+        "interfaceId": "if-wifi-en0-7f2a"
+      },
+      {
+        "host": "fd12:3456:789a::12",
+        "family": "ipv6",
+        "scope": "private",
+        "interfaceId": "if-wifi-en0-7f2a"
+      },
+      {
+        "host": "fe80::aede:48ff:fe00:1122",
+        "family": "ipv6",
+        "scope": "linkLocal",
+        "interfaceId": "if-wifi-en0-7f2a",
+        "zoneId": "en0"
+      }
+    ]
+  },
+  "ephemeralKey": {
+    "algorithm": "X25519",
+    "encoding": "base64url",
+    "publicKey": "hSDwCYkwp1R0i33ctD73Wg2_Kg0mOBr066SpjqqbTmo"
+  },
+  "fingerprint": "8975-0256-F8CF-C56A",
+  "capabilities": [
+    "lan.bridge.mutual-confirmation.v1",
+    "lan.bridge.rpc.v1",
+    "recording.replay",
+    "ui.snapshot"
+  ],
+  "security": {
+    "suite": "X25519-HKDF-SHA256-AES-256-GCM",
+    "transcript": "AIAUTO-LAN-BRIDGE-TRANSCRIPT-V1",
+    "confirmation": "HMAC-SHA256"
+  }
+}

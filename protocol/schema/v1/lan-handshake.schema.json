@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/protocol/v1/lan-handshake.schema.json",
+  "title": "LAN QR Bridge Handshake Messages",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/clientHello"
+    },
+    {
+      "$ref": "#/$defs/desktopSelection"
+    },
+    {
+      "$ref": "#/$defs/confirmation"
+    },
+    {
+      "$ref": "#/$defs/handshakeError"
+    }
+  ],
+  "$defs": {
+    "version": {
+      "const": "1.0"
+    },
+    "capabilityName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+    },
+    "capabilityList": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/capabilityName"
+      }
+    },
+    "base64Url32": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "endpoint": {
+      "type": "object",
+      "required": ["host", "family", "port", "interfaceId"],
+      "properties": {
+        "host": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[0-9A-Fa-f:.]+$"
+        },
+        "family": {
+          "enum": ["ipv4", "ipv6"]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535
+        },
+        "interfaceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "clientHello": {
+      "type": "object",
+      "required": [
+        "type",
+        "version",
+        "invitationId",
+        "nonce",
+        "clientEphemeralPublicKey",
+        "selectedEndpoint",
+        "supportedBridgeVersions",
+        "requestedCapabilities"
+      ],
+      "properties": {
+        "type": {
+          "const": "lan.clientHello"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "invitationId": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "nonce": {
+          "$ref": "#/$defs/base64Url32"
+        },
+        "clientEphemeralPublicKey": {
+          "$ref": "#/$defs/base64Url32"
+        },
+        "selectedEndpoint": {
+          "$ref": "#/$defs/endpoint"
+        },
+        "supportedBridgeVersions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/version"
+          }
+        },
+        "requestedCapabilities": {
+          "$ref": "#/$defs/capabilityList"
+        }
+      },
+      "additionalProperties": false
+    },
+    "desktopSelection": {
+      "type": "object",
+      "required": [
+        "type",
+        "version",
+        "invitationId",
+        "transcriptHash",
+        "selectedBridgeVersion",
+        "selectedCapabilities"
+      ],
+      "properties": {
+        "type": {
+          "const": "lan.desktopSelection"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "invitationId": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "transcriptHash": {
+          "$ref": "#/$defs/base64Url32"
+        },
+        "selectedBridgeVersion": {
+          "$ref": "#/$defs/version"
+        },
+        "selectedCapabilities": {
+          "$ref": "#/$defs/capabilityList"
+        }
+      },
+      "additionalProperties": false
+    },
+    "confirmation": {
+      "type": "object",
+      "required": ["type", "version", "invitationId", "role", "transcriptHash", "tag"],
+      "properties": {
+        "type": {
+          "const": "lan.confirmation"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "invitationId": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "role": {
+          "enum": ["client", "desktop"]
+        },
+        "transcriptHash": {
+          "$ref": "#/$defs/base64Url32"
+        },
+        "tag": {
+          "$ref": "#/$defs/base64Url32"
+        }
+      },
+      "additionalProperties": false
+    },
+    "handshakeError": {
+      "type": "object",
+      "required": ["type", "version", "invitationId", "code"],
+      "properties": {
+        "type": {
+          "const": "lan.error"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "invitationId": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "code": {
+          "enum": [
+            "LAN_INVITATION_SCHEMA_INVALID",
+            "LAN_VERSION_INCOMPATIBLE",
+            "LAN_DOWNGRADE_REJECTED",
+            "LAN_INVITATION_TIME_INVALID",
+            "LAN_INVITATION_TTL_INVALID",
+            "LAN_INVITATION_TTL_MISMATCH",
+            "LAN_INVITATION_NOT_YET_VALID",
+            "LAN_INVITATION_EXPIRED",
+            "LAN_INVITATION_REPLAYED",
+            "LAN_NONCE_REPLAYED",
+            "LAN_ADDRESS_INVALID",
+            "LAN_ADDRESS_UNSPECIFIED",
+            "LAN_ADDRESS_MULTICAST",
+            "LAN_ADDRESS_NOT_PRIVATE",
+            "LAN_ADDRESS_SCOPE_MISMATCH",
+            "LAN_INTERFACE_MISMATCH",
+            "LAN_EPHEMERAL_KEY_INVALID",
+            "LAN_EPHEMERAL_KEY_WEAK",
+            "LAN_FINGERPRINT_MISMATCH",
+            "LAN_CAPABILITY_MISMATCH",
+            "LAN_TRANSCRIPT_MISMATCH",
+            "LAN_CONFIRMATION_INVALID"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

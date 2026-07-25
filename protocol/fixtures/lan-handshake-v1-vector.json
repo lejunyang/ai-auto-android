@@ -1,0 +1,49 @@
+{
+  "invitationFixture": "lan-invitation-v1-valid.json",
+  "clientHello": {
+    "type": "lan.clientHello",
+    "version": "1.0",
+    "invitationId": "647d42e0-47c3-4ac8-9e7f-8f8bcf716c41",
+    "nonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "clientEphemeralPublicKey": "4-lRic8qVPgN1ZTC7FZVq7PE9hmo1N7m2wcK-nuQCyI",
+    "selectedEndpoint": {
+      "host": "192.168.50.12",
+      "family": "ipv4",
+      "port": 47831,
+      "interfaceId": "if-wifi-en0-7f2a"
+    },
+    "supportedBridgeVersions": [
+      "1.0"
+    ],
+    "requestedCapabilities": [
+      "lan.bridge.mutual-confirmation.v1",
+      "lan.bridge.rpc.v1",
+      "ui.snapshot"
+    ]
+  },
+  "selection": {
+    "selectedBridgeVersion": "1.0",
+    "selectedCapabilities": [
+      "lan.bridge.mutual-confirmation.v1",
+      "lan.bridge.rpc.v1",
+      "ui.snapshot"
+    ]
+  },
+  "sharedSecretHex": "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742",
+  "expected": {
+    "fingerprint": "8975-0256-F8CF-C56A",
+    "transcriptHashHex": "2514787ca15ed4adb68993ea37fd5933f1804f9e80b1b239886fe80b867ac9bf",
+    "clientToDesktopKeyHex": "5a7232c6044fc7a14d120191faed02acfea8cd83b30aa61bd7f67df6321aa10e",
+    "desktopToClientKeyHex": "51313dc7ef2addca002a80495424df399b3312ce82157f91c0dcb6fbc81f40fd",
+    "confirmationKeyHex": "bca6dd46c76da0c46ab0edc47e3b64ee6be1a671851368316f6107d1e1b5a17d",
+    "tokenBindingKeyHex": "7b567eef0e3f848a88001cf540c628df8da0d1f2b7732975ccba364af051300d",
+    "desktopConfirmationHex": "03a195537dd257aeea50753e9bb443358816f88aef7124c179bede81e5c94bf5",
+    "clientConfirmationHex": "c2e4ab29a019880d27cc09850b96ca9ef11e55139ad4e41a08929b3da3ea845e"
+  },
+  "lowOrderPublicKeys": [
+    {
+      "name": "X25519 u-coordinate one",
+      "publicKey": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
+  ]
+}

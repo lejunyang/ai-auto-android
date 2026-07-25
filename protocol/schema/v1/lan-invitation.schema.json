@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/protocol/v1/lan-invitation.schema.json",
+  "title": "LAN QR Bridge Invitation",
+  "type": "object",
+  "required": [
+    "kind",
+    "version",
+    "invitationId",
+    "issuedAt",
+    "expiresAt",
+    "ttlSeconds",
+    "nonce",
+    "listener",
+    "ephemeralKey",
+    "fingerprint",
+    "capabilities",
+    "security"
+  ],
+  "properties": {
+    "kind": {
+      "const": "ai-auto-lan-invitation"
+    },
+    "version": {
+      "const": "1.0"
+    },
+    "invitationId": {
+      "$ref": "common.schema.json#/$defs/uuid"
+    },
+    "issuedAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "expiresAt": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "ttlSeconds": {
+      "type": "integer",
+      "minimum": 15,
+      "maximum": 120
+    },
+    "nonce": {
+      "$ref": "#/$defs/base64Url32"
+    },
+    "listener": {
+      "$ref": "#/$defs/listener"
+    },
+    "ephemeralKey": {
+      "$ref": "#/$defs/ephemeralKey"
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9A-F]{4}(?:-[0-9A-F]{4}){3}$"
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/capabilityName"
+      }
+    },
+    "security": {
+      "$ref": "#/$defs/security"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "base64Url32": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "capabilityName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+    },
+    "interfaceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "interfaceName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "selectedInterface": {
+      "type": "object",
+      "required": ["id", "name", "kind"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/interfaceId"
+        },
+        "name": {
+          "$ref": "#/$defs/interfaceName"
+        },
+        "kind": {
+          "enum": ["wifi", "ethernet", "hotspot", "other"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "addressCandidate": {
+      "type": "object",
+      "required": ["host", "family", "scope", "interfaceId"],
+      "properties": {
+        "host": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[0-9A-Fa-f:.]+$"
+        },
+        "family": {
+          "enum": ["ipv4", "ipv6"]
+        },
+        "scope": {
+          "enum": ["private", "linkLocal"]
+        },
+        "interfaceId": {
+          "$ref": "#/$defs/interfaceId"
+        },
+        "zoneId": {
+          "$ref": "#/$defs/interfaceName"
+        }
+      },
+      "additionalProperties": false
+    },
+    "listener": {
+      "type": "object",
+      "required": ["port", "selectedInterface", "addressCandidates"],
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535
+        },
+        "selectedInterface": {
+          "$ref": "#/$defs/selectedInterface"
+        },
+        "addressCandidates": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/addressCandidate"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ephemeralKey": {
+      "type": "object",
+      "required": ["algorithm", "encoding", "publicKey"],
+      "properties": {
+        "algorithm": {
+          "const": "X25519"
+        },
+        "encoding": {
+          "const": "base64url"
+        },
+        "publicKey": {
+          "$ref": "#/$defs/base64Url32"
+        }
+      },
+      "additionalProperties": false
+    },
+    "security": {
+      "type": "object",
+      "required": ["suite", "transcript", "confirmation"],
+      "properties": {
+        "suite": {
+          "const": "X25519-HKDF-SHA256-AES-256-GCM"
+        },
+        "transcript": {
+          "const": "AIAUTO-LAN-BRIDGE-TRANSCRIPT-V1"
+        },
+        "confirmation": {
+          "const": "HMAC-SHA256"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -706,5 +706,16 @@
         }
       }
     }
+  ],
+  "contractSuites": [
+    {
+      "name": "LAN QR invitation v1 preflight",
+      "schema": "lan-invitation.schema.json",
+      "validFixture": "lan-invitation-v1-valid.json",
+      "threatFixtures": "lan-invitation-v1-threats.json",
+      "handshakeSchema": "lan-handshake.schema.json",
+      "cryptoVectors": "lan-handshake-v1-vector.json",
+      "validator": "lan-invitation-preflight"
+    }
   ]
 }

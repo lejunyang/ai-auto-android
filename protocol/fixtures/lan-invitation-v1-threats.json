@@ -1,0 +1,244 @@
+{
+  "baseFixture": "lan-invitation-v1-valid.json",
+  "cases": [
+    {
+      "name": "expired invitation",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:01:30Z"
+      },
+      "expectedCode": "LAN_INVITATION_EXPIRED",
+      "mutations": []
+    },
+    {
+      "name": "replayed invitation id",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z",
+        "consumedInvitationIds": [
+          "647d42e0-47c3-4ac8-9e7f-8f8bcf716c41"
+        ]
+      },
+      "expectedCode": "LAN_INVITATION_REPLAYED",
+      "mutations": []
+    },
+    {
+      "name": "replayed nonce",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z",
+        "consumedNonces": [
+          "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
+        ]
+      },
+      "expectedCode": "LAN_NONCE_REPLAYED",
+      "mutations": []
+    },
+    {
+      "name": "short fingerprint",
+      "stage": "schema",
+      "expectedCode": "LAN_INVITATION_SCHEMA_INVALID",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/fingerprint",
+          "value": "1234"
+        }
+      ]
+    },
+    {
+      "name": "wrong fingerprint",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z"
+      },
+      "expectedCode": "LAN_FINGERPRINT_MISMATCH",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/fingerprint",
+          "value": "1111-2222-3333-4444"
+        }
+      ]
+    },
+    {
+      "name": "public address",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z"
+      },
+      "expectedCode": "LAN_ADDRESS_NOT_PRIVATE",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/listener/addressCandidates/0/host",
+          "value": "8.8.8.8"
+        }
+      ]
+    },
+    {
+      "name": "unspecified address",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z"
+      },
+      "expectedCode": "LAN_ADDRESS_UNSPECIFIED",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/listener/addressCandidates/0/host",
+          "value": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "name": "multicast address",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z"
+      },
+      "expectedCode": "LAN_ADDRESS_MULTICAST",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/listener/addressCandidates/0/host",
+          "value": "239.1.2.3"
+        }
+      ]
+    },
+    {
+      "name": "wrong interface binding",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z"
+      },
+      "expectedCode": "LAN_INTERFACE_MISMATCH",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/listener/addressCandidates/0/interfaceId",
+          "value": "if-vpn-utun4-attack"
+        }
+      ]
+    },
+    {
+      "name": "selected interface differs from producer policy",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z",
+        "expectedInterface": {
+          "id": "if-ethernet-en7-a183",
+          "name": "en7",
+          "kind": "ethernet"
+        }
+      },
+      "expectedCode": "LAN_INTERFACE_MISMATCH",
+      "mutations": []
+    },
+    {
+      "name": "tampered invitation field",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z"
+      },
+      "expectedCode": "LAN_FINGERPRINT_MISMATCH",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/listener/port",
+          "value": 47832
+        }
+      ]
+    },
+    {
+      "name": "unknown token field",
+      "stage": "schema",
+      "expectedCode": "LAN_INVITATION_SCHEMA_INVALID",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/sessionToken",
+          "value": "must-never-appear-in-qr"
+        }
+      ]
+    },
+    {
+      "name": "weak all-zero X25519 key",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z"
+      },
+      "expectedCode": "LAN_EPHEMERAL_KEY_WEAK",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/ephemeralKey/publicKey",
+          "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+      ]
+    },
+    {
+      "name": "invalid X25519 key encoding",
+      "stage": "schema",
+      "expectedCode": "LAN_INVITATION_SCHEMA_INVALID",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/ephemeralKey/publicKey",
+          "value": "not+base64url"
+        }
+      ]
+    },
+    {
+      "name": "ttl above maximum",
+      "stage": "schema",
+      "expectedCode": "LAN_INVITATION_SCHEMA_INVALID",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/ttlSeconds",
+          "value": 121
+        }
+      ]
+    },
+    {
+      "name": "ttl does not match timestamps",
+      "stage": "preflight",
+      "context": {
+        "now": "2026-07-25T10:00:30Z"
+      },
+      "expectedCode": "LAN_INVITATION_TTL_MISMATCH",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/expiresAt",
+          "value": "2026-07-25T10:01:00Z"
+        }
+      ]
+    },
+    {
+      "name": "old protocol downgrade",
+      "stage": "schema",
+      "expectedCode": "LAN_INVITATION_SCHEMA_INVALID",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/version",
+          "value": "0.9"
+        }
+      ]
+    },
+    {
+      "name": "plaintext suite downgrade",
+      "stage": "schema",
+      "expectedCode": "LAN_INVITATION_SCHEMA_INVALID",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/security/suite",
+          "value": "PLAINTEXT"
+        }
+      ]
+    }
+  ]
+}

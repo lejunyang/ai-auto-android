@@ -3,6 +3,16 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  LAN_INVITATION_ERROR_CODES,
+  applyFixtureMutations,
+  buildLanTranscriptHash,
+  computeInvitationFingerprint,
+  deriveLanSessionKeys,
+  signLanConfirmation,
+  validateLanInvitationPreflight,
+} from "./lan-invitation.mjs";
+
 const protocolRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const schemaRoot = path.join(protocolRoot, "schema", "v1");
 const draft202012 = "https://json-schema.org/draft/2020-12/schema";
@@ -401,6 +411,151 @@ for (const fixture of fixtures.invalid) {
   passed += 1;
 }
 
+let contractValid = 0;
+let contractInvalid = 0;
+for (const suite of fixtures.contractSuites ?? []) {
+  if (suite.validator !== "lan-invitation-preflight") {
+    throw new Error(`${suite.name}: unknown contract validator ${suite.validator}`);
+  }
+  const entry = schemaFiles.find(({ name }) => name === suite.schema);
+  if (!entry) throw new Error(`${suite.name}: unknown schema ${suite.schema}`);
+  const validFixture = await readJson(path.join(protocolRoot, "fixtures", suite.validFixture));
+  const schemaErrors = validator.validate(entry.schema, validFixture);
+  if (schemaErrors.length > 0) {
+    throw new Error(
+      `${suite.name}: valid fixture failed schema validation\n`
+      + schemaErrors.map((error) => `  - ${error}`).join("\n"),
+    );
+  }
+  const issuedAtMs = Date.parse(validFixture.issuedAt);
+  const validContext = {
+    now: new Date(issuedAtMs + 1000).toISOString(),
+    consumedInvitationIds: [],
+    consumedNonces: [],
+    expectedInterface: validFixture.listener.selectedInterface,
+  };
+  const validResult = validateLanInvitationPreflight(validFixture, validContext);
+  if (!validResult.ok) {
+    throw new Error(`${suite.name}: valid fixture failed preflight with ${validResult.code}`);
+  }
+  contractValid += 1;
+  passed += 1;
+
+  const threatSuite = await readJson(path.join(protocolRoot, "fixtures", suite.threatFixtures));
+  assert(
+    threatSuite.baseFixture === suite.validFixture,
+    `${suite.name}: threat suite baseFixture must match validFixture`,
+  );
+  for (const threat of threatSuite.cases) {
+    const mutated = applyFixtureMutations(validFixture, threat.mutations);
+    const errors = validator.validate(entry.schema, mutated);
+    if (threat.stage === "schema") {
+      if (threat.expectedCode !== "LAN_INVITATION_SCHEMA_INVALID") {
+        throw new Error(`${threat.name}: schema threats must use LAN_INVITATION_SCHEMA_INVALID`);
+      }
+      if (errors.length === 0) {
+        throw new Error(`${threat.name}: expected schema rejection but validation passed`);
+      }
+    } else if (threat.stage === "preflight") {
+      if (errors.length > 0) {
+        throw new Error(
+          `${threat.name}: preflight threat must first pass schema validation\n`
+          + errors.map((error) => `  - ${error}`).join("\n"),
+        );
+      }
+      const result = validateLanInvitationPreflight(mutated, threat.context);
+      if (result.ok || result.code !== threat.expectedCode) {
+        throw new Error(
+          `${threat.name}: expected ${threat.expectedCode}, got ${JSON.stringify(result)}`,
+        );
+      }
+    } else {
+      throw new Error(`${threat.name}: unknown threat stage ${threat.stage}`);
+    }
+    contractInvalid += 1;
+    passed += 1;
+  }
+
+  const handshake = schemaFiles.find(({ name }) => name === suite.handshakeSchema);
+  if (!handshake) throw new Error(`${suite.name}: unknown handshake schema ${suite.handshakeSchema}`);
+  const errorCodes = handshake.schema.$defs.handshakeError.properties.code.enum;
+  assert(
+    deepEqual(errorCodes, LAN_INVITATION_ERROR_CODES),
+    `${suite.name}: handshake stable error codes do not match the preflight implementation`,
+  );
+
+  const vector = await readJson(path.join(protocolRoot, "fixtures", suite.cryptoVectors));
+  assert(
+    vector.invitationFixture === suite.validFixture,
+    `${suite.name}: crypto vector invitationFixture must match validFixture`,
+  );
+  assert(
+    computeInvitationFingerprint(validFixture) === vector.expected.fingerprint,
+    `${suite.name}: crypto vector fingerprint does not match`,
+  );
+  const transcriptHash = buildLanTranscriptHash(validFixture, vector.clientHello, vector.selection);
+  const sharedSecret = Buffer.from(vector.sharedSecretHex, "hex");
+  const keys = deriveLanSessionKeys(sharedSecret, transcriptHash);
+  try {
+    assert(
+      transcriptHash.toString("hex") === vector.expected.transcriptHashHex,
+      `${suite.name}: transcript hash vector does not match`,
+    );
+    assert(
+      keys.clientToDesktopKey.toString("hex") === vector.expected.clientToDesktopKeyHex
+        && keys.desktopToClientKey.toString("hex") === vector.expected.desktopToClientKeyHex
+        && keys.confirmationKey.toString("hex") === vector.expected.confirmationKeyHex
+        && keys.tokenBindingKey.toString("hex") === vector.expected.tokenBindingKeyHex,
+      `${suite.name}: HKDF key vector does not match`,
+    );
+    const desktopTag = signLanConfirmation("desktop", keys.confirmationKey, transcriptHash);
+    const clientTag = signLanConfirmation("client", keys.confirmationKey, transcriptHash);
+    try {
+      assert(
+        desktopTag.toString("hex") === vector.expected.desktopConfirmationHex
+          && clientTag.toString("hex") === vector.expected.clientConfirmationHex,
+        `${suite.name}: confirmation tag vector does not match`,
+      );
+    } finally {
+      desktopTag.fill(0);
+      clientTag.fill(0);
+    }
+  } finally {
+    sharedSecret.fill(0);
+    transcriptHash.fill(0);
+    Object.values(keys).forEach((key) => key.fill(0));
+  }
+
+  const desktopSelection = {
+    type: "lan.desktopSelection",
+    version: "1.0",
+    invitationId: validFixture.invitationId,
+    transcriptHash: Buffer.from(vector.expected.transcriptHashHex, "hex").toString("base64url"),
+    ...vector.selection,
+  };
+  const confirmation = {
+    type: "lan.confirmation",
+    version: "1.0",
+    invitationId: validFixture.invitationId,
+    role: "client",
+    transcriptHash: desktopSelection.transcriptHash,
+    tag: Buffer.from(vector.expected.clientConfirmationHex, "hex").toString("base64url"),
+  };
+  for (const [name, message] of [
+    ["client hello", vector.clientHello],
+    ["desktop selection", desktopSelection],
+    ["client confirmation", confirmation],
+  ]) {
+    const errors = validator.validate(handshake.schema, message);
+    if (errors.length > 0) {
+      throw new Error(
+        `${suite.name}: ${name} failed handshake schema\n`
+        + errors.map((error) => `  - ${error}`).join("\n"),
+      );
+    }
+  }
+}
+
 const goRecordingListFixture = await readJson(
   path.join(protocolRoot, "..", "internal", "bridge", "testdata", "recording-list-result.json"),
 );
@@ -497,6 +652,7 @@ for (const check of compatibilityChecks) {
 
 console.log(
   `Protocol validation passed: ${schemaFiles.length} schemas, `
-  + `${fixtures.valid.length} valid fixtures, ${fixtures.invalid.length} invalid fixtures, `
+  + `${fixtures.valid.length + contractValid} valid fixtures, `
+  + `${fixtures.invalid.length + contractInvalid} invalid fixtures, `
   + `${compatibilityChecks.length} compatibility checks (${passed + compatibilityChecks.length} total).`,
 );

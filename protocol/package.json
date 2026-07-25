@@ -7,6 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node scripts/validate.mjs"
+    "test": "node --test scripts/lan-invitation.test.mjs && node scripts/validate.mjs",
+    "test:lan": "node --test scripts/lan-invitation.test.mjs"
   }
 }
