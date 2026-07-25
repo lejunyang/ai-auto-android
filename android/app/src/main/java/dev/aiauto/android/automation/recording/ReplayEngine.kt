@@ -16,6 +16,9 @@ import dev.aiauto.android.accessibility.selector.SelectorMatch
 import dev.aiauto.android.accessibility.selector.SelectorMatcher
 import dev.aiauto.android.bridge.AccessibilityCommandJsonParser
 import dev.aiauto.android.bridge.BridgeException
+import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualReplayErrorCode
+import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualReplayResult
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayRequest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -37,6 +40,10 @@ interface ReplayTime {
     fun nowMs(): Long
 
     fun sleep(ms: Long)
+}
+
+fun interface ExplicitVisualReplayPort {
+    fun replay(request: VisualReplayRequest): ExplicitVisualReplayResult
 }
 
 object SystemReplayTime : ReplayTime {
@@ -221,6 +228,7 @@ class ConditionWaiter(
 class ReplayEngine(
     private val gateway: ReplayGateway,
     private val secretResolver: SecretResolver,
+    private val explicitVisualReplay: ExplicitVisualReplayPort? = null,
     private val selectorMatcher: SelectorMatcher = SelectorMatcher(),
     private val time: ReplayTime = SystemReplayTime,
     private val waiter: ConditionWaiter = ConditionWaiter(
@@ -240,7 +248,12 @@ class ReplayEngine(
         val targetPackages = script.targetPackages.toSet()
 
         for (step in script.steps) {
-            val result = replayStep(step, targetPackages, secrets)
+            val result = replayStep(
+                step = step,
+                environment = script.environment,
+                targetPackages = targetPackages,
+                secrets = secrets,
+            )
             results += result
             if (result.status == ReplayStepStatus.FAILED) {
                 requiresIntervention = step.failurePolicy == "requestIntervention"
@@ -260,6 +273,7 @@ class ReplayEngine(
 
     private fun replayStep(
         step: RecordedStep,
+        environment: ScriptEnvironment?,
         targetPackages: Set<String>,
         secrets: Map<String, String>,
     ): ReplayStepResult {
@@ -298,6 +312,84 @@ class ReplayEngine(
                         message = "The recorded condition did not become true",
                     )
                 }
+            }
+        }
+        if (step.provenance in EXPLICIT_VISUAL_PROVENANCE) {
+            step.waitBefore?.let { predicate ->
+                when (val waited = waiter.await(predicate, targetPackages)) {
+                    is AccessibilityResult.Failure -> return failure(
+                        step = step,
+                        attempts = 0,
+                        code = waited.error.code.name,
+                        message = waited.error.message,
+                    )
+
+                    is AccessibilityResult.Success -> if (!waited.value) {
+                        return failure(
+                            step = step,
+                            attempts = 0,
+                            code = "CONDITION_TIMEOUT",
+                            message = "The visual pre-action condition did not become true",
+                        )
+                    }
+                }
+            }
+            val port = explicitVisualReplay ?: return failure(
+                step = step,
+                attempts = 0,
+                code = ExplicitVisualReplayErrorCode.VISUAL_REPLAY_UNAVAILABLE.name,
+                message = "Explicit visual replay is unavailable",
+            )
+            val replayEnvironment = environment ?: return failure(
+                step = step,
+                attempts = 0,
+                code = ExplicitVisualReplayErrorCode.SCREEN_METADATA_MISMATCH.name,
+                message = "Visual replay requires recorded screen metadata",
+            )
+            return when (
+                val visual = port.replay(
+                    VisualReplayRequest(
+                        step = step.copy(action = resolved),
+                        environment = replayEnvironment,
+                        targetPackages = targetPackages,
+                    ),
+                )
+            ) {
+                is ExplicitVisualReplayResult.Success -> {
+                    step.waitAfter?.let { predicate ->
+                        when (val waited = waiter.await(predicate, targetPackages)) {
+                            is AccessibilityResult.Failure -> return failure(
+                                step = step,
+                                attempts = 1,
+                                code = waited.error.code.name,
+                                message = waited.error.message,
+                            )
+
+                            is AccessibilityResult.Success -> if (!waited.value) {
+                                return failure(
+                                    step = step,
+                                    attempts = 1,
+                                    code = "CONDITION_TIMEOUT",
+                                    message = "The visual post-action condition did not become true",
+                                )
+                            }
+                        }
+                    }
+                    ReplayStepResult(
+                        stepId = step.id,
+                        status = ReplayStepStatus.SUCCEEDED,
+                        attempts = 1,
+                        route = visual.execution.route.name,
+                        matchScore = visual.execution.matchScore,
+                    )
+                }
+
+                is ExplicitVisualReplayResult.Failure -> failure(
+                    step = step,
+                    attempts = if (visual.actionCommitCount > 0) 1 else 0,
+                    code = visual.code.name,
+                    message = visual.message,
+                )
             }
         }
         val expectedPackage = resolved.params["target"]
@@ -452,6 +544,11 @@ class ReplayEngine(
     )
 
     private companion object {
+        val EXPLICIT_VISUAL_PROVENANCE = setOf(
+            RecordingProvenance.VISUAL,
+            RecordingProvenance.COORDINATE,
+            RecordingProvenance.MANUAL,
+        )
         val SEMANTIC_ACTION_TYPES = setOf(
             "ui.click",
             "ui.longClick",

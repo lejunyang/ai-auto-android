@@ -11,6 +11,10 @@ import dev.aiauto.android.accessibility.model.ActionRoute
 import dev.aiauto.android.accessibility.model.UiBounds
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import dev.aiauto.android.accessibility.model.UiNodeState
+import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualAction
+import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualReplayErrorCode
+import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualReplayResult
+import dev.aiauto.android.accessibility.model.ScreenPoint
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -261,6 +265,165 @@ class ReplayEngineTest {
         assertTrue(gateway.executed.isEmpty())
     }
 
+    @Test
+    fun `visual provenance fails closed when explicit port is unavailable BitsUT`() {
+        val gateway = FakeGateway()
+        val engine = ReplayEngine(
+            gateway = gateway,
+            secretResolver = secretResolver(null),
+            time = FakeTime(),
+        )
+
+        val report = engine.replay(visualScript())
+
+        assertFalse(report.succeeded)
+        assertEquals(
+            ExplicitVisualReplayErrorCode.VISUAL_REPLAY_UNAVAILABLE.name,
+            report.steps.single().errorCode,
+        )
+        assertTrue(gateway.executed.isEmpty())
+        assertTrue(gateway.snapshots.isEmpty())
+    }
+
+    @Test
+    fun `visual provenance uses explicit port without semantic gateway BitsUT`() {
+        val gateway = FakeGateway()
+        var calls = 0
+        val visualTime = FakeTime()
+        val engine = ReplayEngine(
+            gateway = gateway,
+            secretResolver = secretResolver(null),
+            explicitVisualReplay = ExplicitVisualReplayPort {
+                calls += 1
+                ExplicitVisualReplayResult.Success(
+                    action = ExplicitVisualAction.Tap(ScreenPoint(100, 200)),
+                    execution = ActionExecution(route = ActionRoute.COORDINATE_GESTURE),
+                )
+            },
+            time = visualTime,
+        )
+
+        val report = engine.replay(visualScript())
+
+        assertTrue(report.succeeded)
+        assertEquals(1, calls)
+        assertEquals(ActionRoute.COORDINATE_GESTURE.name, report.steps.single().route)
+        assertTrue(gateway.executed.isEmpty())
+    }
+
+    @Test
+    fun `post verification failure is not retried after one visual commit BitsUT`() {
+        val gateway = FakeGateway()
+        var calls = 0
+        val visualTime = FakeTime()
+        val engine = ReplayEngine(
+            gateway = gateway,
+            secretResolver = secretResolver(null),
+            explicitVisualReplay = ExplicitVisualReplayPort {
+                calls += 1
+                ExplicitVisualReplayResult.Failure(
+                    code = ExplicitVisualReplayErrorCode.POST_ACTION_VERIFICATION_FAILED,
+                    message = "verification failed",
+                    actionCommitCount = 1,
+                )
+            },
+            time = visualTime,
+        )
+
+        val report = engine.replay(
+            visualScript(
+                retry = RetryPolicy(maxAttempts = 5, backoffMs = 100),
+            ),
+        )
+
+        assertFalse(report.succeeded)
+        assertEquals(1, calls)
+        assertEquals(1, report.steps.single().attempts)
+        assertTrue(visualTime.sleeps.isEmpty())
+        assertTrue(gateway.executed.isEmpty())
+    }
+
+    @Test
+    fun `visual precondition failure prevents explicit port call BitsUT`() {
+        val gateway = FakeGateway(
+            snapshots = mutableListOf(success(node(packageName = "com.example"))),
+        )
+        var calls = 0
+        val engine = ReplayEngine(
+            gateway = gateway,
+            secretResolver = secretResolver(null),
+            explicitVisualReplay = ExplicitVisualReplayPort {
+                calls += 1
+                error("visual port must not run")
+            },
+            time = FakeTime(),
+        )
+        val script = visualScript().let { source ->
+            source.copy(
+                steps = source.steps.map { step ->
+                    step.copy(
+                        waitBefore = RecordedPredicate(
+                            kind = "package",
+                            operator = "equals",
+                            expected = JsonPrimitive("com.other"),
+                            timeoutMs = 0,
+                        ),
+                    )
+                },
+            )
+        }
+
+        val report = engine.replay(script)
+
+        assertFalse(report.succeeded)
+        assertEquals("CONDITION_TIMEOUT", report.steps.single().errorCode)
+        assertEquals(0, report.steps.single().attempts)
+        assertEquals(0, calls)
+    }
+
+    @Test
+    fun `visual postcondition timeout does not repeat committed action BitsUT`() {
+        val gateway = FakeGateway(
+            snapshots = mutableListOf(success(node(packageName = "com.example"))),
+        )
+        var calls = 0
+        val engine = ReplayEngine(
+            gateway = gateway,
+            secretResolver = secretResolver(null),
+            explicitVisualReplay = ExplicitVisualReplayPort {
+                calls += 1
+                ExplicitVisualReplayResult.Success(
+                    action = ExplicitVisualAction.Tap(ScreenPoint(100, 200)),
+                    execution = ActionExecution(route = ActionRoute.COORDINATE_GESTURE),
+                )
+            },
+            time = FakeTime(),
+        )
+        val script = visualScript(
+            retry = RetryPolicy(maxAttempts = 5, backoffMs = 100),
+        ).let { source ->
+            source.copy(
+                steps = source.steps.map { step ->
+                    step.copy(
+                        waitAfter = RecordedPredicate(
+                            kind = "package",
+                            operator = "equals",
+                            expected = JsonPrimitive("com.other"),
+                            timeoutMs = 0,
+                        ),
+                    )
+                },
+            )
+        }
+
+        val report = engine.replay(script)
+
+        assertFalse(report.succeeded)
+        assertEquals("CONDITION_TIMEOUT", report.steps.single().errorCode)
+        assertEquals(1, report.steps.single().attempts)
+        assertEquals(1, calls)
+    }
+
     private var engineTime: ReplayTime = FakeTime()
 
     private fun engine(gateway: FakeGateway): ReplayEngine {
@@ -291,6 +454,42 @@ class ReplayEngineTest {
                 id = "step",
                 recordedAtMs = 0,
                 action = action,
+                retry = retry,
+            ),
+        ),
+    )
+
+    private fun visualScript(
+        retry: RetryPolicy = RetryPolicy(maxAttempts = 1, backoffMs = 0),
+    ) = AutomationScript(
+        id = "visual-script",
+        name = "Visual replay",
+        targetPackages = listOf("com.example"),
+        createdAt = "2026-07-18T00:00:00Z",
+        environment = ScriptEnvironment(
+            logicalWidth = 1_080,
+            logicalHeight = 2_400,
+            densityDpi = 420,
+            rotation = 0,
+        ),
+        steps = listOf(
+            RecordedStep(
+                id = "visual-step",
+                provenance = RecordingProvenance.VISUAL,
+                action = RecordedAction(
+                    type = "ui.tap",
+                    params = buildJsonObject {
+                        put("x", JsonPrimitive(540))
+                        put("y", JsonPrimitive(1_200))
+                    },
+                ),
+                visualTarget = VisualTarget(
+                    normalizedPoint = NormalizedPoint(0.5, 0.5),
+                    confidence = 0.95,
+                    source = RecordingProvenance.VISUAL,
+                    observationId = "123e4567-e89b-42d3-a456-426614174045",
+                    imageSha256 = "a".repeat(64),
+                ),
                 retry = retry,
             ),
         ),
