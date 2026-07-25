@@ -132,7 +132,7 @@ emulator、runtime 和 lease 均为零。已创建独立 follow-up 修复手势�
 
 **建议提交：** `test(android): expand native automation fixture`
 
-### [ ] Task N34：失败产物、脱敏与 Flaky 统计
+### [x] Task N34：失败产物、脱敏与 Flaky 统计
 
 **目标：** 为模拟器任务提供有预算、可诊断、会自动清理的失败证据。
 
@@ -155,9 +155,13 @@ artifact collector、`android/test-control/reporting/` 和 `test-lab/artifacts/`
 **验收证据：** 故意制造超时和断言失败，确认产物齐全且无敏感值；预算溢出被截断，
 TTL 清理后无残留，20 次统计可复现。
 
-**执行记录（2026-07-25）：** 已创建 `phase2-n34-failure-artifacts` 独立分支和
-`/private/tmp/ai-auto-n34` worktree，独占 reporting/artifact 范围；故障注入、
-预算、脱敏、TTL 和 20 次统计证据完成前保持未勾选。
+**实现记录（2026-07-25）：** `main` 已包含 `c1a7a1a`。4 份严格 Schema 和
+49/49 fake-input 测试通过，覆盖 timeout/assertion 产物、递归与编码变体脱敏、
+路径逃逸、symlink、inode race、三层物理预算、成功立即清理、TTL 和 20 轮
+product/device/infrastructure/flaky 聚合。截图只有调用进程注入的可信 verifier
+明确通过才可保留；输入自报 processor/hash、verifier 缺失、返回 false 或抛错均
+失败关闭。默认 CLI 不保留 PNG，只能显式省略截图并收集其他脱敏证据；专用 workflow
+仅跑 fake-input smoke，不冒充真实 Emulator 矩阵。
 
 **失败清理：** 立即删除超预算和未脱敏产物，停止上传；保留仅含错误码的摘要。
 
