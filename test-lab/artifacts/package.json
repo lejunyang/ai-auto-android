@@ -1,0 +1,14 @@
+{
+  "name": "@ai-auto-android/failure-artifacts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "schema": "node src/schema-check.mjs",
+    "smoke": "npm run schema && npm test"
+  }
+}

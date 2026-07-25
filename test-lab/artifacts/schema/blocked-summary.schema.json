@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/test-lab/artifacts/v1/blocked-summary.schema.json",
+  "title": "Fail Closed Artifact Summary",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "uploadAllowed",
+    "errorCode"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "uploadAllowed": {
+      "const": false
+    },
+    "errorCode": {
+      "enum": [
+        "ARTIFACT_PATH_UNSAFE",
+        "ARTIFACT_SOURCE_MISSING",
+        "ARTIFACT_SOURCE_TOO_LARGE",
+        "ARTIFACT_SOURCE_UNSAFE",
+        "BUDGET_INVALID",
+        "COLLECTION_FAILED",
+        "REDACTION_UNVERIFIED",
+        "RUN_BUDGET_EXCEEDED",
+        "RUN_SCHEMA_INVALID"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

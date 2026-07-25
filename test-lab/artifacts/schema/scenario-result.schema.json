@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/test-lab/artifacts/v1/scenario-result.schema.json",
+  "title": "Bounded Android Scenario Result",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "scenarioId",
+    "iteration",
+    "startedAt",
+    "finishedAt",
+    "device",
+    "timeline",
+    "outcome"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "runId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "scenarioId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "iteration": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finishedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "device": {
+      "$ref": "#/$defs/device"
+    },
+    "timeline": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "$ref": "#/$defs/timelineEntry"
+      }
+    },
+    "outcome": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/passedOutcome"
+        },
+        {
+          "$ref": "#/$defs/failedOutcome"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "errorCode": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 96,
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "device": {
+      "type": "object",
+      "required": [
+        "serial",
+        "avdName",
+        "fingerprint",
+        "apiLevel",
+        "androidVersion",
+        "abi",
+        "locale",
+        "resolution",
+        "webView"
+      ],
+      "properties": {
+        "serial": {
+          "$ref": "#/$defs/stableId"
+        },
+        "avdName": {
+          "$ref": "#/$defs/stableId"
+        },
+        "fingerprint": {
+          "$ref": "#/$defs/sha256"
+        },
+        "apiLevel": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 1000
+        },
+        "androidVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "abi": {
+          "enum": [
+            "arm64-v8a",
+            "armeabi-v7a",
+            "x86",
+            "x86_64"
+          ]
+        },
+        "locale": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 35,
+          "pattern": "^[A-Za-z0-9-]+$"
+        },
+        "resolution": {
+          "type": "object",
+          "required": [
+            "widthPx",
+            "heightPx",
+            "densityDpi"
+          ],
+          "properties": {
+            "widthPx": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32768
+            },
+            "heightPx": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32768
+            },
+            "densityDpi": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2000
+            }
+          },
+          "additionalProperties": false
+        },
+        "webView": {
+          "type": "object",
+          "required": [
+            "packageName",
+            "version"
+          ],
+          "properties": {
+            "packageName": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[0-9]+(\\.[0-9]+){1,7}$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "timelineEntry": {
+      "type": "object",
+      "required": [
+        "sequence",
+        "at",
+        "type",
+        "phase",
+        "status",
+        "durationMs",
+        "targetPackage"
+      ],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "type": {
+          "$ref": "#/$defs/stableId"
+        },
+        "phase": {
+          "enum": [
+            "observe",
+            "prepare",
+            "execute",
+            "verify",
+            "cleanup"
+          ]
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "skipped"
+          ]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "targetPackage": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 255,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$"
+        },
+        "errorCode": {
+          "$ref": "#/$defs/errorCode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "passedOutcome": {
+      "type": "object",
+      "required": [
+        "status",
+        "errorCode",
+        "durationMs",
+        "retries"
+      ],
+      "properties": {
+        "status": {
+          "const": "passed"
+        },
+        "errorCode": {
+          "type": "null"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "failedOutcome": {
+      "type": "object",
+      "required": [
+        "status",
+        "errorCode",
+        "durationMs",
+        "retries"
+      ],
+      "properties": {
+        "status": {
+          "const": "failed"
+        },
+        "errorCode": {
+          "$ref": "#/$defs/errorCode"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

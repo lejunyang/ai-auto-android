@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/test-lab/artifacts/v1/artifact-summary.schema.json",
+  "title": "Bounded Failure Artifact Summary",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "scenarioId",
+    "iteration",
+    "retainedAt",
+    "expiresAt",
+    "uploadAllowed",
+    "result",
+    "artifacts",
+    "budget"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "runId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "scenarioId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "iteration": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "retainedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "uploadAllowed": {
+      "type": "boolean"
+    },
+    "result": {
+      "type": "object",
+      "required": [
+        "status",
+        "category",
+        "errorCode"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "failed",
+            "blocked"
+          ]
+        },
+        "category": {
+          "enum": [
+            "product",
+            "device",
+            "infrastructure"
+          ]
+        },
+        "errorCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 96,
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "budget": {
+      "$ref": "#/$defs/budget"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": [
+        "kind",
+        "file",
+        "mediaType",
+        "bytes",
+        "sha256",
+        "redacted",
+        "truncated"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "device-metadata",
+            "action-timeline",
+            "test-report",
+            "hierarchy",
+            "log",
+            "screenshot"
+          ]
+        },
+        "file": {
+          "enum": [
+            "device.json",
+            "timeline.json",
+            "report.txt",
+            "hierarchy.xml",
+            "log.txt",
+            "screenshot.png"
+          ]
+        },
+        "mediaType": {
+          "enum": [
+            "application/json",
+            "application/xml",
+            "text/plain",
+            "image/png"
+          ]
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "redacted": {
+          "const": true
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "budget": {
+      "type": "object",
+      "required": [
+        "fileBytes",
+        "scenarioBytes",
+        "runBytes",
+        "usedBytes",
+        "scenarioTruncated",
+        "runTruncated"
+      ],
+      "properties": {
+        "fileBytes": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 8388608
+        },
+        "scenarioBytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 67108864
+        },
+        "runBytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 536870912
+        },
+        "usedBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 67108864
+        },
+        "scenarioTruncated": {
+          "type": "boolean"
+        },
+        "runTruncated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

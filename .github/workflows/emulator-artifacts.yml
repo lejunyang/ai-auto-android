@@ -1,0 +1,46 @@
+# 配置用途：跨平台验证失败产物的脱敏、预算、清理和统计语义，不冒充真实 Emulator 矩阵。
+name: Emulator Artifact Semantics
+
+on:
+  pull_request:
+    paths:
+      - "android/test-control/reporting/**"
+      - "test-lab/artifacts/**"
+      - ".github/workflows/emulator-artifacts.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "android/test-control/reporting/**"
+      - "test-lab/artifacts/**"
+      - ".github/workflows/emulator-artifacts.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fake-input-smoke:
+    name: Fake artifact smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+
+      - name: Validate bounded artifact semantics with fake input
+        run: npm run smoke --prefix test-lab/artifacts
