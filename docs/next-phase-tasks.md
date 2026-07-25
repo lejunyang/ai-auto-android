@@ -456,11 +456,14 @@ orchestrator 定向测试 20/20、App 全量单测 219/219 通过；只生成类
 **验收证据：** 同 observation 的 PNG、尺寸、旋转和 hierarchy 可关联；过期或歧义
 候选动作提交数为零；截图内存和临时文件按预算清零。
 
-**实现记录（服务层完成，用户路径未完成）：** `main` 已包含 `ccb801d` 与规格证据
-`5b8bffe`。Android visual 定向单测 15/15、Go `internal/visual` 与独立 MCP adapter
+**实现记录（App 用户路径完成，桌面公开路径未完成）：** `main` 已包含服务层
+`ccb801d`、App 会话集成 `1682806` 及规格证据 `5b8bffe`、`d86cfde`。Android
+visual/会话定向、App 全量单测、Go `internal/visual` 与独立 MCP adapter
 race 测试通过；覆盖可信 verifier、同 ID 防漂移、图片副本清零、0/90/180/270
-crop 映射、低置信度和歧义失败关闭，动作提交数始终为零。独立 adapter 未注册到
-共享 MCP server，用户授权截图入口和 App AI 会话尚未接入，因此主任务保持未勾选。
+crop 映射、会话代次、稳定 hierarchy、自然屏幕/crop 几何、低置信度和歧义失败
+关闭。显式授权 App AI 会话已能把同 observation 元数据与最小 PNG 传给 Provider，
+结束后撤销并清零；独立 adapter 仍未注册到共享 MCP server，因为桌面端尚无能同时
+提供可信 PNG/hierarchy 的采集端口，因此主任务保持未勾选。
 
 **失败清理：** 清零图片字节、删除临时 PNG 和候选，撤销 observation ID。
 
@@ -488,6 +491,13 @@ crop 映射、低置信度和歧义失败关闭，动作提交数始终为零。
 **验收证据：** Compose 单测和 instrumentation 覆盖所有编辑命令、旋转恢复、冲突、
 截图点选及 dry-run；UI 自动测试不依赖人工点击。
 
+**实现记录（组件完成，导航与设备验收未完成）：** `main` 已包含可嵌入编辑器组件
+`9151360` 与规格证据 `71a4465`。JVM 定向 6/6、App 全量单测、AndroidTest APK
+编译、lint、comments 和 diff-check 通过；覆盖脚本复制、步骤重排/启停/删除/复制、
+完整表单原子提交、Undo/Redo、dirty/离开确认、revision conflict、dry-run 首失败
+定位和短生命周期 observation 点选。组件未修改导航根，真实授权 screenshot
+provider 尚未接线，Compose instrumentation 仅编译未在设备执行，因此保持未勾选。
+
 **失败清理：** 丢弃未保存事务和截图缓存，恢复已保存 revision。
 
 **建议提交：** `feat(android): add recording step editor`
@@ -513,6 +523,15 @@ N45 单独拥有。
 
 **验收证据：** API 30/33/34 在至少三种分辨率和两种旋转下准确命中 fixture；
 低置信度和过期观察动作提交数为零。
+
+**实现记录（安全执行内核完成，生产端口与设备矩阵未完成）：** `main` 已包含
+`982919f` 与规格证据 `a648582`。N45 定向 22/22、App 全量单测、lint、comments
+和 diff-check 通过；覆盖三分辨率、四旋转、crop/window/inset/density 映射、
+observation/candidate/package/screen/expiry/secure 前置门、类型化 tap/long-click/
+swipe、只读后置 verifier 及提交后不重试。ReplayEngine 对 visual/coordinate/manual
+缺端口时明确 `VISUAL_REPLAY_UNAVAILABLE`，不会回落旧像素或 semantic selector。
+生产 UI/Bridge 尚未注入 observation/candidate/current-screen/verifier 端口，且
+API 30/33/34 fixture 未实际命中，因此保持未勾选。
 
 **失败清理：** 停止当前回放，清除 observation 和截图，恢复 fixture 状态。
 
