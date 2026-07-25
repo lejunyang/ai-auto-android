@@ -230,7 +230,6 @@ class NativeFixtureDeviceTest {
     private fun revealScrollableTarget(targetId: Int, expectedHeightDp: Int): UiObject2 {
         val container = requireObject(R.id.fixture_scroll_container)
         assertEquals("android.widget.ScrollView", container.className)
-        assertTrue("Fixture outer container must expose a scroll action", container.isScrollable)
         val minimumHeight = dpToPixels(expectedHeightDp) - BOUNDS_TOLERANCE_PX
 
         repeat(MAX_REVEAL_SCROLLS) {
@@ -242,6 +241,10 @@ class NativeFixtureDeviceTest {
             ) {
                 return target
             }
+            assertTrue(
+                "Outer container must scroll when the target is not fully visible",
+                container.isScrollable,
+            )
             val direction = if (
                 target != null &&
                 target.visibleBounds.top <= container.visibleBounds.top
