@@ -456,6 +456,12 @@ orchestrator 定向测试 20/20、App 全量单测 219/219 通过；只生成类
 **验收证据：** 同 observation 的 PNG、尺寸、旋转和 hierarchy 可关联；过期或歧义
 候选动作提交数为零；截图内存和临时文件按预算清零。
 
+**实现记录（服务层完成，用户路径未完成）：** `main` 已包含 `16d0d4d` 与规格证据
+`30b77fb`。Android visual 定向单测 15/15、Go `internal/visual` 与独立 MCP adapter
+race 测试通过；覆盖可信 verifier、同 ID 防漂移、图片副本清零、0/90/180/270
+crop 映射、低置信度和歧义失败关闭，动作提交数始终为零。独立 adapter 未注册到
+共享 MCP server，用户授权截图入口和 App AI 会话尚未接入，因此主任务保持未勾选。
+
 **失败清理：** 清零图片字节、删除临时 PNG 和候选，撤销 observation ID。
 
 **建议提交：** `feat(observe): add visual target proposals`
@@ -532,6 +538,13 @@ APK 路径必须位于 `.gitignore` 覆盖的仓库外 cache。
 
 **验收证据：** 正确 APK 可安装；错误 hash、ABI、版本和来源缺失在安装前失败；
 Git 历史和工作区不包含 APK。
+
+**实现记录（离线验证完成，真实安装未完成）：** `main` 已包含 `8ef0f01` 与规格证据
+`68c784b`。32/32 零依赖 Node 测试通过，覆盖严格文本 manifest、仓库外 cache、
+symlink/inode/hash/size 防替换、类型化 inspector、固定 ADB argv、clean/final
+snapshot 生命周期和安装前二次校验；工作区与全部 Git 历史的 APK/APKS/AAB/XAPK
+路径均为零。本轮未下载、生成、安装或提交 APK，合法真实制品的 aapt/apksigner
+核验与 API 30/33/34 clean AVD 安装尚未执行，因此主任务保持未勾选。
 
 **失败清理：** 卸载或清除第三方 App、删除未验证 cache 条目并恢复快照。
 
