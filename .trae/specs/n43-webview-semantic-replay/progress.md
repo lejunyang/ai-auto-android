@@ -57,3 +57,9 @@
 - 测试固定 API 30/33/34 对应 WebView 版本，不匹配时失败关闭；编译
   `:web-fixture:assembleDebugAndroidTest` 通过。三 API 设备执行尚未开始，checklist
   设备项保持未勾选。
+- API 30 单轮使用明确 serial `emulator-5568` 与固定 N31 fingerprint。点击语义
+  动作通过后，WebView 虚拟输入节点未暴露 `ACTION_SET_TEXT`，测试在输入步骤明确
+  返回失败；未尝试坐标、剪贴板、DOM/JavaScript 或 shell 降级。
+- runner 已停止 `emulator-5568`，最终设备、emulator、runtime 和 lease 均为零。
+  API 33/34 与 20 轮矩阵未启动；N43 保持未完成，后续需先定义不违反安全边界且由
+  该 WebView 版本真实支持的类型化输入 route。
