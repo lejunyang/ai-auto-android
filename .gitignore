@@ -25,6 +25,7 @@ coverage.out
 
 # Gradle and Android
 .gradle/
+android/.kotlin/
 **/build/
 captures/
 .cxx/
