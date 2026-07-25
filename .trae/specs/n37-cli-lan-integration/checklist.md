@@ -11,5 +11,6 @@
 - [x] race、test、verify、comments 和 diff-check 通过
 - [x] 真实单地址 listener timeout 只标为本机 integration smoke
 - [ ] macOS/Windows 同 LAN 与 Windows 防火墙保持未验收
-- [ ] 实现提交身份正确且 trailer 恰好一次
-- [ ] worktree 提交后 clean
+- [x] 实现提交身份正确且 trailer 恰好一次
+- [x] 实现提交后 worktree clean
+- [ ] 规格证据提交身份正确且 trailer 恰好一次

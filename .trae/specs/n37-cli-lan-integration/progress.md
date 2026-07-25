@@ -45,3 +45,10 @@
   全部通过。协议 52 项、3 个 skills、repository metadata 和 Go 全量测试均成功。
 - CLI 当前是一次性握手验证模式，认证后立即关闭；持续双向 RPC、Android 真实同 LAN、
   macOS/Windows 互操作和 Windows 防火墙仍未验收，路线图 N37 必须保持未完成。
+
+## Round 4
+
+- 实现提交 `b38235b`（`feat(cli): connect lan bridge listener`）包含 change spec、
+  类型化 LAN CLI、早期无 ADB 分流、测试和 capability 窄导出。
+- 提交 author/committer 均为 `lejunyang <lejunyang@qq.com>`，消息含且仅含一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`；实现提交后 worktree 干净。
