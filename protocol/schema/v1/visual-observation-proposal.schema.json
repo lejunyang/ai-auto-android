@@ -1,0 +1,455 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiauto.dev/schema/v1/visual-observation-proposal.schema.json",
+  "title": "Visual observation proposal bundle",
+  "type": "object",
+  "required": [
+    "observation",
+    "candidates",
+    "actionCommitCount"
+  ],
+  "properties": {
+    "observation": {
+      "$ref": "#/$defs/observation"
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/candidate"
+      }
+    },
+    "actionCommitCount": {
+      "const": 0
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "normalizedPoint": {
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "normalizedBounds": {
+      "type": "object",
+      "required": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ],
+      "properties": {
+        "left": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "top": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "right": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "bottom": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "pixelBounds": {
+      "type": "object",
+      "required": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ],
+      "properties": {
+        "left": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "top": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "right": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bottom": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "screen": {
+      "type": "object",
+      "required": [
+        "width",
+        "height",
+        "rotation"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32768
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32768
+        },
+        "rotation": {
+          "enum": [
+            0,
+            90,
+            180,
+            270
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "png": {
+      "type": "object",
+      "required": [
+        "format",
+        "sizeBytes",
+        "sha256",
+        "verification"
+      ],
+      "properties": {
+        "format": {
+          "const": "png"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 921600
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "verification": {
+          "const": "trusted-context"
+        }
+      },
+      "additionalProperties": false
+    },
+    "hierarchyNodeSensitive": {
+      "type": "object",
+      "required": [
+        "role",
+        "bounds",
+        "sensitive",
+        "children"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "bounds": {
+          "$ref": "#/$defs/normalizedBounds"
+        },
+        "sensitive": {
+          "const": true
+        },
+        "children": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/hierarchyNode"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "hierarchyNodePublic": {
+      "type": "object",
+      "required": [
+        "role",
+        "bounds",
+        "sensitive",
+        "children"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "bounds": {
+          "$ref": "#/$defs/normalizedBounds"
+        },
+        "sensitive": {
+          "const": false
+        },
+        "children": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/hierarchyNode"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "hierarchyNode": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/hierarchyNodeSensitive"
+        },
+        {
+          "$ref": "#/$defs/hierarchyNodePublic"
+        }
+      ]
+    },
+    "observation": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "foregroundPackage",
+        "screen",
+        "crop",
+        "capturedAt",
+        "expiresAt",
+        "png",
+        "hierarchy"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "visual-observation/1.0"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "foregroundPackage": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 255,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+$"
+        },
+        "screen": {
+          "$ref": "#/$defs/screen"
+        },
+        "crop": {
+          "$ref": "#/$defs/pixelBounds"
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "png": {
+          "$ref": "#/$defs/png"
+        },
+        "hierarchy": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/hierarchyNode"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "candidate": {
+      "type": "object",
+      "required": [
+        "id",
+        "observationId",
+        "source",
+        "point",
+        "bounds",
+        "confidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "observationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "source": {
+          "enum": [
+            "ocr",
+            "template",
+            "model",
+            "manual"
+          ]
+        },
+        "point": {
+          "$ref": "#/$defs/normalizedPoint"
+        },
+        "bounds": {
+          "$ref": "#/$defs/normalizedBounds"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "observation": {
+        "schemaVersion": "visual-observation/1.0",
+        "id": "123e4567-e89b-42d3-a456-426614174044",
+        "foregroundPackage": "com.example.notes",
+        "screen": {
+          "width": 1000,
+          "height": 2000,
+          "rotation": 90
+        },
+        "crop": {
+          "left": 200,
+          "top": 100,
+          "right": 1200,
+          "bottom": 900
+        },
+        "capturedAt": "2026-07-26T01:00:00Z",
+        "expiresAt": "2026-07-26T01:00:10Z",
+        "png": {
+          "format": "png",
+          "sizeBytes": 68,
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "verification": "trusted-context"
+        },
+        "hierarchy": [
+          {
+            "role": "button",
+            "label": "Save",
+            "bounds": {
+              "left": 0.3,
+              "top": 0.6,
+              "right": 0.7,
+              "bottom": 0.8
+            },
+            "sensitive": false,
+            "children": []
+          },
+          {
+            "role": "password",
+            "bounds": {
+              "left": 0.1,
+              "top": 0.1,
+              "right": 0.2,
+              "bottom": 0.2
+            },
+            "sensitive": true,
+            "children": []
+          }
+        ]
+      },
+      "candidates": [
+        {
+          "id": "123e4567-e89b-42d3-a456-426614174101",
+          "observationId": "123e4567-e89b-42d3-a456-426614174044",
+          "source": "ocr",
+          "point": {
+            "x": 0.5,
+            "y": 0.65
+          },
+          "bounds": {
+            "left": 0.3,
+            "top": 0.6,
+            "right": 0.7,
+            "bottom": 0.8
+          },
+          "confidence": 0.99
+        },
+        {
+          "id": "123e4567-e89b-42d3-a456-426614174102",
+          "observationId": "123e4567-e89b-42d3-a456-426614174044",
+          "source": "template",
+          "point": {
+            "x": 0.5,
+            "y": 0.65
+          },
+          "bounds": {
+            "left": 0.3,
+            "top": 0.6,
+            "right": 0.7,
+            "bottom": 0.8
+          },
+          "confidence": 0.9
+        },
+        {
+          "id": "123e4567-e89b-42d3-a456-426614174103",
+          "observationId": "123e4567-e89b-42d3-a456-426614174044",
+          "source": "model",
+          "point": {
+            "x": 0.5,
+            "y": 0.65
+          },
+          "bounds": {
+            "left": 0.3,
+            "top": 0.6,
+            "right": 0.7,
+            "bottom": 0.8
+          },
+          "confidence": 0.8
+        },
+        {
+          "id": "123e4567-e89b-42d3-a456-426614174104",
+          "observationId": "123e4567-e89b-42d3-a456-426614174044",
+          "source": "manual",
+          "point": {
+            "x": 0.5,
+            "y": 0.65
+          },
+          "bounds": {
+            "left": 0.3,
+            "top": 0.6,
+            "right": 0.7,
+            "bottom": 0.8
+          },
+          "confidence": 1.0
+        }
+      ],
+      "actionCommitCount": 0
+    }
+  ]
+}
