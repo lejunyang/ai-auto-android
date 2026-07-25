@@ -2,6 +2,11 @@
 
 > 本文件是 N31-N54 唯一执行与状态源，不回写当前 MVP 验收清单。
 >
+> **最终交接状态（2026-07-25）：** 本轮仅完成状态复核，未启动 N31-N54
+> 的新实现，当前没有执行中的下一阶段任务。保留含独有提交的
+> `next/n31-emulator-runner` 与 `round9/task21-touch-retry` 分支；后续会话应先为
+> 目标任务创建独立 change spec 和 worktree，再按本文件继续。
+>
 > 当前 Task N35 实现已集成到 `main`，但正式验收仍待 macOS、Windows 各 20 次
 > 断线恢复与不会串设备的证据；Task N31 有未集成实现但仍有 stop 失败释放锁和
 > WebView 版本解析失败未 fail-closed 两项 Major，Task N39/N42 尚无实现提交，
