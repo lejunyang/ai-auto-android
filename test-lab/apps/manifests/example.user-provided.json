@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "package": "com.example.replace_before_use",
+  "version": "0.0.0-replace",
+  "versionCode": 1,
+  "abi": [
+    "arm64-v8a"
+  ],
+  "minSdk": 26,
+  "source": {
+    "type": "user-provided",
+    "note": "占位说明：使用前必须替换为操作者合法取得制品的具体来源说明。"
+  },
+  "licenseNote": "占位说明：使用前必须记录允许测试但不允许重新分发的许可依据。",
+  "sizeBytes": 1,
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "signingCertificateSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}

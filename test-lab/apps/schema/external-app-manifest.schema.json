@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiauto.dev/schema/test-lab/external-app-manifest-v1.json",
+  "title": "External App Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "package",
+    "version",
+    "versionCode",
+    "abi",
+    "minSdk",
+    "source",
+    "licenseNote",
+    "sizeBytes",
+    "sha256",
+    "signingCertificateSha256"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "package": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "versionCode": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "abi": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "arm64-v8a",
+          "armeabi-v7a",
+          "x86",
+          "x86_64"
+        ]
+      }
+    },
+    "minSdk": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "source": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "url",
+            "note"
+          ],
+          "properties": {
+            "type": {
+              "const": "https"
+            },
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https://[^/?#@]+(?:/[^?#]*)?$"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "note"
+          ],
+          "properties": {
+            "type": {
+              "const": "user-provided"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        }
+      ]
+    },
+    "licenseNote": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "sizeBytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "signingCertificateSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

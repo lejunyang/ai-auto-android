@@ -1,0 +1,14 @@
+{
+  "name": "@ai-auto-android/external-app-cache",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "scan": "node src/repository-scan.mjs",
+    "smoke": "npm test && npm run scan"
+  }
+}
