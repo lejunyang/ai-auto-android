@@ -4,19 +4,44 @@ package dev.aiauto.android.automation.recording
  * 功能用途：实现 RecordingModels 对应的语义录制、脚本持久化或确定性回放能力。
  */
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
-const val RECORDING_SCHEMA_VERSION = "1.0"
+const val RECORDING_SCHEMA_VERSION = "1.1"
+const val RECORDING_LEGACY_SCHEMA_VERSION = "1.0"
 
+/** 记录脚本或步骤的来源，避免编辑和回放阶段猜测坐标的可信度。 */
+@Serializable
+enum class RecordingProvenance {
+    @SerialName("semantic")
+    SEMANTIC,
+
+    @SerialName("visual")
+    VISUAL,
+
+    @SerialName("coordinate")
+    COORDINATE,
+
+    @SerialName("manual")
+    MANUAL,
+
+    @SerialName("imported")
+    IMPORTED,
+}
+
+/** 可持久化、可迁移且受 revision 乐观锁保护的自动化脚本。 */
 @Serializable
 data class AutomationScript(
     val id: String,
     val schemaVersion: String = RECORDING_SCHEMA_VERSION,
+    val revision: Long = 1,
     val name: String,
     val targetPackages: List<String>,
     val createdAt: String,
+    val updatedAt: String = createdAt,
+    val provenance: RecordingProvenance = RecordingProvenance.SEMANTIC,
     val requirements: ScriptRequirements = ScriptRequirements(),
     val environment: ScriptEnvironment? = null,
     val variables: List<ScriptVariable> = emptyList(),
@@ -50,13 +75,48 @@ data class ScriptVariable(
     val type: String,
     val scope: String = "run",
     val sensitive: Boolean,
+    @SerialName("default")
+    val defaultValue: JsonElement? = null,
+)
+
+/** 视觉目标只保存可验证的归一化元数据；原图与本地路径在默认导出时剥离。 */
+@Serializable
+data class VisualTarget(
+    val normalizedPoint: NormalizedPoint? = null,
+    val normalizedBounds: NormalizedBounds? = null,
+    val confidence: Double,
+    val source: RecordingProvenance,
+    val observationId: String? = null,
+    val imageSha256: String? = null,
+    val screenshotBase64: String? = null,
+    val deviceLocalPath: String? = null,
 )
 
 @Serializable
+data class NormalizedPoint(
+    val x: Double,
+    val y: Double,
+)
+
+@Serializable
+data class NormalizedBounds(
+    val left: Double,
+    val top: Double,
+    val right: Double,
+    val bottom: Double,
+)
+
+/** 单个录制步骤携带来源、启停状态及编辑器需要的等待和说明字段。 */
+@Serializable
 data class RecordedStep(
     val id: String,
-    val recordedAtMs: Long,
+    val recordedAtMs: Long = 0,
+    val provenance: RecordingProvenance = RecordingProvenance.SEMANTIC,
+    val enabled: Boolean = true,
     val action: RecordedAction,
+    val visualTarget: VisualTarget? = null,
+    val notes: String? = null,
+    val waitBefore: RecordedPredicate? = null,
     val waitAfter: RecordedPredicate? = null,
     val retry: RetryPolicy = RetryPolicy(),
     val failurePolicy: String = "stop",
@@ -82,10 +142,14 @@ data class RecordedPredicate(
 data class RetryPolicy(
     val maxAttempts: Int = 2,
     val backoffMs: Long = 250,
+    val backoffMultiplier: Double = 1.0,
+    val maxBackoffMs: Long? = null,
 ) {
     init {
         require(maxAttempts in 1..5)
         require(backoffMs in 0..30_000)
+        require(backoffMultiplier in 1.0..10.0)
+        require(maxBackoffMs == null || maxBackoffMs in backoffMs..300_000)
     }
 }
 

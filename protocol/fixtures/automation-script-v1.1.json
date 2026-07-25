@@ -1,0 +1,87 @@
+{
+  "id": "ec43ff73-c501-4c55-8785-9a812f009c1e",
+  "schemaVersion": "1.1",
+  "revision": 4,
+  "name": "Save a note visually",
+  "targetPackages": [
+    "com.example.notes"
+  ],
+  "createdAt": "2026-07-18T01:30:00Z",
+  "updatedAt": "2026-07-25T08:15:00Z",
+  "provenance": "imported",
+  "requirements": {
+    "minApiLevel": 30,
+    "capabilities": [
+      "accessibility.actions",
+      "visual.target"
+    ]
+  },
+  "environment": {
+    "apiLevel": 36,
+    "logicalWidth": 1080,
+    "logicalHeight": 2400,
+    "densityDpi": 420,
+    "rotation": 0,
+    "locale": "zh-CN"
+  },
+  "variables": [
+    {
+      "name": "noteText",
+      "type": "string",
+      "scope": "run",
+      "sensitive": false,
+      "default": "fixture note"
+    }
+  ],
+  "steps": [
+    {
+      "id": "786161ea-3432-48b3-a8c2-a53d9e548aa4",
+      "recordedAtMs": 320,
+      "provenance": "visual",
+      "enabled": true,
+      "action": {
+        "type": "ui.tap",
+        "params": {
+          "x": 540,
+          "y": 1800
+        }
+      },
+      "visualTarget": {
+        "normalizedPoint": {
+          "x": 0.5,
+          "y": 0.75
+        },
+        "normalizedBounds": {
+          "left": 0.4,
+          "top": 0.7,
+          "right": 0.6,
+          "bottom": 0.8
+        },
+        "confidence": 0.93,
+        "source": "manual",
+        "observationId": "obs-20260725-081500",
+        "imageSha256": "6f1ed002ab5595859014ebf0951522d9f4e9b94d932f1abf8c935bca3d92ccf1"
+      },
+      "notes": "Confirm the visual marker before replay.",
+      "waitBefore": {
+        "kind": "package",
+        "operator": "equals",
+        "expected": "com.example.notes",
+        "timeoutMs": 3000
+      },
+      "waitAfter": {
+        "kind": "uiStable",
+        "operator": "stable",
+        "stableDurationMs": 300,
+        "timeoutMs": 5000
+      },
+      "retry": {
+        "maxAttempts": 2,
+        "backoffMs": 200,
+        "backoffMultiplier": 1.5,
+        "maxBackoffMs": 1000
+      },
+      "failurePolicy": "requestIntervention"
+    }
+  ]
+}
