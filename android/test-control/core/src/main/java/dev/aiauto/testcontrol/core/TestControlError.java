@@ -1,0 +1,21 @@
+package dev.aiauto.testcontrol.core;
+
+/**
+ * 功能用途：为测试控制拒绝路径提供稳定且不携带秘密的机器可读错误分类。
+ */
+public enum TestControlError {
+    TOKEN_INVALID,
+    TOKEN_GENERATION_FAILED,
+    TOKEN_EXPIRED,
+    TOKEN_REPLAYED,
+    SCOPE_DENIED,
+    EMULATOR_REQUIRED,
+    SERIAL_MISMATCH,
+    AVD_FINGERPRINT_MISMATCH,
+    APP_SIGNING_MISMATCH,
+    CALLER_SIGNING_MISMATCH,
+    TEST_MARKER_MISMATCH,
+    DEBUG_BUILD_REQUIRED,
+    DEVICE_ATTESTATION_MISMATCH,
+    UNSAFE_SCRIPT_PRESET
+}
