@@ -323,11 +323,15 @@ Go race 测试及 Kotlin N38 定向 33/33 均通过；三端共同消费 1 个�
 **验收证据：** macOS/Windows 同 LAN 建连成功；过期、重放、错误网卡和指纹变化
 失败关闭；listener/session 结束后端口和临时密钥均清理。
 
-**实现记录（正式验收未完成）：** `main` 已包含代码阶段 `492fdad`。Go 实现覆盖
-明确网卡与单地址绑定、VPN/多网卡拒绝、临时 listener、手工 invitation、
-X25519/HKDF/confirmation、加密 frame、重放/乱序/篡改、取消/超时/切网和秘密清理；
-`go test -race ./internal/bridge/lan/...` 通过。localhost socket 仅证明协议和生命周期，
-不能替代 macOS/Windows 同 LAN、Windows 防火墙和真实 CLI 集成，任务保持未勾选。
+**实现记录（正式验收未完成）：** `main` 已包含代码阶段 `492fdad` 和生产 CLI 接线
+`ca19d21`、规格证据 `10f1441`。`aactl bridge lan interfaces|listen` 在 ADB 解析前
+分流，要求显式网卡 ID 与单地址候选，先流式输出 payload-only invitation，再完成
+一次 accept/双方确认并安全关闭验证 session；timeout、cancel、切网、输出失败和认证
+失败均关闭 listener 且不泄露 token、私钥、derived key 或 tag。N37 CLI 定向 6 个
+顶层测试（含 2 个生命周期子场景）、LAN/CLI race、`make test/verify/build` 通过。
+生产单地址 smoke 在 `if-16-en1 / 192.168.31.16` 先输出 invitation，再以
+`LAN_ACCEPT_TIMEOUT`/退出码 5 结束，临时端口随后不可达。该证据不替代持续双向 RPC、
+macOS/Windows 同 LAN、Windows 防火墙和真实 Android 互操作，任务保持未勾选。
 
 **失败清理：** 关闭 listener 和连接，清零临时私钥，撤销 invitation，删除二维码
 临时文件和防火墙测试规则。
@@ -354,11 +358,15 @@ X25519/HKDF/confirmation、加密 frame、重放/乱序/篡改、取消/超时/�
 **验收证据：** 扫码和手工码均可建立短期 session；无摄像头仍可使用手工路径；
 切网或过期后停止新动作且不降级到明文。
 
-**实现记录（正式验收未完成）：** `main` 已包含代码阶段 `c4bff51`。Kotlin 定向
-33/33 与 App 全量 232/232 通过，覆盖 N36 全部 fixture/vector、扫码/手工共用严格
-入口、显式候选/网卡/指纹确认、加密出站 session、持久化重放保护、切网/过期/进程
-恢复失败关闭和秘密清零。真实 socket 与 N37 wire adapter、扫码 provider、相机权限、
-公共导航和同 LAN 设备验收尚未集成，任务保持未勾选。
+**实现记录（正式验收未完成）：** `main` 已包含代码阶段 `c4bff51`、生产 socket/
+导航接线 `3b57ca2` 和规格证据 `fa98008`。App 现可从桌面 Bridge 页面进入 LAN
+配对，手工输入严格 invitation，选择候选与 Android Network 并确认短指纹后，以
+`Network.bindSocket` 绑定非 VPN Wi-Fi/以太网并连接 numeric IP literal。NDJSON
+握手/加密 frame 有界且严格失败关闭；修正后的 nonce/AAD 与 N37 字节契约一致，固定
+ciphertext 断言防止跨端漂移。N38 定向 43/43、App JVM 319/319、debug/release
+assemble、lint 和中文注释门禁通过。当前未接入受测扫码 provider，故不声明
+`CAMERA` 并明确保留手工路径；真实 N37 同 LAN、持续双向 RPC、相机授权/扫码、切网、
+防火墙/OEM 和 API 设备矩阵尚未验收，任务保持未勾选。
 
 **失败清理：** 关闭出站 socket，清零临时密钥和解析结果，撤销 session；不保留
 二维码图像。
