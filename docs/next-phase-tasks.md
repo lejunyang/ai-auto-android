@@ -603,6 +603,20 @@ APK/APKS/AAB/XAPK 路径均为零。本轮未下载、生成、安装或提交 A
 **验收证据：** 使用 native/Web fixture 完整跑通所有动作；失败后证据符合 N34，
 高风险或未知页面动作提交数为零。
 
+**实现记录（Runner 安全内核完成，production adapter/设备验收未完成）：**
+`main` 已包含 N47 安全内核 `cdc7797` 和规格证据 `1da17db`。三份严格 Schema
+覆盖场景 DSL、运行报告和兼容汇总；native/Web/Canvas 两个 fixture 场景经 fake
+类型化端口动态执行 18 步，联合覆盖 10 类动作和 semantic/hybrid/visual 三种
+route。Runner 每步绑定最新 observation、前后台包、页面分类、pre/post condition、
+timeout、route/score/attempts 和动态区域；广告、更新、模拟器检测、网络失败、
+登录墙和 unknown 默认零提交，A-B variant 仅在步骤显式接受时继续。明确拒绝记
+0 次提交，明确成功记 1 次，executor 异常记 `ACTION_COMMIT_UNKNOWN` 和
+`actionCommits:null`，不伪报零或重放。失败 run 在 cleanup 前通过 N34 Schema 后
+交给 artifact 端口，四步清理在成功/失败/取消均执行。N47 smoke 25/25、N34
+artifacts 49/49、comments 和 diff-check 通过。本轮未下载/安装 APK；production
+observer/router/executor adapter、真实 emulator 与第三方 App 验收尚未实现，
+任务保持未勾选。
+
 **失败清理：** 停止场景、关闭 Bridge、清除 App 数据和产物并恢复快照。
 
 **建议提交：** `test(lab): add cross-app scenario runner`
