@@ -53,3 +53,10 @@
 - 当前只有 runner 安全内核、Schema、fake fixture 和聚合器。production
   observer/router/executor adapter 与 emulator 设备运行尚未实现，因此路线图 N47
   必须保持未完成，不能用 fake fixture 证据冒充真实 App 或设备验收。
+
+## Round 5
+
+- 实现提交 `b9a9fc3`（`test(lab): add cross-app scenario runner`）包含 N47 change
+  spec、严格 Schema、runner、聚合器、fixture 场景、README 和 25 项测试。
+- 提交 author/committer 均为 `lejunyang <lejunyang@qq.com>`，消息含且仅含一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`；实现提交后 worktree 干净。

@@ -17,4 +17,5 @@
 - [x] N47 smoke、N34 Schema、comments 和 diff-check 通过
 - [x] 未下载、安装或提交第三方 APK/账号/凭据
 - [ ] production adapter 与 emulator 设备验收保持未完成
-- [ ] 提交身份、trailer 与 worktree 状态正确
+- [x] 实现提交身份、唯一 trailer 与 worktree 状态正确
+- [ ] 规格证据提交身份和唯一 trailer 正确
