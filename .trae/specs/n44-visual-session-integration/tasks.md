@@ -7,4 +7,4 @@
 - [x] 将 observation 元数据接入 Provider prompt，保持动作风险门不变
 - [x] 更新现有手工截图 capability test 输入
 - [x] 运行定向、App 全量、lint、comments 与 diff-check
-- [ ] 审查范围并提交
+- [x] 审查范围并提交

@@ -10,4 +10,4 @@
 - [x] 未新增视觉动作执行或放宽 Provider action 风险门
 - [x] 定向、App 全量、lint、comments 与 diff-check 通过
 - [x] 桌面 MCP 仍保持未注册并记录原因
-- [ ] 提交身份、trailer、范围和 worktree clean
+- [x] 提交身份、trailer、范围和 worktree clean

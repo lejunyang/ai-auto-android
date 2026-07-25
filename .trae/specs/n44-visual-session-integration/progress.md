@@ -34,3 +34,7 @@
   attestation 输入，但本轮未启动设备，因此不声称 instrumentation 已执行。
 - App AI 会话用户路径已接入。桌面 MCP 仍缺能同时提供可信 PNG/hierarchy 的采集
   端口，继续保持未注册；该项不应因 App 路径完成而误报。
+- 主实现提交为 `b01792f`，author/committer 均为
+  `lejunyang <lejunyang@qq.com>`，trailer 恰好一次；提交范围仅含本规格允许的
+  session/provider/test 文件。worktree 提交后 clean，真实手工 screenshot
+  instrumentation 仍未执行。
