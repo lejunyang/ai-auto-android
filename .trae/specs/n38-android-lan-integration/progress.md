@@ -43,3 +43,12 @@
   不影响本轮门禁。
 - 真实扫码、N37 同 LAN wire 互操作、持续双向 RPC、切网/防火墙/OEM 和 API 设备
   矩阵仍未执行，主路线图 N38 必须保持未完成。
+
+## Round 4
+
+- 实现提交 `fa3d6da`（`feat(android): integrate lan pairing flow`）包含 N38 生产
+  socket、跨端 frame 修正、网络绑定、ViewModel、导航、测试和本 change spec。
+- 提交 author/committer 均为 `lejunyang <lejunyang@qq.com>`，消息含且仅含一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`；提交后 worktree 干净。
+- 提交前最终 App JVM 319/319、N38 定向 43/43、debug/release assemble、
+  `lintDebug`、`make comments` 和 `git diff --check` 均通过。

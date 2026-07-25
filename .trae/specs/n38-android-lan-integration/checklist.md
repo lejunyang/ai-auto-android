@@ -12,4 +12,5 @@
 - [x] 未注入扫码 provider 时不伪造相机能力或请求无用途权限
 - [x] 定向测试、App JVM 单测、注释和差异检查通过
 - [ ] 真实扫码、N37 同 LAN 互操作及 API 设备矩阵保持待验收
-- [ ] 实现提交和规格证据提交使用规定作者、Conventional Commit 与 trailer
+- [x] 实现提交使用规定作者、Conventional Commit 与唯一 trailer
+- [ ] 规格证据提交使用规定作者、Conventional Commit 与唯一 trailer
