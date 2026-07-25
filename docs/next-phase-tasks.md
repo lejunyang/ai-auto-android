@@ -1,7 +1,9 @@
 # 下一阶段可执行任务
 
-> 本文中的 Task N31-N54 **全部未实现**，供下一会话或其他机器逐项执行，
-> 不属于当前 MVP 验收结果。执行前必须先阅读根目录 `AGENTS.md`、
+> 当前仅 Task N35 已实现、独立复验并集成到 `main`；Task N31 有未集成实现但仍有
+> stop 失败释放锁和 WebView 版本解析失败未 fail-closed 两项 Major，Task N39/N42
+> 尚无实现提交，其余任务也未完成。下一阶段任务不属于当前 MVP 验收结果。
+> 执行前必须先阅读根目录 `AGENTS.md`、
 > `.trae/specs/build-ai-android-automation-mvp/spec.md` 和
 > `docs/alternatives.md`，不得把计划、编译成功或单次演示描述为已交付能力。
 
@@ -131,7 +133,7 @@ TTL 清理后无残留，20 次统计可复现。
 
 **建议提交：** `test: add bounded emulator failure artifacts`
 
-### [ ] Task N35：无线 ADB 生命周期
+### [x] Task N35：无线 ADB 生命周期
 
 **目标：** 在 macOS 和 Windows 上支持无线设备发现、配对后重连和可信设备选择。
 
@@ -151,6 +153,9 @@ Skill 及其镜像；不得开放无线配对给默认 MCP 模型调用。
 
 **验收证据：** macOS 与 Windows 各完成 20 次断线恢复，不串设备；配对码和设备
 私密凭据不出现在 stdout、日志、配置或崩溃报告。
+
+**完成记录：** `main` 已包含 `6872b17` 与独立复验修复 `dc3e10e`；定向 Go race
+测试覆盖 mDNS 发现、可信档案、身份冲突、IPv6 scope、watch 边界与恢复路径。
 
 **失败清理：** 移除本任务建立的无线连接和测试档案；不撤销用户其他 ADB 信任，
 不停止共享 ADB server。

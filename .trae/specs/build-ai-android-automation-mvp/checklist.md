@@ -81,7 +81,7 @@
 ## 下一阶段 Wave 1A
 
 - [ ] 固定 API 30/33/34 AVD Runner 完成创建、启动、等待、快照恢复、停止和删除生命周期，并验证设备锁与失败清理
-- [ ] 无线设备能力支持 `devices watch`、ADB mDNS 发现、不含秘密的可信设备档案和不会串设备的安全恢复
+- [x] 无线设备能力支持 `devices watch`、ADB mDNS 发现、不含秘密的可信设备档案和不会串设备的安全恢复
 - [ ] AutomationScript 1.1 支持 1.0 迁移、revision 乐观锁、原子保存及移除 secret、截图和本地路径的导入导出
 - [ ] 离线 WebView/Canvas fixture 覆盖完整语义、部分语义和单一 Canvas 三种模式，且网络访问计数为零
 - [ ] Wave 1A 四个分支完成独立全量验证、路线图状态同步和 worktree 安全清理

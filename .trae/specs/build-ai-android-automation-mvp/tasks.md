@@ -171,7 +171,7 @@
 
 - [ ] Task 32: 实施下一阶段 Wave 1A 基础能力：按 `docs/next-phase-tasks.md` 的精确任务边界并行交付首批测试、连接、脚本和受控页面基础。
   - [ ] SubTask 32.1: 实施 N31 固定 API 30/33/34 Emulator Runner
-  - [ ] SubTask 32.2: 实施 N35 无线 ADB 生命周期
+  - [x] SubTask 32.2: 实施 N35 无线 ADB 生命周期
   - [ ] SubTask 32.3: 实施 N39 AutomationScript 1.1
   - [ ] SubTask 32.4: 实施 N42 离线 WebView/Canvas fixture
   - [ ] SubTask 32.5: 集成四个独立分支，执行独立验证，并同步更新 `docs/next-phase-tasks.md` 的完成状态
@@ -208,7 +208,9 @@
 
 ## 后续路线图
 
-`docs/next-phase-tasks.md` 中的 N31-N54 全部尚未实现，供下一会话或其他机器按并行波次执行，不属于当前 MVP 的完成状态。
+`docs/next-phase-tasks.md` 中 N35 已实现、独立复验并集成；N31、N39、N42
+及其余后续任务尚未完成，供下一会话或其他机器按依赖和并行波次执行。下一阶段任务
+不属于当前 MVP 的完成状态。
 
 # Commit Policy
 

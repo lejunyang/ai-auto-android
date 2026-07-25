@@ -130,3 +130,10 @@
 - Any issues discovered or fixed：修复录制环境 Context 崩溃、动态选择器低置信度、Bridge close 清理顺序、Launcher 重入导致的孤儿录制，以及中文注释检查器可被空洞注释绕过的问题；清理旧 worktree 后仅保留 main，删除已等价落地的 Task 20 临时分支，保留未合并的 `round9/task21-touch-retry` 分支。
 - Key decisions made and reasoning：下一阶段优先采用 emulator-first、无线 ADB 生命周期、录制编辑器、WebView/Canvas fixture、视觉观察和真实 App 兼容矩阵；局域网 QR Bridge、设备农场和 scrcpy 条件推进，高权限或低收益方案继续暂缓，N31-N54 均不计入当前 MVP 完成状态。
 - Files changed：完善 `AGENTS.md` 的规格、worktree、Sub-Agent、测试和授权规则；扩展 `docs/alternatives.md` 的优先级与无线/扫码、真实 App、WebView/小程序、Canvas 和自动验收方案；新增 `docs/next-phase-tasks.md` N31-N54 路线图，并更新 `tasks.md`、`checklist.md` 和 `progress.md`。
+
+## Round 21
+
+- Task(s) completed, tests passed, requirements fulfilled：完成 SubTask 32.2 / N35 无线 ADB 生命周期的状态收口；`main` 已包含 `6872b17` 与独立复验修复 `dc3e10e`；`/opt/homebrew/bin/go test -race ./internal/adb ./internal/cli`、覆盖 181 个手写文件和 14 个正反例的 `make comments` 均通过。
+- Any issues discovered or fixed：N31 仍有 stop 失败释放锁和 WebView 版本解析失败未 fail-closed 两项 Major，保持未完成且保留分支；N39/N42 未形成实现提交，保持未完成；已 prune 四个失效 worktree 元数据，仅保留 main worktree，并删除无独立成果的 N39/N42 分支与已等价合入的 N35 临时分支。
+- Key decisions made and reasoning：只勾选有实现和独立复验证据的 N35，不把 N31 的部分实现、N39/N42 的丢失工作区或 fake runner 描述为已交付；Task 32 与 SubTasks 32.1、32.3、32.4、32.5 继续保持未完成。
+- Files changed：`.trae/specs/build-ai-android-automation-mvp/tasks.md`、`.trae/specs/build-ai-android-automation-mvp/checklist.md`、`.trae/specs/build-ai-android-automation-mvp/progress.md`、`docs/next-phase-tasks.md`。
