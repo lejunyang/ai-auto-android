@@ -25,3 +25,6 @@
 - N41 JVM 定向 6/6、App JVM 全量 288/288、AndroidTest APK 编译、`lintDebug`、
   comments 与 diff-check 通过。instrumentation 源码已编译但未在设备执行，真实
   UI 交互与授权 screenshot provider 接线保持未验收。
+- 主实现提交为 `e42a21f`，author/committer 为
+  `lejunyang <lejunyang@qq.com>` 且 trailer 恰好一次；提交仅包含 N41 允许的
+  recording UI/spec/test 文件，未修改 N40 domain、协议、ReplayEngine 或导航根。
