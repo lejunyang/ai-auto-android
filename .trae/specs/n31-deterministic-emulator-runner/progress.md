@@ -55,3 +55,30 @@
 - `make verify` 通过 ADB smoke、协议 29 项、3 组 Skills 及镜像、CLI 示例、188
   个受管文件注释检查、14 个正反例和工具链元数据；runner 测试 12/12 通过。
 - 仓库外机器可读报告位于 SDK state 的 `reports/n31-matrix.json`，不提交设备产物。
+
+## Round 4
+
+- N42 设备验收启动 API 30 时，Emulator 对 console port 5622 给出 ADB 端口超出
+  推荐 `[5555,5586]` 的警告；虽然设备在线且 fingerprint 通过，但该轮不作为稳定
+  后续基线继续使用。
+- 已停止明确 serial `emulator-5622` 并确认释放 runtime/lease；端口范围收紧为
+  console 5554-5584，确保对应 ADB 端口始终位于 Emulator 推荐范围。
+- 路线图要求每个 API 的 10 轮 serial 不重复，而不是跨 API 30 轮全局唯一；Round 3
+  的“30 个 serial 全局唯一”仍是当时真实结果，但修复后按每个 API 10 个唯一 serial
+  重新验收，不再为追求全局唯一使用平台警告端口。
+- 修复后的三 API 矩阵、清理率和 N42 设备验收未完成前，不将该 follow-up 标为完成。
+
+## Round 5
+
+- 端口安全复验通过：console port 固定为 5554-5584，对应 ADB port 始终位于
+  Emulator 推荐 `[5555,5586]` 范围。
+- API 30、33、34 各运行 10 轮，每个 API 的 10 个 serial 均唯一；30/30
+  fingerprint、clean marker、dirty marker 和 restore 后 clean marker 一致。
+- 三 API 复验耗时分别为 106092ms、156294ms、162169ms；30 份本轮独立 emulator
+  日志均无 `outside the recommended range` 或 `ADB may not function properly`。
+- 矩阵后 `aactl devices list --json` 返回 0 台设备，owned emulator、runtime 和
+  AVD/port lease 均无残留。
+- Windows AVD 管理改为 `java.exe` 直接调用官方 `AvdManagerCli` 主类，不执行
+  `.bat` 或 shell；macOS 真实 create/owner/delete smoke 通过。
+- 端口上限和 native Windows 路径加入回归测试；runner 测试 13/13、注释检查与
+  `git diff --check` 通过。仓库外报告为 `reports/n31-matrix-port-safe.json`。

@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "portRange": {
     "start": 5554,
-    "end": 5682
+    "end": 5584
   },
   "toolchain": {
     "commandLineToolsRevision": "22.0",

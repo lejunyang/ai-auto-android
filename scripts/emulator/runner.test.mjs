@@ -78,6 +78,19 @@ test("profile package hashes are mandatory and malformed hashes fail closed", as
   );
 });
 
+test("emulator console ports stay inside the platform recommended range", async () => {
+  const stateRoot = await createState();
+  const file = path.join(stateRoot, "profiles.json");
+  const unsupported = structuredClone(profileDocument);
+  unsupported.portRange.end = 5586;
+  await writeFile(file, JSON.stringify(unsupported));
+
+  await assert.rejects(
+    loadProfiles(file),
+    (error) => error instanceof EmulatorError && error.code === "CONFIG_INVALID",
+  );
+});
+
 test("file leases reject a second process for the same AVD and port", async () => {
   const stateRoot = await createState();
   const first = new FileLeaseStore(stateRoot, { pid: 101, now: () => 10 });

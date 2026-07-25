@@ -21,7 +21,7 @@ const AVD_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{1,79}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
 const PACKAGE_REVISION = /^[0-9]+(?:\.[0-9]+){0,2}$/u;
 const SERIAL_PORT_MIN = 5554;
-const SERIAL_PORT_MAX = 5682;
+const SERIAL_PORT_MAX = 5584;
 
 export class EmulatorError extends Error {
   constructor(code, message, details = undefined) {
@@ -747,7 +747,11 @@ export class EmulatorRunner {
       },
     );
     const serial = `emulator-${lease.port}`;
-    const logFile = path.join(this.stateRoot, "logs", `${profile.avdName}.log`);
+    const logFile = path.join(
+      this.stateRoot,
+      "logs",
+      `${profile.avdName}-${serial}.log`,
+    );
     const args = [
       `@${profile.avdName}`,
       "-port",
