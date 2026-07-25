@@ -65,7 +65,7 @@ Windows emulator 矩阵。
 
 **建议提交：** `test(android): add deterministic emulator runner`
 
-### [ ] Task N32：Debug-only Test Control Plane
+### [x] Task N32：Debug-only Test Control Plane
 
 **目标：** 在 disposable emulator 中无人值守配置测试服务和 Bridge，同时保证
 release 变体完全不包含测试入口。
@@ -91,9 +91,14 @@ release 变体完全不包含测试入口。
 **验收证据：** API 30/33/34 可自动建立测试 Bridge 并运行一次只读 snapshot；
 release APK 检查为零测试入口，真机或非测试签名调用全部失败关闭。
 
-**执行记录（2026-07-25）：** 已创建 `phase2-n32-test-control` 独立分支和
-`/private/tmp/ai-auto-n32` worktree，独占 core/debug/androidTest 范围；实现、
-三 API 设备证据和 release 静态检查完成前保持未勾选。
+**实现记录（2026-07-25）：** `main` 已包含 `ce688df`，共享 debug/androidTest
+接线位于 `e30c3bf`。core 32/32 通过；release APK 扫描为 0 findings，且
+`releaseRuntimeClasspath` 不包含 test-control core。API 30 前两轮分别暴露服务
+激活等待和 IPv6 loopback 问题，均明确失败并清理；修复后 API 30
+`emulator-5580`、API 33 `emulator-5582`、API 34 `emulator-5584` 各 1/1 通过
+只读 Bridge snapshot。每轮绑定 N31 profile/fingerprint、双签名、test marker 与
+一次性 token，结束后恢复 Secure settings、关闭 Bridge、删除预置脚本并清零秘密；
+最终设备、emulator、runtime 和 lease 均为零。
 
 **失败清理：** 撤销 test token、关闭 Bridge、禁用测试服务并清空测试脚本；保留
 脱敏失败报告，不保留 token。
@@ -121,12 +126,13 @@ release APK 检查为零测试入口，真机或非测试签名调用全部失�
 **验收证据：** API 30/33/34 上每个动作均有前置状态、动作结果和后置状态；完整场景
 连续 20 次成功率不低于 95%。
 
-**执行记录（2026-07-25）：** `main` 已包含代码基线 `c50868a`，模块单测 3/3、
-Debug/AndroidTest APK、lint 和注释检查通过。API 30 首次以明确 serial
-`emulator-5576`、N31 fingerprint 和 `fixtureRepeat=20` 执行时，第 1 轮纵向滚动
-未产生 `VERTICAL_SCROLL:1` 后置状态，结果为 0/1 且立即停止；runner 清理后设备、
-emulator、runtime 和 lease 均为零。已创建独立 follow-up 修复手势确定性；三个 API
-各 20 次完整场景通过前保持未勾选。
+**执行记录（设备验收阻塞）：** `main` 已包含代码基线 `c50868a` 和手势 follow-up
+`c9a240b` 至 `b8e1b7d`；模块单测、Debug/AndroidTest APK、lint 和注释检查通过。
+API 30 首次 `fixtureRepeat=20` 在第 1 轮纵向滚动失败，随后使用多个新 clean serial
+逐步验证方向、节点可见性、语义 scroll、最新节点 bounds 内 swipe、单层布局和触摸
+路由，真实 `VERTICAL_OFFSET` 始终为 0。所有失败均立即停止，没有放宽后置断言；
+最终设备、emulator、runtime 和 lease 均为零。API 33/34 与 20 轮矩阵未启动，
+N33 保持未完成，后续需重新设计可由平台输入稳定命中的手势 surface。
 
 **失败清理：** 清除 fixture 数据并恢复 AVD 快照；失败产物交给 N34 管理。
 
@@ -265,7 +271,7 @@ AndroidTest APK 和 release 构建共 218 个任务通过。
 
 ## Wave 2：QR Bridge、编辑器领域、WebView 与视觉观察
 
-### [ ] Task N36：LAN QR Invitation 协议与威胁测试
+### [x] Task N36：LAN QR Invitation 协议与威胁测试
 
 **目标：** 定义不包含长期秘密、可防过期和重放的局域网扫码邀请协议。
 
@@ -286,11 +292,12 @@ AndroidTest APK 和 release 构建共 218 个任务通过。
 **验收证据：** 合法 fixture 在 Go/Kotlin 均通过；所有威胁 fixture 在建立 socket
 或签发 token 前被拒绝。
 
-**实现记录（跨实现验收进行中）：** `main` 已包含协议提交 `9d5017e`。LAN 定向
-测试 10/10、协议全量 13 个 Schema、13 个合法 fixture、35 个非法 fixture 和
-4 个兼容检查共 52 项通过；覆盖 TTL、重放、地址/网卡、指纹、X25519 低阶点、
-HKDF、transcript、双方确认和禁止降级。Go/Kotlin 消费者正由 N37/N38 使用同一
-18 个威胁 fixture 和密码向量实现；两端证据完成前本任务保持未勾选。
+**实现记录（2026-07-26）：** `main` 已包含协议 `9d5017e`、Go 消费者
+`32bcff8` 和 Kotlin 消费者 `7fdc338`。Node LAN 测试 10/10、协议全量 52 项、
+Go race 测试及 Kotlin N38 定向 33/33 均通过；三端共同消费 1 个合法 invitation、
+18 个威胁 fixture 和 fingerprint、transcript、四个 HKDF key、双方 confirmation
+及低阶 X25519 向量。过期、重放、错误地址/网卡、篡改与降级均在 socket 或 token
+签发前失败关闭。N37/N38 的真实平台集成仍是各自任务，不影响本协议任务完成。
 
 **失败清理：** 删除临时密钥和 invitation；测试日志只保留指纹和错误码。
 
@@ -316,6 +323,12 @@ HKDF、transcript、双方确认和禁止降级。Go/Kotlin 消费者正由 N37/
 **验收证据：** macOS/Windows 同 LAN 建连成功；过期、重放、错误网卡和指纹变化
 失败关闭；listener/session 结束后端口和临时密钥均清理。
 
+**实现记录（正式验收未完成）：** `main` 已包含代码阶段 `32bcff8`。Go 实现覆盖
+明确网卡与单地址绑定、VPN/多网卡拒绝、临时 listener、手工 invitation、
+X25519/HKDF/confirmation、加密 frame、重放/乱序/篡改、取消/超时/切网和秘密清理；
+`go test -race ./internal/bridge/lan/...` 通过。localhost socket 仅证明协议和生命周期，
+不能替代 macOS/Windows 同 LAN、Windows 防火墙和真实 CLI 集成，任务保持未勾选。
+
 **失败清理：** 关闭 listener 和连接，清零临时私钥，撤销 invitation，删除二维码
 临时文件和防火墙测试规则。
 
@@ -340,6 +353,12 @@ HKDF、transcript、双方确认和禁止降级。Go/Kotlin 消费者正由 N37/
 
 **验收证据：** 扫码和手工码均可建立短期 session；无摄像头仍可使用手工路径；
 切网或过期后停止新动作且不降级到明文。
+
+**实现记录（正式验收未完成）：** `main` 已包含代码阶段 `7fdc338`。Kotlin 定向
+33/33 与 App 全量 232/232 通过，覆盖 N36 全部 fixture/vector、扫码/手工共用严格
+入口、显式候选/网卡/指纹确认、加密出站 session、持久化重放保护、切网/过期/进程
+恢复失败关闭和秘密清零。真实 socket 与 N37 wire adapter、扫码 provider、相机权限、
+公共导航和同 LAN 设备验收尚未集成，任务保持未勾选。
 
 **失败清理：** 关闭出站 socket，清零临时密钥和解析结果，撤销 session；不保留
 二维码图像。
@@ -405,8 +424,8 @@ WebView fixture 适配目录。不得修改 N39 的 core models/repository、N40
 **实现记录（设备验收未完成）：** `main` 已包含代码基线 `27be2fe`。adapter 与
 orchestrator 定向测试 20/20、App 全量单测 219/219 通过；只生成类型化语义动作，
 节点缺失、歧义、observation 过期及 package/page/API/WebView 漂移均失败关闭。
-API 30/33/34 各 20 轮真实虚拟节点回放入口正在独立 follow-up 中实现，60 轮与清理
-证据完成前保持未勾选。
+设备 follow-up 尚未产出可执行 instrumentation 入口；API 30/33/34 各 20 轮和清理
+证据均未开始，因此保持未勾选。
 
 **失败清理：** 清除 WebView 数据、脚本和产物，恢复快照。
 
