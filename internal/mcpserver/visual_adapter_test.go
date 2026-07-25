@@ -66,7 +66,7 @@ func TestVisualAdapterReturnsImageAndRedactedHierarchyForSameObservation(t *test
 	})
 
 	response, err := adapter.Call(context.Background(), VisualProposeInput{
-		ObservationID:  visualObservationID,
+		ObservationID:   visualObservationID,
 		ExpectedPackage: visualTargetPackage,
 	})
 	if err != nil {
@@ -122,7 +122,7 @@ func TestVisualAdapterFailureReturnsNoImageAndZeroActionCommit(t *testing.T) {
 	adapter := NewVisualAdapter(proposer, registry, time.Now)
 
 	response, err := adapter.Call(context.Background(), VisualProposeInput{
-		ObservationID:  visualObservationID,
+		ObservationID:   visualObservationID,
 		ExpectedPackage: visualTargetPackage,
 	})
 
