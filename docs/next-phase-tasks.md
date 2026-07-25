@@ -121,9 +121,12 @@ release APK 检查为零测试入口，真机或非测试签名调用全部失�
 **验收证据：** API 30/33/34 上每个动作均有前置状态、动作结果和后置状态；完整场景
 连续 20 次成功率不低于 95%。
 
-**执行记录（2026-07-25）：** 已创建 `phase2-n33-native-fixture` 独立分支和
-`/private/tmp/ai-auto-n33` worktree，仅修改 native fixture；三个 API 各 20 次
-完整场景与清理证据完成前保持未勾选。
+**执行记录（2026-07-25）：** `main` 已包含代码基线 `c50868a`，模块单测 3/3、
+Debug/AndroidTest APK、lint 和注释检查通过。API 30 首次以明确 serial
+`emulator-5576`、N31 fingerprint 和 `fixtureRepeat=20` 执行时，第 1 轮纵向滚动
+未产生 `VERTICAL_SCROLL:1` 后置状态，结果为 0/1 且立即停止；runner 清理后设备、
+emulator、runtime 和 lease 均为零。已创建独立 follow-up 修复手势确定性；三个 API
+各 20 次完整场景通过前保持未勾选。
 
 **失败清理：** 清除 fixture 数据并恢复 AVD 快照；失败产物交给 N34 管理。
 
@@ -279,6 +282,12 @@ AndroidTest APK 和 release 构建共 218 个任务通过。
 **验收证据：** 合法 fixture 在 Go/Kotlin 均通过；所有威胁 fixture 在建立 socket
 或签发 token 前被拒绝。
 
+**实现记录（跨实现验收进行中）：** `main` 已包含协议提交 `9d5017e`。LAN 定向
+测试 10/10、协议全量 13 个 Schema、13 个合法 fixture、35 个非法 fixture 和
+4 个兼容检查共 52 项通过；覆盖 TTL、重放、地址/网卡、指纹、X25519 低阶点、
+HKDF、transcript、双方确认和禁止降级。Go/Kotlin 消费者正由 N37/N38 使用同一
+18 个威胁 fixture 和密码向量实现；两端证据完成前本任务保持未勾选。
+
 **失败清理：** 删除临时密钥和 invitation；测试日志只保留指纹和错误码。
 
 **建议提交：** `feat(protocol): define lan bridge invitations`
@@ -333,7 +342,7 @@ AndroidTest APK 和 release 构建共 218 个任务通过。
 
 **建议提交：** `feat(android): connect lan bridge by qr`
 
-### [ ] Task N40：录制编辑器领域层
+### [x] Task N40：录制编辑器领域层
 
 **目标：** 提供可测试的步骤编辑事务，不依赖 Compose UI。
 
@@ -355,6 +364,12 @@ recording core models、repository、迁移或协议文件，也不得修改 Com
 
 **验收证据：** 每个编辑命令有反向操作测试；100 步随机编辑后 Undo 回到原脚本；
 dry-run 动作提交数为零，revision 冲突保留双方数据。
+
+**实现记录（2026-07-25）：** `main` 已包含 `2314b06`。15/15 editor 定向测试与
+214/214 App 全量单测通过；12 类编辑命令均可 Undo/Redo，固定 seed 的 100 步编辑
+可完整回退和重做。dry-run 构造器只有 snapshot、selector、coordinate 和 condition
+四类只读端口，不存在动作提交能力；revision 冲突保留 attempted/current 双方，
+严格导入与默认脱敏导出预览不创建临时文件。
 
 **失败清理：** 放弃事务并恢复最后已保存 revision；删除导入临时文件。
 
@@ -382,6 +397,12 @@ WebView fixture 适配目录。不得修改 N39 的 core models/repository、N40
 
 **验收证据：** API 30/33/34 完整语义场景连续 20 次成功率不低于 95%；语义缺失
 场景动作提交数为零并给出明确降级等级。
+
+**实现记录（设备验收未完成）：** `main` 已包含代码基线 `27be2fe`。adapter 与
+orchestrator 定向测试 20/20、App 全量单测 219/219 通过；只生成类型化语义动作，
+节点缺失、歧义、observation 过期及 package/page/API/WebView 漂移均失败关闭。
+API 30/33/34 各 20 轮真实虚拟节点回放入口正在独立 follow-up 中实现，60 轮与清理
+证据完成前保持未勾选。
 
 **失败清理：** 清除 WebView 数据、脚本和产物，恢复快照。
 
