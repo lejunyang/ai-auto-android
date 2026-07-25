@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 配置用途：定义运行时 dialog 关闭按钮的稳定 resource ID，确保 UI Automator 可可靠定位。 -->
+<resources>
+    <item name="dialog_dismiss_target" type="id" />
+</resources>

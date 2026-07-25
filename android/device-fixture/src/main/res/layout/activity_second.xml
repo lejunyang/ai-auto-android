@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 配置用途：提供第二页稳定状态和进入第三页的语义动作，依赖平台维护返回栈。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/page_state"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/page_state_description"
+        android:text="@string/page_second_state"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/open_third_page_target"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:contentDescription="@string/open_third_page_description"
+        android:text="@string/open_third_page_label" />
+</LinearLayout>

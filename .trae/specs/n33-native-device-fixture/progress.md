@@ -1,0 +1,41 @@
+# N33 Progress
+
+本文件 append-only，记录实现、测试、设备证据、失败和清理结果。
+
+## Round 1
+
+- 已创建独立 change spec，并确认 worktree 位于 `phase2-n33-native-fixture`，
+  基线包含 N31 与共享 Android 集成。
+- 现有 Fixture 只有单页 toggle，没有 instrumentation、手势目标、三页 Back 栈或
+  系统导航状态；当前尚未满足 N33。
+- 测试设计拆分为 `core` 与 `system`：前者覆盖业务控件、dialog、多页面和复位，
+  后者覆盖 Home、Recents、Settings 应用切换和 Launcher 重入。
+- 重复入口使用 instrumentation 参数 `fixtureScenario` 与 `fixtureRepeat`，设备矩阵
+  由集成线程使用明确 serial 执行。
+- 当前状态：先写失败测试，生产实现尚未修改，设备验收尚未开始。
+
+## Round 2
+
+- RED 阶段先增加 3 个 `FixtureStateTest` 和 UI Automator 场景；JVM 测试按预期因
+  `FixtureState` 尚不存在而编译失败，随后才实现生产代码。
+- 审查后移除 instrumentation 中全部 `executeShellCommand`、`am force-stop`、
+  `pm clear` 和固定 `overview_panel` 依赖；改用 debug-only、不可导出的
+  `TestResetActivity` 与应用内 Reset 清理进程状态和任务栈。
+- Recents 场景不依赖 SystemUI resource ID：动作前验证 Fixture 前台和 pending
+  状态，动作后确认 Fixture 离开前台，并校验稳定前台包属于本轮观察到的 Launcher
+  或系统包；Launcher 重入后由独立 `recents_return_state` 验证结果。
+- 已实现三页平台 Back 栈、可关闭 dialog、文本输入、点击、长按、独立纵向滚动、
+  横向 swipe、Home、Recents、Settings 应用切换和 Launcher 重入。每个动作均有固定
+  `contentDescription` 与独立状态节点，原有 `local_toggle` 契约保持兼容。
+- 状态仅保存在进程内，不声明 `INTERNET` 或其他权限；Reset 同时清空输入、计数、
+  系统 pending/return、滚动位置和 legacy toggle，不保存敏感数据或产生外部副作用。
+- `FixtureStateTest` 3/3 通过；`:device-fixture:assembleDebug`、
+  `:device-fixture:assembleDebugAndroidTest` 和 `:device-fixture:lintDebug` 通过。
+  lint 为 0 error；版本固定和既有 Fixture 发布配置仍有非阻断 warning。
+- `make comments` 覆盖 211 个手写文件及 14 个正反例通过；`git diff --check` 和
+  shell/SystemUI 固定资源安全扫描通过。
+- instrumentation 入口为
+  `dev.aiauto.fixture.NativeFixtureDeviceTest#runSelectedFixtureScenario`；参数
+  `fixtureScenario=all|core|system`、`fixtureRepeat=1..100`。
+- API 30、33、34 的设备 instrumentation 和各 20 轮成功率统计尚未运行，必须由
+  集成线程使用明确 serial 和 N31 runner 完成；本轮不将 APK 编译描述为设备验收。

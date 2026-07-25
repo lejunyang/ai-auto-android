@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 配置用途：仅在 debug 变体注册不可导出的进程内复位入口，release 不包含测试控制组件。 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name=".TestResetActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true" />
+    </application>
+</manifest>

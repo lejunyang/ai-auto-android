@@ -1,27 +1,236 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 配置用途：提供稳定 resourceId 的本地 toggle 与可验证状态文本。 -->
+<!-- 配置用途：以稳定 resource ID、固定无障碍名称和独立状态节点承载全部原生自动化动作。 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="16dp">
+    android:padding="12dp">
 
-    <TextView
-        android:id="@+id/status_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/status_off"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="24dp"/>
+        <TextView
+            android:id="@+id/page_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/page_state_description"
+            android:text="@string/page_main_state"
+            android:textStyle="bold" />
 
-    <ToggleButton
-        android:id="@+id/local_toggle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textOff="@string/status_off"
-        android:textOn="@string/status_on"
-        android:checked="false"/>
+        <EditText
+            android:id="@+id/text_input"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:autofillHints=""
+            android:contentDescription="@string/text_input_description"
+            android:inputType="text"
+            android:maxLines="1" />
 
+        <TextView
+            android:id="@+id/input_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/input_state_description"
+            android:text="@string/input_initial_state" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/click_target"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/click_target_description"
+                android:text="@string/click_target_label" />
+
+            <Button
+                android:id="@+id/long_press_target"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/long_press_target_description"
+                android:text="@string/long_press_target_label" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/click_state"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:contentDescription="@string/click_state_description"
+                android:text="@string/click_initial_state" />
+
+            <TextView
+                android:id="@+id/long_press_state"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:contentDescription="@string/long_press_state_description"
+                android:text="@string/long_press_initial_state" />
+        </LinearLayout>
+
+        <ScrollView
+            android:id="@+id/vertical_scroll_target"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:contentDescription="@string/vertical_scroll_target_description"
+            android:fillViewport="false"
+            android:scrollbars="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="240dp"
+                android:gravity="center"
+                android:text="@string/vertical_scroll_content" />
+        </ScrollView>
+
+        <TextView
+            android:id="@+id/vertical_scroll_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/vertical_scroll_state_description"
+            android:text="@string/vertical_scroll_initial_state" />
+
+        <HorizontalScrollView
+            android:id="@+id/horizontal_swipe_target"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:contentDescription="@string/horizontal_swipe_target_description"
+            android:fillViewport="false"
+            android:scrollbars="horizontal">
+
+            <TextView
+                android:layout_width="720dp"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="@string/horizontal_swipe_content" />
+        </HorizontalScrollView>
+
+        <TextView
+            android:id="@+id/horizontal_swipe_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/horizontal_swipe_state_description"
+            android:text="@string/horizontal_swipe_initial_state" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/dialog_open_target"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/dialog_open_description"
+                android:text="@string/dialog_open_label" />
+
+            <Button
+                android:id="@+id/open_second_page_target"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/open_second_page_description"
+                android:text="@string/open_second_page_label" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/dialog_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/dialog_state_description"
+            android:text="@string/dialog_ready_state" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/mark_home_target"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/mark_home_description"
+                android:text="@string/home_label" />
+
+            <Button
+                android:id="@+id/mark_recents_target"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/mark_recents_description"
+                android:text="@string/recents_label" />
+
+            <Button
+                android:id="@+id/mark_settings_target"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/mark_settings_description"
+                android:text="@string/settings_label" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/system_pending_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/system_pending_state_description"
+            android:text="@string/system_pending_initial_state" />
+
+        <TextView
+            android:id="@+id/home_return_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/home_return_state_description"
+            android:text="@string/system_return_initial_state" />
+
+        <TextView
+            android:id="@+id/recents_return_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/recents_return_state_description"
+            android:text="@string/system_return_initial_state" />
+
+        <TextView
+            android:id="@+id/settings_return_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/settings_return_state_description"
+            android:text="@string/system_return_initial_state" />
+
+        <Button
+            android:id="@+id/reset_target"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:contentDescription="@string/reset_target_description"
+            android:text="@string/reset_label" />
+
+        <TextView
+            android:id="@+id/reset_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/reset_state_description"
+            android:text="@string/reset_done_state" />
+
+        <ToggleButton
+            android:id="@+id/local_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:checked="false"
+            android:contentDescription="@string/local_toggle_description"
+            android:textOff="@string/status_off"
+            android:textOn="@string/status_on" />
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/status_off" />
 </LinearLayout>

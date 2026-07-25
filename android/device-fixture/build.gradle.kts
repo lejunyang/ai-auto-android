@@ -13,6 +13,8 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -29,7 +31,16 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
+    // 版本固定在模块内，避免并行 N32/N34 为测试依赖争用共享 version catalog。
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 }
