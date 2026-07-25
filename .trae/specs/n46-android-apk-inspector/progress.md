@@ -52,3 +52,6 @@
 - 真实 APK 的 `aapt2`/`apksigner` 输出兼容性、签名方案差异、API 30/33/34 clean
   AVD 安装与场景恢复仍未验收。完成这些证据必须由用户提供合法仓库外制品，并遵循
   既有 N46 manifest、cache verifier、显式 serial 与 clean snapshot 边界。
+- 主实现提交为 `01b1bde`，author/committer 均为
+  `lejunyang <lejunyang@qq.com>` 且 trailer 恰好一次；提交只包含 follow-up
+  spec、`scripts/test-lab` inspector/测试和仓库外 App README，worktree clean。
