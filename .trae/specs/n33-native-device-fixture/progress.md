@@ -88,3 +88,10 @@
   接收了 dispatch。专用纵向 surface 内没有可交互子控件，因此
   `DeterministicScrollView.onInterceptTouchEvent` 明确截获该 surface 内触摸，再由
   MOVE delta 更新真实 `scrollY`；后置仍由 offset/state 客观验证。
+- 最后一次 API 30 单轮使用明确 serial `emulator-5566` 和固定 N31 fingerprint；
+  单层布局与触摸截获均已生效，但纵向目标仍返回 `VERTICAL_OFFSET:0`，测试明确失败
+  并在首个手势后停止。该结果证明当前 UiAutomator 注入路径不能满足 N33 的真实位移
+  验收，不能靠放宽断言或直接写状态继续推进。
+- runner 已停止 `emulator-5566`，最终设备、emulator、runtime 与 lease 均为零。
+  本轮停止继续试错，API 33/34 与各 20 轮矩阵未启动；N33 保持未完成，后续需独立
+  设计可由平台输入路由稳定命中的手势 surface，再从 clean snapshot 重新验收。
