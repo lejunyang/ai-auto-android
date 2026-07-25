@@ -13,6 +13,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
 	"github.com/lejunyang/ai-auto-android/internal/bridge"
+	"github.com/lejunyang/ai-auto-android/internal/bridge/lan"
 	"github.com/lejunyang/ai-auto-android/internal/mcpserver"
 	"github.com/lejunyang/ai-auto-android/internal/output"
 	"github.com/lejunyang/ai-auto-android/internal/process"
@@ -41,6 +42,13 @@ type App struct {
 	TrustedDevices adb.TrustedDeviceStore
 	Automation     service.Automation
 	MCPTransport   sdkmcp.Transport
+	// LANInterfaces 等窄端口允许测试替换网络、listener、随机源和二维码 provider。
+	LANInterfaces lan.InterfaceSource
+	LANBinder     lan.ListenerBinder
+	LANRandom     io.Reader
+	LANQR         lan.QRProvider
+	LANNow        func() time.Time
+	LANListeners  lanListenerStarter
 }
 
 // DefaultApp 创建使用真实 ADB、Bridge 和进程执行器的命令行应用。
@@ -72,6 +80,15 @@ func (a *App) Run(ctx context.Context, args []string) int {
 		requestID = "00000000-0000-4000-8000-000000000000"
 	}
 	cleanArgs, compact := extractJSONFlag(args)
+	if len(cleanArgs) >= 2 && cleanArgs[0] == "bridge" && cleanArgs[1] == "lan" {
+		return a.runLANCommand(
+			ctx,
+			requestID,
+			startedAt,
+			cleanArgs[2:],
+			compact,
+		)
+	}
 
 	data, runErr := a.execute(ctx, cleanArgs)
 	envelope := output.Success(requestID, startedAt, data)

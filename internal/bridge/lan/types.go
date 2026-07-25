@@ -19,6 +19,13 @@ const (
 	maxInvitationTTLSeconds = 120
 )
 
+const (
+	// CapabilityRPC 是 N36 invitation 必须协商的加密 Bridge RPC 能力。
+	CapabilityRPC = requiredRPC
+	// CapabilityMutualConfirmation 是双方 transcript 确认能力。
+	CapabilityMutualConfirmation = requiredConfirmation
+)
+
 // Invitation 是 N36 固定的公开 QR payload，不承载任何最终 token 或私钥。
 type Invitation struct {
 	Kind         string             `json:"kind"`
