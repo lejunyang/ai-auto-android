@@ -7,7 +7,7 @@
 - [x] 实现 observation/candidate/current-screen 前置校验和只读后置 verifier
 - [x] 将 visual/coordinate/manual 来源接入 ReplayEngine，保持 semantic 原行为
 - [x] 运行 N45 定向测试、App 全量单测、lint、comments 与 diff-check
-- [ ] 审查允许范围、提交身份、trailer 和 worktree 清洁状态
+- [x] 审查允许范围、提交身份、trailer 和 worktree 清洁状态
 
 ## 依赖与边界
 

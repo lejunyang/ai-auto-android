@@ -33,3 +33,9 @@
 - N45 独立与 ReplayEngine 定向 20/20、App JVM 全量 292/292、`lintDebug`、comments
   与 diff-check 通过。API 30/33/34 fixture 实际命中和 production port 接线均未
   执行，设备 checklist 保持未勾选。
+- 补充 visual `waitBefore`/`waitAfter` 回归后定向为 22/22，最终 App JVM 全量仍为
+  292/292。前置条件失败时显式端口调用数为零；后置条件超时保留 attempts=1 且不
+  重放已提交视觉动作。
+- 主实现提交为 `d1cd657`，author/committer 均为
+  `lejunyang <lejunyang@qq.com>` 且 trailer 恰好一次；范围仅包含 N45 spec、
+  visual replay 模块、ReplayEngine 和对应测试，提交后 worktree clean。

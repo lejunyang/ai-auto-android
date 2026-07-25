@@ -13,4 +13,4 @@
 - [ ] API 30 fixture 在至少三种分辨率和两种 rotation 准确命中
 - [ ] API 33 fixture 在至少三种分辨率和两种 rotation 准确命中
 - [ ] API 34 fixture 在至少三种分辨率和两种 rotation 准确命中
-- [ ] 提交为单一职责、身份与 trailer 正确且 worktree 干净
+- [x] 提交为单一职责、身份与 trailer 正确且 worktree 干净
