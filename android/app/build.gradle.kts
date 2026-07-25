@@ -63,6 +63,8 @@ dependencies {
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
+    // 仅 debug/androidTest 可引用控制面内核，release 依赖图必须保持零测试入口。
+    debugImplementation(project(":test-control-core"))
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
@@ -71,4 +73,5 @@ dependencies {
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(project(":test-control-core"))
 }
