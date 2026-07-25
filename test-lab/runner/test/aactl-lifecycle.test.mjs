@@ -1,5 +1,6 @@
 // 测试用途：验证 adapter 只透传窄 values/artifacts/lifecycle 端口并拒绝任意执行配置。
 import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
@@ -15,7 +16,7 @@ import {
   SYSTEM_PACKAGES,
 } from "./adapter-helpers.mjs";
 
-const repositoryRoot = new URL("../../../", import.meta.url).pathname
+const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url))
   .replace(/\/$/u, "");
 
 const makeDependencies = (lifecyclePort = lifecycle().port) => ({

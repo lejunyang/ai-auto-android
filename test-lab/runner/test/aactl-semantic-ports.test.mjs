@@ -1,5 +1,6 @@
 // 测试用途：验证 aactl adapter 的语义观察、条件、route、一次性动作和页面分类边界。
 import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
@@ -25,7 +26,7 @@ import {
   RUN_ID,
 } from "./helpers.mjs";
 
-const repositoryRoot = new URL("../../../", import.meta.url).pathname
+const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url))
   .replace(/\/$/u, "");
 
 const rejectsCode = async (operation, code) => {
