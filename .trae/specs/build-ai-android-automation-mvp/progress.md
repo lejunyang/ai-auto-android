@@ -137,3 +137,4 @@
 - Any issues discovered or fixed：N31 仍有 stop 失败释放锁和 WebView 版本解析失败未 fail-closed 两项 Major，保持未完成且保留分支；N39/N42 未形成实现提交，保持未完成；已 prune 四个失效 worktree 元数据，仅保留 main worktree，并删除无独立成果的 N39/N42 分支与已等价合入的 N35 临时分支。
 - Key decisions made and reasoning：只勾选有实现和独立复验证据的 N35，不把 N31 的部分实现、N39/N42 的丢失工作区或 fake runner 描述为已交付；Task 32 与 SubTasks 32.1、32.3、32.4、32.5 继续保持未完成。
 - Files changed：`.trae/specs/build-ai-android-automation-mvp/tasks.md`、`.trae/specs/build-ai-android-automation-mvp/checklist.md`、`.trae/specs/build-ai-android-automation-mvp/progress.md`、`docs/next-phase-tasks.md`。
+- 验收更正：独立复验确认 N35 缺少路线图要求的 macOS、Windows 各 20 次断线恢复与不会串设备的实测证据，因此撤回 N35、SubTask 32.2 和对应清单项的完成标记；保留已集成实现与定向 Go race 测试事实，并新增 SubTask 32.6 跟踪跨平台验收补证。
