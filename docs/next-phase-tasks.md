@@ -2,15 +2,14 @@
 
 > 本文件是 N31-N54 唯一执行与状态源，不回写当前 MVP 验收清单。
 >
-> **最终交接状态（2026-07-25）：** 本轮仅完成状态复核，未启动 N31-N54
-> 的新实现，当前没有执行中的下一阶段任务。保留含独有提交的
-> `next/n31-emulator-runner` 与 `round9/task21-touch-retry` 分支；后续会话应先为
-> 目标任务创建独立 change spec 和 worktree，再按本文件继续。
+> **当前执行状态（2026-07-25）：** N31、N39、N42 已取得实现、定向测试、构建或
+> 设备证据并合入 `main`；N32、N33、N34 已从统一基线 `e7a5716` 创建独立 change
+> spec 分支和 worktree，正按互斥目录并行实施。下一阶段任务不回写当前 MVP
+> 验收结果。
 >
-> 当前 Task N35 实现已集成到 `main`，但正式验收仍待 macOS、Windows 各 20 次
-> 断线恢复与不会串设备的证据；Task N31 有未集成实现但仍有 stop 失败释放锁和
-> WebView 版本解析失败未 fail-closed 两项 Major，Task N39/N42 尚无实现提交，
-> 其余任务也未完成。下一阶段任务不属于当前 MVP 验收结果。
+> Task N35 实现已集成到 `main`，但正式验收仍待 macOS、Windows 各 20 次断线恢复
+> 与不会串设备的证据，继续保持未完成。N31/N39/N42 的临时分支已在确认补丁等价
+> 合入且 worktree 干净后安全清理。
 > 执行前必须先阅读根目录 `AGENTS.md`、
 > `.trae/specs/build-ai-android-automation-mvp/spec.md` 和
 > `docs/alternatives.md`，不得把计划、编译成功或单次演示描述为已交付能力。
@@ -30,7 +29,7 @@
 
 ## Wave 1：测试基础、无线连接、脚本模型与受控页面
 
-### [ ] Task N31：固定 API 30/33/34 Emulator Runner
+### [x] Task N31：固定 API 30/33/34 Emulator Runner
 
 **目标：** 建立可重复、可并发互斥、可从干净快照启动的本地模拟器控制面。
 
@@ -52,6 +51,14 @@ CI workflow；本任务是 `android/settings.gradle.kts` 等共享 Gradle 集成
 
 **验收证据：** 每个 API 连续启动、恢复快照和销毁 10 次；serial 不重复，快照状态
 一致，失败后没有残留 emulator 进程或设备锁。
+
+**实现记录（2026-07-25）：** `main` 已包含 `887c1c6` 与端口安全修复
+`ee2acc7`。API 30、33、34 各连续完成 10 轮 clean snapshot
+启动、dirty marker、恢复和销毁，每个 API 的 10 个 serial 均唯一，30/30
+fingerprint 与 marker 一致；最终设备、owned emulator、runtime 和 lease 均为零。
+runner 测试 13/13 通过，stop 未确认成功时保留锁，WebView 版本无法解析或漂移时
+失败关闭；Windows 使用 native `.exe`/Java 主类路径 smoke，不把它描述为真实
+Windows emulator 矩阵。
 
 **失败清理：** 停止本任务创建的 emulator，删除临时 AVD、锁文件和仓库外 SDK
 缓存；不得执行共享 `adb kill-server`。
@@ -84,6 +91,10 @@ release 变体完全不包含测试入口。
 **验收证据：** API 30/33/34 可自动建立测试 Bridge 并运行一次只读 snapshot；
 release APK 检查为零测试入口，真机或非测试签名调用全部失败关闭。
 
+**执行记录（2026-07-25）：** 已创建 `phase2-n32-test-control` 独立分支和
+`/private/tmp/ai-auto-n32` worktree，独占 core/debug/androidTest 范围；实现、
+三 API 设备证据和 release 静态检查完成前保持未勾选。
+
 **失败清理：** 撤销 test token、关闭 Bridge、禁用测试服务并清空测试脚本；保留
 脱敏失败报告，不保留 token。
 
@@ -109,6 +120,10 @@ release APK 检查为零测试入口，真机或非测试签名调用全部失�
 
 **验收证据：** API 30/33/34 上每个动作均有前置状态、动作结果和后置状态；完整场景
 连续 20 次成功率不低于 95%。
+
+**执行记录（2026-07-25）：** 已创建 `phase2-n33-native-fixture` 独立分支和
+`/private/tmp/ai-auto-n33` worktree，仅修改 native fixture；三个 API 各 20 次
+完整场景与清理证据完成前保持未勾选。
 
 **失败清理：** 清除 fixture 数据并恢复 AVD 快照；失败产物交给 N34 管理。
 
@@ -136,6 +151,10 @@ artifact collector、`android/test-control/reporting/` 和 `test-lab/artifacts/`
 
 **验收证据：** 故意制造超时和断言失败，确认产物齐全且无敏感值；预算溢出被截断，
 TTL 清理后无残留，20 次统计可复现。
+
+**执行记录（2026-07-25）：** 已创建 `phase2-n34-failure-artifacts` 独立分支和
+`/private/tmp/ai-auto-n34` worktree，独占 reporting/artifact 范围；故障注入、
+预算、脱敏、TTL 和 20 次统计证据完成前保持未勾选。
 
 **失败清理：** 立即删除超预算和未脱敏产物，停止上传；保留仅含错误码的摘要。
 
@@ -171,7 +190,7 @@ watch 边界与恢复路径。
 
 **建议提交：** `feat(cli): add wireless adb lifecycle`
 
-### [ ] Task N39：AutomationScript 1.1
+### [x] Task N39：AutomationScript 1.1
 
 **目标：** 为编辑器和视觉步骤增加可迁移、可并发保护的脚本模型。
 
@@ -193,11 +212,17 @@ model/store/migration 及对应测试。
 **验收证据：** 所有 1.0 fixture 无损迁移；1.1 跨 Go/Kotlin round-trip 一致；
 revision 冲突不覆盖新数据，导出中无 secret 或截图。
 
+**实现记录（2026-07-25）：** `main` 已包含 `012406b`。协议验证 33 项通过，
+Android recording 定向测试 43/43 通过；覆盖 1.0 迁移、严格 1.1 fixture
+round-trip、未知 major/字段拒绝、OS 文件锁、revision CAS 冲突、`.bak` 备份、
+原子替换回滚和递归脱敏导出。两个独立 store 的同 revision 更新仅一个保存成功，
+失败方不会覆盖较新数据。
+
 **失败清理：** 保留原脚本备份并回滚临时文件；迁移失败不得覆盖 1.0 数据。
 
 **建议提交：** `feat(recording): define automation script v1.1`
 
-### [ ] Task N42：离线 WebView 与 Canvas Fixture
+### [x] Task N42：离线 WebView 与 Canvas Fixture
 
 **目标：** 建立不依赖公网、可复位、可断言的 WebView 和自绘页面测试基线。
 
@@ -218,6 +243,14 @@ revision 冲突不覆盖新数据，导出中无 secret 或截图。
 
 **验收证据：** API 30/33/34 离线运行一致；三种模式的 hierarchy、截图和状态断言
 可重复，网络访问计数为零。
+
+**实现记录（2026-07-25）：** `main` 已包含 `3f5c002`，共享模块注册和 version
+catalog 集成位于 `e7a5716`。API 30、33、34 各运行 full、partial、canvas 三项
+instrumentation，最终 9/9 通过；每项均验证非空截图、模式状态和
+`NETWORK_REJECTED:0`，full 模式完成 WebView 虚拟节点点击与 Reset 闭环。release
+APK 静态检查不含 test runner、instrumentation 类或 `INTERNET` 权限；最终设备、
+runtime、lease 和 emulator 均无残留。根 Android 单测、Debug 组装、lint、
+AndroidTest APK 和 release 构建共 218 个任务通过。
 
 **失败清理：** 清除 fixture 数据、WebView cache 和截图；恢复 AVD 快照。
 
