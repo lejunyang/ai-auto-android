@@ -26,6 +26,7 @@ class GestureResourceContractTest {
         assertTrue(layout.contains("android:id=\"@+id/horizontal_swipe_target\""))
         assertTrue(layout.contains("android:layout_width=\"720dp\""))
         assertTrue(scrollView.contains("requestDisallowInterceptTouchEvent(true)"))
+        assertTrue(scrollView.contains("onInterceptTouchEvent(event: MotionEvent): Boolean = true"))
     }
 
     @Test

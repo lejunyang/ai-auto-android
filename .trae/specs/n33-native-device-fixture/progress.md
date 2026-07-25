@@ -84,3 +84,7 @@
 - 单层测试不再尝试调整页面位置；每轮要求目标直接存在、达到固定高度并完整位于最新
   屏幕边界内，再执行目标内 swipe 和 offset/state 双重验证。固定 profile 下目标
   不可见会明确失败，不用猜测页面坐标。
+- 单层结构下真实 swipe 仍未进入内层 `onTouchEvent`，offset 保持 0，说明子内容先
+  接收了 dispatch。专用纵向 surface 内没有可交互子控件，因此
+  `DeterministicScrollView.onInterceptTouchEvent` 明确截获该 surface 内触摸，再由
+  MOVE delta 更新真实 `scrollY`；后置仍由 offset/state 客观验证。

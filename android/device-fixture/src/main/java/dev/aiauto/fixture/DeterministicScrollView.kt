@@ -17,6 +17,8 @@ class DeterministicScrollView @JvmOverloads constructor(
 ) : ScrollView(context, attrs, defStyleAttr) {
     private var lastTouchY: Float? = null
 
+    override fun onInterceptTouchEvent(event: MotionEvent): Boolean = true
+
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN,
