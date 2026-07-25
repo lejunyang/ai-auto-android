@@ -1,0 +1,33 @@
+package dev.aiauto.fixture
+
+/**
+ * 功能用途：确保已完整可见的内层纵向目标独占拖动序列，防止外层页面容器截获测试手势。
+ */
+
+import android.content.Context
+import android.util.AttributeSet
+import android.view.MotionEvent
+import android.widget.ScrollView
+
+class DeterministicScrollView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0,
+) : ScrollView(context, attrs, defStyleAttr) {
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN,
+            MotionEvent.ACTION_MOVE,
+            -> parent?.requestDisallowInterceptTouchEvent(true)
+        }
+
+        val handled = super.dispatchTouchEvent(event)
+        if (
+            event.actionMasked == MotionEvent.ACTION_UP ||
+            event.actionMasked == MotionEvent.ACTION_CANCEL
+        ) {
+            parent?.requestDisallowInterceptTouchEvent(false)
+        }
+        return handled
+    }
+}

@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.graphics.Rect
 import android.os.Bundle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -86,17 +87,23 @@ class NativeFixtureDeviceTest {
         }
         awaitState(R.id.long_press_state, "LONG_PRESS:1")
 
-        val vertical = requireObject(R.id.vertical_scroll_target)
+        awaitStateAfterReveal(R.id.vertical_scroll_offset, "VERTICAL_OFFSET:0")
+        val vertical = revealScrollableTarget(R.id.vertical_scroll_target, VERTICAL_TARGET_HEIGHT_DP)
         assertEquals("Fixture vertical scroll target", vertical.contentDescription)
-        vertical.scroll(Direction.DOWN, 0.8f)
-        awaitState(R.id.vertical_scroll_state, "VERTICAL_SCROLL:1")
+        assertTrue("Vertical target must expose a scroll action", vertical.isScrollable)
+        vertical.scroll(INNER_VERTICAL_DIRECTION, INNER_GESTURE_PERCENT)
+        assertPositiveOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET")
+        awaitStateAfterReveal(R.id.vertical_scroll_state, "VERTICAL_SCROLL:1")
 
-        val horizontal = requireObject(R.id.horizontal_swipe_target)
+        awaitStateAfterReveal(R.id.horizontal_swipe_offset, "HORIZONTAL_OFFSET:0")
+        val horizontal = revealScrollableTarget(R.id.horizontal_swipe_target, HORIZONTAL_TARGET_HEIGHT_DP)
         assertEquals("Fixture horizontal swipe target", horizontal.contentDescription)
-        horizontal.swipe(Direction.LEFT, 0.8f)
-        awaitState(R.id.horizontal_swipe_state, "HORIZONTAL_SWIPE:1")
+        assertTrue("Horizontal target must expose a scroll action", horizontal.isScrollable)
+        horizontal.swipe(INNER_HORIZONTAL_DIRECTION, INNER_GESTURE_PERCENT)
+        assertPositiveOffset(R.id.horizontal_swipe_offset, "HORIZONTAL_OFFSET")
+        awaitStateAfterReveal(R.id.horizontal_swipe_state, "HORIZONTAL_SWIPE:1")
 
-        requireObject(R.id.dialog_open_target).also {
+        revealObjectBelow(R.id.dialog_open_target).also {
             assertEquals("Fixture dialog open target", it.contentDescription)
             it.click()
         }
@@ -107,7 +114,7 @@ class NativeFixtureDeviceTest {
         }
         awaitState(R.id.dialog_state, "DIALOG:DISMISSED")
 
-        requireObject(R.id.open_second_page_target).also {
+        revealObjectBelow(R.id.open_second_page_target).also {
             assertEquals("Fixture open second page target", it.contentDescription)
             it.click()
         }
@@ -126,9 +133,11 @@ class NativeFixtureDeviceTest {
         awaitState(R.id.input_state, "INPUT:")
         awaitState(R.id.click_state, "CLICK:0")
         awaitState(R.id.long_press_state, "LONG_PRESS:0")
-        awaitState(R.id.vertical_scroll_state, "VERTICAL_SCROLL:0")
-        awaitState(R.id.horizontal_swipe_state, "HORIZONTAL_SWIPE:0")
-        awaitState(R.id.dialog_state, "DIALOG:READY")
+        awaitStateAfterReveal(R.id.vertical_scroll_state, "VERTICAL_SCROLL:0")
+        awaitStateAfterReveal(R.id.vertical_scroll_offset, "VERTICAL_OFFSET:0")
+        awaitStateAfterReveal(R.id.horizontal_swipe_state, "HORIZONTAL_SWIPE:0")
+        awaitStateAfterReveal(R.id.horizontal_swipe_offset, "HORIZONTAL_OFFSET:0")
+        awaitStateAfterReveal(R.id.dialog_state, "DIALOG:READY")
     }
 
     private fun runSystemScenario(iteration: Int) {
@@ -147,7 +156,7 @@ class NativeFixtureDeviceTest {
             launcherPackage in observedLauncherPackages(),
         )
         launchThroughMainLauncherIntent()
-        awaitState(R.id.home_return_state, "SYSTEM_RETURN:HOME")
+        awaitStateAfterReveal(R.id.home_return_state, "SYSTEM_RETURN:HOME")
 
         markExternalNavigation(
             R.id.mark_recents_target,
@@ -164,7 +173,7 @@ class NativeFixtureDeviceTest {
         device.waitForIdle()
         assertEquals(recentsPackage, device.currentPackageName)
         launchThroughMainLauncherIntent()
-        awaitState(R.id.recents_return_state, "SYSTEM_RETURN:RECENTS")
+        awaitStateAfterReveal(R.id.recents_return_state, "SYSTEM_RETURN:RECENTS")
 
         markExternalNavigation(
             R.id.mark_settings_target,
@@ -181,28 +190,28 @@ class NativeFixtureDeviceTest {
         assertTrue(device.wait(Until.hasObject(By.pkg(settingsPackage).depth(0)), TIMEOUT))
         assertEquals(settingsPackage, device.currentPackageName)
         launchThroughMainLauncherIntent()
-        awaitState(R.id.settings_return_state, "SYSTEM_RETURN:SETTINGS")
-        awaitState(R.id.reset_state, "RESET:DONE")
+        awaitStateAfterReveal(R.id.settings_return_state, "SYSTEM_RETURN:SETTINGS")
+        awaitStateAfterReveal(R.id.reset_state, "RESET:DONE")
         assertTrue("Iteration must stay non-negative", iteration >= 0)
     }
 
     private fun resetInApp() {
-        requireObject(R.id.reset_target).also {
+        revealObjectBelow(R.id.reset_target).also {
             assertEquals("Fixture reset target", it.contentDescription)
             it.click()
         }
-        awaitState(R.id.reset_state, "RESET:DONE")
-        awaitState(R.id.page_state, "PAGE:MAIN")
+        awaitStateAfterReveal(R.id.reset_state, "RESET:DONE")
+        awaitStateAfterReveal(R.id.page_state, "PAGE:MAIN", OUTER_RETURN_DIRECTION)
     }
 
     private fun markExternalNavigation(targetId: Int, description: String, kind: String) {
         assertFixtureForeground()
-        awaitState(R.id.system_pending_state, "SYSTEM_PENDING:NONE")
-        requireObject(targetId).also {
+        awaitStateAfterReveal(R.id.system_pending_state, "SYSTEM_PENDING:NONE")
+        revealObjectBelow(targetId).also {
             assertEquals(description, it.contentDescription)
             it.click()
         }
-        awaitState(R.id.system_pending_state, "SYSTEM_PENDING:$kind")
+        awaitStateAfterReveal(R.id.system_pending_state, "SYSTEM_PENDING:$kind")
     }
 
     private fun clickAndAwait(
@@ -216,6 +225,103 @@ class NativeFixtureDeviceTest {
             it.click()
         }
         awaitState(stateId, expected)
+    }
+
+    private fun revealScrollableTarget(targetId: Int, expectedHeightDp: Int): UiObject2 {
+        val container = requireObject(R.id.fixture_scroll_container)
+        assertEquals("android.widget.ScrollView", container.className)
+        assertTrue("Fixture outer container must expose a scroll action", container.isScrollable)
+        val minimumHeight = dpToPixels(expectedHeightDp) - BOUNDS_TOLERANCE_PX
+
+        repeat(MAX_REVEAL_SCROLLS) {
+            val target = device.findObject(By.res(packageName, resourceName(targetId)))
+            if (
+                target != null &&
+                target.visibleBounds.height() >= minimumHeight &&
+                isFullyVisibleWithin(target.visibleBounds, container.visibleBounds)
+            ) {
+                return target
+            }
+            val direction = if (
+                target != null &&
+                target.visibleBounds.top <= container.visibleBounds.top
+            ) {
+                OUTER_RETURN_DIRECTION
+            } else {
+                OUTER_REVEAL_DIRECTION
+            }
+            container.scroll(direction, OUTER_ALIGNMENT_PERCENT)
+            device.waitForIdle()
+        }
+        val target = device.findObject(By.res(packageName, resourceName(targetId)))
+        throw AssertionError(
+            "Target ${resourceName(targetId)} is not fully visible: " +
+                "target=${target?.visibleBounds}, container=${container.visibleBounds}",
+        )
+    }
+
+    private fun isFullyVisibleWithin(target: Rect, container: Rect): Boolean =
+        !target.isEmpty &&
+            target.left >= container.left &&
+            target.top >= container.top &&
+            target.right <= container.right &&
+            target.bottom <= container.bottom
+
+    private fun dpToPixels(dp: Int): Int =
+        (dp * targetContext.resources.displayMetrics.density).toInt()
+
+    private fun assertPositiveOffset(id: Int, prefix: String) {
+        val selector = By.res(packageName, resourceName(id))
+        val deadline = System.currentTimeMillis() + TIMEOUT
+        while (System.currentTimeMillis() < deadline) {
+            val observed = revealObjectBelowOrNull(id)
+            val value = observed?.text
+                ?.removePrefix("$prefix:")
+                ?.toIntOrNull()
+            if (value != null && value > 0) {
+                return
+            }
+            Thread.sleep(100)
+        }
+        throw AssertionError(
+            "Expected positive $prefix, observed ${device.findObject(selector)?.text}",
+        )
+    }
+
+    private fun awaitStateAfterReveal(
+        id: Int,
+        expected: String,
+        direction: Direction = OUTER_REVEAL_DIRECTION,
+    ): UiObject2 {
+        val deadline = System.currentTimeMillis() + TIMEOUT
+        while (System.currentTimeMillis() < deadline) {
+            val observed = revealObjectOrNull(id, direction)
+            if (observed?.text == expected) {
+                return observed
+            }
+            Thread.sleep(100)
+        }
+        throw AssertionError("Missing node ${resourceName(id)} with text=$expected")
+    }
+
+    private fun revealObjectBelow(id: Int): UiObject2 =
+        revealObjectOrNull(id, OUTER_REVEAL_DIRECTION)
+            ?: throw AssertionError("Unable to reveal node ${resourceName(id)}")
+
+    private fun revealObjectBelowOrNull(id: Int): UiObject2? =
+        revealObjectOrNull(id, OUTER_REVEAL_DIRECTION)
+
+    private fun revealObjectOrNull(id: Int, direction: Direction): UiObject2? {
+        val selector = By.res(packageName, resourceName(id))
+        device.findObject(selector)?.let { return it }
+        val container = device.findObject(By.res(packageName, resourceName(R.id.fixture_scroll_container)))
+            ?: return null
+        repeat(MAX_REVEAL_SCROLLS) {
+            container.scroll(direction, OUTER_SCROLL_PERCENT)
+            device.waitForIdle()
+            device.findObject(selector)?.let { return it }
+        }
+        return null
     }
 
     private fun awaitState(id: Int, expected: String): UiObject2 =
@@ -291,5 +397,16 @@ class NativeFixtureDeviceTest {
 
     private companion object {
         const val TIMEOUT = 10_000L
+        const val MAX_REVEAL_SCROLLS = 8
+        const val VERTICAL_TARGET_HEIGHT_DP = 100
+        const val HORIZONTAL_TARGET_HEIGHT_DP = 72
+        const val BOUNDS_TOLERANCE_PX = 2
+        const val OUTER_SCROLL_PERCENT = 0.6f
+        const val OUTER_ALIGNMENT_PERCENT = 0.25f
+        const val INNER_GESTURE_PERCENT = 0.8f
+        val OUTER_REVEAL_DIRECTION = Direction.UP
+        val OUTER_RETURN_DIRECTION = Direction.DOWN
+        val INNER_VERTICAL_DIRECTION = Direction.UP
+        val INNER_HORIZONTAL_DIRECTION = Direction.LEFT
     }
 }

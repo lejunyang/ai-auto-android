@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 配置用途：以稳定 resource ID、固定无障碍名称和独立状态节点承载全部原生自动化动作。 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fixture_scroll_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="12dp">
+    android:fillViewport="true"
+    android:importantForAccessibility="yes"
+    android:scrollbars="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
 
         <TextView
             android:id="@+id/page_state"
@@ -74,7 +82,7 @@
                 android:text="@string/long_press_initial_state" />
         </LinearLayout>
 
-        <ScrollView
+        <dev.aiauto.fixture.DeterministicScrollView
             android:id="@+id/vertical_scroll_target"
             android:layout_width="match_parent"
             android:layout_height="100dp"
@@ -87,7 +95,7 @@
                 android:layout_height="240dp"
                 android:gravity="center"
                 android:text="@string/vertical_scroll_content" />
-        </ScrollView>
+        </dev.aiauto.fixture.DeterministicScrollView>
 
         <TextView
             android:id="@+id/vertical_scroll_state"
@@ -95,6 +103,13 @@
             android:layout_height="wrap_content"
             android:contentDescription="@string/vertical_scroll_state_description"
             android:text="@string/vertical_scroll_initial_state" />
+
+        <TextView
+            android:id="@+id/vertical_scroll_offset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/vertical_scroll_offset_description"
+            android:text="@string/vertical_scroll_initial_offset" />
 
         <HorizontalScrollView
             android:id="@+id/horizontal_swipe_target"
@@ -117,6 +132,13 @@
             android:layout_height="wrap_content"
             android:contentDescription="@string/horizontal_swipe_state_description"
             android:text="@string/horizontal_swipe_initial_state" />
+
+        <TextView
+            android:id="@+id/horizontal_swipe_offset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/horizontal_swipe_offset_description"
+            android:text="@string/horizontal_swipe_initial_offset" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -233,4 +255,5 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/status_off" />
-</LinearLayout>
+    </LinearLayout>
+</ScrollView>

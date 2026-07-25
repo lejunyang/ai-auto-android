@@ -39,3 +39,22 @@
   `fixtureScenario=all|core|system`、`fixtureRepeat=1..100`。
 - API 30、33、34 的设备 instrumentation 和各 20 轮成功率统计尚未运行，必须由
   集成线程使用明确 serial 和 N31 runner 完成；本轮不将 APK 编译描述为设备验收。
+
+## Round 3
+
+- API 30 首次设备矩阵使用明确 serial `emulator-5576`、N31 fingerprint 和
+  `fixtureRepeat=20`；第 1 轮的内层纵向滚动没有产生 `VERTICAL_SCROLL:1`，
+  instrumentation 明确以 0/1 失败并停止，后续动作未执行。
+- 失败后 N31 runner 正常停止该 serial，`aactl devices list` 返回 0，emulator、
+  runtime 和 AVD/port lease 均无残留。该轮不计入 20 次成功率证据。
+- 根因包含两层：原根布局不是可语义滚动的外层容器，内层目标可能不完整可见；在顶部
+  对内层调用 `Direction.DOWN` 也不会产生正 `scrollY`。修复增加稳定外层
+  `fixture_scroll_container`，先通过语义动作使目标完整可见，再使用
+  `Direction.UP` 驱动内层真实滚动。
+- 内层滚动新增机器可读 `VERTICAL_OFFSET`，测试同时断言节点 `isScrollable`、
+  offset 大于零和独立动作状态；横向目标也断言真实 offset，不能仅由命令退出码通过。
+- 自定义 `DeterministicScrollView` 只在内层真实触摸期间阻止父容器截获，不直接设置
+  后置状态；状态仍仅由 `scrollY` 变化监听器更新。
+- follow-up 模块单测、Debug/AndroidTest APK 和 lint 共 78 个任务通过；中文注释与
+  差异检查在提交前复验。API 30/33/34 各 20 轮设备矩阵仍由主线程执行，设备项保持
+  未勾选。

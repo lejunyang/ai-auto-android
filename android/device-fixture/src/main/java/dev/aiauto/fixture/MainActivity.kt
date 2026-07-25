@@ -13,7 +13,6 @@ import android.text.TextWatcher
 import android.view.View
 import android.widget.EditText
 import android.widget.HorizontalScrollView
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.ToggleButton
 
@@ -75,7 +74,9 @@ class MainActivity : Activity() {
     }
 
     private fun bindVerticalScroll() {
-        findViewById<ScrollView>(R.id.vertical_scroll_target).setOnScrollChangeListener {
+        val target = findViewById<DeterministicScrollView>(R.id.vertical_scroll_target)
+        renderOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET", target.scrollY)
+        target.setOnScrollChangeListener {
                 _: View,
                 _: Int,
                 scrollY: Int,
@@ -84,6 +85,7 @@ class MainActivity : Activity() {
             ->
             if (scrollY != oldScrollY) {
                 state.recordVerticalScroll()
+                renderOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET", scrollY)
                 render()
             }
         }
@@ -91,9 +93,11 @@ class MainActivity : Activity() {
 
     private fun bindHorizontalSwipe() {
         val target = findViewById<HorizontalScrollView>(R.id.horizontal_swipe_target)
+        renderOffset(R.id.horizontal_swipe_offset, "HORIZONTAL_OFFSET", target.scrollX)
         target.setOnScrollChangeListener { _: View, scrollX: Int, _: Int, oldScrollX: Int, _: Int ->
             if (scrollX != oldScrollX) {
                 state.recordHorizontalSwipe()
+                renderOffset(R.id.horizontal_swipe_offset, "HORIZONTAL_OFFSET", scrollX)
                 render()
             }
         }
@@ -150,9 +154,12 @@ class MainActivity : Activity() {
 
     private fun bindReset() {
         findViewById<View>(R.id.reset_target).setOnClickListener {
-            findViewById<ScrollView>(R.id.vertical_scroll_target).scrollTo(0, 0)
+            findViewById<android.widget.ScrollView>(R.id.fixture_scroll_container).scrollTo(0, 0)
+            findViewById<DeterministicScrollView>(R.id.vertical_scroll_target).scrollTo(0, 0)
             findViewById<HorizontalScrollView>(R.id.horizontal_swipe_target).scrollTo(0, 0)
             state.reset()
+            renderOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET", 0)
+            renderOffset(R.id.horizontal_swipe_offset, "HORIZONTAL_OFFSET", 0)
             findViewById<EditText>(R.id.text_input).setText("")
             findViewById<ToggleButton>(R.id.local_toggle).isChecked = false
             render()
@@ -206,6 +213,10 @@ class MainActivity : Activity() {
 
     private fun text(id: Int, value: String) {
         findViewById<TextView>(id).text = value
+    }
+
+    private fun renderOffset(id: Int, prefix: String, offset: Int) {
+        text(id, "$prefix:$offset")
     }
 }
 

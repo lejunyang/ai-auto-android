@@ -24,10 +24,14 @@
     <string name="vertical_scroll_content">Vertical scroll start\n\nDeterministic local content\n\nVertical scroll end</string>
     <string name="vertical_scroll_state_description">Fixture vertical scroll state</string>
     <string name="vertical_scroll_initial_state">VERTICAL_SCROLL:0</string>
+    <string name="vertical_scroll_offset_description">Fixture vertical scroll offset</string>
+    <string name="vertical_scroll_initial_offset">VERTICAL_OFFSET:0</string>
     <string name="horizontal_swipe_target_description">Fixture horizontal swipe target</string>
     <string name="horizontal_swipe_content">Horizontal swipe start                         deterministic local content                         horizontal swipe end</string>
     <string name="horizontal_swipe_state_description">Fixture horizontal swipe state</string>
     <string name="horizontal_swipe_initial_state">HORIZONTAL_SWIPE:0</string>
+    <string name="horizontal_swipe_offset_description">Fixture horizontal swipe offset</string>
+    <string name="horizontal_swipe_initial_offset">HORIZONTAL_OFFSET:0</string>
     <string name="dialog_open_description">Fixture dialog open target</string>
     <string name="dialog_open_label">Open dialog</string>
     <string name="dialog_title">Local fixture dialog</string>
