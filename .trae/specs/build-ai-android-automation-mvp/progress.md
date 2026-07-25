@@ -138,3 +138,10 @@
 - Key decisions made and reasoning：只勾选有实现和独立复验证据的 N35，不把 N31 的部分实现、N39/N42 的丢失工作区或 fake runner 描述为已交付；Task 32 与 SubTasks 32.1、32.3、32.4、32.5 继续保持未完成。
 - Files changed：`.trae/specs/build-ai-android-automation-mvp/tasks.md`、`.trae/specs/build-ai-android-automation-mvp/checklist.md`、`.trae/specs/build-ai-android-automation-mvp/progress.md`、`docs/next-phase-tasks.md`。
 - 验收更正：独立复验确认 N35 缺少路线图要求的 macOS、Windows 各 20 次断线恢复与不会串设备的实测证据，因此撤回 N35、SubTask 32.2 和对应清单项的完成标记；保留已集成实现与定向 Go race 测试事实，并新增 SubTask 32.6 跟踪跨平台验收补证。
+
+## Round 22
+
+- Task(s) completed, tests passed, requirements fulfilled：完成当前 MVP 与下一阶段路线图的文档边界收口；当前 worktree 只剩 `main`。
+- Any issues discovered or fixed：`next/n31-emulator-runner` 与 `round9/task21-touch-retry` 均含独有未合入提交，因此继续保留。
+- Key decisions made and reasoning：`docs/alternatives.md` 与路线图已覆盖无线、扫码、真实 App、WebView、小程序、Canvas、编辑器、视觉 AI 和 emulator-first；后续能力以独立 change spec 实施，不把未开始或未验收能力冒充已交付。
+- Files changed：`AGENTS.md`、`docs/README.md`、`docs/next-phase-tasks.md`、`.trae/specs/build-ai-android-automation-mvp/tasks.md`、`.trae/specs/build-ai-android-automation-mvp/checklist.md`、`.trae/specs/build-ai-android-automation-mvp/progress.md`。

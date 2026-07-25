@@ -9,7 +9,7 @@
 | [安全与分发](security-distribution.md) | 风险模型、Google Play 边界、侧载、签名与校验要求 |
 | [故障排查](troubleshooting.md) | ADB、USB/Wi-Fi、Bridge、选择器和录制错误处理 |
 | [备选方案](alternatives.md) | Shizuku、DPC、设备农场、视觉、getevent、远程 Provider 和 scrcpy |
-| [下一阶段任务](next-phase-tasks.md) | N31-N54 未实现路线图、依赖、并行波次、验收证据和 Sub-Agent 执行模板 |
+| [下一阶段任务](next-phase-tasks.md) | 下一阶段 N31-N54 的真实状态、依赖、并行波次和验收证据 |
 | [验证记录](validation.md) | Task 13 实际命令、测试数量、发布制品及设备条件性跳过 |
 | [Round 10 评审](review-round-10.md) | 截图加固、事件归因、API 34 真机证据和剩余 API 30-33 边界 |
 | [Round 11 评审](review-round-11.md) | API 33 真实会话停止证据、跨 API 验收结论与残余语义边界 |

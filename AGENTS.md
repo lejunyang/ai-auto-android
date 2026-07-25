@@ -30,6 +30,7 @@
 - 当前 MVP 的完成状态以 `.trae/specs/build-ai-android-automation-mvp/` 下的 `spec.md`、`tasks.md`、`checklist.md` 和 append-only `progress.md` 为准。
 - 已完成任务必须有实现、测试或设备证据后才能勾选，不得把设计、编译成功或计划中的能力描述为已经交付。
 - MVP 之后尚未实现的工作统一写入 `docs/next-phase-tasks.md`；实现时再按规格流程拆入对应任务，不回写或篡改历史验收结论。
+- MVP 后工作实施时必须创建独立 change spec；未开始或未验收的路线图任务不得复制进已完成 MVP 的 `tasks.md` 或 `checklist.md`。
 
 ## Git 与 Worktree
 

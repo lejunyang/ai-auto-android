@@ -1,5 +1,7 @@
 # 下一阶段可执行任务
 
+> 本文件是 N31-N54 唯一执行与状态源，不回写当前 MVP 验收清单。
+>
 > 当前 Task N35 实现已集成到 `main`，但正式验收仍待 macOS、Windows 各 20 次
 > 断线恢复与不会串设备的证据；Task N31 有未集成实现但仍有 stop 失败释放锁和
 > WebView 版本解析失败未 fail-closed 两项 Major，Task N39/N42 尚无实现提交，

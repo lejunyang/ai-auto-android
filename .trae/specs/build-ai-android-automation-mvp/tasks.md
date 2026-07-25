@@ -169,14 +169,6 @@
   - [x] SubTask 31.2: N52 本地 API 矩阵、N53 条件性设备农场和 N54 scrcpy 已拆分，优先级、推荐顺序、并行波次和 N50 路径均已统一
   - [x] SubTask 31.3: 已关闭过期 checklist 项，append-only 追加 Round 15，并完成路线图、依赖、目录所有权与安全边界的独立复验
 
-- [ ] Task 32: 实施下一阶段 Wave 1A 基础能力：按 `docs/next-phase-tasks.md` 的精确任务边界并行交付首批测试、连接、脚本和受控页面基础。
-  - [ ] SubTask 32.1: 实施 N31 固定 API 30/33/34 Emulator Runner
-  - [ ] SubTask 32.2: 实施 N35 无线 ADB 生命周期
-  - [ ] SubTask 32.3: 实施 N39 AutomationScript 1.1
-  - [ ] SubTask 32.4: 实施 N42 离线 WebView/Canvas fixture
-  - [ ] SubTask 32.5: 集成四个独立分支，执行独立验证，并同步更新 `docs/next-phase-tasks.md` 的完成状态
-  - [ ] SubTask 32.6: 补齐 N35 在 macOS、Windows 各 20 次断线恢复与不会串设备的验收证据
-
 # Task Dependencies
 
 - Task 2 depends on Task 1.
@@ -200,9 +192,6 @@
 - Task 29 depends on Task 9 and SubTasks 27.1 and 27.2.
 - Task 30 依赖 Task 28 已完成的实现。
 - Task 31 依赖 Task 30。
-- SubTasks 32.1、32.2、32.3 和 32.4 可在互斥文件范围内并行实施。
-- SubTask 32.6 依赖 SubTask 32.2 的实现集成和定向测试通过。
-- SubTask 32.5 依赖 SubTasks 32.1、32.2、32.3、32.4 和 32.6 全部完成。
 - SubTasks 24.2 and 24.3 are completed by Task 27.3.
 - SubTask 27.3 is completed by SubTask 29.3.
 - Task 22 and Task 23 can run in parallel.
@@ -210,9 +199,8 @@
 
 ## 后续路线图
 
-`docs/next-phase-tasks.md` 中 N35 实现已集成，但正式验收仍待 macOS、Windows 各
-20 次断线恢复与不会串设备的证据；N31、N39、N42 及其余后续任务尚未完成，供下一
-会话或其他机器按依赖和并行波次执行。下一阶段任务不属于当前 MVP 的完成状态。
+`docs/next-phase-tasks.md` 是 N31-N54 的唯一执行与状态源；未实现的下一阶段任务
+不回写当前 MVP 验收清单，也不阻塞当前 MVP。
 
 # Commit Policy
 
