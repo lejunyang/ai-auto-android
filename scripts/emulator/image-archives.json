@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "packages": {
+    "system-images;android-30;google_apis;arm64-v8a": {
+      "revision": "16",
+      "archive": "arm64-v8a-30_r16.zip",
+      "size": 1244324730,
+      "sha1": "0e66987d6b4db2e278af83d453ce5d74a7e6ced3"
+    },
+    "system-images;android-33;google_apis;arm64-v8a": {
+      "revision": "17",
+      "archive": "arm64-v8a-33_r17.zip",
+      "size": 1761582980,
+      "sha1": "47516ccb88230c42965940a929f51053562ee351"
+    },
+    "system-images;android-34;google_apis;arm64-v8a": {
+      "revision": "14",
+      "archive": "arm64-v8a-34_r14.zip",
+      "size": 1610393229,
+      "sha1": "2fe8b46d419a3400e30f31b0152b241b50c8b99f"
+    }
+  }
+}

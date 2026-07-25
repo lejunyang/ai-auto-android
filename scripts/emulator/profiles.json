@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0",
+  "portRange": {
+    "start": 5554,
+    "end": 5682
+  },
+  "toolchain": {
+    "commandLineToolsRevision": "22.0",
+    "platformToolsRevision": "37.0.0",
+    "emulatorRevision": "36.6.11",
+    "platformRevision": "2",
+    "buildToolsRevision": "36.0.0"
+  },
+  "profiles": [
+    {
+      "id": "api-30",
+      "apiLevel": 30,
+      "abi": "arm64-v8a",
+      "tag": "google_apis",
+      "systemImage": "system-images;android-30;google_apis;arm64-v8a",
+      "packageRevision": "16",
+      "packageSha256": "097c2808a738ba4c19038b75a085750dd61a7178c0234b14ac5f8270dd8cff54",
+      "avdName": "ai-auto-api-30",
+      "device": "pixel_6",
+      "resolution": "1080x2400",
+      "densityDpi": 420,
+      "locale": "zh-CN",
+      "timezone": "Asia/Shanghai",
+      "navigationMode": "gestural",
+      "snapshot": "clean",
+      "webViewPackage": "com.google.android.webview",
+      "webViewVersion": "91.0.4472.114"
+    },
+    {
+      "id": "api-33",
+      "apiLevel": 33,
+      "abi": "arm64-v8a",
+      "tag": "google_apis",
+      "systemImage": "system-images;android-33;google_apis;arm64-v8a",
+      "packageRevision": "17",
+      "packageSha256": "792e1fad067aa52c750b2bd0694a7bb2fdcab2942a58cda8f0d1e135b5bc65bc",
+      "avdName": "ai-auto-api-33",
+      "device": "pixel_6",
+      "resolution": "1080x2400",
+      "densityDpi": 420,
+      "locale": "zh-CN",
+      "timezone": "Asia/Shanghai",
+      "navigationMode": "gestural",
+      "snapshot": "clean",
+      "webViewPackage": "com.google.android.webview",
+      "webViewVersion": "109.0.5414.123"
+    },
+    {
+      "id": "api-34",
+      "apiLevel": 34,
+      "abi": "arm64-v8a",
+      "tag": "google_apis",
+      "systemImage": "system-images;android-34;google_apis;arm64-v8a",
+      "packageRevision": "14",
+      "packageSha256": "bd1c323cbdd3c9dd55dde54588b298d172fd126fe16e127a7bd7aeab6897890a",
+      "avdName": "ai-auto-api-34",
+      "device": "pixel_6",
+      "resolution": "1080x2400",
+      "densityDpi": 420,
+      "locale": "zh-CN",
+      "timezone": "Asia/Shanghai",
+      "navigationMode": "gestural",
+      "snapshot": "clean",
+      "webViewPackage": "com.google.android.webview",
+      "webViewVersion": "113.0.5672.136"
+    }
+  ]
+}
