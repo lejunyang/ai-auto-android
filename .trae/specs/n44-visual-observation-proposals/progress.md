@@ -40,3 +40,9 @@
 - 主实现已提交为 `ad0a21c`，author/committer 均为
   `lejunyang <lejunyang@qq.com>`，提交 trailer 仅一次；范围仅包含本 change spec
   允许的 15 个文件，提交后 worktree 干净。
+
+## Round 3
+
+- 主线未推送提交统一 author/committer 后，N44 主实现和规格证据分别对应
+  `ccb801d`、`5b8bffe`；最终 tree 与提交消息未变化，身份均为
+  `lejunyang <lejunyang@qq.com>`。

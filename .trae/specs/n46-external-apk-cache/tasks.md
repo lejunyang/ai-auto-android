@@ -13,4 +13,5 @@
 ## 依赖
 
 N46 依赖已完成的 N31 deterministic emulator runner 和 N34 failure artifact
-collector。本任务基线为 `7974815`，与 N44 及其他并行任务目录互斥。
+collector。本任务原始基线 `7974815` 经身份改写后对应 `f93308a`，与 N44 及其他
+并行任务目录互斥。

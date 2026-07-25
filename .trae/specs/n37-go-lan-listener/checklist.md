@@ -1,6 +1,6 @@
 # N37 验收清单
 
-- [x] worktree 位于 `phase2-n37-lan-listener` 且基于 N36 `9d5017e`
+- [x] worktree 位于 `phase2-n37-lan-listener` 且原始 N36 `9d5017e` 经身份改写后对应 `a0b66b6`
 - [x] change spec 与 RED 测试先于 listener/crypto 生产实现落盘
 - [x] 合法 invitation 与 18 个 threat fixture 在 Go 中逐项一致
 - [x] fingerprint、transcript、HKDF、confirmation 与低阶点 vector 一致

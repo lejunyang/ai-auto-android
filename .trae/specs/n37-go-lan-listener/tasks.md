@@ -13,7 +13,7 @@
 
 ## 依赖
 
-N37 依赖 N36 提交 `9d5017e`。本 worktree 直接基于该提交，N36 Schema、18 个 threat
+N37 依赖 N36 提交 `a0b66b6`。本 worktree 直接基于该提交，N36 Schema、18 个 threat
 fixture 和 crypto vector 已存在。N38 在独立 worktree 并行，本任务不得修改其目录。
 
 ## 并行与汇合

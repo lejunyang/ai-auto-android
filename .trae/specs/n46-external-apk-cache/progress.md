@@ -43,3 +43,9 @@
 - 当前只完成离线 manifest/cache 验证和 fake runner 生命周期契约。真实 APK 的
   aapt/apksigner 检查、API 30/33/34 clean AVD 安装与场景结束恢复尚未接入，不作为
   本轮设备证据；应由后续持有合法仓库外制品的 runner/场景任务显式验收。
+
+## Round 4
+
+- 主线未推送提交统一 author/committer 后，N46 主实现和规格证据分别对应
+  `725d628`、`6e8317d`；最终 tree 与提交消息未变化，身份均为
+  `lejunyang <lejunyang@qq.com>`。

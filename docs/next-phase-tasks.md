@@ -3,7 +3,7 @@
 > 本文件是 N31-N54 唯一执行与状态源，不回写当前 MVP 验收清单。
 >
 > **当前执行状态（2026-07-25）：** N31、N39、N42 已取得实现、定向测试、构建或
-> 设备证据并合入 `main`；N32、N33、N34 已从统一基线 `e7a5716` 创建独立 change
+> 设备证据并合入 `main`；N32、N33、N34 已从统一基线 `581f01c` 创建独立 change
 > spec 分支和 worktree，正按互斥目录并行实施。下一阶段任务不回写当前 MVP
 > 验收结果。
 >
@@ -52,8 +52,8 @@ CI workflow；本任务是 `android/settings.gradle.kts` 等共享 Gradle 集成
 **验收证据：** 每个 API 连续启动、恢复快照和销毁 10 次；serial 不重复，快照状态
 一致，失败后没有残留 emulator 进程或设备锁。
 
-**实现记录（2026-07-25）：** `main` 已包含 `887c1c6` 与端口安全修复
-`ee2acc7`。API 30、33、34 各连续完成 10 轮 clean snapshot
+**实现记录（2026-07-25）：** `main` 已包含 `b7e9eda` 与端口安全修复
+`6604f10`。API 30、33、34 各连续完成 10 轮 clean snapshot
 启动、dirty marker、恢复和销毁，每个 API 的 10 个 serial 均唯一，30/30
 fingerprint 与 marker 一致；最终设备、owned emulator、runtime 和 lease 均为零。
 runner 测试 13/13 通过，stop 未确认成功时保留锁，WebView 版本无法解析或漂移时
@@ -91,8 +91,8 @@ release 变体完全不包含测试入口。
 **验收证据：** API 30/33/34 可自动建立测试 Bridge 并运行一次只读 snapshot；
 release APK 检查为零测试入口，真机或非测试签名调用全部失败关闭。
 
-**实现记录（2026-07-25）：** `main` 已包含 `ce688df`，共享 debug/androidTest
-接线位于 `e30c3bf`。core 32/32 通过；release APK 扫描为 0 findings，且
+**实现记录（2026-07-25）：** `main` 已包含 `26865fe`，共享 debug/androidTest
+接线位于 `4287344`。core 32/32 通过；release APK 扫描为 0 findings，且
 `releaseRuntimeClasspath` 不包含 test-control core。API 30 前两轮分别暴露服务
 激活等待和 IPv6 loopback 问题，均明确失败并清理；修复后 API 30
 `emulator-5580`、API 33 `emulator-5582`、API 34 `emulator-5584` 各 1/1 通过
@@ -126,8 +126,8 @@ release APK 检查为零测试入口，真机或非测试签名调用全部失�
 **验收证据：** API 30/33/34 上每个动作均有前置状态、动作结果和后置状态；完整场景
 连续 20 次成功率不低于 95%。
 
-**执行记录（设备验收阻塞）：** `main` 已包含代码基线 `c50868a` 和手势 follow-up
-`c9a240b` 至 `b8e1b7d`；模块单测、Debug/AndroidTest APK、lint 和注释检查通过。
+**执行记录（设备验收阻塞）：** `main` 已包含代码基线 `7e6cc43` 和手势 follow-up
+`b3d21ed` 至 `f732959`；模块单测、Debug/AndroidTest APK、lint 和注释检查通过。
 API 30 首次 `fixtureRepeat=20` 在第 1 轮纵向滚动失败，随后使用多个新 clean serial
 逐步验证方向、节点可见性、语义 scroll、最新节点 bounds 内 swipe、单层布局和触摸
 路由，真实 `VERTICAL_OFFSET` 始终为 0。所有失败均立即停止，没有放宽后置断言；
@@ -161,7 +161,7 @@ artifact collector、`android/test-control/reporting/` 和 `test-lab/artifacts/`
 **验收证据：** 故意制造超时和断言失败，确认产物齐全且无敏感值；预算溢出被截断，
 TTL 清理后无残留，20 次统计可复现。
 
-**实现记录（2026-07-25）：** `main` 已包含 `c1a7a1a`。4 份严格 Schema 和
+**实现记录（2026-07-25）：** `main` 已包含 `dc677b7`。4 份严格 Schema 和
 49/49 fake-input 测试通过，覆盖 timeout/assertion 产物、递归与编码变体脱敏、
 路径逃逸、symlink、inode race、三层物理预算、成功立即清理、TTL 和 20 轮
 product/device/infrastructure/flaky 聚合。截图只有调用进程注入的可信 verifier
@@ -225,7 +225,7 @@ model/store/migration 及对应测试。
 **验收证据：** 所有 1.0 fixture 无损迁移；1.1 跨 Go/Kotlin round-trip 一致；
 revision 冲突不覆盖新数据，导出中无 secret 或截图。
 
-**实现记录（2026-07-25）：** `main` 已包含 `012406b`。协议验证 33 项通过，
+**实现记录（2026-07-25）：** `main` 已包含 `6290c36`。协议验证 33 项通过，
 Android recording 定向测试 43/43 通过；覆盖 1.0 迁移、严格 1.1 fixture
 round-trip、未知 major/字段拒绝、OS 文件锁、revision CAS 冲突、`.bak` 备份、
 原子替换回滚和递归脱敏导出。两个独立 store 的同 revision 更新仅一个保存成功，
@@ -257,8 +257,8 @@ round-trip、未知 major/字段拒绝、OS 文件锁、revision CAS 冲突、`.
 **验收证据：** API 30/33/34 离线运行一致；三种模式的 hierarchy、截图和状态断言
 可重复，网络访问计数为零。
 
-**实现记录（2026-07-25）：** `main` 已包含 `3f5c002`，共享模块注册和 version
-catalog 集成位于 `e7a5716`。API 30、33、34 各运行 full、partial、canvas 三项
+**实现记录（2026-07-25）：** `main` 已包含 `3209164`，共享模块注册和 version
+catalog 集成位于 `581f01c`。API 30、33、34 各运行 full、partial、canvas 三项
 instrumentation，最终 9/9 通过；每项均验证非空截图、模式状态和
 `NETWORK_REJECTED:0`，full 模式完成 WebView 虚拟节点点击与 Reset 闭环。release
 APK 静态检查不含 test runner、instrumentation 类或 `INTERNET` 权限；最终设备、
@@ -292,8 +292,8 @@ AndroidTest APK 和 release 构建共 218 个任务通过。
 **验收证据：** 合法 fixture 在 Go/Kotlin 均通过；所有威胁 fixture 在建立 socket
 或签发 token 前被拒绝。
 
-**实现记录（2026-07-26）：** `main` 已包含协议 `9d5017e`、Go 消费者
-`32bcff8` 和 Kotlin 消费者 `7fdc338`。Node LAN 测试 10/10、协议全量 52 项、
+**实现记录（2026-07-26）：** `main` 已包含协议 `a0b66b6`、Go 消费者
+`492fdad` 和 Kotlin 消费者 `c4bff51`。Node LAN 测试 10/10、协议全量 52 项、
 Go race 测试及 Kotlin N38 定向 33/33 均通过；三端共同消费 1 个合法 invitation、
 18 个威胁 fixture 和 fingerprint、transcript、四个 HKDF key、双方 confirmation
 及低阶 X25519 向量。过期、重放、错误地址/网卡、篡改与降级均在 socket 或 token
@@ -323,7 +323,7 @@ Go race 测试及 Kotlin N38 定向 33/33 均通过；三端共同消费 1 个�
 **验收证据：** macOS/Windows 同 LAN 建连成功；过期、重放、错误网卡和指纹变化
 失败关闭；listener/session 结束后端口和临时密钥均清理。
 
-**实现记录（正式验收未完成）：** `main` 已包含代码阶段 `32bcff8`。Go 实现覆盖
+**实现记录（正式验收未完成）：** `main` 已包含代码阶段 `492fdad`。Go 实现覆盖
 明确网卡与单地址绑定、VPN/多网卡拒绝、临时 listener、手工 invitation、
 X25519/HKDF/confirmation、加密 frame、重放/乱序/篡改、取消/超时/切网和秘密清理；
 `go test -race ./internal/bridge/lan/...` 通过。localhost socket 仅证明协议和生命周期，
@@ -354,7 +354,7 @@ X25519/HKDF/confirmation、加密 frame、重放/乱序/篡改、取消/超时/�
 **验收证据：** 扫码和手工码均可建立短期 session；无摄像头仍可使用手工路径；
 切网或过期后停止新动作且不降级到明文。
 
-**实现记录（正式验收未完成）：** `main` 已包含代码阶段 `7fdc338`。Kotlin 定向
+**实现记录（正式验收未完成）：** `main` 已包含代码阶段 `c4bff51`。Kotlin 定向
 33/33 与 App 全量 232/232 通过，覆盖 N36 全部 fixture/vector、扫码/手工共用严格
 入口、显式候选/网卡/指纹确认、加密出站 session、持久化重放保护、切网/过期/进程
 恢复失败关闭和秘密清零。真实 socket 与 N37 wire adapter、扫码 provider、相机权限、
@@ -388,7 +388,7 @@ recording core models、repository、迁移或协议文件，也不得修改 Com
 **验收证据：** 每个编辑命令有反向操作测试；100 步随机编辑后 Undo 回到原脚本；
 dry-run 动作提交数为零，revision 冲突保留双方数据。
 
-**实现记录（2026-07-25）：** `main` 已包含 `2314b06`。15/15 editor 定向测试与
+**实现记录（2026-07-25）：** `main` 已包含 `8180ab6`。15/15 editor 定向测试与
 214/214 App 全量单测通过；12 类编辑命令均可 Undo/Redo，固定 seed 的 100 步编辑
 可完整回退和重做。dry-run 构造器只有 snapshot、selector、coordinate 和 condition
 四类只读端口，不存在动作提交能力；revision 冲突保留 attempted/current 双方，
@@ -421,7 +421,7 @@ WebView fixture 适配目录。不得修改 N39 的 core models/repository、N40
 **验收证据：** API 30/33/34 完整语义场景连续 20 次成功率不低于 95%；语义缺失
 场景动作提交数为零并给出明确降级等级。
 
-**实现记录（设备验收未完成）：** `main` 已包含代码基线 `27be2fe`。adapter 与
+**实现记录（设备验收未完成）：** `main` 已包含代码基线 `9a21243`。adapter 与
 orchestrator 定向测试 20/20、App 全量单测 219/219 通过；只生成类型化语义动作，
 节点缺失、歧义、observation 过期及 package/page/API/WebView 漂移均失败关闭。
 设备 follow-up 尚未产出可执行 instrumentation 入口；API 30/33/34 各 20 轮和清理
@@ -456,8 +456,8 @@ orchestrator 定向测试 20/20、App 全量单测 219/219 通过；只生成类
 **验收证据：** 同 observation 的 PNG、尺寸、旋转和 hierarchy 可关联；过期或歧义
 候选动作提交数为零；截图内存和临时文件按预算清零。
 
-**实现记录（服务层完成，用户路径未完成）：** `main` 已包含 `16d0d4d` 与规格证据
-`30b77fb`。Android visual 定向单测 15/15、Go `internal/visual` 与独立 MCP adapter
+**实现记录（服务层完成，用户路径未完成）：** `main` 已包含 `ccb801d` 与规格证据
+`5b8bffe`。Android visual 定向单测 15/15、Go `internal/visual` 与独立 MCP adapter
 race 测试通过；覆盖可信 verifier、同 ID 防漂移、图片副本清零、0/90/180/270
 crop 映射、低置信度和歧义失败关闭，动作提交数始终为零。独立 adapter 未注册到
 共享 MCP server，用户授权截图入口和 App AI 会话尚未接入，因此主任务保持未勾选。
@@ -539,8 +539,8 @@ APK 路径必须位于 `.gitignore` 覆盖的仓库外 cache。
 **验收证据：** 正确 APK 可安装；错误 hash、ABI、版本和来源缺失在安装前失败；
 Git 历史和工作区不包含 APK。
 
-**实现记录（离线验证完成，真实安装未完成）：** `main` 已包含 `8ef0f01` 与规格证据
-`68c784b`。32/32 零依赖 Node 测试通过，覆盖严格文本 manifest、仓库外 cache、
+**实现记录（离线验证完成，真实安装未完成）：** `main` 已包含 `725d628` 与规格证据
+`6e8317d`。32/32 零依赖 Node 测试通过，覆盖严格文本 manifest、仓库外 cache、
 symlink/inode/hash/size 防替换、类型化 inspector、固定 ADB argv、clean/final
 snapshot 生命周期和安装前二次校验；工作区与全部 Git 历史的 APK/APKS/AAB/XAPK
 路径均为零。本轮未下载、生成、安装或提交 APK，合法真实制品的 aapt/apksigner
