@@ -1,0 +1,87 @@
+/* 配置用途：固定离线页面的字体、viewport 色彩和滚动尺寸，保持 API 矩阵截图可比较。 */
+:root {
+  color-scheme: light;
+  font-family: sans-serif;
+  background: #f2e7d5;
+  color: #173f35;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    linear-gradient(135deg, rgb(23 63 53 / 12%) 0 1px, transparent 1px 16px),
+    #f2e7d5;
+}
+
+body {
+  padding: 20px;
+}
+
+h1 {
+  margin: 0 0 16px;
+  font-size: 28px;
+}
+
+button,
+input,
+.target {
+  min-height: 52px;
+  width: 100%;
+  margin: 8px 0;
+  border: 2px solid #173f35;
+  border-radius: 10px;
+  background: #fffaf0;
+  color: #173f35;
+  font-size: 18px;
+}
+
+button:active,
+.target:active {
+  background: #c7462e;
+  color: #fffaf0;
+}
+
+.target {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.scroll-space {
+  display: grid;
+  min-height: 900px;
+  align-items: end;
+}
+
+#fixture-frame {
+  width: 100%;
+  height: 180px;
+  border: 2px solid #173f35;
+}
+
+.status {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 12px;
+  border: 2px solid #c7462e;
+  background: #fffaf0;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  height: 720px;
+  border: 3px solid #173f35;
+  background: #fffaf0;
+  touch-action: none;
+}

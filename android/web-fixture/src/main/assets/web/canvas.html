@@ -1,0 +1,91 @@
+<!doctype html>
+<!-- 配置用途：提供单一 Canvas 节点的 tap、长按、swipe、动画和机器可读结果。 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Canvas fixture</title>
+  <link rel="stylesheet" href="fixture.css">
+</head>
+<body>
+  <main>
+    <h1 aria-hidden="true">Canvas fixture</h1>
+    <canvas id="fixture-canvas" width="720" height="720" tabindex="0"
+            role="img" aria-label="Canvas fixture canvas-result ready"></canvas>
+  </main>
+  <script>
+    // 脚本用途：在单一 Canvas 内识别 tap、long-click 和 swipe，并将结果同步到 aria-label。
+    (() => {
+      "use strict";
+      const canvas = document.querySelector("#fixture-canvas");
+      const context = canvas.getContext("2d");
+      let pointerStart;
+      let longTimer;
+      let animationPhase = 0;
+      let animationFrame;
+      let result = "ready";
+
+      const draw = () => {
+        context.fillStyle = "#fffaf0";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = "#173f35";
+        context.fillRect(72 + animationPhase, 90, 180, 180);
+        context.fillStyle = "#c7462e";
+        context.beginPath();
+        context.arc(520 - animationPhase, 500, 90, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = "#173f35";
+        context.font = "bold 34px sans-serif";
+        context.fillText(`canvas-result:${result}`, 54, 660);
+        canvas.setAttribute("aria-label", `Canvas fixture canvas-result ${result}`);
+      };
+
+      const finish = (next) => {
+        result = next;
+        cancelAnimationFrame(animationFrame);
+        const started = performance.now();
+        const animate = (time) => {
+          const progress = Math.min(1, (time - started) / 320);
+          animationPhase = Math.round(progress * 80);
+          draw();
+          if (progress < 1) {
+            animationFrame = requestAnimationFrame(animate);
+          } else {
+            animationPhase = 0;
+            draw();
+          }
+        };
+        animationFrame = requestAnimationFrame(animate);
+      };
+
+      canvas.addEventListener("pointerdown", (event) => {
+        pointerStart = { x: event.clientX, y: event.clientY, time: performance.now() };
+        clearTimeout(longTimer);
+        longTimer = setTimeout(() => finish("long-click"), 700);
+        canvas.setPointerCapture(event.pointerId);
+      });
+
+      canvas.addEventListener("pointerup", (event) => {
+        clearTimeout(longTimer);
+        const duration = performance.now() - pointerStart.time;
+        const dx = event.clientX - pointerStart.x;
+        const dy = event.clientY - pointerStart.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance > 90) {
+          finish(Math.abs(dx) > Math.abs(dy) ? "swipe-horizontal" : "swipe-vertical");
+        } else if (duration < 650) {
+          finish("tap");
+        }
+        pointerStart = undefined;
+      });
+
+      canvas.addEventListener("pointercancel", () => {
+        clearTimeout(longTimer);
+        pointerStart = undefined;
+      });
+
+      draw();
+    })();
+  </script>
+</body>
+</html>

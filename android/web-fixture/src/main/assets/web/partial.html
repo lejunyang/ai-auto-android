@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- 配置用途：提供部分语义节点与单块自绘区域的混合页面，用于验证明确视觉降级。 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Partial semantic fixture</title>
+  <link rel="stylesheet" href="fixture.css">
+</head>
+<body>
+  <main>
+    <p id="fixture-state" class="status" role="status">STATE:ready</p>
+    <h1>Partial semantic fixture</h1>
+    <button id="fixture-button" type="button" aria-label="Visible semantic action">Semantic action</button>
+    <label for="fixture-input">Visible input</label>
+    <input id="fixture-input" type="text" aria-label="Visible semantic input">
+    <canvas id="partial-canvas" width="720" height="240" aria-label="Visual-only partial region"></canvas>
+    <div id="long-press-target" hidden></div>
+    <div id="scroll-target" hidden></div>
+    <div id="dynamic-container" hidden></div>
+    <iframe id="fixture-frame" hidden title="Hidden partial frame" src="iframe.html"></iframe>
+  </main>
+  <script src="fixture.js"></script>
+  <script>
+    // 配置用途：绘制不拆分语义节点的稳定混合区域，供视觉候选而非 DOM 注入使用。
+    const canvas = document.querySelector("#partial-canvas");
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#173f35";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#fffaf0";
+    context.font = "bold 42px sans-serif";
+    context.fillText("VISUAL REGION", 160, 135);
+  </script>
+</body>
+</html>

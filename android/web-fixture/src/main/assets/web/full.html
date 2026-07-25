@@ -1,0 +1,33 @@
+<!doctype html>
+<!-- 配置用途：提供完整虚拟无障碍节点的离线多动作、多页面和 iframe 测试页面。 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Full semantic fixture</title>
+  <link rel="stylesheet" href="fixture.css">
+</head>
+<body>
+  <main>
+    <p id="fixture-state" class="status" role="status" aria-live="polite">STATE:ready</p>
+    <h1>Full semantic fixture</h1>
+    <button id="fixture-button" type="button" aria-label="Fixture click button">Click fixture</button>
+    <label for="fixture-input">Fixture text</label>
+    <input id="fixture-input" type="text" autocomplete="off" aria-label="Fixture text input">
+    <div id="long-press-target" class="target" role="button" tabindex="0"
+         aria-label="Fixture long press target">Hold for 650 ms</div>
+    <button id="dynamic-trigger" type="button" aria-label="Add dynamic control">Add dynamic DOM</button>
+    <section id="dynamic-container" aria-label="Dynamic container"></section>
+    <a id="detail-link" class="target" href="detail.html" aria-label="Open fixture detail">
+      Open detail page
+    </a>
+    <iframe id="fixture-frame" title="Offline fixture frame" src="iframe.html"></iframe>
+    <div class="scroll-space">
+      <button id="scroll-target" type="button" aria-label="Fixture scroll result">
+        Scroll target
+      </button>
+    </div>
+  </main>
+  <script src="fixture.js"></script>
+</body>
+</html>

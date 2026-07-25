@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 配置用途：提供稳定 resource ID 的模式切换、重置、网络计数和离线 WebView 容器。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        style="?android:attr/buttonBarStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/mode_full"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:contentDescription="@string/mode_full_description"
+            android:text="@string/mode_full" />
+
+        <Button
+            android:id="@+id/mode_partial"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:contentDescription="@string/mode_partial_description"
+            android:text="@string/mode_partial" />
+
+        <Button
+            android:id="@+id/mode_canvas"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:contentDescription="@string/mode_canvas_description"
+            android:text="@string/mode_canvas" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/reset_fixture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/reset_description"
+        android:text="@string/reset" />
+
+    <TextView
+        android:id="@+id/mode_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/mode_status_description"
+        android:text="@string/mode_status_initial" />
+
+    <TextView
+        android:id="@+id/network_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/network_status_description"
+        android:text="@string/network_status_initial" />
+
+    <WebView
+        android:id="@+id/fixture_webview"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:importantForAccessibility="yes"
+        android:layout_weight="1" />
+</LinearLayout>

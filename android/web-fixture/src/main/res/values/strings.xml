@@ -1,0 +1,18 @@
+<!-- 配置用途：定义三种 fixture 模式、重置入口和机器可读状态的稳定文本。 -->
+<resources>
+    <string name="app_name">Offline Web Fixture</string>
+    <string name="mode_full">Full</string>
+    <string name="mode_partial">Partial</string>
+    <string name="mode_canvas">Canvas</string>
+    <string name="reset">Reset fixture</string>
+    <string name="mode_full_description">Switch to full semantic mode</string>
+    <string name="mode_partial_description">Switch to partial semantic mode</string>
+    <string name="mode_canvas_description">Switch to single canvas mode</string>
+    <string name="reset_description">Reset current fixture state</string>
+    <string name="mode_status_description">Current fixture mode</string>
+    <string name="network_status_description">Rejected network request count</string>
+    <string name="mode_status">MODE:%1$s</string>
+    <string name="network_status">NETWORK_REJECTED:%1$d</string>
+    <string name="mode_status_initial">MODE:full</string>
+    <string name="network_status_initial">NETWORK_REJECTED:0</string>
+</resources>

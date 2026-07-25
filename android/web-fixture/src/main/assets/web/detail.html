@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- 配置用途：提供可通过 Back 返回且状态明确的离线第二页面。 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Fixture detail</title>
+  <link rel="stylesheet" href="fixture.css">
+</head>
+<body>
+  <main>
+    <p id="fixture-state" class="status" role="status" aria-label="Fixture detail state">
+      STATE:detail-ready
+    </p>
+    <h1>Fixture detail</h1>
+    <button id="detail-action" type="button" aria-label="Detail page action"
+            onclick="document.querySelector('#fixture-state').textContent='STATE:detail-clicked'">
+      Detail action
+    </button>
+    <a class="target" href="full.html" aria-label="Return to full fixture">Return to full page</a>
+  </main>
+</body>
+</html>

@@ -1,0 +1,10 @@
+<!-- 配置用途：固定 fixture 浅色主题，避免系统动态主题改变截图和 Canvas 颜色。 -->
+<resources>
+    <style name="Theme.WebFixture" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#C7462E</item>
+        <item name="android:navigationBarColor">#F2E7D5</item>
+        <item name="android:statusBarColor">#173F35</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
