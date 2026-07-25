@@ -28,7 +28,7 @@ class GestureResourceContractTest {
     }
 
     @Test
-    fun deviceTestUsesDirectionsThatIncreaseOffsetsFromOrigin() {
+    fun deviceTestUsesObservedBoundsAndRealOffsets() {
         val moduleRoot = locateModuleRoot()
         val deviceTest = moduleRoot.resolve(
             "src/androidTest/java/dev/aiauto/fixture/NativeFixtureDeviceTest.kt",
@@ -36,11 +36,15 @@ class GestureResourceContractTest {
         val activity = moduleRoot.resolve(
             "src/main/java/dev/aiauto/fixture/MainActivity.kt",
         ).readText()
+        val scrollView = moduleRoot.resolve(
+            "src/main/java/dev/aiauto/fixture/DeterministicScrollView.kt",
+        ).readText()
 
         assertTrue(deviceTest.contains("OUTER_REVEAL_DIRECTION = Direction.UP"))
-        assertTrue(deviceTest.contains("INNER_VERTICAL_DIRECTION = Direction.UP"))
-        assertTrue(deviceTest.contains("INNER_HORIZONTAL_DIRECTION = Direction.LEFT"))
+        assertTrue(deviceTest.contains("swipeVerticallyWithin(vertical.visibleBounds)"))
+        assertTrue(deviceTest.contains("swipeHorizontallyWithin(horizontal.visibleBounds)"))
         assertTrue(deviceTest.contains("assertPositiveOffset"))
+        assertTrue(scrollView.contains("scrollBy(0, delta)"))
         assertTrue(activity.contains("scrollY != oldScrollY"))
         assertTrue(activity.contains("scrollX != oldScrollX"))
     }

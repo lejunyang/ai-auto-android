@@ -74,3 +74,7 @@
 - 下一路由从每轮最新 `UiObject2.visibleBounds` 计算目标内部 swipe 起止点，纵向由
   下向上、横向由右向左，坐标不持久化也不跨越目标边界。测试同时要求输入注入返回
   true、真实 offset 大于零和独立状态为 1，任何一个条件不满足都失败。
+- 目标内部坐标 swipe 已成功注入但内层 `scrollY` 仍为 0，确认根因在嵌套 View 的
+  触摸路由而非目标定位。`DeterministicScrollView` 现只根据真实
+  `MotionEvent.ACTION_MOVE` 的 y delta 调用 `scrollBy`；它不写测试状态，状态仍由
+  Activity 的真实 `scrollY` 变化监听器产生。
