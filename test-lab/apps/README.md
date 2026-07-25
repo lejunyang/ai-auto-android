@@ -9,7 +9,7 @@ manifest 是不可直接使用的占位模板，所有身份、来源、大小�
 调用方必须显式传入仓库外绝对路径，例如：
 
 ```text
-/Volumes/aigo S7 Media/Projects/SDK/android-apk-cache
+/Volumes/aigo S7 Media/SDK/android-tools/android-apk-cache
 ```
 
 制品按 SHA-256 放置，文件名固定为 `artifact`，不使用 `.apk` 扩展名：

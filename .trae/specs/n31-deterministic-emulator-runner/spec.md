@@ -4,7 +4,7 @@
 
 为 API 30、33、34 建立可重复、可并发互斥、可从干净快照启动的本地
 Emulator 控制面。所有 SDK、AVD、缓存和运行时状态位于仓库外
-`/Volumes/aigo S7 Media/Projects/SDK`，仓库只保存可复现配置和脚本。
+`/Volumes/aigo S7 Media/SDK/android-tools`，仓库只保存可复现配置和脚本。
 
 ## 范围
 
