@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 
 import dev.aiauto.android.automation.session.ProviderSessionPlanner
+import dev.aiauto.android.automation.session.ScreenshotAuthorization
 import dev.aiauto.android.automation.session.SessionObservation
 import dev.aiauto.android.automation.session.SessionPlanRequest
 import dev.aiauto.android.provider.AutomationPrompt
@@ -59,10 +60,26 @@ class AccessibilityScreenshotCapabilityTest {
                 isAuthorized = { it == targetContext.packageName },
             )
             val capturingProvider = CapturingProvider().also { provider = it }
+            val authorization = ScreenshotAuthorization(
+                sessionId = 1,
+                targetPackage = targetContext.packageName,
+            )
             val planner = ProviderSessionPlanner(
                 provider = capturingProvider,
+                currentSnapshot = service::snapshot,
+                acquireAuthorization = { authorization },
+                isAuthorizationActive = { it == authorization },
                 screenshotCapture = controller::capture,
             )
+            val hierarchy = when (
+                val observed = service.snapshot(targetContext.packageName)
+            ) {
+                is dev.aiauto.android.accessibility.model.AccessibilityResult.Failure ->
+                    error(observed.error.message)
+
+                is dev.aiauto.android.accessibility.model.AccessibilityResult.Success ->
+                    observed.value
+            }
 
             planner.plan(
                 SessionPlanRequest(
@@ -71,6 +88,7 @@ class AccessibilityScreenshotCapabilityTest {
                     observation = SessionObservation(
                         activePackage = targetContext.packageName,
                         uiSummary = "Non-sensitive screenshot test surface",
+                        hierarchy = hierarchy,
                     ),
                     previousActionSummary = null,
                     screenshotsAllowed = true,

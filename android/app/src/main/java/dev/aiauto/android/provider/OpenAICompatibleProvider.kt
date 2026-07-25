@@ -158,6 +158,19 @@ class OpenAICompatibleProvider(
                 appendLine("Previous action:")
                 appendLine(it)
             }
+            visualObservation?.let {
+                appendLine("Visual observation:")
+                appendLine("id=${it.id}")
+                appendLine("package=${it.foregroundPackage}")
+                appendLine(
+                    "screen=${it.width}x${it.height} rotation=${it.rotation} " +
+                        "crop=${it.cropLeft},${it.cropTop},${it.cropRight},${it.cropBottom}",
+                )
+                appendLine(
+                    "capturedAt=${it.capturedAt} expiresAt=${it.expiresAt} " +
+                        "pngSize=${it.pngSizeBytes} pngSha256=${it.pngSha256}",
+                )
+            }
         }
         val screenshot = screenshotPng ?: return JsonPrimitive(text)
         if (screenshot.size > MAX_SCREENSHOT_BYTES) {

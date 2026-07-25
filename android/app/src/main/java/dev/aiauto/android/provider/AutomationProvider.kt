@@ -4,11 +4,28 @@ package dev.aiauto.android.provider
  * 功能用途：实现 AutomationProvider 对应的 AI Provider 配置、调用、动作解析或敏感日志保护。
  */
 
+data class VisualObservationContext(
+    val id: String,
+    val foregroundPackage: String,
+    val width: Int,
+    val height: Int,
+    val rotation: Int,
+    val cropLeft: Int,
+    val cropTop: Int,
+    val cropRight: Int,
+    val cropBottom: Int,
+    val capturedAt: String,
+    val expiresAt: String,
+    val pngSizeBytes: Int,
+    val pngSha256: String,
+)
+
 data class AutomationPrompt(
     val task: String,
     val uiSummary: String,
     val previousActionSummary: String? = null,
     val screenshotPng: ByteArray? = null,
+    val visualObservation: VisualObservationContext? = null,
 )
 
 data class ProviderResult(

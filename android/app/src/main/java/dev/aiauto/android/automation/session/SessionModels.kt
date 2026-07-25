@@ -5,6 +5,7 @@ package dev.aiauto.android.automation.session
  */
 
 import dev.aiauto.android.provider.ProviderAction
+import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import kotlinx.coroutines.CancellationException
 
 enum class SessionPhase {
@@ -43,6 +44,7 @@ data class SessionRequest(
 data class SessionObservation(
     val activePackage: String,
     val uiSummary: String,
+    internal val hierarchy: UiNodeSnapshot? = null,
 )
 
 data class SessionPlanRequest(

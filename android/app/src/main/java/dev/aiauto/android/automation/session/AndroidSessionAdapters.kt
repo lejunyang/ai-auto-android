@@ -19,26 +19,62 @@ import dev.aiauto.android.provider.OpenAICompatibleProvider
 import dev.aiauto.android.provider.ProviderAction
 import dev.aiauto.android.provider.ProviderActionParser
 import dev.aiauto.android.provider.ProviderConfigRepository
+import dev.aiauto.android.provider.VisualObservationContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-class ProviderSessionPlanner(
+class ProviderSessionPlanner internal constructor(
     private val provider: AutomationProvider,
+    private val currentSnapshot: (String) -> AccessibilityResult<
+        dev.aiauto.android.accessibility.model.UiNodeSnapshot
+        > = AccessibilityRuntime::snapshot,
+    private val acquireAuthorization: (String) -> ScreenshotAuthorization? =
+        AutomationSessionRuntime::acquireScreenshotAuthorization,
+    private val isAuthorizationActive: (ScreenshotAuthorization) -> Boolean =
+        AutomationSessionRuntime::isScreenshotAuthorizationActive,
+    private val captureGeometry: (
+        dev.aiauto.android.accessibility.model.UiNodeSnapshot,
+        AccessibilityScreenshot,
+    ) -> VisualCaptureGeometry = { hierarchy, _ ->
+        VisualCaptureGeometry(
+            screen = dev.aiauto.android.observe.visual.VisualScreen(
+                width = hierarchy.bounds.width,
+                height = hierarchy.bounds.height,
+                rotation = 0,
+            ),
+            crop = dev.aiauto.android.observe.visual.PixelBounds(
+                left = 0,
+                top = 0,
+                right = hierarchy.bounds.width,
+                bottom = hierarchy.bounds.height,
+            ),
+        )
+    },
     private val screenshotCapture: suspend (String) -> AccessibilityResult<AccessibilityScreenshot> =
         AccessibilityRuntime::captureScreenshot,
 ) : SessionPlanner {
     override suspend fun plan(request: SessionPlanRequest): ProviderAction {
-        val screenshot = if (request.screenshotsAllowed) {
-            when (val result = screenshotCapture(request.targetPackage)) {
-                is AccessibilityResult.Failure ->
-                    throw SessionFailureException(result.error.message)
-
-                is AccessibilityResult.Success -> result.value
-            }
+        val visualLease = if (request.screenshotsAllowed) {
+            val hierarchy = request.observation.hierarchy
+                ?: throw SessionFailureException(
+                    "The current hierarchy is unavailable for visual observation.",
+                )
+            VisualSessionObservationFactory(
+                screenshotCapture = screenshotCapture,
+                currentSnapshot = currentSnapshot,
+                acquireAuthorization = acquireAuthorization,
+                isAuthorizationActive = isAuthorizationActive,
+                captureGeometry = captureGeometry,
+            ).create(
+                targetPackage = request.targetPackage,
+                hierarchy = hierarchy,
+            )
         } else {
             null
         }
+        var providerImage: ByteArray? = null
         return try {
+            providerImage = visualLease?.copyProviderImage()
             provider.planNextAction(
                 AutomationPrompt(
                     task = request.task,
@@ -47,13 +83,32 @@ class ProviderSessionPlanner(
                         append(request.observation.uiSummary)
                     },
                     previousActionSummary = request.previousActionSummary,
-                    screenshotPng = screenshot?.pngBytes,
+                    screenshotPng = providerImage,
+                    visualObservation = visualLease?.observation?.toProviderContext(),
                 ),
             ).action.bindToTargetPackage(request.targetPackage)
         } finally {
-            screenshot?.close()
+            providerImage?.fill(0)
+            visualLease?.close()
         }
     }
+
+    private fun dev.aiauto.android.observe.visual.VisualObservation.toProviderContext() =
+        VisualObservationContext(
+            id = id,
+            foregroundPackage = foregroundPackage,
+            width = screen.width,
+            height = screen.height,
+            rotation = screen.rotation,
+            cropLeft = crop.left,
+            cropTop = crop.top,
+            cropRight = crop.right,
+            cropBottom = crop.bottom,
+            capturedAt = capturedAt,
+            expiresAt = expiresAt,
+            pngSizeBytes = png.sizeBytes,
+            pngSha256 = png.sha256,
+        )
 
     private fun ProviderAction.bindToTargetPackage(targetPackage: String): ProviderAction {
         val target = params["target"] as? JsonObject ?: return this
@@ -89,6 +144,7 @@ class RuntimeSessionObserver(
                 SessionObservation(
                     activePackage = activePackage,
                     uiSummary = contextBuilder.build(snapshot.value),
+                    hierarchy = snapshot.value,
                 )
             }
         }
@@ -186,7 +242,12 @@ class AndroidAutomationSessionFactory(
         )
         AutomationSessionEngine(
             observer = RuntimeSessionObserver(),
-            planner = ProviderSessionPlanner(provider),
+            planner = ProviderSessionPlanner(
+                provider = provider,
+                captureGeometry = AndroidVisualCaptureGeometryProvider(
+                    applicationContext,
+                )::capture,
+            ),
             executor = RuntimeSessionExecutor(applicationContext),
             riskPolicy = AutomationRiskPolicy(settings.targetPackages),
             limits = limits,

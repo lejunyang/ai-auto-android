@@ -75,6 +75,7 @@ class OpenAICompatibleProviderTest {
                 task = "Inspect",
                 uiSummary = "One non-sensitive button",
                 screenshotPng = byteArrayOf(1, 2, 3),
+                visualObservation = visualContext(),
             ),
         )
 
@@ -82,6 +83,10 @@ class OpenAICompatibleProviderTest {
         assertTrue(requestBody.contains("\"type\":\"image_url\""))
         assertTrue(requestBody.contains("\"detail\":\"low\""))
         assertTrue(requestBody.contains("data:image/png;base64,AQID"))
+        assertTrue(requestBody.contains("id=123e4567-e89b-42d3-a456-426614174044"))
+        assertTrue(requestBody.contains("pngSha256=${"a".repeat(64)}"))
+        assertFalse(requestBody.contains("pngBytes"))
+        assertFalse(requestBody.contains("filePath"))
     }
 
     @Test
@@ -220,6 +225,22 @@ class OpenAICompatibleProviderTest {
             }
         """.trimIndent()
     }
+
+    private fun visualContext() = VisualObservationContext(
+        id = "123e4567-e89b-42d3-a456-426614174044",
+        foregroundPackage = "com.example.app",
+        width = 100,
+        height = 200,
+        rotation = 0,
+        cropLeft = 0,
+        cropTop = 0,
+        cropRight = 100,
+        cropBottom = 200,
+        capturedAt = "2026-07-26T01:00:00Z",
+        expiresAt = "2026-07-26T01:00:10Z",
+        pngSizeBytes = 3,
+        pngSha256 = "a".repeat(64),
+    )
 
     private class FakeHttpURLConnection(
         responseCodeValue: Int,
