@@ -617,6 +617,21 @@ artifacts 49/49、comments 和 diff-check 通过。本轮未下载/安装 APK；
 observer/router/executor adapter、真实 emulator 与第三方 App 验收尚未实现，
 任务保持未勾选。
 
+**追加实现记录（semantic production adapter 已接，input/visual/设备验收未完成）：**
+`main` 已包含固定 aactl adapter `aa67e64` 和规格证据 `f83d57b`。Adapter 固定仓库外
+`aactl` identity（path/dev/inode/mode/time/size/SHA-256），每次执行前复核，以
+`execFile`、固定 argv、`shell:false`、显式 serial、输出预算和步骤剩余 deadline
+调用。严格 envelope 拒绝重复 key、尾随 JSON、成功 stderr 和字段冲突；合法非零
+失败 envelope 保留稳定 code。semantic snapshot 有界校验节点、状态、动作、包与
+maxDepth，condition catalog 不接受 callback；唯一可见、启用、非敏感节点才能生成
+一次性 route token。tap/long-click/scroll/Back/Home/Recents 走固定 Bridge action，
+launch/switch-app 走 direct launch；明确拒绝/成功/异常映射提交 false/true/unknown。
+Runner 经 adapter 的 snapshot→action→post snapshot→condition→cleanup 端到端 fake
+通过，全包 53/53、N34 49/49、comments/diff-check 通过。visual/hybrid 和
+visual-state 因 N45 production port 缺失失败关闭；input 因现有 CLI `--action` 会把
+明文放入 argv 而返回 `INPUT_ADAPTER_UNAVAILABLE`，等待固定 stdin action 模式。
+真实 emulator/Bridge 仍未运行，任务保持未勾选。
+
 **失败清理：** 停止场景、关闭 Bridge、清除 App 数据和产物并恢复快照。
 
 **建议提交：** `test(lab): add cross-app scenario runner`
