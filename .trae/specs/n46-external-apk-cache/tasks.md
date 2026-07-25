@@ -8,7 +8,7 @@
 - [x] Task N46.6：实现 clean AVD 前置、App 数据清理和最终恢复接口契约
 - [x] Task N46.7：实现工作区、Git 历史和 `.gitignore` APK 扫描
 - [x] Task N46.8：完成专用测试、注释、diff 和范围验证
-- [ ] Task N46.9：以单一职责 Conventional Commit 提交
+- [x] Task N46.9：以单一职责 Conventional Commit 提交
 
 ## 依赖
 
