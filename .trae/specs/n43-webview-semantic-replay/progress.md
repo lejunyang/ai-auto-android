@@ -45,3 +45,15 @@
   serial、N31 fingerprint 和 clean snapshot。
 - API 30、33、34 各 20 轮尚未执行，设备 checklist 保持未勾选；当前不能宣称 N43
   完成或达到不低于 95% 的设备成功率。
+
+## Round 4
+
+- 新增独立 `N43SemanticReplayDeviceTest` 设备入口，参数 `n43Repeat=1..100`。测试
+  复用系统 `UiAutomation` 激活 WebView 虚拟节点，不修改 N42 现有测试或生产
+  fixture，也不使用 DOM、JavaScript 注入、shell 或坐标动作。
+- 每轮从原生 Reset 开始，逐步通过 Accessibility action 验证点击、输入、长按、
+  动态 DOM、iframe、语义滚动、详情跳转、详情动作与全局 Back；每步重新抓取语义树
+  并验证页面/状态，始终断言 `NETWORK_REJECTED:0`。
+- 测试固定 API 30/33/34 对应 WebView 版本，不匹配时失败关闭；编译
+  `:web-fixture:assembleDebugAndroidTest` 通过。三 API 设备执行尚未开始，checklist
+  设备项保持未勾选。
