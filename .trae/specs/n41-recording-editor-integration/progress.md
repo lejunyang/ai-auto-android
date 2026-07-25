@@ -24,3 +24,6 @@
 - App JVM 全量 309/309、AndroidTest APK 编译、`lintDebug`、comments 与
   diff-check 通过。详情入口、真实 store save/copy 和只读 dry-run 已完成；真实
   screenshot 点选仍需调用方在活跃授权会话中传入 lease，未在本轮设备执行。
+- 主实现提交为 `ede27d7`，author/committer 均为
+  `lejunyang <lejunyang@qq.com>`，trailer 恰好一次；提交仅修改 recording UI、
+  对应测试和本 follow-up spec，worktree 提交后 clean。
