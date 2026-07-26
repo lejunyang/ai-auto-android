@@ -14,4 +14,4 @@
 - [x] fake 300 轮与全部失败路径通过
 - [x] N52、N47、N34、comments 和 diff-check 通过
 - [ ] 真实 API 30/33/34 设备矩阵保持未验收
-- [ ] 提交身份、trailer 与 worktree 状态正确
+- [x] 提交身份、trailer 与 worktree 状态正确
