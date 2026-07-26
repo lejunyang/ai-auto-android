@@ -65,11 +65,77 @@ class ResourceContractTest {
         assertTrue(networkConfig.contains("cleartextTrafficPermitted=\"false\""))
         assertTrue(mainActivity.contains("setWebContentsDebuggingEnabled(false)"))
         assertTrue(mainActivity.contains("setBlockNetworkLoads(true)"))
+        assertTrue(mainActivity.contains("onPageFinished"))
+        assertTrue(mainActivity.contains("getOnBackPressedDispatcher()"))
+        assertTrue(mainActivity.contains("handleOnBackPressed"))
+        assertTrue(mainActivity.contains("webView.canGoBack()"))
+        assertTrue(mainActivity.contains("webView.goBack()"))
+        assertTrue(layout.contains("generation_status"))
         val webViewTag = requireNotNull(
             Regex("<WebView[\\s\\S]*?/>").find(layout)?.value,
         )
         assertFalse("WebView host descriptions collapse virtual children", webViewTag.contains("contentDescription"))
         assertTrue("WebView must activate its virtual node provider", webViewTag.contains("importantForAccessibility=\"yes\""))
+    }
+
+    @Test
+    fun n43CapabilityProbeIsReadOnlyAndEmitsOnlyBoundedMetadata() {
+        val probe = locateModuleRoot().resolve(
+            "src/androidTest/java/dev/aiauto/webfixture/N43WebViewCapabilityProbeTest.kt",
+        ).readText()
+
+        assertTrue(probe.contains("N43_CAPABILITY_MATRIX"))
+        assertTrue(probe.contains("actionList"))
+        listOf(
+            "performAction(",
+            "UiDevice",
+            "takeScreenshot",
+            "ClipboardManager",
+            "InputMethodManager",
+            "executeShellCommand",
+            "evaluateJavascript",
+            "loadUrl(\"javascript:",
+            "getBoundsInScreen",
+            "\"text\"",
+            "\"contentDescription\"",
+            "\"bounds\"",
+        ).forEach { forbidden ->
+            assertFalse("capability probe contains forbidden API or field: $forbidden", probe.contains(forbidden))
+        }
+    }
+
+    @Test
+    fun n43SemanticCoverageClassifiesIframeWithoutUnsafeReplay() {
+        val coverage = locateModuleRoot().resolve(
+            "src/androidTest/java/dev/aiauto/webfixture/N43SemanticReplayDeviceTest.kt",
+        ).readText()
+
+        assertTrue(coverage.contains("N43_HYBRID_REQUIRED:longClick"))
+        assertTrue(coverage.contains("N43_HYBRID_REQUIRED:iframePostcondition"))
+        assertTrue(coverage.contains("N43_FULL_SEMANTIC:iframe"))
+        assertTrue(coverage.contains("N43_HYBRID_REQUIRED:detailPostcondition"))
+        assertTrue(coverage.contains("N43_FULL_SEMANTIC:detailPostcondition"))
+        assertTrue(coverage.contains("scrollAndClickResult(iteration)"))
+        assertTrue(coverage.contains("GLOBAL_ACTION_BACK"))
+        listOf("Offline frame button", "Detail page action").forEach { target ->
+            val invocation = "performAction(\"$target\""
+            assertTrue(
+                "$target action must be committed at most once before postcondition classification",
+                coverage.windowed(invocation.length).count { it == invocation } == 1,
+            )
+        }
+        listOf(
+            "UiDevice",
+            "takeScreenshot",
+            "ClipboardManager",
+            "InputMethodManager",
+            "executeShellCommand",
+            "evaluateJavascript",
+            "loadUrl(\"javascript:",
+            "ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT",
+        ).forEach { forbidden ->
+            assertFalse("semantic coverage contains forbidden fallback: $forbidden", coverage.contains(forbidden))
+        }
     }
 
     private fun locateModuleRoot(): File {

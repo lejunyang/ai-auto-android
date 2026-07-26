@@ -1,7 +1,6 @@
 package dev.aiauto.webfixture;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -15,6 +14,9 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.TextView;
 
+import androidx.activity.ComponentActivity;
+import androidx.activity.OnBackPressedCallback;
+
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -24,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 功能用途：承载三种离线 WebView/Canvas 模式，提供可复位状态并在请求发起前拒绝非 fixture URL。
  */
-public final class MainActivity extends Activity {
+public final class MainActivity extends ComponentActivity {
     private static final String EXTRA_MODE = "mode";
     private static final String MODE_FULL = "full";
     private static final String MODE_PARTIAL = "partial";
@@ -33,9 +35,11 @@ public final class MainActivity extends Activity {
     private static final String ASSET_ROOT = "file:///android_asset/web/";
 
     private final AtomicInteger rejectedRequestCount = new AtomicInteger();
+    private final AtomicInteger pageGeneration = new AtomicInteger();
     private WebView webView;
     private TextView modeStatus;
     private TextView networkStatus;
+    private TextView generationStatus;
     private String mode = MODE_FULL;
 
     @Override
@@ -46,7 +50,9 @@ public final class MainActivity extends Activity {
         webView = findViewById(R.id.fixture_webview);
         modeStatus = findViewById(R.id.mode_status);
         networkStatus = findViewById(R.id.network_status);
+        generationStatus = findViewById(R.id.generation_status);
         configureWebView(webView);
+        configureBackNavigation();
 
         bindModeButton(R.id.mode_full, MODE_FULL);
         bindModeButton(R.id.mode_partial, MODE_PARTIAL);
@@ -69,6 +75,22 @@ public final class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle outState) {
         outState.putString(STATE_MODE, mode);
         super.onSaveInstanceState(outState);
+    }
+
+    private void configureBackNavigation() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                // fixture 内页面使用 WebView 历史，无历史时暂时禁用回调并退出宿主。
+                if (webView != null && webView.canGoBack()) {
+                    webView.goBack();
+                    return;
+                }
+                setEnabled(false);
+                getOnBackPressedDispatcher().onBackPressed();
+                setEnabled(true);
+            }
+        });
     }
 
     @Override
@@ -181,6 +203,16 @@ public final class MainActivity extends Activity {
             if (!FixtureUrlPolicy.isAllowed(url)) {
                 view.stopLoading();
             }
+        }
+
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            if (!FixtureUrlPolicy.isAllowed(url)) {
+                return;
+            }
+            generationStatus.setText(
+                getString(R.string.generation_status, pageGeneration.incrementAndGet())
+            );
         }
     }
 }

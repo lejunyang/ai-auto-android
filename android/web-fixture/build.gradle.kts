@@ -38,6 +38,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.activity)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     // instrumentation runner 必须进入测试 APK，不能依赖 ext-junit 的非契约传递关系。

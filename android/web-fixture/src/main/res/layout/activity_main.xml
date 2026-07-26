@@ -61,6 +61,13 @@
         android:contentDescription="@string/network_status_description"
         android:text="@string/network_status_initial" />
 
+    <TextView
+        android:id="@+id/generation_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/generation_status_description"
+        android:text="@string/generation_status_initial" />
+
     <WebView
         android:id="@+id/fixture_webview"
         android:layout_width="match_parent"

@@ -63,3 +63,37 @@
 - runner 已停止 `emulator-5568`，最终设备、emulator、runtime 和 lease 均为零。
   API 33/34 与 20 轮矩阵未启动；N43 保持未完成，后续需先定义不违反安全边界且由
   该 WebView 版本真实支持的类型化输入 route。
+
+## Round 5
+
+- 独立 capability probe 更正了 Round 4 的输入结论：API 30/33/34 上唯一 WebView
+  `EditText` 均为 editable，并同时暴露 `ACTION_CLICK` 与 `ACTION_SET_TEXT`。
+  先前按 `aria-label` 查找失败是 selector 错误，不是 API 30/WebView 91 缺少输入
+  action；设备场景改为唯一 editable + `ACTION_SET_TEXT` 后三版本单轮均输入成功。
+- fixture 增加 `LOAD_GENERATION`，reset、跨页导航和 Back 均等待可信本地页面完成，
+  排除了旧 ready 状态与陈旧虚拟节点竞态。测试宿主通过 AndroidX
+  `OnBackPressedDispatcher` 接入 WebView 历史，typed global Back 在 API 30/33/34
+  均返回主页面，并满足 target API 36 的预测性返回 lint 契约。
+- 三版本单轮均完成 click、input、dynamic DOM、scroll、详情导航与 Back，但仍不是
+  full semantic。long-click 目标不含 `ACTION_LONG_CLICK`；iframe 与详情 click
+  只提交一次且返回成功，更新后的后置文本却不进入语义树。场景稳定报告 long-click、
+  iframe postcondition 和 detail postcondition 三项 hybrid-required。
+- 降级不使用坐标猜测、ADB text、剪贴板、IME shell 或 DOM/JavaScript：long-click
+  只能交给 N45 已授权且可验证的 typed visual action；iframe/详情仅允许授权视觉
+  后置验证，不能重复点击。无可信 observation 或结果不明确时失败关闭。
+- 三版本场景和只读 probe 均各 1/1 通过，最终设备、owned emulator、runtime 和
+  AVD/port lease 为零。尚未执行每版本 20 轮以及 N45 真实视觉混合闭环，因此 N43
+  checklist 与公共路线图保持未勾选。
+
+## Round 6
+
+- fixture Back 接线因 target API 36 的 `GestureBackNavigation` lint 错误迁移到
+  AndroidX `OnBackPressedDispatcher`；未使用 suppression/baseline。模块完整
+  `test + lint + build` 88 tasks 通过，覆盖 debug、androidTest 和 release。
+- 迁移后 API 30 与 API 33 单轮各 1/1 通过。API 34 首轮的基础 click 返回成功但
+  新语义树仍为 ready，按结果未知规则停止并清理；新的 clean snapshot 复跑通过，
+  因此 API 34 本轮实际为 1/2，不可描述为确定性兼容。
+- 该失败与 long-click/iframe 的稳定能力边界不同：它是 WebView 113 基础 click
+  后置的偶发波动，目前只能依赖每步新观察失败关闭，不能自动重复可能已提交的 click。
+  后续必须完成每版本 20 轮并统计 flaky，达不到 95% 时应将对应 profile 降级而非
+  勾选 N43。最终设备、runtime、lease 和 owned emulator 再次为零。

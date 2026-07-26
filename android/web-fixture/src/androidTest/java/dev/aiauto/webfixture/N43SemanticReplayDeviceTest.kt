@@ -35,7 +35,7 @@ class N43SemanticReplayDeviceTest {
     }
 
     @Test
-    fun repeatFullSemanticReplay() {
+    fun reportSemanticCoverageAndHybridBoundaries() {
         verifyRuntime()
         val repeat = InstrumentationRegistry.getArguments()
             .getString(REPEAT_ARGUMENT, "1")
@@ -47,21 +47,23 @@ class N43SemanticReplayDeviceTest {
         repeat(repeat) { iteration ->
             resetAndAwaitReady(iteration)
             clickAndAwait("Fixture click button", "Fixture state clicked", iteration)
-            setTextAndAwait("Fixture text input", "n43-$iteration", "Fixture state input-n43-$iteration")
-            longClickAndAwait("Fixture long press target", "Fixture state long-pressed", iteration)
+            setTextAndAwait("n43-$iteration", "Fixture state input-n43-$iteration")
+            assertLongClickRequiresHybrid(iteration)
             clickAndAwait("Add dynamic control", "Fixture state dynamic-added", iteration)
             clickAndAwait("Dynamic result button", "Fixture state dynamic-clicked", iteration)
-            clickAndAwait("Offline frame button", "FRAME:clicked", iteration)
+            clickIframeAndClassifyPostcondition(iteration)
             scrollAndClickResult(iteration)
             clickAndAwait("Open fixture detail", "Fixture detail state", iteration)
-            clickAndAwait("Detail page action", "STATE:detail-clicked", iteration)
+            clickDetailAndClassifyPostcondition()
+            val detailGeneration = currentGeneration()
             assertTrue(
                 "iteration $iteration failed to perform typed global Back",
                 instrumentation.uiAutomation.performGlobalAction(
                     AccessibilityService.GLOBAL_ACTION_BACK,
                 ),
             )
-            awaitNames(iteration, "Full semantic fixture", "Fixture state ready")
+            awaitGenerationAfter(detailGeneration, iteration)
+            awaitNames(iteration, "Full semantic fixture")
             assertOffline(iteration)
         }
     }
@@ -73,6 +75,7 @@ class N43SemanticReplayDeviceTest {
         }
         activity = instrumentation.startActivitySync(intent)
         instrumentation.waitForIdleSync()
+        awaitGenerationAfter(0, -1)
         awaitNames(-1, "Full semantic fixture", "Fixture state ready")
     }
 
@@ -87,7 +90,9 @@ class N43SemanticReplayDeviceTest {
     }
 
     private fun resetAndAwaitReady(iteration: Int) {
+        val previousGeneration = currentGeneration()
         performAction("Reset current fixture state", AccessibilityNodeInfo.ACTION_CLICK, null)
+        awaitGenerationAfter(previousGeneration, iteration)
         awaitNames(iteration, "Full semantic fixture", "Fixture state ready")
         assertOffline(iteration)
     }
@@ -98,7 +103,6 @@ class N43SemanticReplayDeviceTest {
     }
 
     private fun setTextAndAwait(
-        name: String,
         value: String,
         expected: String,
     ) {
@@ -108,13 +112,77 @@ class N43SemanticReplayDeviceTest {
                 value,
             )
         }
-        performAction(name, AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+        performUniqueInputAction(arguments)
         awaitNames(-1, expected)
     }
 
-    private fun longClickAndAwait(name: String, expected: String, iteration: Int) {
-        performAction(name, AccessibilityNodeInfo.ACTION_LONG_CLICK, null)
-        awaitNames(iteration, expected)
+    private fun performUniqueInputAction(arguments: Bundle) {
+        val deadline = SystemClock.uptimeMillis() + ACTION_TIMEOUT_MS
+        while (SystemClock.uptimeMillis() < deadline) {
+            val root = instrumentation.uiAutomation.rootInActiveWindow
+            val result = root?.useTree { node ->
+                val matches = mutableListOf<AccessibilityNodeInfo>()
+                collectNodes(node, matches) { candidate ->
+                    candidate.packageName?.toString() == FIXTURE_PACKAGE &&
+                        candidate.className?.toString()?.endsWith("EditText") == true &&
+                        candidate.isVisibleToUser &&
+                        candidate.isEnabled &&
+                        candidate.isEditable &&
+                        candidate.actionList.any {
+                            it.id == AccessibilityNodeInfo.ACTION_SET_TEXT
+                        }
+                }
+                try {
+                    matches.size == 1 &&
+                        matches.single().performAction(
+                            AccessibilityNodeInfo.ACTION_SET_TEXT,
+                            arguments,
+                        )
+                } finally {
+                    matches.forEach(AccessibilityNodeInfo::recycle)
+                }
+            } == true
+            if (result) {
+                instrumentation.waitForIdleSync()
+                return
+            }
+            SystemClock.sleep(POLL_MS)
+        }
+        throw AssertionError("unique editable WebView input is unavailable")
+    }
+
+    private fun assertLongClickRequiresHybrid(iteration: Int) {
+        val root = freshRoot()
+        val actions = root.useTree { node ->
+            findFirst(node) {
+                it.accessibleName() == "Fixture long press target"
+            }?.actionList?.map(AccessibilityNodeInfo.AccessibilityAction::getId)?.sorted()
+        } ?: throw AssertionError("iteration $iteration long-click target is unavailable")
+        assertTrue(
+            "iteration $iteration unexpectedly exposes semantic long-click: $actions",
+            AccessibilityNodeInfo.ACTION_LONG_CLICK !in actions,
+        )
+        reportCapability("N43_HYBRID_REQUIRED:longClick")
+    }
+
+    private fun clickIframeAndClassifyPostcondition(iteration: Int) {
+        // iframe click 只提交一次；后置不可见时必须转视觉验证，不能盲目重放动作。
+        performAction("Offline frame button", AccessibilityNodeInfo.ACTION_CLICK, null)
+        if (awaitName("FRAME:clicked", POSTCONDITION_TIMEOUT_MS)) {
+            reportCapability("N43_FULL_SEMANTIC:iframe")
+        } else {
+            reportCapability("N43_HYBRID_REQUIRED:iframePostcondition")
+        }
+    }
+
+    private fun clickDetailAndClassifyPostcondition() {
+        // 页面内动作与 iframe 使用同一单次提交规则，分类后继续验证全局 Back。
+        performAction("Detail page action", AccessibilityNodeInfo.ACTION_CLICK, null)
+        if (awaitName("STATE:detail-clicked", POSTCONDITION_TIMEOUT_MS)) {
+            reportCapability("N43_FULL_SEMANTIC:detailPostcondition")
+        } else {
+            reportCapability("N43_HYBRID_REQUIRED:detailPostcondition")
+        }
     }
 
     private fun scrollAndClickResult(iteration: Int) {
@@ -173,6 +241,29 @@ class N43SemanticReplayDeviceTest {
         )
     }
 
+    private fun awaitName(expected: String, timeoutMs: Long): Boolean {
+        val deadline = SystemClock.uptimeMillis() + timeoutMs
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (collectNames().contains(expected)) {
+                return true
+            }
+            SystemClock.sleep(POLL_MS)
+        }
+        return false
+    }
+
+    private fun reportCapability(message: String) {
+        instrumentation.sendStatus(
+            STATUS_IN_PROGRESS,
+            Bundle().apply {
+                putString(
+                    Instrumentation.REPORT_KEY_STREAMRESULT,
+                    "\n$message\n",
+                )
+            },
+        )
+    }
+
     private fun assertOffline(iteration: Int) {
         assertTrue(
             "iteration $iteration changed the offline network counter",
@@ -191,6 +282,42 @@ class N43SemanticReplayDeviceTest {
         repeat(node.childCount) { index ->
             node.getChild(index)?.useTree { child -> collectNames(child, output) }
         }
+    }
+
+    private fun collectNodes(
+        node: AccessibilityNodeInfo,
+        output: MutableList<AccessibilityNodeInfo>,
+        predicate: (AccessibilityNodeInfo) -> Boolean,
+    ) {
+        if (predicate(node)) {
+            output += AccessibilityNodeInfo.obtain(node)
+        }
+        repeat(node.childCount) { index ->
+            node.getChild(index)?.useTree { child ->
+                collectNodes(child, output, predicate)
+            }
+        }
+    }
+
+    private fun currentGeneration(): Int =
+        collectNames()
+            .firstOrNull { it.startsWith(GENERATION_PREFIX) }
+            ?.removePrefix(GENERATION_PREFIX)
+            ?.toIntOrNull()
+            ?: throw AssertionError("WebView generation state is unavailable")
+
+    private fun awaitGenerationAfter(previous: Int, iteration: Int): Int {
+        val deadline = SystemClock.uptimeMillis() + ACTION_TIMEOUT_MS
+        while (SystemClock.uptimeMillis() < deadline) {
+            val generation = runCatching(::currentGeneration).getOrNull()
+            if (generation != null && generation > previous) {
+                return generation
+            }
+            SystemClock.sleep(POLL_MS)
+        }
+        throw AssertionError(
+            "iteration $iteration did not commit a WebView generation after $previous",
+        )
     }
 
     private fun findFirst(
@@ -231,7 +358,11 @@ class N43SemanticReplayDeviceTest {
 
     private companion object {
         const val REPEAT_ARGUMENT = "n43Repeat"
+        const val FIXTURE_PACKAGE = "dev.aiauto.webfixture"
+        const val GENERATION_PREFIX = "LOAD_GENERATION:"
+        const val STATUS_IN_PROGRESS = 2
         const val ACTION_TIMEOUT_MS = 15_000L
+        const val POSTCONDITION_TIMEOUT_MS = 3_000L
         const val POLL_MS = 200L
         val EXPECTED_WEBVIEW = mapOf(
             30 to "91.0.4472.114",

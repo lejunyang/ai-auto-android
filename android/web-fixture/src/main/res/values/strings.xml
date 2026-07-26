@@ -11,8 +11,11 @@
     <string name="reset_description">Reset current fixture state</string>
     <string name="mode_status_description">Current fixture mode</string>
     <string name="network_status_description">Rejected network request count</string>
+    <string name="generation_status_description">Committed WebView page generation</string>
     <string name="mode_status">MODE:%1$s</string>
     <string name="network_status">NETWORK_REJECTED:%1$d</string>
+    <string name="generation_status">LOAD_GENERATION:%1$d</string>
     <string name="mode_status_initial">MODE:full</string>
     <string name="network_status_initial">NETWORK_REJECTED:0</string>
+    <string name="generation_status_initial">LOAD_GENERATION:0</string>
 </resources>
