@@ -49,3 +49,10 @@
   未修改 Android、协议 Schema、Runner core、N34/N45，也未生成 APK、截图或日志。
 - 尚未在真实 emulator/Bridge 上执行 input；该项保持未验收，不能以 fake child
   process 和 fake Bridge 证据冒充设备成功。
+
+## Round 5
+
+- 实现提交 `a087394`（`feat(cli): accept bridge actions from stdin`）包含 stdin
+  change spec、strict Go reader/CLI、adapter child stdin 和全部测试。
+- 提交 author/committer 均为 `lejunyang <lejunyang@qq.com>`，消息含且仅含一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`；实现提交后 worktree 干净。

@@ -7,7 +7,7 @@
 - [x] 接入互斥 `--stdin` CLI 选项并清零 action bytes
 - [x] 实现 child stdin 写入、错误处理和 input semantic route
 - [x] 运行 Go race、N47、N34、comments 与 diff-check
-- [ ] 审查范围并提交
+- [x] 审查范围并提交
 
 ## 建议提交
 
