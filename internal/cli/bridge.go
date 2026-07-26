@@ -90,26 +90,32 @@ func (a *App) executeBridge(
 		}
 		return service.Snapshot(ctx, options["device"], targetPackage, maxDepth)
 	case "action":
-		options, err := parseNamedOptions(args[1:], optionSpec{
-			allowed:  optionSet("device", "action"),
-			required: []string{"device", "action"},
-		})
+		device, inlineAction, useStdin, err := parseBridgeActionOptions(args[1:])
 		if err != nil {
 			return nil, err
 		}
-		action := json.RawMessage(strings.TrimSpace(options["action"]))
-		if len(action) == 0 || action[0] != '{' {
-			return nil, usageError("Action must be one JSON object.")
+		var action json.RawMessage
+		if useStdin {
+			action, err = readStrictJSONObject(a.Stdin, bridge.MaxMessageBytes-1)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			action = json.RawMessage(strings.TrimSpace(inlineAction))
+			if len(action) == 0 || action[0] != '{' {
+				return nil, usageError("Action must be one JSON object.")
+			}
+			if len(action)+1 > bridge.MaxMessageBytes {
+				return nil, apperr.New(
+					apperr.CodeMessageTooLarge,
+					"Action exceeds the 1048576 byte bridge message limit.",
+					false,
+					nil,
+				)
+			}
 		}
-		if len(action)+1 > bridge.MaxMessageBytes {
-			return nil, apperr.New(
-				apperr.CodeMessageTooLarge,
-				"Action exceeds the 1048576 byte bridge message limit.",
-				false,
-				nil,
-			)
-		}
-		return automation.ExecuteBridgeAction(ctx, options["device"], action)
+		defer clear(action)
+		return automation.ExecuteBridgeAction(ctx, device, action)
 	case "close":
 		options, err := parseNamedOptions(args[1:], optionSpec{
 			allowed:  optionSet("device"),
@@ -124,6 +130,63 @@ func (a *App) executeBridge(
 			"Unknown bridge command. Supported commands: open, info, snapshot, action, close.",
 		)
 	}
+}
+
+func parseBridgeActionOptions(args []string) (
+	device string,
+	inlineAction string,
+	useStdin bool,
+	returnErr error,
+) {
+	seen := make(map[string]struct{}, 3)
+	for index := 0; index < len(args); index++ {
+		argument := args[index]
+		if !strings.HasPrefix(argument, "--") || argument == "--" {
+			return "", "", false, usageError(
+				"Usage: aactl bridge action --device SERIAL (--action JSON | --stdin) [--json]",
+			)
+		}
+		nameValue := strings.TrimPrefix(argument, "--")
+		name, value, inline := strings.Cut(nameValue, "=")
+		if name != "device" && name != "action" && name != "stdin" {
+			return "", "", false, usageError("Unknown bridge action option.")
+		}
+		if _, duplicate := seen[name]; duplicate {
+			return "", "", false, usageError("Bridge action option was provided more than once.")
+		}
+		seen[name] = struct{}{}
+		if name == "stdin" {
+			if inline {
+				return "", "", false, usageError("--stdin does not accept a value.")
+			}
+			useStdin = true
+			continue
+		}
+		if !inline {
+			index++
+			if index >= len(args) {
+				return "", "", false, usageError("Bridge action option requires a value.")
+			}
+			value = args[index]
+		}
+		if value == "" {
+			return "", "", false, usageError("Bridge action option requires a non-empty value.")
+		}
+		if name == "device" {
+			device = value
+		} else {
+			inlineAction = value
+		}
+	}
+	if device == "" || (inlineAction == "") == !useStdin {
+		return "", "", false, usageError(
+			"Usage: aactl bridge action --device SERIAL (--action JSON | --stdin) [--json]",
+		)
+	}
+	if err := adb.ValidateSerial(device); err != nil {
+		return "", "", false, err
+	}
+	return device, inlineAction, useStdin, nil
 }
 
 func (a *App) bridgeService(client *adb.Client) (*bridge.Service, error) {

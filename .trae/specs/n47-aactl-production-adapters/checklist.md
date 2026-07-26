@@ -11,8 +11,8 @@
 - [x] executor 明确拒绝/成功/异常映射 false/true/unknown
 - [x] input 未有 stdin 模式时零进程调用失败关闭且明文不进入 argv
 - [x] lifecycle 四端口透传且不执行 raw ADB/系统授权
-- [x] adapter + N47 全包 51 项、N34 49 项、comments 和 diff-check 通过
+- [x] adapter + N47 全包 59 项、N34 49 项、comments 和 diff-check 通过
 - [ ] 真实 emulator/Bridge/N45 visual adapter 保持未验收
-- [ ] aactl 固定 stdin action 模式和 production input adapter 保持未完成
+- [x] aactl 固定 stdin action 模式和 production input adapter 已安全接线
 - [x] 实现提交身份、唯一 trailer 与 worktree 状态正确
 - [ ] 规格证据提交身份和唯一 trailer 正确

@@ -30,7 +30,8 @@ condition catalog 是声明式对象，只支持：
 ## 当前限制
 
 - 只接 `semantic` route；`hybrid/visual` 和 `visual-state` 明确失败关闭。
-- `input` 未接 production：现有 CLI `--action` 会暴露 argv 明文，adapter 返回
-  `INPUT_ADAPTER_UNAVAILABLE`。必须先实现固定 stdin action 模式。
+- `input` 只通过固定 `bridge action --stdin` 写入 child stdin，argv 不包含明文或
+  action JSON；adapter 在完成后清零自身持有的 Buffer。OS pipe、子进程和内核副本
+  不属于 JavaScript 可控清零范围。
 - 不负责 Bridge open、配对码、无障碍授权、设备发现、APK 安装或模拟器创建。
 - fake `execFile` 测试不等于 emulator 或真实 App 验收。

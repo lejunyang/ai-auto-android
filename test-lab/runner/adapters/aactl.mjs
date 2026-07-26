@@ -483,9 +483,16 @@ const parseEnvelope = (stdout, stderr) => {
   return envelope;
 };
 
-const runExecFile = (execFile, executable, argv, timeoutMs) =>
-  new Promise((resolve, reject) => {
-    execFile(
+const runExecFile = async (
+  execFile,
+  executable,
+  argv,
+  timeoutMs,
+  stdinBuffer = null,
+) => {
+  let child;
+  const resultPromise = new Promise((resolve, reject) => {
+    child = execFile(
       executable,
       argv,
       {
@@ -513,6 +520,45 @@ const runExecFile = (execFile, executable, argv, timeoutMs) =>
       },
     );
   });
+  if (stdinBuffer !== null) {
+    if (
+      !Buffer.isBuffer(stdinBuffer)
+      || child === null
+      || typeof child !== "object"
+      || child.stdin === null
+      || typeof child.stdin !== "object"
+      || typeof child.stdin.end !== "function"
+      || typeof child.stdin.once !== "function"
+    ) {
+      child?.kill?.();
+      void resultPromise.catch(() => {});
+      throw new AactlAdapterError("AACTL_STDIN_FAILED");
+    }
+    const stdinPromise = new Promise((resolve, reject) => {
+      let settled = false;
+      const succeed = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      const failStdin = () => {
+        if (settled) return;
+        settled = true;
+        child.kill?.();
+        reject(new AactlAdapterError("AACTL_STDIN_FAILED"));
+      };
+      child.stdin.once("error", failStdin);
+      child.stdin.once("finish", succeed);
+      try {
+        child.stdin.end(stdinBuffer);
+      } catch {
+        failStdin();
+      }
+    });
+    await Promise.all([resultPromise, stdinPromise]);
+  }
+  return resultPromise;
+};
 
 const flattenNodes = (root) => {
   const output = [];
@@ -693,6 +739,8 @@ const requiredNodeAction = (action) => {
   switch (action.type) {
   case "tap":
     return "click";
+  case "input":
+    return "setText";
   case "long-click":
     return "longClick";
   case "scroll":
@@ -708,7 +756,7 @@ const requiredNodeAction = (action) => {
 };
 
 const selectorAction = (action, packageName, strategy) => {
-  if (!["tap", "long-click", "scroll"].includes(action.type)) {
+  if (!["tap", "input", "long-click", "scroll"].includes(action.type)) {
     return null;
   }
   const target = {
@@ -723,6 +771,8 @@ const selectorAction = (action, packageName, strategy) => {
   switch (action.type) {
   case "tap":
     return { type: "ui.click", params: { target } };
+  case "input":
+    return { type: "ui.setText", params: { target } };
   case "long-click":
     return { type: "ui.longClick", params: { target } };
   case "scroll":
@@ -877,13 +927,14 @@ export const createAactlScenarioPorts = async (
   let observationSequence = 0;
   let generation = 0;
 
-  const callAactl = async (argv, timeoutMs) => {
+  const callAactl = async (argv, timeoutMs, stdinBuffer = null) => {
     await assertExecutableUnchanged(tool);
     const envelope = await runExecFile(
       dependencies.execFile,
       tool.path,
       argv,
       timeoutMs,
+      stdinBuffer,
     );
     if (!envelope.ok) throw safeError(envelope.error.code);
     return envelope.data;
@@ -1024,7 +1075,6 @@ export const createAactlScenarioPorts = async (
         fail("ROUTE_UNAVAILABLE");
       }
       assertAction(action);
-      if (action.type === "input") fail("INPUT_ADAPTER_UNAVAILABLE");
       const record = observationRecord(observation);
       if (
         record.snapshot.packageName !== targetPackage
@@ -1129,7 +1179,54 @@ export const createAactlScenarioPorts = async (
         ];
       } else {
         const protocolAction = structuredClone(record.protocolAction);
-        if (value !== undefined) {
+        let stdinBuffer = null;
+        if (action.type === "input") {
+          if (
+            typeof value !== "string"
+            || Buffer.byteLength(value, "utf8") > 4096
+          ) {
+            fail("INPUT_VALUE_INVALID");
+          }
+          protocolAction.params.text = value;
+          stdinBuffer = Buffer.from(
+            `${JSON.stringify(protocolAction)}\n`,
+            "utf8",
+          );
+          argv = [
+            "bridge",
+            "action",
+            "--device",
+            config.serial,
+            "--stdin",
+            "--json",
+          ];
+          try {
+            const data = await callAactl(
+              argv,
+              remainingTimeout(deadlineAt, dependencies.now()),
+              stdinBuffer,
+            );
+            assertBridgeActionResult(data, action);
+            return Object.freeze({ committed: true });
+          } catch (error) {
+            if (
+              error instanceof AactlAdapterError
+              && [
+                "AACTL_ACTION_NOT_ALLOWED",
+                "AACTL_CAPABILITY_UNAVAILABLE",
+                "AACTL_SELECTOR_NOT_FOUND",
+                "AACTL_SELECTOR_AMBIGUOUS",
+              ].includes(error.code)
+            ) {
+              return Object.freeze({ committed: false });
+            }
+            throw error;
+          } finally {
+            stdinBuffer.fill(0);
+            delete protocolAction.params.text;
+            value = undefined;
+          }
+        } else if (value !== undefined) {
           fail("EXECUTION_REQUEST_INVALID");
         }
         argv = [

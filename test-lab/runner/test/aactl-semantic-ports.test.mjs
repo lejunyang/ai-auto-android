@@ -715,7 +715,7 @@ test("lifecycle 开始后旧 observation 和 route token 均失效", async () =>
   assert.equal(fake.calls.length, 1);
 });
 
-test("input 未有安全 stdin 模式时在 route 阶段零进程调用失败关闭", async () => {
+test("input 生成 semantic route 且 route 阶段不启动进程", async () => {
   const fake = fakeExecFile();
   const { adapter } = await makeAdapter({ fake });
   const observation = await observe(adapter);
@@ -724,12 +724,26 @@ test("input 未有安全 stdin 模式时在 route 阶段零进程调用失败关
     target: { kind: "semantic-name", name: "Fixture text input" },
     valueRef: "fixture-input",
   };
-  await rejectsCode(
-    () => route(adapter, observation, action),
-    "INPUT_ADAPTER_UNAVAILABLE",
+  const resolved = await route(adapter, observation, action);
+  assert.deepEqual(
+    {
+      route: resolved.route,
+      score: resolved.score,
+      attempts: resolved.attempts,
+      observationId: resolved.observationId,
+    },
+    {
+      route: "semantic",
+      score: 1,
+      attempts: 1,
+      observationId: observation.observationId,
+    },
   );
   assert.equal(fake.calls.length, 1);
-  assert.equal(JSON.stringify(observation).includes(SECRET_INPUT), false);
+  assert.equal(
+    JSON.stringify({ observation, resolved }).includes(SECRET_INPUT),
+    false,
+  );
 });
 
 test("Runner 通过 production adapter 完成 snapshot action post snapshot 和清理", async () => {

@@ -3,9 +3,11 @@ package cli
 // 测试用途：本文件验证 Bridge CLI 不泄露配对秘密、失败时清理转发并拒绝非法参数。
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -143,6 +145,142 @@ func TestBridgeActionRejectsMalformedJSONBeforeRPC(t *testing.T) {
 	}
 }
 
+func TestBridgeActionReadsStrictObjectFromStdinWithoutEchoingInput(t *testing.T) {
+	const sensitiveText = "private fixture input"
+	action := `{"type":"ui.setText","params":{"target":{"packageName":"com.example.app","selectorCandidates":[{"strategy":"contentDescription","value":"Fixture text input","weight":1,"required":true}]},"text":"` + sensitiveText + `"}}`
+	rpc := &cliBridgeClient{
+		callResult: json.RawMessage(`{"route":"nodeAction","matchedPath":[0],"matchScore":1}`),
+	}
+	app, stdout := testApp(&scriptedExecutor{}, action+"\n")
+	app.BridgeClient = rpc
+	app.BridgeStore = &cliSessionStore{session: cliValidSession(), exists: true}
+
+	exitCode := app.Run(context.Background(), []string{
+		"bridge", "action",
+		"--device", "SERIAL",
+		"--stdin",
+		"--json",
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d", exitCode)
+	}
+	if rpc.callCount != 1 || rpc.lastMethod != "action.execute" {
+		t.Fatalf("RPC count=%d method=%q", rpc.callCount, rpc.lastMethod)
+	}
+	if !bytes.Contains(rpc.lastParams, []byte(sensitiveText)) {
+		t.Fatal("stdin action did not reach the Bridge params")
+	}
+	if strings.Contains(stdout.String(), sensitiveText) {
+		t.Fatal("stdin action text leaked into CLI output")
+	}
+}
+
+func TestBridgeActionInlineModeRemainsCompatible(t *testing.T) {
+	action := `{"type":"ui.back","params":{}}`
+	rpc := &cliBridgeClient{
+		callResult: json.RawMessage(`{"route":"globalAction"}`),
+	}
+	app, stdout := testApp(&scriptedExecutor{}, "")
+	app.BridgeClient = rpc
+	app.BridgeStore = &cliSessionStore{session: cliValidSession(), exists: true}
+
+	exitCode := app.Run(context.Background(), []string{
+		"bridge", "action",
+		"--device", "SERIAL",
+		"--action", action,
+		"--json",
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exit code=%d output=%s", exitCode, stdout.String())
+	}
+	if rpc.callCount != 1 || !bytes.Contains(rpc.lastParams, []byte(`"ui.back"`)) {
+		t.Fatalf("RPC count=%d params=%s", rpc.callCount, rpc.lastParams)
+	}
+}
+
+func TestBridgeActionRequiresExactlyOneInlineOrStdinSource(t *testing.T) {
+	tests := [][]string{
+		{"bridge", "action", "--device", "SERIAL", "--json"},
+		{
+			"bridge", "action", "--device", "SERIAL",
+			"--action", `{"type":"ui.back","params":{}}`,
+			"--stdin", "--json",
+		},
+		{
+			"bridge", "action", "--device", "SERIAL",
+			"--stdin", "--stdin", "--json",
+		},
+	}
+	for _, args := range tests {
+		rpc := &cliBridgeClient{}
+		app, _ := testApp(&scriptedExecutor{}, `{"type":"ui.back","params":{}}`)
+		app.BridgeClient = rpc
+		app.BridgeStore = &cliSessionStore{session: cliValidSession(), exists: true}
+
+		if exitCode := app.Run(context.Background(), args); exitCode != apperr.ExitArgument {
+			t.Fatalf("args=%#v exit code=%d", args, exitCode)
+		}
+		if rpc.callCount != 0 {
+			t.Fatalf("args=%#v RPC count=%d", args, rpc.callCount)
+		}
+	}
+}
+
+func TestBridgeActionStdinRejectsUnsafeJSONBeforeRPC(t *testing.T) {
+	oversized := strings.Repeat("x", bridge.MaxMessageBytes)
+	invalidUTF8 := string([]byte{0xff, 0xfe})
+	tests := []string{
+		"",
+		"[]",
+		`"scalar"`,
+		`{"type":"ui.back","type":"ui.home","params":{}}`,
+		`{"type":"ui.back","params":{"nested":{"key":1,"key":2}}}`,
+		"{\"type\":\"ui.back\",\"params\":{}}\n{\"type\":\"ui.home\",\"params\":{}}",
+		`{"type":"ui.back","params":{}} trailing`,
+		"{\"type\":\"ui.back\",\"params\":{}}\x00",
+		invalidUTF8,
+		oversized,
+	}
+	for index, input := range tests {
+		rpc := &cliBridgeClient{}
+		app, stdout := testApp(&scriptedExecutor{}, input)
+		app.BridgeClient = rpc
+		app.BridgeStore = &cliSessionStore{session: cliValidSession(), exists: true}
+
+		exitCode := app.Run(context.Background(), []string{
+			"bridge", "action", "--device", "SERIAL", "--stdin", "--json",
+		})
+		if exitCode != apperr.ExitArgument {
+			t.Fatalf("case=%d exit code=%d", index, exitCode)
+		}
+		if rpc.callCount != 0 {
+			t.Fatalf("case=%d RPC count=%d", index, rpc.callCount)
+		}
+		if input != "" && strings.Contains(stdout.String(), input) {
+			t.Fatalf("case=%d input leaked into output", index)
+		}
+	}
+}
+
+func TestBridgeActionStdinReadFailureStopsBeforeRPC(t *testing.T) {
+	rpc := &cliBridgeClient{}
+	app, _ := testApp(&scriptedExecutor{}, "")
+	app.Stdin = failingActionReader{}
+	app.BridgeClient = rpc
+	app.BridgeStore = &cliSessionStore{session: cliValidSession(), exists: true}
+
+	if exitCode := app.Run(context.Background(), []string{
+		"bridge", "action", "--device", "SERIAL", "--stdin", "--json",
+	}); exitCode != apperr.ExitArgument {
+		t.Fatalf("exit code=%d", exitCode)
+	}
+	if rpc.callCount != 0 {
+		t.Fatalf("RPC count=%d", rpc.callCount)
+	}
+}
+
 func TestBridgeSnapshotValidatesPackageAndDepthBeforeRPC(t *testing.T) {
 	tests := [][]string{
 		{
@@ -176,6 +314,7 @@ type cliBridgeClient struct {
 	callErr    error
 	callCount  int
 	lastMethod string
+	lastParams json.RawMessage
 }
 
 func (c *cliBridgeClient) Open(
@@ -192,11 +331,18 @@ func (c *cliBridgeClient) Call(
 	_ int,
 	_ string,
 	method string,
-	_ any,
+	params any,
 	result any,
 ) error {
 	c.callCount++
 	c.lastMethod = method
+	if method == "action.execute" {
+		encoded, err := json.Marshal(params)
+		if err != nil {
+			return err
+		}
+		c.lastParams = encoded
+	}
 	if c.callErr != nil {
 		return c.callErr
 	}
@@ -207,6 +353,12 @@ func (c *cliBridgeClient) Call(
 		destination.Closed = true
 	}
 	return nil
+}
+
+type failingActionReader struct{}
+
+func (failingActionReader) Read([]byte) (int, error) {
+	return 0, io.ErrUnexpectedEOF
 }
 
 type cliSessionStore struct {

@@ -67,3 +67,11 @@
   change spec、固定 aactl adapter、README 和全部测试。
 - 提交 author/committer 均为 `lejunyang <lejunyang@qq.com>`，消息含且仅含一次
   `Co-authored-by: TRAE CLI <noreply@bytedance.com>`；实现提交后 worktree 干净。
+
+## Round 6
+
+- 独立 change spec `n47-stdin-action-input` 为 CLI 增加固定 `bridge action --stdin`
+  模式，input action JSON 不再进入进程 argv；adapter 通过 child stdin 写入并清零
+  自身 Buffer。
+- 原 `INPUT_ADAPTER_UNAVAILABLE` 缺口已由独立实现安全关闭；visual/hybrid 与真实
+  emulator 验收仍未完成，不改变本规格此前设备边界。
