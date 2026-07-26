@@ -1,0 +1,583 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-auto-android.dev/test-lab/matrix/local/v1/report.schema.json",
+  "title": "Local Android API Matrix Report",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "matrixId",
+    "startedAt",
+    "finishedAt",
+    "iterationsPerScenario",
+    "plannedRuns",
+    "executedRuns",
+    "cleanupPassedRuns",
+    "succeeded",
+    "errorCode",
+    "profiles",
+    "scenarioStatistics"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "matrixId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finishedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "iterationsPerScenario": {
+      "const": 20
+    },
+    "plannedRuns": {
+      "const": 300
+    },
+    "executedRuns": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 300
+    },
+    "cleanupPassedRuns": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 300
+    },
+    "succeeded": {
+      "type": "boolean"
+    },
+    "errorCode": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/errorCode"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/profile"
+      }
+    },
+    "scenarioStatistics": {
+      "type": "array",
+      "maxItems": 15,
+      "items": {
+        "$ref": "#/$defs/scenarioStatistics"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "errorCode": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 96,
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "countMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 300
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "required": [
+        "appData",
+        "bridgeSessions",
+        "testServices",
+        "screenshots",
+        "logs",
+        "ownedProcesses",
+        "runtimeFiles",
+        "leases"
+      ],
+      "properties": {
+        "appData": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "bridgeSessions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "testServices": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "screenshots": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "logs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "ownedProcesses": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "runtimeFiles": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "leases": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        }
+      },
+      "additionalProperties": false
+    },
+    "run": {
+      "type": "object",
+      "required": [
+        "profileId",
+        "apiLevel",
+        "scenarioId",
+        "iteration",
+        "serial",
+        "deviceFingerprint",
+        "snapshot",
+        "status",
+        "errorCode",
+        "durationMs",
+        "retries",
+        "actionCommitUnknown",
+        "routeCounts",
+        "pageClassCounts",
+        "cleanupVerified",
+        "cleanup"
+      ],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "api-30",
+            "api-33",
+            "api-34"
+          ]
+        },
+        "apiLevel": {
+          "enum": [
+            30,
+            33,
+            34
+          ]
+        },
+        "scenarioId": {
+          "enum": [
+            "native-fixture",
+            "webview-fixture",
+            "canvas-fixture",
+            "recording-editor",
+            "recording-replay"
+          ]
+        },
+        "iteration": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "serial": {
+          "$ref": "#/$defs/stableId"
+        },
+        "deviceFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "snapshot": {
+          "const": "clean"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "errorCode": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/errorCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "actionCommitUnknown": {
+          "type": "boolean"
+        },
+        "routeCounts": {
+          "$ref": "#/$defs/routeCountMap"
+        },
+        "pageClassCounts": {
+          "$ref": "#/$defs/pageClassCountMap"
+        },
+        "cleanupVerified": {
+          "type": "boolean"
+        },
+        "cleanup": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/cleanup"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "profile": {
+      "type": "object",
+      "required": [
+        "profileId",
+        "apiLevel",
+        "capabilities",
+        "runs",
+        "passed",
+        "failed",
+        "cancelled",
+        "cleanupPassed",
+        "routeCounts",
+        "pageClassCounts",
+        "errorCodeCounts"
+      ],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "api-30",
+            "api-33",
+            "api-34"
+          ]
+        },
+        "apiLevel": {
+          "enum": [
+            30,
+            33,
+            34
+          ]
+        },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "runs": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/run"
+          }
+        },
+        "passed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "cancelled": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "cleanupPassed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "routeCounts": {
+          "$ref": "#/$defs/routeCountMap"
+        },
+        "pageClassCounts": {
+          "$ref": "#/$defs/pageClassCountMap"
+        },
+        "errorCodeCounts": {
+          "$ref": "#/$defs/countMap"
+        }
+      },
+      "additionalProperties": false
+    },
+    "routeCountMap": {
+      "type": "object",
+      "properties": {
+        "semantic": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "hybrid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "visual": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        }
+      },
+      "additionalProperties": false
+    },
+    "pageClassCountMap": {
+      "type": "object",
+      "properties": {
+        "normal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "advertisement": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "update-prompt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "ab-variant": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "emulator-detected": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "network-failure": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "login-wall": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "unknown": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        }
+      },
+      "additionalProperties": false
+    },
+    "scenarioStatistics": {
+      "type": "object",
+      "required": [
+        "profileId",
+        "apiLevel",
+        "scenarioId",
+        "classification",
+        "total",
+        "passed",
+        "failed",
+        "successRate",
+        "durationMs",
+        "retryCount",
+        "failureCounts",
+        "errorCodes",
+        "flakyIterations",
+        "routeCounts",
+        "pageClassCounts"
+      ],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "api-30",
+            "api-33",
+            "api-34"
+          ]
+        },
+        "apiLevel": {
+          "enum": [
+            30,
+            33,
+            34
+          ]
+        },
+        "scenarioId": {
+          "enum": [
+            "native-fixture",
+            "webview-fixture",
+            "canvas-fixture",
+            "recording-editor",
+            "recording-replay"
+          ]
+        },
+        "classification": {
+          "enum": [
+            "passed",
+            "product",
+            "device",
+            "infrastructure",
+            "flaky"
+          ]
+        },
+        "total": {
+          "const": 20
+        },
+        "passed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "successRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "durationMs": {
+          "type": "object",
+          "required": [
+            "min",
+            "p50",
+            "p95",
+            "max"
+          ],
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "p50": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "p95": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failureCounts": {
+          "type": "object",
+          "required": [
+            "product",
+            "device",
+            "infrastructure"
+          ],
+          "properties": {
+            "product": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "device": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "infrastructure": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            }
+          },
+          "additionalProperties": false
+        },
+        "errorCodes": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "count"
+            ],
+            "properties": {
+              "code": {
+                "$ref": "#/$defs/errorCode"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "flakyIterations": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          }
+        },
+        "routeCounts": {
+          "$ref": "#/$defs/routeCountMap"
+        },
+        "pageClassCounts": {
+          "$ref": "#/$defs/pageClassCountMap"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
