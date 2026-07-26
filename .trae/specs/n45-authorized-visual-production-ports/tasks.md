@@ -9,7 +9,7 @@
 - [x] 接入 N45 tap/long-click/swipe planner 并保持语义路径无回归
 - [x] 覆盖停止、取消、确认等待、过期、漂移、secure 和清零
 - [x] 运行定向、App 全量、lint、AndroidTest、comments、verify、diff-check
-- [ ] 审查范围并提交
+- [x] 审查范围并提交
 
 ## 建议提交
 

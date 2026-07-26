@@ -53,3 +53,11 @@
   `make build`、comments 368 文件和 diff-check 均通过。
 - 本轮未启动 N45 设备命中测试。API 30/33/34 三分辨率/旋转 fixture、历史 visual
   脚本 rebind 和 N47 desktop visual route 仍未验收，不更新对应路线图勾选。
+
+## Round 4
+
+- 实现提交为 `383c60a`，提交范围仅含本 change spec、授权视觉 session/N45 planner、
+  Provider 严格契约、目标包绑定 Accessibility typed action 与对应 JVM 测试。
+- author 与 committer 均为 `lejunyang <lejunyang@qq.com>`；提交消息末尾
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>` 恰好一次，提交后 worktree
+  clean。

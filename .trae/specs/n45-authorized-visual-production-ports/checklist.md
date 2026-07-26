@@ -14,4 +14,4 @@
 - [x] visual swipe 端点按候选 bounds 内相对坐标接入 production typed executor
 - [x] 定向、全量 JVM、lint、AndroidTest、comments、verify、diff-check 通过
 - [ ] API 30/33/34 设备命中保持未验收
-- [ ] 提交身份、trailer 与 worktree 状态正确
+- [x] 提交身份、trailer 与 worktree 状态正确
