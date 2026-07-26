@@ -6,4 +6,4 @@
 - [x] 用户触摸停止时 executor 调用为零
 - [x] release 不包含 debug harness
 - [x] 定向与构建验证通过
-- [ ] 提交身份、trailer 和集成状态正确
+- [x] 提交身份、trailer 和集成状态正确

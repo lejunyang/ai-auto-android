@@ -23,3 +23,10 @@
   `assembleDebug`、`assembleDebugAndroidTest`、`assembleRelease` 共 134 tasks
   通过。release APK 两个 dex 的直接字符串扫描均无 harness 类名，SHA-256 为
   `addc52e0b2277915497fc656a67c9be4838c781f3ddc55ebb29fa4cc76b1a6fc`。
+
+## Round 3
+
+- 修复提交为 `0f8c029`，作者和提交者均为
+  `lejunyang <lejunyang@qq.com>`，co-author trailer 恰好一次；主分支等价集成
+  提交为 `1f6a0df`。
+- 提交和集成前后 worktree 均干净，`make comments` 与 `git diff --check` 通过。

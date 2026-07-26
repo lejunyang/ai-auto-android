@@ -4,7 +4,7 @@
 - [x] 增加当前 planner 类型与零 context 静态回归
 - [x] 迁移 debug harness gate 到 `SessionPlannedAction`
 - [x] 运行定向 App 测试、debug/release、lint 与 AndroidTest 编译
-- [ ] 运行 comments/diff-check、提交并集成
+- [x] 运行 comments/diff-check、提交并集成
 
 ## 建议提交
 
