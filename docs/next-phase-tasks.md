@@ -768,6 +768,18 @@ argv 不含明文/action；stream 缺失/错误、进程异常和成功 data 畸
 **验收证据：** 每个 API 的核心 fixture 连续 20 次成功率不低于 95%，残留清理率
 100%；报告包含耗时、重试、flaky 分类和可复查失败证据。
 
+**实现记录（编排与报告内核完成，真实设备矩阵未完成）：** `main` 已包含 N52
+内核 `502a5a1` 和规格证据 `064fe96`。固定计划恰好为 API 30/33/34 ×
+native/WebView/Canvas/编辑器/回放 × 20 轮，共 300 轮；capability 在零启动阶段
+严格校验，单轮绑定显式 serial、API、fingerprint、clean snapshot 和 N47 报告。
+成功、失败和取消均执行类型化 stop/residue 补偿清理，生命周期、残留和 fingerprint
+风险 fail-fast。严格 Schema 与语义 validator 从 runs 重算 N34 统计、N47
+route/page/error、95% 成功率、100% 清理率和未知提交门，并拒绝重复轮次、陈旧聚合、
+自由异常及任意内容键。N52 21/21、N47 59/59、N34 49/49 和 comments/diff-check
+通过，跨平台 Node 24 workflow 仅运行离线 fake smoke。N32 test-only Bridge 仍只读，
+N47 visual production route 与 emulator 动作授权链尚无设备验收，真实
+3 × 5 × 20 矩阵未运行，因此主任务保持未勾选。
+
 **失败清理：** 停止本任务创建的本地 AVD，释放设备锁，删除临时快照和超预算产物；
 不得执行共享 `adb kill-server`。
 
