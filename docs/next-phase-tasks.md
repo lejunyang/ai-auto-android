@@ -552,6 +552,19 @@ swipe、只读后置 verifier 及提交后不重试。ReplayEngine 对 visual/co
 生产 UI/Bridge 尚未注入 observation/candidate/current-screen/verifier 端口，且
 API 30/33/34 fixture 未实际命中，因此保持未勾选。
 
+**追加实现记录（App 授权视觉 production port 已接，设备矩阵未完成）：**
+`main` 已包含 `383c60a` 和规格证据 `eee8d7f`。App AI 会话的视觉 tap、
+long-click、swipe 现在必须携带严格 `visualTarget`，绑定目标包、observation ID、
+PNG SHA-256、model candidate UUID、>=0.70 置信度及 screenshot crop-local
+point/bounds；Planner 复用 N44 `VisualProposalService` 完成 crop/rotation 映射，
+再复用 N45 preflight/coordinate planner。source/pre/post 三阶段授权截图在 risk、
+人工确认、执行前复核、typed action 和后置验证期间存活，所有成功/拒绝/失败/停止/
+超时/取消路径撤销并清零。Accessibility dispatch 再次绑定实际 source package；
+后置验证失败明确为已提交一次且不重放。App JVM 337/337、lint 0 error/28 warning、
+AndroidTest APK、N47 59/59、N52 21/21、仓库 test/verify/build 和 Android
+test/lint/build 均通过。N47 desktop visual route、历史脚本 rebind 及 API 30/33/34
+多分辨率/旋转设备命中尚未验收，因此 N45/N47/N52 主任务继续保持未勾选。
+
 **失败清理：** 停止当前回放，清除 observation 和截图，恢复 fixture 状态。
 
 **建议提交：** `feat(recording): replay explicit visual coordinates`
