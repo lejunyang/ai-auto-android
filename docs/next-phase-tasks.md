@@ -435,6 +435,15 @@ orchestrator 定向测试 20/20、App 全量单测 219/219 通过；只生成类
 设备 follow-up 尚未产出可执行 instrumentation 入口；API 30/33/34 各 20 轮和清理
 证据均未开始，因此保持未勾选。
 
+**追加调查记录（API 30 聚焦输入候选被否定）：** `main` 已包含调查证据
+`1ad06aa`。固定 API 30 clean AVD `emulator-5570` 的 fingerprint 与 WebView
+91.0.4472.114 均符合 N31 profile；单轮 instrumentation 证明输入虚拟节点初始不仅
+缺少 `ACTION_SET_TEXT`，也不暴露可用于显式聚焦的 `ACTION_CLICK`，因此第一步即以
+`semantic action 16 unavailable` 零提交停止，未执行后续动作，也未尝试坐标、
+剪贴板、IME shell、DOM/JavaScript 或直接 ADB 文本降级。被设备证据否定的代码实验
+已完整撤销；runner stop 后设备数、runtime、lock 和 lease 均为零。API 33/34 与
+二十轮矩阵未运行，任务继续保持未勾选。
+
 **失败清理：** 清除 WebView 数据、脚本和产物，恢复快照。
 
 **建议提交：** `test(android): validate webview semantic replay`
