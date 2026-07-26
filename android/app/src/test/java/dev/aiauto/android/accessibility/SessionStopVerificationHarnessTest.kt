@@ -5,13 +5,25 @@ package dev.aiauto.android.accessibility
  */
 
 import dev.aiauto.android.automation.session.AutomationSessionRuntime
+import java.io.File
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SessionStopVerificationHarnessTest {
+    @Test
+    fun `debug planner gate follows planned action contract without visual context BitsUT`() {
+        val source = debugHarnessSource()
+
+        assertTrue(source.contains("CompletableDeferred<SessionPlannedAction>()"))
+        assertTrue(source.contains("plannerGate.await()"))
+        assertFalse(source.contains("CompletableDeferred<ProviderAction>()"))
+        assertFalse(source.contains("SessionActionContext"))
+    }
+
     @Test
     fun `manual session lifetime is independent from assertion timeout BitsUT`() {
         assertEquals(
@@ -51,5 +63,16 @@ class SessionStopVerificationHarnessTest {
         } finally {
             harness.close()
         }
+    }
+
+    private fun debugHarnessSource(): String {
+        val root = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) {
+            it.parentFile
+        }.firstOrNull {
+            it.resolve("src/debug/java/dev/aiauto/android/accessibility").isDirectory
+        } ?: error("unable to locate app module root")
+        return root.resolve(
+            "src/debug/java/dev/aiauto/android/accessibility/SessionStopVerificationHarness.kt",
+        ).readText()
     }
 }

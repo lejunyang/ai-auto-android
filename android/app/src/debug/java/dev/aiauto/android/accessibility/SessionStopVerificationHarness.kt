@@ -16,9 +16,9 @@ import dev.aiauto.android.automation.session.SessionLimits
 import dev.aiauto.android.automation.session.SessionObservation
 import dev.aiauto.android.automation.session.SessionObserver
 import dev.aiauto.android.automation.session.SessionPhase
+import dev.aiauto.android.automation.session.SessionPlannedAction
 import dev.aiauto.android.automation.session.SessionPlanner
 import dev.aiauto.android.automation.session.SessionRequest
-import dev.aiauto.android.provider.ProviderAction
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +33,7 @@ internal class SessionStopVerificationHarness(
     private val targetPackage: String,
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val plannerGate = CompletableDeferred<ProviderAction>()
+    private val plannerGate = CompletableDeferred<SessionPlannedAction>()
     private val plannerEntered = CompletableDeferred<Unit>()
     private val executorCalls = AtomicInteger()
     private val automationClickVerified = AtomicBoolean()
