@@ -8,7 +8,7 @@
 - [x] API 30/33/34 各运行一次并记录 matrix
 - [x] 分类 long-click、iframe、页面后置和 Back 的完整/混合边界
 - [x] 清理设备、runtime、lock 和 lease
-- [ ] 运行 comments/diff-check、提交和集成
+- [x] 运行 comments/diff-check、提交和集成
 
 ## 建议提交
 

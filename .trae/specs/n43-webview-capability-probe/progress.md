@@ -68,3 +68,12 @@
   action 返回值不能替代新观察，也不能跳过每版本 20 轮与 flaky 统计门。
 - 最终再次确认 0 devices、0 N31 runtime、0 AVD/port lease、0 owned emulator。
   N43 保持未完成，不能因最后一次 clean run 成功而覆盖前一次失败。
+
+## Round 5
+
+- 实现与设备证据提交为 `b3e66b8`，作者和提交者均为
+  `lejunyang <lejunyang@qq.com>`，要求的 co-author trailer 恰好一次；主分支等价
+  集成提交为 `9cc8db6`。
+- 提交前 `make comments`、`git diff --check`、Web fixture 完整
+  `test + lint + build` 及设备/N31 零残留检查均通过。公共路线图只追加更正与剩余
+  缺口，N43 仍未勾选。

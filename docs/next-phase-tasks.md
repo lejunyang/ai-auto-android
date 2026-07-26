@@ -444,6 +444,18 @@ orchestrator 定向测试 20/20、App 全量单测 219/219 通过；只生成类
 已完整撤销；runner stop 后设备数、runtime、lock 和 lease 均为零。API 33/34 与
 二十轮矩阵未运行，任务继续保持未勾选。
 
+**追加能力矩阵（输入结论已更正，完整验收未完成）：** `main` 已包含
+`9cc8db6`。API 30/33/34 的只读 matrix 一致：唯一 WebView `EditText` 均为
+editable，并暴露 `ACTION_CLICK=16` 与 `ACTION_SET_TEXT=2097152`；此前输入失败是
+`aria-label` selector 错误，不是 API 30/Android 11 或 WebView 91 缺少完整语义输入。
+三版本单轮均完成 input、dynamic DOM、scroll、跨页导航和 AndroidX dispatcher
+Back；long-click 不暴露 `ACTION_LONG_CLICK=32`，iframe/详情 click 返回成功但语义
+后置不可见，均明确归为 hybrid-required。安全降级只允许 N45 授权视觉 long-click
+或对已提交语义 click 做视觉后置验证，不重复点击；无可信 observation 时失败关闭。
+迁移 dispatcher 后 API 30/33 各 1/1，通过；API 34 首轮基础 click 后置未更新，新
+clean snapshot 复跑通过，实际为 1/2。每版本 20 轮、95% 成功门和 N45 真实混合闭环
+仍未完成，因此任务继续保持未勾选。
+
 **失败清理：** 清除 WebView 数据、脚本和产物，恢复快照。
 
 **建议提交：** `test(android): validate webview semantic replay`

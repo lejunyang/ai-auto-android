@@ -8,4 +8,4 @@
 - [x] API 30/33/34 action matrix 均有设备证据
 - [x] 每轮设备和 N31 状态残留为零
 - [x] 不把 capability probe 描述为完整场景通过
-- [ ] 提交身份、trailer 和 worktree 状态正确
+- [x] 提交身份、trailer 和 worktree 状态正确
