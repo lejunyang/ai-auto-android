@@ -95,3 +95,14 @@
 - runner 已停止 `emulator-5566`，最终设备、emulator、runtime 与 lease 均为零。
   本轮停止继续试错，API 33/34 与各 20 轮矩阵未启动；N33 保持未完成，后续需独立
   设计可由平台输入路由稳定命中的手势 surface，再从 clean snapshot 重新验收。
+
+## Round 4
+
+- 独立平台 surface 调查先移除自定义 intercept/dispatch/touch/`scrollBy`，保留
+  UIAutomator 最新 bounds 与真实 `scrollY`/状态双断言；模块 121 tasks 通过。
+- API 30 `emulator-5576` 上，纯平台 `ScrollView` 的 bounds 内
+  `UiDevice.swipe` 返回成功但 `VERTICAL_OFFSET` 仍为 0。新 clean serial
+  `emulator-5578` 上，`UiObject2.scroll(Direction.UP, 0.8f)` 直接返回 false。
+- 两种方案均被真实设备证据否定，实验实现已完整撤销，fixture 源码与主分支基线
+  一致；未启动 API 33/34 或重复矩阵。最终设备、runtime、AVD/port lease 和 owned
+  emulator 均为零，N33 继续保持未完成。
