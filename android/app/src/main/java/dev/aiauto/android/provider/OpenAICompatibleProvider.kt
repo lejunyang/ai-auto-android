@@ -170,6 +170,20 @@ class OpenAICompatibleProvider(
                     "capturedAt=${it.capturedAt} expiresAt=${it.expiresAt} " +
                         "pngSize=${it.pngSizeBytes} pngSha256=${it.pngSha256}",
                 )
+                appendLine(
+                    "Visual tap/long-click/swipe must include params.visualTarget with exactly: " +
+                        "packageName, observationId, imageSha256, candidateId, source=\"model\", " +
+                        "confidence, point{x,y}, bounds{left,top,right,bottom}.",
+                )
+                appendLine(
+                    "Use screenshot-crop-local normalized 0..1 coordinates, confidence >= 0.70, " +
+                        "and keep point inside bounds. " +
+                        "Copy observationId, imageSha256, and packageName exactly from this observation.",
+                )
+                appendLine(
+                    "For ui.swipe, start{x,y} and end{x,y} are normalized positions inside " +
+                        "visualTarget.bounds, not screen pixels.",
+                )
             }
         }
         val screenshot = screenshotPng ?: return JsonPrimitive(text)

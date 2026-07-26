@@ -118,13 +118,18 @@ internal class AndroidAccessibilityBackend(
     override fun dispatch(
         gesture: Gesture,
         sourcePath: NodePath?,
+        expectedPackage: String?,
         expectedEventBudgets: Map<Int, Int>,
         timeoutMs: Long,
     ): Boolean {
         val source = sourcePath?.let(::findNodeInActiveWindow)
             ?: findUniqueNodeAt(gesture)
         val requiresAttribution = userTouchMonitor?.requiresStrictAttribution() == true
-        if (requiresAttribution && source == null) {
+        if (
+            requiresAttribution && source == null ||
+            expectedPackage != null && source?.packageName?.toString() != expectedPackage
+        ) {
+            source?.recycleSafely()
             return false
         }
         return try {

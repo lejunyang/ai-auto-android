@@ -32,6 +32,26 @@ import org.junit.Test
 
 class AccessibilityActionRouterTest {
     @Test
+    fun `tap rejects duration outside typed action bounds BitsUT`() {
+        val backend = FakeActionBackend()
+        val router = router(backend)
+
+        for (duration in listOf(0L, 10_001L)) {
+            val result = router.execute(
+                AccessibilityCommand.Tap(
+                    point = ScreenPoint(20, 20),
+                    durationMs = duration,
+                ),
+            )
+
+            assertTrue(result is AccessibilityResult.Failure)
+            result as AccessibilityResult.Failure
+            assertEquals(AccessibilityErrorCode.INVALID_ACTION, result.error.code)
+        }
+        assertTrue(backend.dispatchedGestures.isEmpty())
+    }
+
+    @Test
     fun `routes click to a fresh node action before gestures`() {
         val backend = FakeActionBackend()
         backend.nodeActionResult = true
@@ -147,7 +167,13 @@ class AccessibilityActionRouterTest {
         backend.globalActionResult = true
         val router = router(backend)
 
-        val tap = router.execute(AccessibilityCommand.Tap(ScreenPoint(20, 30)))
+        val tap = router.execute(
+            AccessibilityCommand.Tap(
+                point = ScreenPoint(20, 30),
+                expectedPackage = "com.example",
+            ),
+        )
+        assertEquals("com.example", backend.lastExpectedPackage)
         val swipe = router.execute(
             AccessibilityCommand.Swipe(
                 start = ScreenPoint(20, 30),
@@ -236,6 +262,7 @@ class AccessibilityActionRouterTest {
         var nodeActionResult = false
         var globalActionResult = false
         var lastText: String? = null
+        var lastExpectedPackage: String? = null
         var lastExpectedEventBudgets: Map<Int, Int> = emptyMap()
         val gestureResults = ArrayDeque<Boolean>()
         val performedNodeActions = mutableListOf<NodeAction>()
@@ -281,10 +308,12 @@ class AccessibilityActionRouterTest {
         override fun dispatch(
             gesture: Gesture,
             sourcePath: NodePath?,
+            expectedPackage: String?,
             expectedEventBudgets: Map<Int, Int>,
             timeoutMs: Long,
         ): Boolean {
             dispatchedGestures += gesture
+            lastExpectedPackage = expectedPackage
             lastExpectedEventBudgets = expectedEventBudgets
             return gestureResults.removeFirstOrNull() ?: false
         }

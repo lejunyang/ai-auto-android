@@ -11,7 +11,7 @@ fun interface SessionObserver {
 }
 
 fun interface SessionPlanner {
-    suspend fun plan(request: SessionPlanRequest): ProviderAction
+    suspend fun plan(request: SessionPlanRequest): SessionPlannedAction
 }
 
 fun interface SessionExecutor {
@@ -19,6 +19,21 @@ fun interface SessionExecutor {
         action: ProviderAction,
         targetPackage: String,
     ): SessionExecutionResult
+}
+
+/** 视觉等一次性上下文在风险确认后复核、执行、后置验证，并由 Engine 统一关闭。 */
+interface SessionActionContext : AutoCloseable {
+    suspend fun validateBefore(
+        observation: SessionObservation,
+        targetPackage: String,
+    )
+
+    suspend fun execute(targetPackage: String): SessionExecutionResult
+
+    suspend fun verifyAfter(
+        observation: SessionObservation,
+        targetPackage: String,
+    )
 }
 
 interface AutomationSessionFactory {

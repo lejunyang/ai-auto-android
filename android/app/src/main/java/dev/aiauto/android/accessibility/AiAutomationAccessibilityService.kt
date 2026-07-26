@@ -135,7 +135,16 @@ class AiAutomationAccessibilityService :
 
     internal fun execute(
         command: AccessibilityCommand,
-    ): AccessibilityResult<ActionExecution> = actionRouter.execute(command)
+        expectedPackage: String? = null,
+    ): AccessibilityResult<ActionExecution> {
+        if (expectedPackage != null) {
+            when (val validation = backend.validateTarget(expectedPackage)) {
+                is AccessibilityResult.Failure -> return validation
+                is AccessibilityResult.Success -> Unit
+            }
+        }
+        return actionRouter.execute(command)
+    }
 
     internal suspend fun captureScreenshot(
         expectedPackage: String,
@@ -189,8 +198,11 @@ object AccessibilityRuntime {
     fun snapshot(expectedPackage: String? = null): AccessibilityResult<UiNodeSnapshot> =
         service?.snapshot(expectedPackage) ?: serviceDisabled()
 
-    fun execute(command: AccessibilityCommand): AccessibilityResult<ActionExecution> =
-        service?.execute(command) ?: serviceDisabled()
+    fun execute(
+        command: AccessibilityCommand,
+        expectedPackage: String? = null,
+    ): AccessibilityResult<ActionExecution> =
+        service?.execute(command, expectedPackage) ?: serviceDisabled()
 
     suspend fun captureScreenshot(
         expectedPackage: String,

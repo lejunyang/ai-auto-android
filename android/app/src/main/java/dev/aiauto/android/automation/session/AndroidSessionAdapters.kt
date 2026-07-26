@@ -50,10 +50,12 @@ class ProviderSessionPlanner internal constructor(
             ),
         )
     },
+    private val actionValidator: ProviderActionParser = ProviderActionParser(),
+    private val visualContextFactory: AuthorizedVisualActionContextFactory? = null,
     private val screenshotCapture: suspend (String) -> AccessibilityResult<AccessibilityScreenshot> =
         AccessibilityRuntime::captureScreenshot,
 ) : SessionPlanner {
-    override suspend fun plan(request: SessionPlanRequest): ProviderAction {
+    override suspend fun plan(request: SessionPlanRequest): SessionPlannedAction {
         val visualLease = if (request.screenshotsAllowed) {
             val hierarchy = request.observation.hierarchy
                 ?: throw SessionFailureException(
@@ -73,9 +75,10 @@ class ProviderSessionPlanner internal constructor(
             null
         }
         var providerImage: ByteArray? = null
+        var transferLease = false
         return try {
             providerImage = visualLease?.copyProviderImage()
-            provider.planNextAction(
+            val provided = provider.planNextAction(
                 AutomationPrompt(
                     task = request.task,
                     uiSummary = buildString {
@@ -86,10 +89,61 @@ class ProviderSessionPlanner internal constructor(
                     screenshotPng = providerImage,
                     visualObservation = visualLease?.observation?.toProviderContext(),
                 ),
-            ).action.bindToTargetPackage(request.targetPackage)
+            ).action
+            val action = try {
+                actionValidator.validate(provided)
+            } catch (error: dev.aiauto.android.provider.ProviderActionParseException) {
+                throw SessionFailureException("The Provider returned an invalid action.", error)
+            }.bindToTargetPackage(request.targetPackage)
+            val visualTarget = providerVisualTarget(action)
+            val hasVisualTarget = action.params["visualTarget"] != null
+            if (action.type in VISUAL_ACTION_TYPES) {
+                val requiredTarget = visualTarget
+                    ?: throw SessionFailureException(
+                        "Authorized visual action evidence is invalid.",
+                    )
+                val lease = visualLease
+                    ?: throw SessionFailureException(
+                        "Authorized visual action requires an active screenshot observation.",
+                    )
+                val factory = visualContextFactory
+                    ?: throw SessionFailureException(
+                        "Authorized visual action execution is unavailable.",
+                    )
+                val mappedCandidate = lease.mapModelCandidate(
+                    id = requiredTarget.candidateId,
+                    expectedPackage = requiredTarget.packageName,
+                    point = requiredTarget.point,
+                    bounds = requiredTarget.bounds,
+                    confidence = requiredTarget.confidence,
+                )
+                val context = factory.create(
+                    action = action,
+                    target = requiredTarget.copy(
+                        point = mappedCandidate.point,
+                        bounds = mappedCandidate.bounds,
+                    ),
+                    hierarchy = request.observation.hierarchy
+                        ?: throw SessionFailureException(
+                            "The visual action hierarchy is unavailable.",
+                        ),
+                    lease = lease,
+                )
+                transferLease = true
+                SessionPlannedAction(action, context)
+            } else {
+                if (hasVisualTarget) {
+                    throw SessionFailureException(
+                        "Visual evidence is only accepted for visual action types.",
+                    )
+                }
+                SessionPlannedAction(action)
+            }
         } finally {
             providerImage?.fill(0)
-            visualLease?.close()
+            if (!transferLease) {
+                visualLease?.close()
+            }
         }
     }
 
@@ -121,6 +175,10 @@ class ProviderSessionPlanner internal constructor(
         return copy(
             params = JsonObject(params + ("target" to boundTarget)),
         )
+    }
+
+    private companion object {
+        val VISUAL_ACTION_TYPES = setOf("ui.tap", "ui.longClick", "ui.swipe")
     }
 }
 
@@ -247,6 +305,9 @@ class AndroidAutomationSessionFactory(
                 captureGeometry = AndroidVisualCaptureGeometryProvider(
                     applicationContext,
                 )::capture,
+                visualContextFactory = AndroidAuthorizedVisualActionContextFactory(
+                    applicationContext,
+                ),
             ),
             executor = RuntimeSessionExecutor(applicationContext),
             riskPolicy = AutomationRiskPolicy(settings.targetPackages),

@@ -15,11 +15,17 @@ import dev.aiauto.android.accessibility.model.UiBounds
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import dev.aiauto.android.observe.visual.NormalizedBounds
 import dev.aiauto.android.observe.visual.PixelBounds
+import dev.aiauto.android.observe.visual.RawVisualCandidate
 import dev.aiauto.android.observe.visual.TrustedVisualImageVerifier
+import dev.aiauto.android.observe.visual.VisualCandidate
+import dev.aiauto.android.observe.visual.VisualCandidateProvider
+import dev.aiauto.android.observe.visual.VisualCandidateSource
 import dev.aiauto.android.observe.visual.VisualHierarchyNode
 import dev.aiauto.android.observe.visual.VisualObservation
 import dev.aiauto.android.observe.visual.VisualObservationCapture
 import dev.aiauto.android.observe.visual.VisualObservationStore
+import dev.aiauto.android.observe.visual.VisualProposalRequest
+import dev.aiauto.android.observe.visual.VisualProposalService
 import dev.aiauto.android.observe.visual.VisualResult
 import dev.aiauto.android.observe.visual.VisualScreen
 import java.time.Instant
@@ -94,6 +100,45 @@ internal class VisualSessionObservationLease(
 
     internal fun hasObservation(): Boolean =
         !closed.get() && store.lookup(observation.id) != null
+
+    internal fun mapModelCandidate(
+        id: String,
+        expectedPackage: String,
+        point: dev.aiauto.android.observe.visual.NormalizedPoint,
+        bounds: dev.aiauto.android.observe.visual.NormalizedBounds,
+        confidence: Double,
+        now: Instant = Instant.now(),
+    ): VisualCandidate {
+        check(!closed.get()) { "The visual observation lease is closed" }
+        val service = VisualProposalService(
+            observations = store,
+            provider = VisualCandidateProvider { _, _ ->
+                listOf(
+                    RawVisualCandidate(
+                        id = id,
+                        source = VisualCandidateSource.MODEL,
+                        point = point,
+                        bounds = bounds,
+                        confidence = confidence,
+                    ),
+                )
+            },
+        )
+        return when (
+            val result = service.propose(
+                VisualProposalRequest(
+                    observationId = observation.id,
+                    expectedPackage = expectedPackage,
+                    now = now.toString(),
+                ),
+            )
+        ) {
+            is VisualResult.Success -> result.value.candidates.single()
+            is VisualResult.Failure -> throw SessionFailureException(
+                "The visual model candidate was rejected: ${result.code.name}",
+            )
+        }
+    }
 
     override fun close() {
         if (!closed.compareAndSet(false, true)) {

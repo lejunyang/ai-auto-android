@@ -183,6 +183,19 @@ class ExplicitVisualReplayTest {
             assertFailure(result, expected, expectedCommitCount = 0)
             assertTrue(harness.actions.isEmpty())
         }
+
+        val currentDensityDrift = Harness().apply {
+            currentScreen = screen(densityDpi = 320)
+        }
+        val result = currentDensityDrift.executor.replay(
+            request(step(action = tapAction())),
+        )
+        assertFailure(
+            result,
+            ExplicitVisualReplayErrorCode.SCREEN_METADATA_MISMATCH,
+            expectedCommitCount = 0,
+        )
+        assertTrue(currentDensityDrift.actions.isEmpty())
     }
 
     @Test

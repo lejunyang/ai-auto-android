@@ -17,6 +17,7 @@ import dev.aiauto.android.provider.ProviderResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -37,8 +38,16 @@ class AndroidSessionAdaptersTest {
                         "target",
                         buildJsonObject {
                             put(
-                                "fingerprint",
-                                buildJsonObject { put("text", "Continue") },
+                                "selectorCandidates",
+                                kotlinx.serialization.json.buildJsonArray {
+                                    add(
+                                        buildJsonObject {
+                                            put("strategy", "text")
+                                            put("value", "Continue")
+                                            put("weight", 1.0)
+                                        },
+                                    )
+                                },
                             )
                         },
                     )
@@ -46,7 +55,7 @@ class AndroidSessionAdaptersTest {
             ),
         )
 
-        val action = ProviderSessionPlanner(provider).plan(
+        val planned = ProviderSessionPlanner(provider).plan(
             SessionPlanRequest(
                 task = "Continue",
                 targetPackage = TARGET_PACKAGE,
@@ -60,7 +69,7 @@ class AndroidSessionAdaptersTest {
 
         assertEquals(
             TARGET_PACKAGE,
-            action.params.getValue("target")
+            planned.action.params.getValue("target")
                 .jsonObject
                 .getValue("packageName")
                 .jsonPrimitive
@@ -184,6 +193,121 @@ class AndroidSessionAdaptersTest {
         assertTrue(capturedPng.all { it == 0.toByte() })
     }
 
+    @Test
+    fun `planner transfers visual lease to context and closes it with planned action BitsUT`() =
+        runTest {
+            val capturedPng = pngBytes(byteArrayOf(7, 7, 7))
+            var leaseVisibleAtFactory = false
+            var contextClosed = false
+            val planner = ProviderSessionPlanner(
+                provider = FakeProvider(visualTap(capturedPng)),
+                currentSnapshot = { AccessibilityResult.Success(hierarchy()) },
+                acquireAuthorization = { AUTHORIZATION },
+                isAuthorizationActive = { it == AUTHORIZATION },
+                visualContextFactory = AuthorizedVisualActionContextFactory {
+                        _, _, _, lease,
+                    ->
+                    leaseVisibleAtFactory = lease.hasObservation()
+                    object : SessionActionContext {
+                        override suspend fun validateBefore(
+                            observation: SessionObservation,
+                            targetPackage: String,
+                        ) = Unit
+
+                        override suspend fun execute(targetPackage: String) =
+                            SessionExecutionResult("visual")
+
+                        override suspend fun verifyAfter(
+                            observation: SessionObservation,
+                            targetPackage: String,
+                        ) = Unit
+
+                        override fun close() {
+                            contextClosed = true
+                            lease.close()
+                        }
+                    }
+                },
+                screenshotCapture = {
+                    AccessibilityResult.Success(
+                        AccessibilityScreenshot(capturedPng, 100, 200, 1L),
+                    )
+                },
+            )
+
+            val planned = planner.plan(request(screenshotsAllowed = true))
+
+            assertTrue(leaseVisibleAtFactory)
+            assertTrue(planned.context != null)
+            assertTrue(capturedPng.all { it == 0.toByte() })
+            assertTrue(!contextClosed)
+            planned.close()
+            assertTrue(contextClosed)
+            assertEquals(null, planned.context)
+        }
+
+    @Test
+    fun `planner rejects bare visual swipe and missing factory while closing screenshot lease BitsUT`() =
+        runTest {
+            for (action in listOf(
+                ProviderAction(
+                    type = "ui.tap",
+                    params = buildJsonObject {},
+                ),
+                visualTap(pngBytes()).copy(type = "ui.swipe"),
+                visualTap(pngBytes()),
+            )) {
+                val capturedPng = pngBytes(byteArrayOf(4, 4, 4))
+                val planner = ProviderSessionPlanner(
+                    provider = FakeProvider(action),
+                    currentSnapshot = { AccessibilityResult.Success(hierarchy()) },
+                    acquireAuthorization = { AUTHORIZATION },
+                    isAuthorizationActive = { it == AUTHORIZATION },
+                    screenshotCapture = {
+                        AccessibilityResult.Success(
+                            AccessibilityScreenshot(capturedPng, 100, 200, 1L),
+                        )
+                    },
+                )
+
+                val failure = try {
+                    planner.plan(request(screenshotsAllowed = true))
+                    null
+                } catch (error: SessionFailureException) {
+                    error
+                }
+
+                assertTrue(failure != null)
+                assertTrue(capturedPng.all { it == 0.toByte() })
+            }
+        }
+
+    @Test
+    fun `planner rejects forged visual evidence when screenshots are not authorized BitsUT`() =
+        runTest {
+            var contextCalls = 0
+            val planner = ProviderSessionPlanner(
+                provider = FakeProvider(visualTap(pngBytes())),
+                visualContextFactory = AuthorizedVisualActionContextFactory { _, _, _, _ ->
+                    contextCalls += 1
+                    error("context factory must not run without an authorized observation")
+                },
+                screenshotCapture = {
+                    error("screenshot capture must not run without authorization")
+                },
+            )
+
+            val failure = try {
+                planner.plan(request(screenshotsAllowed = false))
+                null
+            } catch (error: SessionFailureException) {
+                error
+            }
+
+            assertTrue(failure?.message.orEmpty().contains("active screenshot observation"))
+            assertEquals(0, contextCalls)
+        }
+
     private fun visualPlanner(
         provider: AutomationProvider,
         screenshotCapture: suspend (String) -> AccessibilityResult<AccessibilityScreenshot>,
@@ -210,6 +334,33 @@ class AndroidSessionAdaptersTest {
     private fun finishAction() = ProviderAction(
         type = "task.finish",
         params = buildJsonObject { put("summary", "done") },
+    )
+
+    private fun visualTap(png: ByteArray) = ProviderAction(
+        type = "ui.tap",
+        params = buildJsonObject {
+            put(
+                "visualTarget",
+                buildJsonObject {
+                    put("packageName", TARGET_PACKAGE)
+                    put("observationId", "123e4567-e89b-42d3-a456-426614174044")
+                    put("imageSha256", sha256(png))
+                    put("candidateId", "123e4567-e89b-42d3-a456-426614174045")
+                    put("source", "model")
+                    put("confidence", 0.93)
+                    put("point", buildJsonObject {
+                        put("x", 0.5)
+                        put("y", 0.75)
+                    })
+                    put("bounds", buildJsonObject {
+                        put("left", 0.4)
+                        put("top", 0.7)
+                        put("right", 0.6)
+                        put("bottom", 0.8)
+                    })
+                },
+            )
+        },
     )
 
     private class FakeProvider(
@@ -257,5 +408,10 @@ class AndroidSessionAdaptersTest {
                 0x1a,
                 0x0a,
             ) + tail
+
+        fun sha256(bytes: ByteArray): String =
+            java.security.MessageDigest.getInstance("SHA-256")
+                .digest(bytes)
+                .joinToString("") { "%02x".format(it) }
     }
 }

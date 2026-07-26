@@ -62,6 +62,7 @@ class AutomationRiskPolicy(
         }
         if (
             action.type == "ui.tap" ||
+            action.hasVisualTarget() ||
             action.type in CONFIRMATION_ACTION_TYPES &&
             semanticTarget.containsAny(CONFIRMATION_TERMS)
         ) {
@@ -78,11 +79,18 @@ class AutomationRiskPolicy(
     }
 
     private fun ProviderAction.targetPackage(): String? =
-        params["target"]
-            ?.let { it as? JsonObject }
-            ?.get("packageName")
-            ?.jsonPrimitive
-            ?.contentOrNull
+        sequenceOf("target", "visualTarget")
+            .mapNotNull { key ->
+                params[key]
+                    ?.let { it as? JsonObject }
+                    ?.get("packageName")
+                    ?.jsonPrimitive
+                    ?.contentOrNull
+            }
+            .firstOrNull()
+
+    private fun ProviderAction.hasVisualTarget(): Boolean =
+        params["visualTarget"] is JsonObject
 
     private fun ProviderAction.semanticTarget(): String = when (type) {
         "ui.click", "ui.longClick" -> params["target"]?.flattenStrings().orEmpty()
@@ -139,7 +147,13 @@ class AutomationRiskPolicy(
         )
         val BLOCKED_PREFIXES = setOf("payment.", "permission.", "system.", "package.")
         val CONFIRMATION_ACTION_TYPES = setOf("ui.click", "ui.longClick")
-        val TARGETED_ACTION_TYPES = setOf("ui.click", "ui.longClick", "ui.setText")
+        val TARGETED_ACTION_TYPES = setOf(
+            "ui.click",
+            "ui.longClick",
+            "ui.tap",
+            "ui.swipe",
+            "ui.setText",
+        )
         val TARGET_ESCAPE_ACTION_TYPES = setOf("ui.home", "ui.recents")
         val BLOCKED_PACKAGE_PARTS = setOf(
             "packageinstaller",

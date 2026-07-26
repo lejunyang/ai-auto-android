@@ -109,6 +109,52 @@ class VisualSessionObservationTest {
     }
 
     @Test
+    fun `lease maps crop local model candidate through N44 rotation contract BitsUT`() = runTest {
+        val hierarchy = node(bounds = UiBounds(200, 100, 1_200, 900))
+        val authorization = ScreenshotAuthorization(21, TARGET_PACKAGE)
+        val factory = VisualSessionObservationFactory(
+            screenshotCapture = {
+                AccessibilityResult.Success(
+                    AccessibilityScreenshot(pngBytes(), 1_000, 800, 1L),
+                )
+            },
+            currentSnapshot = { AccessibilityResult.Success(hierarchy) },
+            acquireAuthorization = { authorization },
+            isAuthorizationActive = { true },
+            captureGeometry = { _, _ ->
+                VisualCaptureGeometry(
+                    screen = VisualScreen(1_000, 2_000, 90),
+                    crop = PixelBounds(200, 100, 1_200, 900),
+                )
+            },
+            now = { Instant.parse("2026-07-26T01:00:00Z") },
+            observationId = { OBSERVATION_ID },
+        )
+
+        factory.create(TARGET_PACKAGE, hierarchy).use { lease ->
+            val candidate = lease.mapModelCandidate(
+                id = "123e4567-e89b-42d3-a456-426614174045",
+                expectedPackage = TARGET_PACKAGE,
+                point = dev.aiauto.android.observe.visual.NormalizedPoint(0.25, 0.75),
+                bounds = dev.aiauto.android.observe.visual.NormalizedBounds(
+                    0.2,
+                    0.6,
+                    0.3,
+                    0.8,
+                ),
+                confidence = 0.93,
+                now = Instant.parse("2026-07-26T01:00:05Z"),
+            )
+
+            assertEquals(
+                dev.aiauto.android.observe.visual.NormalizedPoint(0.7, 0.775),
+                candidate.point,
+            )
+            assertEquals(OBSERVATION_ID, candidate.observationId)
+        }
+    }
+
+    @Test
     fun `factory rejects screenshot crop aspect drift and clears bytes BitsUT`() = runTest {
         val hierarchy = node(bounds = UiBounds(0, 0, 800, 600))
         val authorization = ScreenshotAuthorization(20, TARGET_PACKAGE)

@@ -55,6 +55,27 @@ data class SessionPlanRequest(
     val screenshotsAllowed: Boolean = false,
 )
 
+/** 单步计划只在当前会话内持有可选执行上下文，不进入 Provider 或持久化模型。 */
+class SessionPlannedAction(
+    val action: ProviderAction,
+    context: SessionActionContext? = null,
+) : AutoCloseable {
+    @Volatile
+    internal var context: SessionActionContext? = context
+        private set
+
+    override fun close() {
+        val owned = synchronized(this) {
+            context.also { context = null }
+        }
+        try {
+            owned?.close()
+        } catch (_: Exception) {
+            // 清理失败不能覆盖已提交动作或原始业务错误。
+        }
+    }
+}
+
 data class SessionExecutionResult(
     val summary: String,
 )

@@ -5,6 +5,7 @@ package dev.aiauto.android.provider
  */
 
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.double
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -77,6 +78,92 @@ class ProviderActionParserTest {
         assertEquals(
             "account.password",
             action.params["secretRef"]?.jsonPrimitive?.content,
+        )
+    }
+
+    @Test
+    fun `parses strict visual tap bound to authorized observation`() {
+        val action = parser.parse(
+            """
+                {
+                  "type": "ui.tap",
+                  "params": {
+                    "visualTarget": {
+                      "packageName": "com.example.app",
+                      "observationId": "123e4567-e89b-42d3-a456-426614174044",
+                      "imageSha256": "${"a".repeat(64)}",
+                      "candidateId": "123e4567-e89b-42d3-a456-426614174045",
+                      "source": "model",
+                      "confidence": 0.93,
+                      "point": {"x": 0.5, "y": 0.75},
+                      "bounds": {"left": 0.4, "top": 0.7, "right": 0.6, "bottom": 0.8}
+                    }
+                  }
+                }
+            """.trimIndent(),
+        )
+
+        assertEquals("ui.tap", action.type)
+        assertEquals(
+            "123e4567-e89b-42d3-a456-426614174044",
+            action.params["visualTarget"]
+                ?.let { it as kotlinx.serialization.json.JsonObject }
+                ?.get("observationId")
+                ?.jsonPrimitive
+                ?.content,
+        )
+    }
+
+    @Test
+    fun `parses visual swipe endpoints only as normalized candidate relative points`() {
+        val action = parser.parse(
+            """
+                {
+                  "type": "ui.swipe",
+                  "params": {
+                    "visualTarget": {
+                      "packageName": "com.example.app",
+                      "observationId": "123e4567-e89b-42d3-a456-426614174044",
+                      "imageSha256": "${"a".repeat(64)}",
+                      "candidateId": "123e4567-e89b-42d3-a456-426614174045",
+                      "source": "model",
+                      "confidence": 0.93,
+                      "point": {"x": 0.5, "y": 0.75},
+                      "bounds": {"left": 0.4, "top": 0.7, "right": 0.6, "bottom": 0.8}
+                    },
+                    "start": {"x": 0.0, "y": 0.0},
+                    "end": {"x": 1.0, "y": 1.0},
+                    "durationMs": 450
+                  }
+                }
+            """.trimIndent(),
+        )
+
+        assertEquals("ui.swipe", action.type)
+        assertEquals(
+            1.0,
+            requireNotNull(
+                action.params["end"]
+                    ?.let { it as kotlinx.serialization.json.JsonObject }
+                    ?.get("x")
+                    ?.jsonPrimitive
+                    ?.double,
+            ),
+            0.0,
+        )
+        assertRejected(
+            """
+                {
+                  "type":"ui.swipe",
+                  "params":{
+                    "visualTarget":${action.params.getValue("visualTarget")},
+                    "start":{"x":100,"y":200},
+                    "end":{"x":300,"y":400},
+                    "durationMs":450
+                  }
+                }
+            """.trimIndent(),
+            "start.x",
         )
     }
 
@@ -200,7 +287,7 @@ class ProviderActionParserTest {
                   "params": {"x": -1, "y": 100}
                 }
             """.trimIndent(),
-            "x must be between",
+            "visualTarget",
         )
         assertRejected(
             """
@@ -215,6 +302,37 @@ class ProviderActionParserTest {
             """.trimIndent(),
             "x must be between",
         )
+    }
+
+    @Test
+    fun `rejects visual evidence drift low confidence and point outside bounds`() {
+        val base = """
+            {
+              "type":"ui.tap",
+              "params":{"visualTarget":{
+                "packageName":"com.example.app",
+                "observationId":"123e4567-e89b-42d3-a456-426614174044",
+                "imageSha256":"${"a".repeat(64)}",
+                "candidateId":"123e4567-e89b-42d3-a456-426614174045",
+                "source":"model",
+                "confidence":0.93,
+                "point":{"x":0.5,"y":0.75},
+                "bounds":{"left":0.4,"top":0.7,"right":0.6,"bottom":0.8}
+              }}
+            }
+        """.trimIndent()
+        for ((invalid, message) in listOf(
+            base.replace("\"${"a".repeat(64)}\"", "\"${"A".repeat(64)}\"") to "SHA-256",
+            base.replace("\"source\":\"model\"", "\"source\":\"manual\"") to "source",
+            base.replace("\"confidence\":0.93", "\"confidence\":0.69") to "confidence",
+            base.replace("\"x\":0.5", "\"x\":0.9") to "inside bounds",
+            base.replace(
+                "\"candidateId\":\"123e4567-e89b-42d3-a456-426614174045\"",
+                "\"candidateId\":\"not-a-uuid\"",
+            ) to "UUID",
+        )) {
+            assertRejected(invalid, message)
+        }
     }
 
     @Test

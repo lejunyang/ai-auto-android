@@ -29,7 +29,7 @@ class AutomationSessionEngineTest {
             observer = FakeObserver(),
             planner = SessionPlanner {
                 planRequest = it
-                finishAction("done")
+                SessionPlannedAction(finishAction("done"))
             },
             executor = FakeExecutor(),
         )
@@ -274,7 +274,7 @@ class AutomationSessionEngineTest {
     fun `start converts per step timeout into failed state BitsUT`() = runTest {
         val planner = SessionPlanner {
             kotlinx.coroutines.delay(5_000)
-            finishAction("late")
+            SessionPlannedAction(finishAction("late"))
         }
         val engine = engine(
             observer = FakeObserver(),
@@ -509,12 +509,12 @@ class AutomationSessionEngineTest {
     ) : SessionPlanner {
         var calls = 0
 
-        override suspend fun plan(request: SessionPlanRequest): ProviderAction {
+        override suspend fun plan(request: SessionPlanRequest): SessionPlannedAction {
             calls += 1
             if (calls == 1 && firstActionGate != null) {
                 firstActionGate.await()
             }
-            return actions.removeFirst()
+            return SessionPlannedAction(actions.removeFirst())
         }
     }
 

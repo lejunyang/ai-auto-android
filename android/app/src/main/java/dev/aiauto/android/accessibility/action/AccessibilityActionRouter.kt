@@ -44,6 +44,7 @@ interface AccessibilityActionBackend {
     fun dispatch(
         gesture: Gesture,
         sourcePath: NodePath? = null,
+        expectedPackage: String? = null,
         expectedEventBudgets: Map<Int, Int> = emptyMap(),
         timeoutMs: Long = 1_000L,
     ): Boolean
@@ -63,10 +64,9 @@ class AccessibilityActionRouter(
             is AccessibilityCommand.LongClick -> command.target.packageName
             is AccessibilityCommand.SetText -> command.target.packageName
             is AccessibilityCommand.Scroll -> command.target?.packageName
-            is AccessibilityCommand.Tap,
-            is AccessibilityCommand.Swipe,
-            is AccessibilityCommand.Navigate,
-            -> null
+            is AccessibilityCommand.Tap -> command.expectedPackage
+            is AccessibilityCommand.Swipe -> command.expectedPackage
+            is AccessibilityCommand.Navigate -> null
         }
         when (val validation = backend.validateTarget(expectedPackage)) {
             is AccessibilityResult.Failure -> return validation
@@ -78,12 +78,19 @@ class AccessibilityActionRouter(
             is AccessibilityCommand.LongClick -> executeLongClick(command)
             is AccessibilityCommand.SetText -> executeSetText(command)
             is AccessibilityCommand.Scroll -> executeScroll(command)
-            is AccessibilityCommand.Tap -> dispatchTap(
-                point = command.point,
-                durationMs = TAP_DURATION_MS,
-                route = ActionRoute.SCREEN_GESTURE,
-                expectedEventBudgets = emptyMap(),
-            )
+            is AccessibilityCommand.Tap -> if (
+                command.durationMs !in MIN_TAP_MS..MAX_LONG_CLICK_MS
+            ) {
+                invalidAction("Tap duration must be between 1 and 10000 ms")
+            } else {
+                dispatchTap(
+                    point = command.point,
+                    durationMs = command.durationMs,
+                    route = ActionRoute.SCREEN_GESTURE,
+                    expectedPackage = command.expectedPackage,
+                    expectedEventBudgets = emptyMap(),
+                )
+            }
 
             is AccessibilityCommand.Swipe -> executeSwipe(command)
             is AccessibilityCommand.Navigate -> executeGlobal(command.action)
@@ -292,6 +299,7 @@ class AccessibilityActionRouter(
                 durationMs = command.durationMs,
             ),
             route = ActionRoute.SCREEN_GESTURE,
+            expectedPackage = command.expectedPackage,
         )
     }
 
@@ -394,6 +402,7 @@ class AccessibilityActionRouter(
         point: ScreenPoint,
         durationMs: Long,
         route: ActionRoute,
+        expectedPackage: String? = null,
         match: SelectorMatch.Found? = null,
         expectedEventBudgets: Map<Int, Int>,
     ): AccessibilityResult<ActionExecution> {
@@ -405,6 +414,7 @@ class AccessibilityActionRouter(
             backend.dispatch(
                 gesture = Gesture.Tap(point, durationMs),
                 sourcePath = match?.path,
+                expectedPackage = expectedPackage,
                 expectedEventBudgets = expectedEventBudgets,
                 timeoutMs = durationMs + EVENT_TIMEOUT_GRACE_MS,
             )
@@ -428,6 +438,7 @@ class AccessibilityActionRouter(
     private fun dispatchSwipe(
         gesture: Gesture.Swipe,
         route: ActionRoute,
+        expectedPackage: String? = null,
         match: SelectorMatch.Found? = null,
     ): AccessibilityResult<ActionExecution> {
         val screen = backend.screenBounds()
@@ -443,6 +454,7 @@ class AccessibilityActionRouter(
             backend.dispatch(
                 gesture = gesture,
                 sourcePath = match?.path,
+                expectedPackage = expectedPackage,
                 expectedEventBudgets = if (match == null) {
                     emptyMap()
                 } else {
@@ -581,6 +593,7 @@ class AccessibilityActionRouter(
     }
 
     private companion object {
+        const val MIN_TAP_MS = 1L
         const val TAP_DURATION_MS = 100L
         const val MIN_LONG_CLICK_MS = 300L
         const val EVENT_TIMEOUT_GRACE_MS = 1_000L

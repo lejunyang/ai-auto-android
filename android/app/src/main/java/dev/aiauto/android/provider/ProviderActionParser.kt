@@ -29,12 +29,18 @@ class ProviderActionParser(
         val type = root.string("type")
         val params = root.objectValue("params")
 
+        return validate(ProviderAction(type = type, params = params))
+    }
+
+    fun validate(action: ProviderAction): ProviderAction {
+        val type = action.type
+        val params = action.params
         when (type) {
             "app.launch" -> validateAppLaunch(params)
             "app.stop" -> validatePackageOnly(params)
             "ui.click" -> validateTargetOnly(params)
             "ui.longClick" -> validateLongClick(params)
-            "ui.tap" -> validatePoint(params)
+            "ui.tap" -> validateVisualOnly(params)
             "ui.swipe" -> validateSwipe(params)
             "ui.setText" -> validateSetText(params)
             "ui.scroll" -> validateScroll(params)
@@ -44,7 +50,7 @@ class ProviderActionParser(
             else -> throw ProviderActionParseException("Unsupported action type: $type")
         }
 
-        return ProviderAction(type = type, params = params)
+        return action
     }
 
     private fun validateAppLaunch(params: JsonObject) {
@@ -64,22 +70,95 @@ class ProviderActionParser(
     }
 
     private fun validateLongClick(params: JsonObject) {
-        requireExactKeys(params, setOf("target"), setOf("durationMs"))
-        validateTarget(params.objectValue("target"))
+        requireExactKeys(params, emptySet(), setOf("target", "visualTarget", "durationMs"))
+        val semantic = params["target"]
+        val visual = params["visualTarget"]
+        if ((semantic == null) == (visual == null)) {
+            throw ProviderActionParseException(
+                "ui.longClick requires exactly one of target or visualTarget",
+            )
+        }
+        semantic?.let { validateTarget(it.asObject("target")) }
+        visual?.let { validateVisualTarget(it.asObject("visualTarget")) }
         params.optionalInt("durationMs")?.requireRange("durationMs", 300, 10_000)
     }
 
-    private fun validatePoint(point: JsonObject) {
+    private fun validatePoint(point: JsonObject, name: String = "point") {
         requireExactKeys(point, setOf("x", "y"))
-        point.int("x").requireRange("x", 0, 100_000)
-        point.int("y").requireRange("y", 0, 100_000)
+        point.double("x").requireRange("$name.x", 0.0, 1.0)
+        point.double("y").requireRange("$name.y", 0.0, 1.0)
+    }
+
+    private fun validateVisualOnly(params: JsonObject) {
+        requireExactKeys(params, setOf("visualTarget"))
+        validateVisualTarget(params.objectValue("visualTarget"))
     }
 
     private fun validateSwipe(params: JsonObject) {
-        requireExactKeys(params, setOf("start", "end", "durationMs"))
-        validatePoint(params.objectValue("start"))
-        validatePoint(params.objectValue("end"))
+        requireExactKeys(params, setOf("visualTarget", "start", "end", "durationMs"))
+        validateVisualTarget(params.objectValue("visualTarget"))
+        validatePoint(params.objectValue("start"), "start")
+        validatePoint(params.objectValue("end"), "end")
         params.int("durationMs").requireRange("durationMs", 1, 60_000)
+    }
+
+    private fun validateVisualTarget(target: JsonObject) {
+        requireExactKeys(
+            target,
+            setOf(
+                "packageName",
+                "observationId",
+                "imageSha256",
+                "candidateId",
+                "source",
+                "confidence",
+                "point",
+                "bounds",
+            ),
+        )
+        requirePackageName(target.string("packageName"))
+        for (name in listOf("observationId", "candidateId")) {
+            if (!UUID.matches(target.string(name))) {
+                throw ProviderActionParseException("$name must be a UUID")
+            }
+        }
+        if (!SHA256.matches(target.string("imageSha256"))) {
+            throw ProviderActionParseException("imageSha256 must be lowercase SHA-256")
+        }
+        if (target.string("source") != "model") {
+            throw ProviderActionParseException("visualTarget source must be model")
+        }
+        target.double("confidence").requireRange("confidence", 0.70, 1.0)
+        val point = target.objectValue("point")
+        val bounds = target.objectValue("bounds")
+        validatePoint(point)
+        validateNormalizedBounds(bounds)
+        val x = point.double("x")
+        val y = point.double("y")
+        if (
+            x !in bounds.double("left")..bounds.double("right") ||
+            y !in bounds.double("top")..bounds.double("bottom")
+        ) {
+            throw ProviderActionParseException("visualTarget point must be inside bounds")
+        }
+    }
+
+    private fun validateNormalizedBounds(bounds: JsonObject) {
+        requireExactKeys(bounds, setOf("left", "top", "right", "bottom"))
+        val left = bounds.double("left")
+        val top = bounds.double("top")
+        val right = bounds.double("right")
+        val bottom = bounds.double("bottom")
+        if (
+            left !in 0.0..1.0 ||
+            top !in 0.0..1.0 ||
+            right !in 0.0..1.0 ||
+            bottom !in 0.0..1.0 ||
+            right <= left ||
+            bottom <= top
+        ) {
+            throw ProviderActionParseException("visualTarget bounds are invalid")
+        }
     }
 
     private fun validateSetText(params: JsonObject) {
@@ -327,6 +406,9 @@ class ProviderActionParser(
     }
 
     private companion object {
+        val UUID =
+            Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+        val SHA256 = Regex("^[0-9a-f]{64}$")
         val PACKAGE_NAME = Regex("^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+$")
         val SECRET_REF = Regex("^[A-Za-z][A-Za-z0-9._-]*$")
         val SELECTOR_STRATEGIES = setOf(

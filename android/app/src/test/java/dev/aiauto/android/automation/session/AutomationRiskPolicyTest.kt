@@ -116,7 +116,7 @@ class AutomationRiskPolicyTest {
     }
 
     @Test
-    fun `evaluateAction requires confirmation for send delete and coordinate tap BitsUT`() {
+    fun `evaluateAction confirms risky semantic and evidenced visual tap but blocks bare coordinates BitsUT`() {
         assertTrue(
             policy.evaluateAction(
                 semanticClick("Send message"),
@@ -138,6 +138,18 @@ class AutomationRiskPolicyTest {
                         put("y", 20)
                     },
                 ),
+                TARGET_PACKAGE,
+            ) is RiskDecision.Block,
+        )
+        assertTrue(
+            policy.evaluateAction(
+                visualTap(),
+                TARGET_PACKAGE,
+            ) is RiskDecision.RequireConfirmation,
+        )
+        assertTrue(
+            policy.evaluateAction(
+                visualTap().copy(type = "ui.swipe"),
                 TARGET_PACKAGE,
             ) is RiskDecision.RequireConfirmation,
         )
@@ -172,6 +184,33 @@ class AutomationRiskPolicyTest {
                             put("text", JsonPrimitive(value))
                         },
                     )
+                },
+            )
+        },
+    )
+
+    private fun visualTap() = ProviderAction(
+        type = "ui.tap",
+        params = buildJsonObject {
+            put(
+                "visualTarget",
+                buildJsonObject {
+                    put("packageName", TARGET_PACKAGE)
+                    put("observationId", "123e4567-e89b-42d3-a456-426614174044")
+                    put("imageSha256", "a".repeat(64))
+                    put("candidateId", "123e4567-e89b-42d3-a456-426614174045")
+                    put("source", "model")
+                    put("confidence", 0.93)
+                    put("point", buildJsonObject {
+                        put("x", 0.5)
+                        put("y", 0.75)
+                    })
+                    put("bounds", buildJsonObject {
+                        put("left", 0.4)
+                        put("top", 0.7)
+                        put("right", 0.6)
+                        put("bottom", 0.8)
+                    })
                 },
             )
         },

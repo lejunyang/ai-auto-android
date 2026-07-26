@@ -186,7 +186,7 @@ class AutomationSessionEngine(
                 step = step,
                 observationSummary = observation.uiSummary.take(MAX_VISIBLE_SUMMARY),
             )
-            val action = timedStep("Planning") {
+            val planned = timedStep("Planning") {
                 planner.plan(
                     SessionPlanRequest(
                         task = request.task,
@@ -197,85 +197,98 @@ class AutomationSessionEngine(
                     ),
                 )
             }
-            if (action.type == "task.finish") {
-                complete(action.finishSummary())
-                return
-            }
-
-            val fingerprint = ActionFingerprint(action.type, action.params)
-            repeatedActions = if (fingerprint == previousFingerprint) {
-                repeatedActions + 1
-            } else {
-                1
-            }
-            previousFingerprint = fingerprint
-            if (repeatedActions >= limits.repeatedActionLimit) {
-                fail("The Provider repeated the same action too many times.")
-                return
-            }
-
-            when (val decision = riskPolicy.evaluateAction(action, request.targetPackage)) {
-                is RiskDecision.Block -> {
-                    fail(decision.reason)
+            try {
+                val action = planned.action
+                if (action.type == "task.finish") {
+                    complete(action.finishSummary())
                     return
                 }
 
-                is RiskDecision.RequireConfirmation -> {
-                    confirmationSequence += 1
-                    val pending = PendingConfirmation(
-                        id = confirmationSequence,
-                        actionType = action.type,
-                        reason = decision.reason,
-                    )
-                    confirmation.value = null
-                    transition(
-                        phase = SessionPhase.AwaitingConfirmation,
-                        message = "Waiting for explicit user confirmation.",
-                        step = step,
-                        currentActionType = action.type,
-                        pendingConfirmation = pending,
-                    )
-                    val approved = confirmation.first { it?.id == pending.id }!!.approved
-                    confirmation.value = null
-                    checkNotStopped()
-                    if (!approved) {
-                        fail("The user rejected the pending action.")
-                        return
-                    }
+                val fingerprint = ActionFingerprint(action.type, action.params)
+                repeatedActions = if (fingerprint == previousFingerprint) {
+                    repeatedActions + 1
+                } else {
+                    1
+                }
+                previousFingerprint = fingerprint
+                if (repeatedActions >= limits.repeatedActionLimit) {
+                    fail("The Provider repeated the same action too many times.")
+                    return
                 }
 
-                is RiskDecision.Allow -> Unit
-            }
+                when (val decision = riskPolicy.evaluateAction(action, request.targetPackage)) {
+                    is RiskDecision.Block -> {
+                        fail(decision.reason)
+                        return
+                    }
 
-            awaitRunning()
-            ensureTargetPackage(
-                observation = timedStep("Pre-execution target check") {
+                    is RiskDecision.RequireConfirmation -> {
+                        confirmationSequence += 1
+                        val pending = PendingConfirmation(
+                            id = confirmationSequence,
+                            actionType = action.type,
+                            reason = decision.reason,
+                        )
+                        confirmation.value = null
+                        transition(
+                            phase = SessionPhase.AwaitingConfirmation,
+                            message = "Waiting for explicit user confirmation.",
+                            step = step,
+                            currentActionType = action.type,
+                            pendingConfirmation = pending,
+                        )
+                        val approved = confirmation.first { it?.id == pending.id }!!.approved
+                        confirmation.value = null
+                        checkNotStopped()
+                        if (!approved) {
+                            fail("The user rejected the pending action.")
+                            return
+                        }
+                    }
+
+                    is RiskDecision.Allow -> Unit
+                }
+
+                awaitRunning()
+                val preExecution = timedStep("Pre-execution target check") {
                     observer.observe(request.targetPackage)
-                },
-                expectedPackage = request.targetPackage,
-            )
-            transition(
-                phase = SessionPhase.Executing,
-                message = "Executing one locally approved action.",
-                step = step,
-                currentActionType = action.type,
-                pendingConfirmation = null,
-            )
-            checkNotStopped()
-            val execution = executeApprovedAction(action, request.targetPackage)
+                }
+                ensureTargetPackage(preExecution, request.targetPackage)
+                planned.context?.let { context ->
+                    timedStep("Action preflight") {
+                        context.validateBefore(preExecution, request.targetPackage)
+                    }
+                }
+                transition(
+                    phase = SessionPhase.Executing,
+                    message = "Executing one locally approved action.",
+                    step = step,
+                    currentActionType = action.type,
+                    pendingConfirmation = null,
+                )
+                checkNotStopped()
+                val execution = executeApprovedAction(planned, request.targetPackage)
 
-            awaitRunning()
-            transition(
-                phase = SessionPhase.Verifying,
-                message = "Re-observing the target after execution.",
-                step = step,
-                currentActionType = action.type,
-            )
-            val verified = timedStep("Verification") {
-                observer.observe(request.targetPackage)
+                awaitRunning()
+                transition(
+                    phase = SessionPhase.Verifying,
+                    message = "Re-observing the target after execution.",
+                    step = step,
+                    currentActionType = action.type,
+                )
+                val verified = timedStep("Verification") {
+                    observer.observe(request.targetPackage)
+                }
+                ensureTargetPackage(verified, request.targetPackage)
+                planned.context?.let { context ->
+                    timedStep("Action verification") {
+                        context.verifyAfter(verified, request.targetPackage)
+                    }
+                }
+                previousActionSummary = execution.summary.take(MAX_ACTION_SUMMARY)
+            } finally {
+                planned.close()
             }
-            ensureTargetPackage(verified, request.targetPackage)
-            previousActionSummary = execution.summary.take(MAX_ACTION_SUMMARY)
         }
         fail("The automation session reached its maximum step count.")
     }
@@ -295,7 +308,7 @@ class AutomationSessionEngine(
     }
 
     private suspend fun executeApprovedAction(
-        action: ProviderAction,
+        planned: SessionPlannedAction,
         targetPackage: String,
     ): SessionExecutionResult {
         checkNotStopped()
@@ -306,7 +319,8 @@ class AutomationSessionEngine(
         return try {
             checkNotStopped()
             timedStep("Execution") {
-                executor.execute(action, targetPackage)
+                planned.context?.execute(targetPackage)
+                    ?: executor.execute(planned.action, targetPackage)
             }
         } finally {
             executionState.compareAndSet(ExecutionState.Executing, ExecutionState.Idle)

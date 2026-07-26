@@ -101,6 +101,21 @@ data class VisualReplayRequest(
     val targetPackages: Set<String>,
 )
 
+data class PreparedVisualReplay(
+    val observationId: String,
+    val action: ExplicitVisualAction,
+    val screenBefore: VisualReplayScreen,
+)
+
+sealed interface VisualReplayPreparationResult {
+    data class Ready(val prepared: PreparedVisualReplay) : VisualReplayPreparationResult
+
+    data class Rejected(
+        val code: ExplicitVisualReplayErrorCode,
+        val message: String,
+    ) : VisualReplayPreparationResult
+}
+
 enum class ExplicitVisualReplayErrorCode {
     VISUAL_REPLAY_UNAVAILABLE,
     OBSERVATION_NOT_FOUND,
@@ -130,6 +145,199 @@ sealed interface ExplicitVisualReplayResult {
         val message: String,
         val actionCommitCount: Int,
     ) : ExplicitVisualReplayResult
+}
+
+/** 纯 planner 复用 N45 全部 evidence 与几何前置门，不持有设备动作或 observation 生命周期。 */
+class ExplicitVisualReplayPlanner(
+    private val nowMs: () -> Long = System::currentTimeMillis,
+) {
+    fun prepare(
+        request: VisualReplayRequest,
+        lease: VisualReplayLease,
+        screen: VisualReplayScreen,
+    ): VisualReplayPreparationResult {
+        preflight(request, lease)?.let { return it }
+        preflightScreen(request, lease, screen)?.let { return it }
+        val action = planAction(request, lease.observation, screen, lease.candidates.single())
+            ?: return rejected(
+                ExplicitVisualReplayErrorCode.UNSUPPORTED_ACTION,
+                "Unsupported explicit visual action",
+            )
+        return VisualReplayPreparationResult.Ready(
+            PreparedVisualReplay(
+                observationId = lease.observation.id,
+                action = action,
+                screenBefore = screen,
+            ),
+        )
+    }
+
+    private fun preflight(
+        request: VisualReplayRequest,
+        lease: VisualReplayLease,
+    ): VisualReplayPreparationResult.Rejected? {
+        val target = request.step.visualTarget
+            ?: return rejected(ExplicitVisualReplayErrorCode.TARGET_MISMATCH, "Visual target missing")
+        if (request.step.provenance !in VISUAL_PROVENANCE) {
+            return rejected(
+                ExplicitVisualReplayErrorCode.VISUAL_REPLAY_UNAVAILABLE,
+                "Step provenance is not explicit visual",
+            )
+        }
+        if (lease.observation.id != target.observationId) {
+            return rejected(
+                ExplicitVisualReplayErrorCode.OBSERVATION_ID_MISMATCH,
+                "Observation id drifted",
+            )
+        }
+        if (nowMs() >= Instant.parse(lease.observation.expiresAt).toEpochMilli()) {
+            return rejected(
+                ExplicitVisualReplayErrorCode.OBSERVATION_EXPIRED,
+                "Observation expired",
+            )
+        }
+        if (lease.secureWindow) {
+            return rejected(ExplicitVisualReplayErrorCode.SECURE_WINDOW, "Secure window")
+        }
+        if (lease.candidates.isEmpty()) {
+            return rejected(
+                ExplicitVisualReplayErrorCode.CANDIDATE_LOW_CONFIDENCE,
+                "No candidate",
+            )
+        }
+        if (lease.candidates.size != 1) {
+            return rejected(
+                ExplicitVisualReplayErrorCode.CANDIDATE_AMBIGUOUS,
+                "Multiple candidates",
+            )
+        }
+        val candidate = lease.candidates.single()
+        if (candidate.confidence < MIN_CONFIDENCE || target.confidence < MIN_CONFIDENCE) {
+            return rejected(
+                ExplicitVisualReplayErrorCode.CANDIDATE_LOW_CONFIDENCE,
+                "Candidate confidence is too low",
+            )
+        }
+        if (
+            candidate.observationId != lease.observation.id ||
+            target.imageSha256 != lease.observation.png.sha256 ||
+            target.normalizedPoint?.let {
+                abs(it.x - candidate.point.x) > EPSILON ||
+                    abs(it.y - candidate.point.y) > EPSILON
+            } == true
+        ) {
+            return rejected(
+                ExplicitVisualReplayErrorCode.TARGET_MISMATCH,
+                "Visual target drifted",
+            )
+        }
+        return null
+    }
+
+    private fun preflightScreen(
+        request: VisualReplayRequest,
+        lease: VisualReplayLease,
+        screen: VisualReplayScreen,
+    ): VisualReplayPreparationResult.Rejected? {
+        if (screen.secureWindow) {
+            return rejected(ExplicitVisualReplayErrorCode.SECURE_WINDOW, "Secure window")
+        }
+        if (
+            screen.foregroundPackage != lease.observation.foregroundPackage ||
+            screen.foregroundPackage !in request.targetPackages
+        ) {
+            return rejected(
+                ExplicitVisualReplayErrorCode.FOREGROUND_PACKAGE_CHANGED,
+                "Foreground package changed",
+            )
+        }
+        val environment = request.environment
+        if (
+            environment.logicalWidth != lease.observation.screen.width ||
+            environment.logicalHeight != lease.observation.screen.height ||
+            environment.rotation != lease.observation.screen.rotation ||
+            environment.densityDpi != lease.recordedDensityDpi ||
+            screen.densityDpi != lease.recordedDensityDpi ||
+            screen.densityDpi <= 0
+        ) {
+            return rejected(
+                ExplicitVisualReplayErrorCode.SCREEN_METADATA_MISMATCH,
+                "Recorded screen metadata drifted",
+            )
+        }
+        return null
+    }
+
+    private fun planAction(
+        request: VisualReplayRequest,
+        observation: VisualObservation,
+        screen: VisualReplayScreen,
+        candidate: VisualCandidate,
+    ): ExplicitVisualAction? {
+        val point = VisualCoordinateTransformer.mapPoint(
+            observation,
+            screen,
+            candidate.point,
+        ).successOrNull() ?: return null
+        return when (request.step.action.type) {
+            "ui.tap" -> ExplicitVisualAction.Tap(point)
+            "ui.longClick" -> ExplicitVisualAction.LongClick(
+                point,
+                request.step.action.params["durationMs"]?.toString()?.toLongOrNull() ?: 600,
+            )
+
+            "ui.swipe" -> {
+                val start = request.step.action.params["start"] as? kotlinx.serialization.json.JsonObject
+                val end = request.step.action.params["end"] as? kotlinx.serialization.json.JsonObject
+                val environment = request.environment
+                val width = environment.logicalWidth ?: return null
+                val height = environment.logicalHeight ?: return null
+                val bounds = candidate.bounds
+                val startRelative = start?.toRelative(bounds, width, height) ?: return null
+                val endRelative = end?.toRelative(bounds, width, height) ?: return null
+                val startNatural = NormalizedPoint(
+                    bounds.left + startRelative.x * (bounds.right - bounds.left),
+                    bounds.top + startRelative.y * (bounds.bottom - bounds.top),
+                )
+                val endNatural = NormalizedPoint(
+                    bounds.left + endRelative.x * (bounds.right - bounds.left),
+                    bounds.top + endRelative.y * (bounds.bottom - bounds.top),
+                )
+                val mappedStart = VisualCoordinateTransformer.mapPoint(
+                    observation,
+                    screen,
+                    startNatural,
+                ).successOrNull() ?: return null
+                val mappedEnd = VisualCoordinateTransformer.mapPoint(
+                    observation,
+                    screen,
+                    endNatural,
+                ).successOrNull() ?: return null
+                ExplicitVisualAction.Swipe(
+                    mappedStart,
+                    mappedEnd,
+                    request.step.action.params["durationMs"]?.toString()?.toLongOrNull() ?: 400,
+                )
+            }
+
+            else -> null
+        }
+    }
+
+    private fun rejected(
+        code: ExplicitVisualReplayErrorCode,
+        message: String,
+    ) = VisualReplayPreparationResult.Rejected(code, message)
+
+    private companion object {
+        const val MIN_CONFIDENCE = 0.70
+        const val EPSILON = 0.000_000_001
+        val VISUAL_PROVENANCE = setOf(
+            RecordingProvenance.VISUAL,
+            RecordingProvenance.COORDINATE,
+            RecordingProvenance.MANUAL,
+        )
+    }
 }
 
 object VisualCoordinateTransformer {
@@ -230,6 +438,7 @@ class ExplicitVisualReplayExecutor(
     private val actions: VisualReplayActionExecutor,
     private val verifier: VisualReplayVerifier,
     private val nowMs: () -> Long = System::currentTimeMillis,
+    private val planner: ExplicitVisualReplayPlanner = ExplicitVisualReplayPlanner(nowMs),
 ) {
     fun replay(request: VisualReplayRequest): ExplicitVisualReplayResult {
         val target = request.step.visualTarget
@@ -245,19 +454,19 @@ class ExplicitVisualReplayExecutor(
                 "Observation not found",
             )
         try {
-            preflight(request, lease, target)?.let { return it }
             val screen = screens.current()
                 ?: return failure(
                     ExplicitVisualReplayErrorCode.SCREEN_METADATA_MISMATCH,
                     "Current screen unavailable",
                 )
-            preflightScreen(request, lease, screen)?.let { return it }
-            val candidate = lease.candidates.single()
-            val action = planAction(request, lease.observation, screen, candidate)
-                ?: return failure(
-                    ExplicitVisualReplayErrorCode.UNSUPPORTED_ACTION,
-                    "Unsupported explicit visual action",
+            val prepared = when (val result = planner.prepare(request, lease, screen)) {
+                is VisualReplayPreparationResult.Rejected -> return failure(
+                    result.code,
+                    result.message,
                 )
+                is VisualReplayPreparationResult.Ready -> result.prepared
+            }
+            val action = prepared.action
             val execution = when (val result = actions.execute(action)) {
                 is AccessibilityResult.Failure -> return failure(
                     ExplicitVisualReplayErrorCode.ACTION_FAILED,
@@ -268,12 +477,16 @@ class ExplicitVisualReplayExecutor(
             }
             val verification = try {
                 verifier.verify(
-                    VisualReplayVerificationRequest(observationId, action, screen),
+                    VisualReplayVerificationRequest(
+                        prepared.observationId,
+                        action,
+                        prepared.screenBefore,
+                    ),
                 )
             } catch (_: RuntimeException) {
                 null
             }
-            if (!verification.validFor(observationId, screen)) {
+            if (!verification.validFor(prepared.observationId, prepared.screenBefore)) {
                 return failure(
                     ExplicitVisualReplayErrorCode.POST_ACTION_VERIFICATION_FAILED,
                     "Post action visual verification failed",
@@ -286,173 +499,12 @@ class ExplicitVisualReplayExecutor(
         }
     }
 
-    private fun preflight(
-        request: VisualReplayRequest,
-        lease: VisualReplayLease,
-        target: dev.aiauto.android.automation.recording.VisualTarget,
-    ): ExplicitVisualReplayResult.Failure? {
-        if (request.step.provenance !in VISUAL_PROVENANCE) {
-            return failure(
-                ExplicitVisualReplayErrorCode.VISUAL_REPLAY_UNAVAILABLE,
-                "Step provenance is not explicit visual",
-            )
-        }
-        if (lease.observation.id != target.observationId) {
-            return failure(
-                ExplicitVisualReplayErrorCode.OBSERVATION_ID_MISMATCH,
-                "Observation id drifted",
-            )
-        }
-        if (nowMs() >= Instant.parse(lease.observation.expiresAt).toEpochMilli()) {
-            return failure(
-                ExplicitVisualReplayErrorCode.OBSERVATION_EXPIRED,
-                "Observation expired",
-            )
-        }
-        if (lease.secureWindow) {
-            return failure(ExplicitVisualReplayErrorCode.SECURE_WINDOW, "Secure window")
-        }
-        if (lease.candidates.isEmpty()) {
-            return failure(
-                ExplicitVisualReplayErrorCode.CANDIDATE_LOW_CONFIDENCE,
-                "No candidate",
-            )
-        }
-        if (lease.candidates.size != 1) {
-            return failure(
-                ExplicitVisualReplayErrorCode.CANDIDATE_AMBIGUOUS,
-                "Multiple candidates",
-            )
-        }
-        val candidate = lease.candidates.single()
-        if (candidate.confidence < MIN_CONFIDENCE || target.confidence < MIN_CONFIDENCE) {
-            return failure(
-                ExplicitVisualReplayErrorCode.CANDIDATE_LOW_CONFIDENCE,
-                "Candidate confidence is too low",
-            )
-        }
-        if (
-            candidate.observationId != lease.observation.id ||
-            target.imageSha256 != lease.observation.png.sha256 ||
-            target.normalizedPoint?.let {
-                abs(it.x - candidate.point.x) > EPSILON ||
-                    abs(it.y - candidate.point.y) > EPSILON
-            } == true
-        ) {
-            return failure(
-                ExplicitVisualReplayErrorCode.TARGET_MISMATCH,
-                "Visual target drifted",
-            )
-        }
-        return null
-    }
-
-    private fun preflightScreen(
-        request: VisualReplayRequest,
-        lease: VisualReplayLease,
-        screen: VisualReplayScreen,
-    ): ExplicitVisualReplayResult.Failure? {
-        if (screen.secureWindow) {
-            return failure(ExplicitVisualReplayErrorCode.SECURE_WINDOW, "Secure window")
-        }
-        if (
-            screen.foregroundPackage != lease.observation.foregroundPackage ||
-            screen.foregroundPackage !in request.targetPackages
-        ) {
-            return failure(
-                ExplicitVisualReplayErrorCode.FOREGROUND_PACKAGE_CHANGED,
-                "Foreground package changed",
-            )
-        }
-        val environment = request.environment
-        if (
-            environment.logicalWidth != lease.observation.screen.width ||
-            environment.logicalHeight != lease.observation.screen.height ||
-            environment.rotation != lease.observation.screen.rotation ||
-            environment.densityDpi != lease.recordedDensityDpi ||
-            screen.densityDpi <= 0
-        ) {
-            return failure(
-                ExplicitVisualReplayErrorCode.SCREEN_METADATA_MISMATCH,
-                "Recorded screen metadata drifted",
-            )
-        }
-        return null
-    }
-
-    private fun planAction(
-        request: VisualReplayRequest,
-        observation: VisualObservation,
-        screen: VisualReplayScreen,
-        candidate: VisualCandidate,
-    ): ExplicitVisualAction? {
-        val point = VisualCoordinateTransformer.mapPoint(
-            observation,
-            screen,
-            candidate.point,
-        ).successOrNull() ?: return null
-        return when (request.step.action.type) {
-            "ui.tap" -> ExplicitVisualAction.Tap(point)
-            "ui.longClick" -> ExplicitVisualAction.LongClick(
-                point,
-                request.step.action.params["durationMs"]?.toString()?.toLongOrNull() ?: 600,
-            )
-
-            "ui.swipe" -> {
-                val start = request.step.action.params["start"]
-                    ?.let { it as? kotlinx.serialization.json.JsonObject }
-                val end = request.step.action.params["end"]
-                    ?.let { it as? kotlinx.serialization.json.JsonObject }
-                val environment = request.environment
-                val width = environment.logicalWidth ?: return null
-                val height = environment.logicalHeight ?: return null
-                val bounds = candidate.bounds
-                val startRelative = start?.toRelative(bounds, width, height) ?: return null
-                val endRelative = end?.toRelative(bounds, width, height) ?: return null
-                val startNatural = NormalizedPoint(
-                    bounds.left + startRelative.x * (bounds.right - bounds.left),
-                    bounds.top + startRelative.y * (bounds.bottom - bounds.top),
-                )
-                val endNatural = NormalizedPoint(
-                    bounds.left + endRelative.x * (bounds.right - bounds.left),
-                    bounds.top + endRelative.y * (bounds.bottom - bounds.top),
-                )
-                val mappedStart = VisualCoordinateTransformer.mapPoint(
-                    observation,
-                    screen,
-                    startNatural,
-                ).successOrNull() ?: return null
-                val mappedEnd = VisualCoordinateTransformer.mapPoint(
-                    observation,
-                    screen,
-                    endNatural,
-                ).successOrNull() ?: return null
-                ExplicitVisualAction.Swipe(
-                    mappedStart,
-                    mappedEnd,
-                    request.step.action.params["durationMs"]?.toString()?.toLongOrNull() ?: 400,
-                )
-            }
-
-            else -> null
-        }
-    }
-
     private fun failure(
         code: ExplicitVisualReplayErrorCode,
         message: String,
         commits: Int = 0,
     ) = ExplicitVisualReplayResult.Failure(code, message, commits)
 
-    private companion object {
-        const val MIN_CONFIDENCE = 0.70
-        const val EPSILON = 0.000_000_001
-        val VISUAL_PROVENANCE = setOf(
-            RecordingProvenance.VISUAL,
-            RecordingProvenance.COORDINATE,
-            RecordingProvenance.MANUAL,
-        )
-    }
 }
 
 private fun VisualReplayVerification?.validFor(

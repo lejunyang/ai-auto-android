@@ -162,12 +162,17 @@ sealed interface AccessibilityCommand {
         val amount: Double = 0.8,
     ) : AccessibilityCommand
 
-    data class Tap(val point: ScreenPoint) : AccessibilityCommand
+    data class Tap(
+        val point: ScreenPoint,
+        val durationMs: Long = 100,
+        val expectedPackage: String? = null,
+    ) : AccessibilityCommand
 
     data class Swipe(
         val start: ScreenPoint,
         val end: ScreenPoint,
         val durationMs: Long,
+        val expectedPackage: String? = null,
     ) : AccessibilityCommand
 
     data class Navigate(val action: GlobalAction) : AccessibilityCommand
