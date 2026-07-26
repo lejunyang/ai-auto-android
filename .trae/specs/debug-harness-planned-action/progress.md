@@ -30,3 +30,6 @@
   `lejunyang <lejunyang@qq.com>`，co-author trailer 恰好一次；主分支等价集成
   提交为 `1f6a0df`。
 - 提交和集成前后 worktree 均干净，`make comments` 与 `git diff --check` 通过。
+- 主分支最终 `./gradlew test lint build --no-daemon` 281 tasks 通过，覆盖 App、
+  device fixture、Web fixture 和 test-control core 的单测、lint、debug、
+  AndroidTest 与 release 构建；先前 `:app:compileDebugKotlin` 回归已消失。
