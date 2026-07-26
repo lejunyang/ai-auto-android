@@ -632,6 +632,17 @@ visual-state 因 N45 production port 缺失失败关闭；input 因现有 CLI `-
 明文放入 argv 而返回 `INPUT_ADAPTER_UNAVAILABLE`，等待固定 stdin action 模式。
 真实 emulator/Bridge 仍未运行，任务保持未勾选。
 
+**追加实现记录（stdin input 已安全接线）：** `main` 已包含固定 stdin action
+`e676a6a` 和规格证据 `259bbbc`。`aactl bridge action --stdin` 与 `--action`
+严格互斥，stdin 最多 1 MiB，只接受 UTF-8 单 JSON object，递归拒绝重复 key、
+尾随值、NUL、数组/标量和读取错误；action byte slice 在 RPC 后清零，错误不回显
+输入。Adapter 的 input route 现在通过 child stdin 写入固定 `ui.setText` JSON，
+argv 不含明文/action；stream 缺失/错误、进程异常和成功 data 畸形均记提交状态
+未知，明确拒绝/成功映射 false/true，步骤 deadline 过期则零进程调用。Runner input
+端到端 fake 覆盖 values→route→stdin→post snapshot→condition→cleanup。N47
+全包 59/59、N34 49/49、Go race/全量测试、verify/comments/diff-check 通过。
+真实 emulator input、visual/hybrid adapter 和第三方 App 仍未验收，任务保持未勾选。
+
 **失败清理：** 停止场景、关闭 Bridge、清除 App 数据和产物并恢复快照。
 
 **建议提交：** `test(lab): add cross-app scenario runner`
