@@ -26,3 +26,11 @@
   为零；API 33/34 和重复矩阵未启动。
 - 最终 `aactl` 为 0 devices，N31 runtime、AVD/port lease 和 owned emulator 为
   零。该证据否定“只需恢复平台 ScrollView”的方案，N33 继续保持未完成。
+
+## Round 3
+
+- 调查提交为 `effc72a`，作者和提交者均为
+  `lejunyang <lejunyang@qq.com>`，co-author trailer 恰好一次；主分支等价集成
+  提交为 `be5bd3b`。
+- 集成只包含 change spec 与 append-only 证据，`android/device-fixture` 源码零
+  差异；公共路线图保留 N33 未完成和后续新 surface 设计缺口。

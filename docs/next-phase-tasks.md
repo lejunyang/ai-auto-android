@@ -134,6 +134,15 @@ API 30 首次 `fixtureRepeat=20` 在第 1 轮纵向滚动失败，随后使用�
 最终设备、emulator、runtime 和 lease 均为零。API 33/34 与 20 轮矩阵未启动，
 N33 保持未完成，后续需重新设计可由平台输入稳定命中的手势 surface。
 
+**追加平台 surface 调查（方案被否定）：** `main` 已包含 `be5bd3b`。临时移除
+自定义 intercept/dispatch/touch/`scrollBy` 后，模块 121 tasks 通过；但 API 30
+`emulator-5576` 的纯平台 `ScrollView` 在 bounds 内 `UiDevice.swipe` 返回成功后
+`VERTICAL_OFFSET` 仍为 0，新 clean `emulator-5578` 的
+`UiObject2.scroll(Direction.UP, 0.8f)` 又直接返回 false。两种路线均未伪造状态或
+放宽真实 offset 断言，实验实现已完整撤销，fixture 源码与基线一致；最终设备、
+runtime、AVD/port lease 和 owned emulator 为零。API 33/34 与重复矩阵未启动，
+N33 继续保持未勾选。
+
 **失败清理：** 清除 fixture 数据并恢复 AVD 快照；失败产物交给 N34 管理。
 
 **建议提交：** `test(android): expand native automation fixture`
