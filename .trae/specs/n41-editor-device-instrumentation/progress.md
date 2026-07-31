@@ -32,3 +32,15 @@
   `:app:assembleDebugAndroidTest`、`:app:lintDebug`、`make comments` 和
   `git diff --check` 通过。Gradle 仅使用外置 SDK/cache，未调用 ADB、未启动或选择
   emulator；设备 RED 仍等待主线程完成 N43 独占矩阵并集成本提交后执行。
+
+## Round 3
+
+- 集成审查确认三项已知生产缺口若作为普通 `@Test`，会让
+  `connectedDebugAndroidTest` 在缺口修复前永久失败，污染全量 instrumentation 信号。
+- `redRealDetailEntryConsumesExplicitDebugAuthorization`、
+  `redTapSavesPointWithAuthorizedObservationMetadata` 和
+  `redDragSavesNormalizedBoundsWithAuthorizedObservationMetadata` 现以方法级
+  `@Ignore` 保留，并用稳定 reason 分别指向 Host 授权注入、point 授权元数据保存和
+  bounds 选择/保存缺口。缺口修复时应删除对应 `@Ignore` 并使契约转绿。
+- provider 生命周期测试和 `RecordingEditorRealEntryDeviceTest` 保持可运行；因此
+  全量 instrumentation 不再被故意失败污染，仍能报告真实回归。
