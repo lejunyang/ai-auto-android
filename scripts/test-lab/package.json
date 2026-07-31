@@ -8,6 +8,7 @@
   },
   "scripts": {
     "install-verified": "node src/verified-install-cli.mjs",
+    "passive-smoke": "node src/passive-smoke-cli.mjs",
     "test": "node --test test/*.test.mjs",
     "scan": "node src/repository-scan.mjs",
     "smoke": "npm test && npm run scan"

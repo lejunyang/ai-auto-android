@@ -761,6 +761,14 @@ argv 不含明文/action；stream 缺失/错误、进程异常和成功 data 畸
 
 **验收证据：** 固定版本连续运行 10 次并报告成功率、route 和失败分类；无外部副作用。
 
+**追加被动基线（动作场景未开始）：** 独立 change `n46-passive-app-smoke`
+复用 N46 verified descriptor 与 N31 clean lifecycle，只执行 package-only launch
+和一次 UIAutomator hierarchy，不点击隐私、权限、登录或页面内容。B站 `9.5.0`
+在 API 30 target package 可见并出现 consent/login 信号；API 33 hierarchy 不可用；
+API 34 有 hierarchy 但 target package 不可见。三轮均完成安装同字节/签名复核、
+`pm clear`、clean restore 和 stop。该证据只证明启动观察基线，不满足搜索、点击、
+长按、滚动、系统导航或连续 10 次验收，N48 保持未勾选。
+
 **失败清理：** 清除 App 数据、搜索历史、截图和场景缓存，恢复快照。
 
 **建议提交：** `test(lab): add bilibili compatibility scenario`
@@ -785,6 +793,12 @@ argv 不含明文/action；stream 缺失/错误、进程异常和成功 data 畸
 **验收证据：** 固定版本连续运行 10 次并报告成功率；遇到登录、广告或不可验证页面
 停止，不产生互动副作用。
 
+**追加被动基线（动作场景未开始）：** 抖音 `39.8.0` 在 API 30 完成 target
+package 可见的单次 hierarchy，未命中固定登录/广告/网络/模拟器信号；API 33/34
+均在 hierarchy 阶段返回稳定 `SCENARIO_FAILED` 并完成清理。API 30 另有一次设备
+`base.apk` 复核失败，后续 clean 轮成功，失败未被改写为通过。全过程不点赞、评论、
+关注、发送、点击或 swipe；N49 的动作覆盖和连续 10 次仍未开始，任务保持未勾选。
+
 **失败清理：** 清除 App 数据、缓存、截图和 session，恢复快照。
 
 **建议提交：** `test(lab): add douyin compatibility scenario`
@@ -807,6 +821,12 @@ argv 不含明文/action；stream 缺失/错误、进程异常和成功 data 畸
 **允许修改范围：** 小黑盒 manifest、场景和兼容报告；不得提交 APK 或账号数据。
 
 **验收证据：** 固定版本连续运行 10 次并报告成功率、动作覆盖和失败分类。
+
+**追加被动基线（动作场景未开始）：** 小黑盒 `1.3.392` 在 API 30/33/34 三个
+clean profile 均完成 target package 可见的单次 hierarchy，并稳定命中
+consent/permission 信号；runner 未点击或授权。三轮均完成 verified install、数据
+清理和 restore。搜索、详情、长按、滚动、swipe、多页面与十轮统计尚未执行，N50
+保持未勾选。
 
 **失败清理：** 清除 App 数据、搜索历史、产物和 session，恢复快照。
 
@@ -831,6 +851,13 @@ argv 不含明文/action；stream 缺失/错误、进程异常和成功 data 畸
 
 **验收证据：** 每类至少一个可复查样例；仅视觉和不支持场景不会伪装成语义支持，
 低置信度动作提交数为零。
+
+**追加宿主被动基线（未进入小程序）：** 微信 `8.0.76` 在 API 30/34 target
+package 可见，API 33 hierarchy 不可用；支付宝 `12.12.10.8000` 在 API 30/33/34
+均 target package 可见，并稳定命中 consent/permission/network failure 信号。
+runner 未点击同意、权限、登录或任何宿主页面，也未进入、搜索或识别小程序。因此本
+证据只确认两个固定宿主可安装并被动启动，不产生完整语义/混合/仅视觉/不支持的任何
+小程序样例，N51 保持未勾选。
 
 **失败清理：** 清除宿主 App 数据、截图、缓存和 session；恢复快照。
 
