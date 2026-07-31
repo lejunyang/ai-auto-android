@@ -43,3 +43,11 @@
 - 最终 `aactl` 为 0 devices，N31 runtime、AVD/port lease、owned emulator 与 APK
   临时目录均为零。该矩阵只证明合法制品安装与同字节恢复，不等于 N48-N51 动态场景
   或登录/小程序能力完成。
+
+## Round 4
+
+- 单一职责提交 `b745a0c` 已以等价集成提交 `9414b9c` 落入 `main`。集成提交的
+  Author 与 Committer 均为 `lejunyang <lejunyang@qq.com>`，提交末尾恰好一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。
+- 提交、身份、trailer、集成和干净 worktree 状态已闭合；15/15 唯一组合成功与
+  最终零残留证据共同完成 N46 的安装验收。

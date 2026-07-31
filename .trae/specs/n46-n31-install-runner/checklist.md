@@ -7,4 +7,4 @@
 - [x] 所有失败路径恢复 clean snapshot
 - [x] API 30/33/34 五包安装证据
 - [x] 最终设备、runtime、lease 和临时文件为零
-- [ ] 提交身份、trailer 和集成状态正确
+- [x] 提交身份、trailer 和集成状态正确

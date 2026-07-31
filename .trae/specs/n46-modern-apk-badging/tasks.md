@@ -6,7 +6,7 @@
 - [x] 实现严格 SDK 字段二选一解析
 - [x] 运行 N46 smoke、全量 Node、comments/diff-check
 - [x] 用五个真实官方 APK 取得六项 inspector 元数据
-- [ ] 提交并集成
+- [x] 提交并集成
 
 ## 建议提交
 

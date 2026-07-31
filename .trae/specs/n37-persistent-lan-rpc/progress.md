@@ -26,3 +26,11 @@
 - LAN/CLI 定向 race、Go 全包、protocol/skills、`make verify`、`make build`、
   `make comments` 与 `git diff --check` 通过。跨 Kotlin 真实 socket 互操作等待 N38
   分支汇合后执行，因此 N37 仍未完成。
+
+## Round 3
+
+- 单一职责提交 `ad59f7f` 已集成到 `main`。Author 与 Committer 均为
+  `lejunyang <lejunyang@qq.com>`，提交末尾恰好一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。
+- 原分支提交 `885c239` 的实现树已由集成提交等价包含。提交和集成状态已闭合，但
+  Go/Kotlin 真实 socket 多轮 RPC 仍是独立未完成验收项，N37 主任务继续保持未完成。

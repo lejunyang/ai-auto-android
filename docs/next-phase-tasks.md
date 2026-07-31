@@ -2,10 +2,11 @@
 
 > 本文件是 N31-N54 唯一执行与状态源，不回写当前 MVP 验收清单。
 >
-> **当前执行状态（2026-07-25）：** N31、N39、N42 已取得实现、定向测试、构建或
-> 设备证据并合入 `main`；N32、N33、N34 已从统一基线 `581f01c` 创建独立 change
-> spec 分支和 worktree，正按互斥目录并行实施。下一阶段任务不回写当前 MVP
-> 验收结果。
+> **当前执行状态（2026-08-01）：** N31、N32、N34、N36、N39、N40、N42、
+> N43、N44、N46 已取得对应实现、测试或设备证据并合入 `main`。N37/N38 的持续
+> 加密 Bridge RPC 已分别集成，但真实 Go/Kotlin socket 互操作和平台矩阵仍待验收；
+> N33 的 API 30 平台滚动 surface 已被设备证据否定，保持未完成并等待控件重设计。
+> 下一阶段任务不回写当前 MVP 验收结果。
 >
 > Task N35 实现已集成到 `main`，但正式验收仍待 macOS、Windows 各 20 次断线恢复
 > 与不会串设备的证据，继续保持未完成。N31/N39/N42 的临时分支已在确认补丁等价
@@ -342,6 +343,15 @@ Go race 测试及 Kotlin N38 定向 33/33 均通过；三端共同消费 1 个�
 `LAN_ACCEPT_TIMEOUT`/退出码 5 结束，临时端口随后不可达。该证据不替代持续双向 RPC、
 macOS/Windows 同 LAN、Windows 防火墙和真实 Android 互操作，任务保持未勾选。
 
+**追加实现记录（持续 RPC 已接，真实跨端互操作未完成）：** `main` 已包含
+`ad59f7f`。Go `Session.Call` 在同一认证加密 session 上严格顺序复用
+`bridge.request`/`bridge.response`，绑定 frame type、response ID、protocol 和
+LAN token；认证违约、响应错配和 `session.close` 均失败关闭。CLI 只增加
+`device.info|recording.list`、1 至 20 次的固定只读 probe，不开放任意动作。
+真实 `net.Pipe` 双 Framer 多轮 RPC、LAN/CLI race、Go 全量、verify、build 和
+comments 已通过。该证据仍不能替代 Go listener 与 Android emulator 的真实 socket
+互操作、Windows 同 LAN 和防火墙矩阵，因此 N37 保持未勾选。
+
 **失败清理：** 关闭 listener 和连接，清零临时私钥，撤销 invitation，删除二维码
 临时文件和防火墙测试规则。
 
@@ -376,6 +386,15 @@ ciphertext 断言防止跨端漂移。N38 定向 43/43、App JVM 319/319、debug
 assemble、lint 和中文注释门禁通过。当前未接入受测扫码 provider，故不声明
 `CAMERA` 并明确保留手工路径；真实 N37 同 LAN、持续双向 RPC、相机授权/扫码、切网、
 防火墙/OEM 和 API 设备矩阵尚未验收，任务保持未勾选。
+
+**追加实现记录（持续 RPC 服务端已接，真实跨端互操作未完成）：** `main` 已包含
+`fccd6b9`。Android 在同一 LAN socket 上严格读取 desktop-to-client 加密 frame，
+复用 Bridge request schema、业务 handler、风险门、replay cache 和 deadline，
+再返回 client-to-desktop 加密 response；LAN token 与 loopback session 权限隔离。
+同一 socket 使用单线程顺序调度，认证致命错误加密回包后关闭，切网、过期、显式关闭
+和对端断开均中断阻塞读取。强制定向 64/64、App 全量、lint、debug、
+AndroidTest、release、comments 和差异检查通过。Go/Kotlin 真实 socket 多轮 RPC、
+致命认证、deadline 与关闭互操作仍待执行，因此 N38 保持未勾选。
 
 **失败清理：** 关闭出站 socket，清零临时密钥和解析结果，撤销 session；不保留
 二维码图像。
@@ -590,7 +609,7 @@ test/lint/build 均通过。N47 desktop visual route、历史脚本 rebind 及 A
 
 **建议提交：** `feat(recording): replay explicit visual coordinates`
 
-### [ ] Task N46：第三方 APK Manifest 与仓库外缓存
+### [x] Task N46：第三方 APK Manifest 与仓库外缓存
 
 **目标：** 合法、可重复地准备真实 App 兼容性测试制品。
 
@@ -611,15 +630,29 @@ APK 路径必须位于 `.gitignore` 覆盖的仓库外 cache。
 **验收证据：** 正确 APK 可安装；错误 hash、ABI、版本和来源缺失在安装前失败；
 Git 历史和工作区不包含 APK。
 
-**实现记录（真实工具链已接，合法 APK 与安装未完成）：** `main` 已包含离线 verifier
-`725d628`、固定工具 inspector `4d41fd6` 及规格证据 `6e8317d`、`4ecab06`。
-40/40 零依赖 Node 测试通过，覆盖严格文本 manifest、仓库外 cache、
+**实现记录（2026-08-01）：** `main` 已包含离线 verifier `725d628`、固定工具
+inspector `4d41fd6`、现代 badging 修复 `ab0e901`、N31 verified install runner
+`9414b9c` 及对应规格证据。
+N46 全量 49/49 零依赖 Node 测试通过，覆盖严格文本 manifest、仓库外 cache、
 symlink/inode/hash/size 防替换、类型化 inspector、固定 ADB argv、clean/final
 snapshot 生命周期和安装前二次校验。inspector 固定并校验仓库外 `aapt2`、Java
 和 `apksigner.jar` identity，只以 `shell:false` 固定 argv 执行并严格解析六项
-元数据；SDK 三工具创建检查通过，未执行 wrapper。工作区与全部 Git 历史的
-APK/APKS/AAB/XAPK 路径均为零。本轮未下载、生成、安装或提交 APK，合法真实制品的
-真实输出兼容与 API 30/33/34 clean AVD 安装尚未执行，因此主任务保持未勾选。
+元数据；现代 `minSdkVersion` 与旧 `sdkVersion` 严格二选一，微信约 490 KiB 合法
+warning 在有界 1 MiB 工具输出预算内通过。
+
+五个固定 arm64 制品均从厂商官网或官网当前脚本声明的官方 CDN 来源取得：B站
+`9.5.0`、抖音 `39.8.0`、小黑盒 `1.3.392`、微信 `8.0.76`、支付宝
+`12.12.10.8000`。仓库只保存 package、版本、ABI、minSdk、来源、许可备注、
+SHA-256 和签名摘要 manifest；完整 APK 以 `0600` 保存在
+`AACTL_ANDROID_APK_CACHE` 的仓库外 SHA-256 cache，staging 为空，工作区与全部
+Git 历史的 APK/APKS/AAB/XAPK 路径均为零。
+
+API 30、33、34 × 五包共 15/15 唯一组合完成 clean snapshot 安装、设备
+`base.apk` 拉回同 size/SHA-256、六项 metadata 与签名复核、数据清理、clean
+restore 和 stop。API 34 微信首次因 5 分钟 pull 预算失败，该轮零残留；增加独立
+10 分钟有界预算并在新 clean serial 重跑成功，总计 16 次尝试。最终设备、runtime、
+AVD/port lease、owned emulator 和临时安装目录均为零。该结论只完成 N46 制品准备
+与安装验收，不代表 N48-N51 动态场景或登录能力完成。
 
 **失败清理：** 卸载或清除第三方 App、删除未验证 cache 条目并恢复快照。
 

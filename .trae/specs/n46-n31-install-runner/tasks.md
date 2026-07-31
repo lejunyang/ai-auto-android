@@ -7,7 +7,7 @@
 - [x] 增加固定 manifest/profile 安装入口
 - [x] 运行 N46 smoke、comments/diff-check
 - [x] API 30/33/34 五包安装矩阵
-- [ ] 提交并集成
+- [x] 提交并集成
 
 ## 建议提交
 

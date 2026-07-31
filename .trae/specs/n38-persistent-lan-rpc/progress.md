@@ -50,3 +50,11 @@
 - 剩余未完成项是 Go N37 与 Android N38 在真实跨实现加密 socket 上进行多轮 RPC、
   致命认证关闭、deadline、`session.close` 和切网/过期互操作。当前 Kotlin/Go 各端
   自动化证据不能替代该跨实现验收。
+
+## Round 5
+
+- 单一职责提交 `ce50e1b` 已以等价集成提交 `fccd6b9` 落入 `main`。集成提交的
+  Author 与 Committer 均为 `lejunyang <lejunyang@qq.com>`，提交末尾恰好一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。
+- 提交、身份、trailer、集成和干净 worktree 状态已闭合；真实 Go/Kotlin socket
+  多轮 RPC 继续保持未勾选，不以两端各自自动化证据代替。

@@ -8,4 +8,4 @@
 - [x] CLI 只暴露固定只读 probe
 - [x] 定向、race、全量与构建验证通过
 - [ ] 跨 Go/Kotlin 真实 socket 互操作通过
-- [ ] 提交身份、trailer 和集成状态正确
+- [x] 提交身份、trailer 和集成状态正确

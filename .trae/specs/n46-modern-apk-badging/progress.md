@@ -31,3 +31,11 @@
 - 五个 artifact 均为 `0600`，staging 为空；完整 APK 未进入工作区或 Git 历史。
   当前完成的是 N46 verified descriptor 准备，不等于安装、第三方 App 场景或 N51
   小程序探索已验收。
+
+## Round 3
+
+- 单一职责提交 `cba821f` 已以等价集成提交 `ab0e901` 落入 `main`。集成提交的
+  Author 与 Committer 均为 `lejunyang <lejunyang@qq.com>`，提交末尾恰好一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。
+- 五包三 API 的安装验收由独立 N31 install runner change 承担；本 change 的提交、
+  身份、trailer、集成和干净 worktree 状态已闭合。

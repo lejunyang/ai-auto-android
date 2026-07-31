@@ -7,4 +7,4 @@
 - [x] B站、小黑盒、微信官方 APK inspector 通过
 - [x] 抖音、支付宝官方 APK inspector 通过
 - [x] 不提交 APK 或外置缓存
-- [ ] 提交身份、trailer 和集成状态正确
+- [x] 提交身份、trailer 和集成状态正确
