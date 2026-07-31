@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 配置用途：提供固定高度和稳定 resource ID 的列表行，使纵向逻辑 offset 可重复计算。 -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/vertical_scroll_item_label"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="12dp"
+    android:textAppearance="@android:style/TextAppearance.Material.Body1" />

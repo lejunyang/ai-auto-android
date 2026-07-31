@@ -21,7 +21,8 @@
     <string name="long_press_state_description">Fixture long press state</string>
     <string name="long_press_initial_state">LONG_PRESS:0</string>
     <string name="vertical_scroll_target_description">Fixture vertical scroll target</string>
-    <string name="vertical_scroll_content">Vertical scroll start\n\nDeterministic local content\n\nVertical scroll end</string>
+    <string name="vertical_scroll_item_description">Fixture vertical scroll item %1$d</string>
+    <string name="vertical_scroll_item_label">Vertical item %1$d</string>
     <string name="vertical_scroll_state_description">Fixture vertical scroll state</string>
     <string name="vertical_scroll_initial_state">VERTICAL_SCROLL:0</string>
     <string name="vertical_scroll_offset_description">Fixture vertical scroll offset</string>

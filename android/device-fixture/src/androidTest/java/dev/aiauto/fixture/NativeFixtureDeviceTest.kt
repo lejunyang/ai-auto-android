@@ -55,11 +55,15 @@ class NativeFixtureDeviceTest {
             if (scenario == "all" || scenario == "core") {
                 runCoreScenario(iteration)
             }
+            if (scenario == "vertical") {
+                resetInApp()
+                runVerticalScrollScenario()
+            }
             if (scenario == "all" || scenario == "system") {
                 runSystemScenario(iteration)
             }
-            require(scenario in setOf("all", "core", "system")) {
-                "fixtureScenario must be all, core, or system"
+            require(scenario in setOf("all", "core", "vertical", "system")) {
+                "fixtureScenario must be all, core, vertical, or system"
             }
         }
     }
@@ -86,12 +90,7 @@ class NativeFixtureDeviceTest {
         }
         awaitState(R.id.long_press_state, "LONG_PRESS:1")
 
-        awaitStateAfterReveal(R.id.vertical_scroll_offset, "VERTICAL_OFFSET:0")
-        val vertical = revealScrollableTarget(R.id.vertical_scroll_target, VERTICAL_TARGET_HEIGHT_DP)
-        assertEquals("Fixture vertical scroll target", vertical.contentDescription)
-        swipeVerticallyWithin(vertical.visibleBounds)
-        assertPositiveOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET")
-        awaitStateAfterReveal(R.id.vertical_scroll_state, "VERTICAL_SCROLL:1")
+        runVerticalScrollScenario()
 
         awaitStateAfterReveal(R.id.horizontal_swipe_offset, "HORIZONTAL_OFFSET:0")
         val horizontal = revealScrollableTarget(R.id.horizontal_swipe_target, HORIZONTAL_TARGET_HEIGHT_DP)
@@ -135,6 +134,15 @@ class NativeFixtureDeviceTest {
         awaitStateAfterReveal(R.id.horizontal_swipe_state, "HORIZONTAL_SWIPE:0")
         awaitStateAfterReveal(R.id.horizontal_swipe_offset, "HORIZONTAL_OFFSET:0")
         awaitStateAfterReveal(R.id.dialog_state, "DIALOG:READY")
+    }
+
+    private fun runVerticalScrollScenario() {
+        awaitStateAfterReveal(R.id.vertical_scroll_offset, "VERTICAL_OFFSET:0")
+        val vertical = revealScrollableTarget(R.id.vertical_scroll_target, VERTICAL_TARGET_HEIGHT_DP)
+        assertEquals("Fixture vertical scroll target", vertical.contentDescription)
+        swipeVerticallyWithin(vertical.visibleBounds)
+        assertPositiveOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET")
+        awaitStateAfterReveal(R.id.vertical_scroll_state, "VERTICAL_SCROLL:1")
     }
 
     private fun runSystemScenario(iteration: Int) {
@@ -249,7 +257,7 @@ class NativeFixtureDeviceTest {
         check(bounds.height() >= MIN_GESTURE_SIZE_PX)
         val inset = bounds.height() / GESTURE_INSET_DIVISOR
         assertTrue(
-            "Vertical swipe injection failed inside the latest target bounds",
+            "Vertical swipe injection failed inside the latest ListView bounds",
             device.swipe(
                 bounds.centerX(),
                 bounds.bottom - inset,
@@ -388,7 +396,7 @@ class NativeFixtureDeviceTest {
 
     private companion object {
         const val TIMEOUT = 10_000L
-        const val VERTICAL_TARGET_HEIGHT_DP = 100
+        const val VERTICAL_TARGET_HEIGHT_DP = 120
         const val HORIZONTAL_TARGET_HEIGHT_DP = 72
         const val BOUNDS_TOLERANCE_PX = 2
         const val MIN_GESTURE_SIZE_PX = 24

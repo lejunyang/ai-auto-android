@@ -74,20 +74,14 @@
                 android:text="@string/long_press_initial_state" />
         </LinearLayout>
 
-        <dev.aiauto.fixture.DeterministicScrollView
+        <ListView
             android:id="@+id/vertical_scroll_target"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="120dp"
             android:contentDescription="@string/vertical_scroll_target_description"
-            android:fillViewport="false"
-            android:scrollbars="vertical">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="240dp"
-                android:gravity="center"
-                android:text="@string/vertical_scroll_content" />
-        </dev.aiauto.fixture.DeterministicScrollView>
+            android:divider="@android:color/transparent"
+            android:dividerHeight="0dp"
+            android:scrollbars="vertical" />
 
         <TextView
             android:id="@+id/vertical_scroll_state"

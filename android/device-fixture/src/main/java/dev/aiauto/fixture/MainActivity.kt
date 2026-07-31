@@ -10,9 +10,14 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.widget.AbsListView
+import android.widget.BaseAdapter
 import android.widget.EditText
 import android.widget.HorizontalScrollView
+import android.widget.ListView
 import android.widget.TextView
 import android.widget.ToggleButton
 
@@ -74,21 +79,32 @@ class MainActivity : Activity() {
     }
 
     private fun bindVerticalScroll() {
-        val target = findViewById<DeterministicScrollView>(R.id.vertical_scroll_target)
-        renderOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET", target.scrollY)
-        target.setOnScrollChangeListener {
-                _: View,
-                _: Int,
-                scrollY: Int,
-                _: Int,
-                oldScrollY: Int,
-            ->
-            if (scrollY != oldScrollY) {
-                state.recordVerticalScroll()
-                renderOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET", scrollY)
+        val target = findViewById<ListView>(R.id.vertical_scroll_target)
+        target.adapter = VerticalScrollAdapter()
+        renderOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET", 0)
+        target.setOnScrollListener(object : AbsListView.OnScrollListener {
+            override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) = Unit
+
+            override fun onScroll(
+                view: AbsListView,
+                firstVisibleItem: Int,
+                visibleItemCount: Int,
+                totalItemCount: Int,
+            ) {
+                val firstChild = view.getChildAt(0) ?: return
+                val offset = VerticalListOffset.calculate(
+                    firstVisiblePosition = firstVisibleItem,
+                    firstChildTop = firstChild.top,
+                    listPaddingTop = view.paddingTop,
+                    itemExtent = firstChild.height,
+                )
+                renderOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET", offset)
+                if (offset > 0) {
+                    state.recordVerticalScroll()
+                }
                 render()
             }
-        }
+        })
     }
 
     private fun bindHorizontalSwipe() {
@@ -154,7 +170,7 @@ class MainActivity : Activity() {
 
     private fun bindReset() {
         findViewById<View>(R.id.reset_target).setOnClickListener {
-            findViewById<DeterministicScrollView>(R.id.vertical_scroll_target).scrollTo(0, 0)
+            findViewById<ListView>(R.id.vertical_scroll_target).setSelection(0)
             findViewById<HorizontalScrollView>(R.id.horizontal_swipe_target).scrollTo(0, 0)
             state.reset()
             renderOffset(R.id.vertical_scroll_offset, "VERTICAL_OFFSET", 0)
@@ -216,6 +232,33 @@ class MainActivity : Activity() {
 
     private fun renderOffset(id: Int, prefix: String, offset: Int) {
         text(id, "$prefix:$offset")
+    }
+
+    /**
+     * 功能用途：生成固定数量、固定高度且语义稳定的本地列表行，不读取或持久化外部数据。
+     */
+    private inner class VerticalScrollAdapter : BaseAdapter() {
+        override fun getCount(): Int = VERTICAL_ITEM_COUNT
+
+        override fun getItem(position: Int): Int = position
+
+        override fun getItemId(position: Int): Long = position.toLong()
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val label = (convertView as? TextView) ?: LayoutInflater.from(this@MainActivity)
+                .inflate(R.layout.vertical_scroll_item, parent, false) as TextView
+            val itemNumber = position + 1
+            label.text = getString(R.string.vertical_scroll_item_label, itemNumber)
+            label.contentDescription = getString(
+                R.string.vertical_scroll_item_description,
+                itemNumber,
+            )
+            return label
+        }
+    }
+
+    private companion object {
+        const val VERTICAL_ITEM_COUNT = 12
     }
 }
 
