@@ -45,3 +45,19 @@
   0，runtime、AVD/port lease 与 owned emulator 均无残留。
 - 主线程随后声明独占 emulator 运行 N43 三 API 各 20 轮矩阵；本 change 不再启动、
   观察或操作任何设备，最终 bounds 内 swipe route 明确等待主线程后续集成复验。
+
+## Round 4
+
+- 单一职责提交 `b1de83d` 已以等价集成提交 `0e3f8a9` 落入 `main`，stable
+  patch-id 均为 `d34b31421ccd389241bf93a41a7b55359128840a`；Author/Committer
+  为 `lejunyang <lejunyang@qq.com>`，要求的 trailer 恰好一次。
+- 主线程在 N43 API 30 矩阵清理后启动唯一 N31 clean `emulator-5562`，设备信息为
+  Android 11/API 30、fingerprint
+  `51ec5c4a7122b6894b752eae99ab48f280736f24ef148590222dc92e2ab72707`。
+- `fixtureScenario=vertical`、`fixtureRepeat=1` 使用最终实现：从最新 `ListView`
+  `visibleBounds` 内向上 swipe 一次，并重新观察真实 `VERTICAL_OFFSET>0` 与
+  `VERTICAL_SCROLL:1`。instrumentation 1/1 通过，未重试，也未调用语义 scroll、
+  `scrollTo` 或 `scrollBy` 作为动作证据。
+- 结束后先恢复 clean snapshot，再由 N31 stop 明确设备；最终 `aactl` 为
+  0 devices，runtime 与 AVD/port lease 为零。API 33/34 与完整 20 轮主场景仍未
+  执行，N33 路线图主任务继续保持未完成。

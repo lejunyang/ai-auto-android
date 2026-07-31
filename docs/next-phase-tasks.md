@@ -144,6 +144,15 @@ N33 保持未完成，后续需重新设计可由平台输入稳定命中的手�
 runtime、AVD/port lease 和 owned emulator 为零。API 33/34 与重复矩阵未启动，
 N33 继续保持未勾选。
 
+**追加重设计记录（API 30 纵向单轮已通过，完整矩阵未完成）：** `main` 已包含
+`0e3f8a9`。被否定的自定义/平台 `ScrollView` 已替换为平台 `ListView`，12 个固定
+高度列表项提供稳定 resource ID 与 content description；逻辑 offset 由首个可见
+位置、首项 top、padding 和真实行高计算，只有 offset 大于 0 才产生
+`VERTICAL_SCROLL:1`。API 30 clean `emulator-5562` 使用最新 `ListView` bounds 内
+一次向上 swipe 后，vertical-only instrumentation 1/1 通过真实 offset/state 后置；
+最终设备/runtime/lease 为零。该证据关闭原纵向 surface blocker，但 API 33/34、
+Back/Home/Recents/应用切换和三版本各 20 轮成功率仍未验收，N33 保持未勾选。
+
 **失败清理：** 清除 fixture 数据并恢复 AVD 快照；失败产物交给 N34 管理。
 
 **建议提交：** `test(android): expand native automation fixture`
