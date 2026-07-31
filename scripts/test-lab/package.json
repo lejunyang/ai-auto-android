@@ -7,6 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "install-verified": "node src/verified-install-cli.mjs",
     "test": "node --test test/*.test.mjs",
     "scan": "node src/repository-scan.mjs",
     "smoke": "npm test && npm run scan"
