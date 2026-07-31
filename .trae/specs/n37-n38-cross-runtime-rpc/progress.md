@@ -71,3 +71,12 @@
   自权限。仓库和全部 Git 历史无 APK/APKS/AAB/XAPK 路径。
 - `make comments` 覆盖 388 个手写文件并通过 14 个检查器自测；`git diff --check`
   通过。最终 doctor 健康，设备、runtime、lease 和临时目录再次确认为零。
+
+## Round 6
+
+- 单一职责提交 `9d96ab8` 已以等价集成提交 `cb7ef3d` 落入 `main`，stable
+  patch-id 均为 `4d65122f5b7d71fffaf662408805a41ad157592f`。两个提交的 Author 与
+  Committer 均为 `lejunyang <lejunyang@qq.com>`，提交末尾恰好一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。
+- 临时 worktree 在干净状态下以非强制 `git worktree remove` 移除，随后执行
+  `git worktree prune` 并删除已等价集成的临时分支；主分支和外置设备报告保留。

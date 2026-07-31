@@ -10,4 +10,4 @@
 - [x] Android 11 使用同一 RFC 7748 字节契约的 Tink X25519 安全回退
 - [x] 每轮 clean restore，最终设备/runtime/lease/temp 为零
 - [x] 定向、全量、构建、comments 与 diff-check 通过
-- [ ] 提交身份、trailer、集成和 worktree 清理正确
+- [x] 提交身份、trailer、集成和 worktree 清理正确
