@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "package": "com.eg.android.AlipayGphone",
+  "version": "12.12.10.8000",
+  "versionCode": 212110,
+  "abi": [
+    "arm64-v8a"
+  ],
+  "minSdk": 24,
+  "source": {
+    "type": "https",
+    "url": "https://tfs.alipayobjects.com/L1/71/100/and/alipay_wap_dc_64.apk",
+    "note": "当前 d.alipay.com 官方 unified landing 脚本 x64 分支列出的支付宝官方对象存储 APK；下载后按摘要固定。"
+  },
+  "licenseNote": "仅用于本项目内部未登录宿主兼容性探索；不得登录、支付、购买、提交 APK、重新分发或用于公开镜像。",
+  "sizeBytes": 181828156,
+  "sha256": "9f4a1914fcaab3eef0303a154233dd29631f57f56788ba09ea2156af96137684",
+  "signingCertificateSha256": "389b49f7832f53e9017923220aa85e14dfaa4886ecd7428818bf339543cf498a"
+}

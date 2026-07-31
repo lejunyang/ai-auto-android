@@ -85,6 +85,7 @@ const makeFixture = async () => {
 
 const fakeExecFile = ({
   aapt2Output = AAPT2_OUTPUT,
+  aapt2Stderr = "",
   apksignerOutput = APKSIGNER_OUTPUT,
   onCall,
 } = {}) => {
@@ -99,7 +100,7 @@ const fakeExecFile = ({
           path.basename(executable) === "aapt2"
             ? aapt2Output
             : apksignerOutput,
-          "",
+          path.basename(executable) === "aapt2" ? aapt2Stderr : "",
         );
       })
       .catch(callback);
@@ -169,6 +170,47 @@ test("build-tools 目录只产生 aapt2 与 apksigner 的固定 argv", async () 
       windowsHide: true,
     });
   }
+});
+
+test("现代 minSdkVersion badging 与旧 sdkVersion 严格等价", async () => {
+  const fixture = await makeFixture();
+  const modern = fakeExecFile({
+    aapt2Output: AAPT2_OUTPUT.replace(
+      "sdkVersion:'26'",
+      "minSdkVersion:'26'",
+    ),
+  });
+  const inspector = await createAndroidApkInspector(
+    {
+      repositoryRoot: fixture.repositoryRoot,
+      buildToolsDirectory: fixture.buildToolsDirectory,
+      javaPath: fixture.javaPath,
+    },
+    { execFile: modern.execFile },
+  );
+
+  const result = await inspector.inspect(inspectRequest(fixture.artifactPath));
+
+  assert.equal(result.minSdk, 26);
+});
+
+test("有界 aapt2 资源 warning 不掩盖严格 badging 元数据", async () => {
+  const fixture = await makeFixture();
+  const fake = fakeExecFile({
+    aapt2Stderr: "warning: missing optional resource\n".repeat(15_000),
+  });
+  const inspector = await createAndroidApkInspector(
+    {
+      repositoryRoot: fixture.repositoryRoot,
+      buildToolsDirectory: fixture.buildToolsDirectory,
+      javaPath: fixture.javaPath,
+    },
+    { execFile: fake.execFile },
+  );
+
+  const result = await inspector.inspect(inspectRequest(fixture.artifactPath));
+
+  assert.equal(result.package, "com.example.compatibility");
 });
 
 test("固定工具路径模式不接受任意 executable、argv 或混合配置", async () => {
@@ -410,6 +452,10 @@ test("未知、重复、缺失 badging 字段和多签名歧义均失败关闭",
         .split("\n")
         .filter((line) => !line.startsWith("sdkVersion:"))
         .join("\n"),
+    },
+    {
+      name: "ambiguous legacy and modern minSdk",
+      aapt2Output: `${AAPT2_OUTPUT}\nminSdkVersion:'26'`,
     },
     {
       name: "duplicate signing digest",

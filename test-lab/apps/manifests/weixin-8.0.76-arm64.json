@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "package": "com.tencent.mm",
+  "version": "8.0.76",
+  "versionCode": 3141,
+  "abi": [
+    "arm64-v8a"
+  ],
+  "minSdk": 24,
+  "source": {
+    "type": "https",
+    "url": "https://dldir1v6.qq.com/weixin/android/weixin8076android3141_0x28004c31_arm64.apk",
+    "note": "微信官方 weixin.qq.com 页面直接列出的当前 64 位 Android APK；下载后按摘要固定。"
+  },
+  "licenseNote": "仅用于本项目内部未登录宿主和小程序兼容性探索；不得登录、提交 APK、重新分发或用于公开镜像。",
+  "sizeBytes": 266102064,
+  "sha256": "04792eb19a566395a9fabee9a50be80245826cb774ec64637a22f7f28acd4054",
+  "signingCertificateSha256": "0fe4ff85c215918396dadc7cd8ce6963339af33d37751a56e54c7206b63a3c7c"
+}

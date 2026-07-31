@@ -38,7 +38,7 @@ const buildToolsVersionPattern =
   /^[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9._-]+)?$/u;
 
 export const APK_INSPECTOR_LIMITS = Object.freeze({
-  outputBytes: 256 * 1024,
+  outputBytes: 1024 * 1024,
   timeoutMs: 15_000,
 });
 
@@ -410,9 +410,13 @@ const parseBadging = (output) => {
 
   const sdkLine = singleMatchingLine(
     lines,
-    (line) => line.startsWith("sdkVersion:"),
+    (line) =>
+      line.startsWith("sdkVersion:")
+      || line.startsWith("minSdkVersion:"),
   );
-  const sdkMatch = sdkLine.match(/^sdkVersion:'([0-9]+)'$/u);
+  const sdkMatch = sdkLine.match(
+    /^(?:sdkVersion|minSdkVersion):'([0-9]+)'$/u,
+  );
   const minSdk = parsePositiveInteger(sdkMatch?.[1]);
   if (minSdk > 100) {
     fail("APK_INSPECTOR_OUTPUT_INVALID");

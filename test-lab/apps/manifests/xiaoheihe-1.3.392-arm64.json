@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "package": "com.max.xiaoheihe",
+  "version": "1.3.392",
+  "versionCode": 1114,
+  "abi": [
+    "arm64-v8a"
+  ],
+  "minSdk": 23,
+  "source": {
+    "type": "https",
+    "url": "https://dl.max-c.com/app/heybox/heybox-release.apk",
+    "note": "小黑盒官方 xiaoheihe.cn Android 入口 302 到该官方 CDN APK；下载后按摘要固定。"
+  },
+  "licenseNote": "仅用于本项目内部未登录兼容性测试；不得提交 APK、重新分发或用于公开镜像。",
+  "sizeBytes": 119064034,
+  "sha256": "ee56e4220c98f160f5b744cb90aab8de87787801c45fa5bcb9cb1b531067b0ea",
+  "signingCertificateSha256": "ef42d004ab18b04e0789a9c2a246156589423f9186a345a5b0c52fcb6612d82c"
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "package": "tv.danmaku.bili",
+  "version": "9.5.0",
+  "versionCode": 9050300,
+  "abi": [
+    "arm64-v8a"
+  ],
+  "minSdk": 24,
+  "source": {
+    "type": "https",
+    "url": "https://dl.hdslb.com/mobile/latest/android64/iBiliPlayer-bili.apk",
+    "note": "哔哩哔哩官方 app.bilibili.com 下载页直接列出的 64 位 Android APK；下载后按摘要固定，latest URL 不作为版本身份。"
+  },
+  "licenseNote": "仅用于本项目内部未登录兼容性测试；不得提交 APK、重新分发或用于公开镜像。",
+  "sizeBytes": 203302151,
+  "sha256": "618b8517d6226300c7223b22b9c9d985df4e2a339d9ea957e96f60cea7a9bf6a",
+  "signingCertificateSha256": "93ba270f5521139ecafe4bb638ac5b1198bc548f62d9fd8f8580a079faf5910e"
+}
