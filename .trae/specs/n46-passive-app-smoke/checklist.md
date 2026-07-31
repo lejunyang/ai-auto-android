@@ -9,4 +9,4 @@
 - [x] 每个 App 清数据并恢复 clean snapshot
 - [x] 最终设备/runtime/lease/temp 为零，报告权限为 0600
 - [x] 定向、N46 全量、扫描、comments 与 diff-check 通过
-- [ ] 提交身份、trailer、集成和 worktree 清理正确
+- [x] 提交身份、trailer、集成和 worktree 清理正确

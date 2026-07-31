@@ -70,3 +70,12 @@
 - 三份成功/分类报告只含固定 metadata 与布尔信号；静态扫描确认无 `xml`、`text`、
   `content-desc`、bounds、screenshot、token 或 cookie 字段。新增脚本的唯一动作
   argv 为 package-only launch，唯一观察 argv 为 hierarchy。
+
+## Round 6
+
+- 单一职责提交 `a6eccc8` 已以等价集成提交 `bc5a213` 落入 `main`，stable
+  patch-id 均为 `fc80dd9cd74ed99c64b5f63943caa8dbe482a1be`。两个提交的 Author 与
+  Committer 均为 `lejunyang <lejunyang@qq.com>`，提交末尾恰好一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。
+- 临时 worktree 干净且已非强制移除，随后执行 `git worktree prune` 并删除已等价
+  集成的临时分支；三份 `0600` 外置设备报告保留，主分支工作区只剩本状态收口。
