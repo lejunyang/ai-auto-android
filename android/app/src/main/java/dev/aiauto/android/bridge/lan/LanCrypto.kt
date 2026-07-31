@@ -467,8 +467,9 @@ class LanFrameCodec(
             .array()
     }
 
-    private companion object {
-        const val MAX_FRAME_PLAINTEXT_BYTES = 1024 * 1024
+    companion object {
+        internal const val MAX_FRAME_PLAINTEXT_BYTES = 1024 * 1024
+        internal const val MAX_FRAME_CIPHERTEXT_BYTES = MAX_FRAME_PLAINTEXT_BYTES + 16
         const val FRAME_AAD_DOMAIN = "AIAUTO-LAN-BRIDGE-FRAME-AAD-V1"
         val FRAME_TYPE_PATTERN = Regex("^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
     }

@@ -26,7 +26,7 @@ class BridgeSessionManager(
     private val clock: Clock = Clock.systemUTC(),
     private val secureRandom: SecureRandom = SecureRandom(),
     private val observer: BridgeSessionObserver? = null,
-) {
+) : BridgeSessionAuthority {
     private var pairingCode: PairingCode? = null
     private var activeSession: ActiveSession? = null
 
@@ -47,7 +47,7 @@ class BridgeSessionManager(
 
     @Synchronized
     @Throws(BridgeException::class)
-    fun open(code: String, hostName: String): OpenedBridgeSession {
+    override fun open(code: String, hostName: String): OpenedBridgeSession {
         val expected = pairingCode ?: throw BridgeException(
             code = BridgeErrorCode.AUTH_REQUIRED,
             message = "Generate a new pairing code in the Android app.",
@@ -87,7 +87,7 @@ class BridgeSessionManager(
 
     @Synchronized
     @Throws(BridgeException::class)
-    fun authenticate(token: String?) {
+    override fun authenticate(token: String?) {
         if (token.isNullOrEmpty()) {
             throw BridgeException(
                 code = BridgeErrorCode.AUTH_REQUIRED,
@@ -116,7 +116,7 @@ class BridgeSessionManager(
 
     @Synchronized
     @Throws(BridgeException::class)
-    fun close(token: String?) {
+    override fun close(token: String?) {
         authenticate(token)
         activeSession = null
         observer?.onSessionClosed()

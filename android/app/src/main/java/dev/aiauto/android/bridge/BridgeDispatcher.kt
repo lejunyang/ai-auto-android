@@ -21,7 +21,7 @@ import kotlinx.serialization.json.put
 
 class BridgeDispatcher(
     private val methodHandler: BridgeMethodHandler,
-    private val sessionManager: BridgeSessionManager,
+    private val sessionManager: BridgeSessionAuthority,
     private val replayCache: RequestReplayCache = RequestReplayCache(),
     private val json: Json = Json {
         ignoreUnknownKeys = false
@@ -116,6 +116,9 @@ class BridgeDispatcher(
         request: ParsedBridgeRequest,
         connection: BridgeConnectionState,
     ): JsonObject {
+        if (sessionManager.transportAuthenticated) {
+            return routeAuthenticated(request)
+        }
         if (!connection.helloCompleted && request.method != METHOD_HELLO) {
             throw BridgeException(
                 code = BridgeErrorCode.PROTOCOL_ERROR,
@@ -148,7 +151,29 @@ class BridgeDispatcher(
 
         replayCache.record(request.requestId)
         sessionManager.authenticate(request.token)
-        return when (request.method) {
+        return routeMethod(request)
+    }
+
+    private fun routeAuthenticated(request: ParsedBridgeRequest): JsonObject {
+        if (request.protocolVersion != BridgeProtocol.VERSION) {
+            throw BridgeException(
+                code = BridgeErrorCode.VERSION_INCOMPATIBLE,
+                message = "The request protocol version does not match the negotiated version.",
+            )
+        }
+        replayCache.record(request.requestId)
+        sessionManager.authenticate(request.token)
+        if (request.method == METHOD_HELLO || request.method == METHOD_SESSION_OPEN) {
+            throw BridgeException(
+                code = BridgeErrorCode.PROTOCOL_ERROR,
+                message = "LAN handshake already completed connection authentication.",
+            )
+        }
+        return routeMethod(request)
+    }
+
+    private fun routeMethod(request: ParsedBridgeRequest): JsonObject =
+        when (request.method) {
             METHOD_SESSION_CLOSE -> {
                 requireExactKeys(request.params, emptySet())
                 sessionManager.close(request.token)
@@ -167,7 +192,6 @@ class BridgeDispatcher(
                 message = "The requested bridge method is not supported.",
             )
         }
-    }
 
     private fun handleHello(
         request: ParsedBridgeRequest,

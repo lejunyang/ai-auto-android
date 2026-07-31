@@ -8,8 +8,10 @@ package dev.aiauto.android.bridge.lan
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.Base64
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -98,6 +100,98 @@ class LanNdjsonSocketTest {
             } finally {
                 frame.destroy()
                 port.close()
+            }
+        }
+    }
+
+    @Test
+    fun `encrypted read preserves a fragmented frame across polling timeout`() {
+        withSocketPair { client, server ->
+            val port = NdjsonLanSocketPort(client)
+            val nonce = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(ByteArray(12) { it.toByte() })
+            val ciphertext = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(ByteArray(24) { (it + 32).toByte() })
+            val payload =
+                """{"version":"1.0","direction":"desktop-to-client","sequence":0,"type":""" +
+                    """"bridge.request","nonce":"$nonce","ciphertext":"$ciphertext"}"""
+            val split = payload.length / 2
+            try {
+                server.getOutputStream().apply {
+                    write(payload.substring(0, split).encodeToByteArray())
+                    flush()
+                }
+                assertEquals(null, port.readEncrypted(timeoutMillis = 25))
+
+                server.getOutputStream().apply {
+                    write(payload.substring(split).encodeToByteArray())
+                    write('\n'.code)
+                    flush()
+                }
+                val frame = port.readEncrypted(timeoutMillis = 1_000)
+                try {
+                    assertEquals("1.0", frame?.version)
+                    assertEquals(LanFrameDirection.DESKTOP_TO_CLIENT, frame?.direction)
+                    assertEquals(0L, frame?.sequence)
+                    assertEquals("bridge.request", frame?.type)
+                    assertEquals(12, frame?.nonce?.size)
+                    assertEquals(24, frame?.ciphertext?.size)
+                } finally {
+                    frame?.destroy()
+                }
+            } finally {
+                port.close()
+            }
+        }
+    }
+
+    @Test
+    fun `malformed encrypted wire metadata fails closed before crypto`() {
+        val nonce = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(ByteArray(12))
+        val ciphertext = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(ByteArray(16))
+        listOf(
+            """{"version":"1.0","version":"1.0","direction":"desktop-to-client","sequence":0,"type":"bridge.request","nonce":"$nonce","ciphertext":"$ciphertext"}""",
+            """{"version":"1.0","direction":"desktop-to-client","sequence":0,"type":"bridge.request","nonce":"$nonce","ciphertext":"$ciphertext","extra":true}""",
+            """{"version":"1.0","direction":"desktop-to-client","sequence":-1,"type":"bridge.request","nonce":"$nonce","ciphertext":"$ciphertext"}""",
+            """{"version":"1.0","direction":"desktop-to-client","sequence":0,"type":"bridge.request","nonce":"not+padded=","ciphertext":"$ciphertext"}""",
+        ).forEach { payload ->
+            withSocketPair { client, server ->
+                val port = NdjsonLanSocketPort(client)
+                server.getOutputStream().apply {
+                    write(payload.encodeToByteArray())
+                    write('\n'.code)
+                    flush()
+                }
+
+                assertFailure("LAN_FRAME_INVALID") {
+                    port.readEncrypted(timeoutMillis = 1_000)
+                }
+                assertTrue(port.closed)
+            }
+        }
+    }
+
+    @Test
+    fun `close interrupts a real socket blocked encrypted read`() {
+        withSocketPair { client, _ ->
+            val port = NdjsonLanSocketPort(client)
+            val worker = Executors.newSingleThreadExecutor()
+            try {
+                val read = worker.submit<Throwable?> {
+                    runCatching { port.readEncrypted(timeoutMillis = 30_000) }.exceptionOrNull()
+                }
+                Thread.sleep(25)
+
+                port.close()
+
+                val error = read.get(1, TimeUnit.SECONDS)
+                assertTrue(error is LanProtocolException)
+                assertEquals("LAN_CONNECTION_CLOSED", (error as LanProtocolException).code)
+            } finally {
+                port.close()
+                worker.shutdownNow()
             }
         }
     }

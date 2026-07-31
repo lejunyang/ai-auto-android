@@ -18,6 +18,8 @@ import java.net.Socket
 import java.nio.channels.SocketChannel
 import java.time.Instant
 
+import dev.aiauto.android.bridge.AndroidBridgeMethodsFactory
+
 class AndroidLanNetworkDirectory internal constructor(
     private val connectivityManager: ConnectivityManager,
 ) {
@@ -206,6 +208,11 @@ class AndroidLanPairingSessionLauncher(
 ) : AutoCloseable {
     @Volatile
     private var activeConnector: AndroidLanSocketConnector? = null
+    private val rpcRunner = AndroidLanRpcSessionRunner(
+        dispatcherFactory = {
+            AndroidBridgeMethodsFactory.create(context.applicationContext)
+        },
+    )
 
     fun connect(request: LanConnectRequest): LanOutboundSession {
         val selected = request.selectedLocalInterface
@@ -217,7 +224,7 @@ class AndroidLanPairingSessionLauncher(
             }
         }
         return try {
-            LanOutboundCoordinator(
+            val session = LanOutboundCoordinator(
                 socketConnector = connector,
                 replayStore = FileLanReplayStore(
                     context.noBackupFilesDir.resolve("lan/replay-state.json"),
@@ -225,6 +232,8 @@ class AndroidLanPairingSessionLauncher(
                 networkIdentity = LanNetworkIdentity { directory.current(selected) },
                 clock = clock,
             ).connect(request)
+            rpcRunner.start(session)
+            session
         } catch (error: Exception) {
             synchronized(this) {
                 if (activeConnector === connector) activeConnector = null
@@ -238,5 +247,6 @@ class AndroidLanPairingSessionLauncher(
     override fun close() {
         activeConnector?.close()
         activeConnector = null
+        rpcRunner.close()
     }
 }

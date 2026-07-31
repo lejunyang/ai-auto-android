@@ -9,6 +9,8 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
+import dev.aiauto.android.bridge.BridgeMethodHandler
+import dev.aiauto.android.bridge.LanBridgeRpcDispatcher
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -73,6 +75,12 @@ interface LanSocketPort : AutoCloseable {
     fun writeHandshake(message: JsonObject)
 
     fun readHandshake(): JsonObject
+
+    /**
+     * 在短轮询期限内读取一个完整加密 frame；超时返回 null，调用方据此复核网络与过期状态。
+     */
+    fun readEncrypted(timeoutMillis: Int): LanEncryptedFrame? =
+        throw LanProtocolException("LAN_CONNECTION_CLOSED")
 
     /**
      * 实现必须在返回前复制或完成写入，因为调用方会立即清零 frame 缓冲。
@@ -250,6 +258,8 @@ class LanOutboundCoordinator(
                 socket = port,
                 invitation = invitation,
                 outboundKey = keys.clientToDesktop,
+                inboundKey = keys.desktopToClient,
+                tokenBindingKey = keys.tokenBinding,
                 transcriptHash = transcriptHash,
                 networkIdentity = networkIdentity,
                 clock = clock,
@@ -448,7 +458,9 @@ class LanOutboundCoordinator(
 
 class LanOutboundSession private constructor(
     private var socket: LanSocketPort?,
-    private var codec: LanFrameCodec?,
+    private var outboundCodec: LanFrameCodec?,
+    private var inboundReceiver: LanFrameReceiver?,
+    private var token: LanSessionToken?,
     private var invitation: LanInvitation?,
     private val networkIdentity: LanNetworkIdentity?,
     private val clock: LanClock?,
@@ -458,6 +470,7 @@ class LanOutboundSession private constructor(
     stopCode: String?,
 ) : AutoCloseable {
     private val active = AtomicBoolean(stopCode == null)
+    private val serving = AtomicBoolean(false)
     private val sequence = AtomicLong(0)
 
     @Volatile
@@ -470,16 +483,9 @@ class LanOutboundSession private constructor(
     @Synchronized
     fun send(type: String, plaintext: ByteArray) {
         ensureActive()
-        if (clock!!.now() >= expiresAt) {
-            stop("LAN_SESSION_EXPIRED")
-            throw LanProtocolException("LAN_SESSION_EXPIRED")
-        }
-        if (networkIdentity!!.current() != localInterface) {
-            stop("LAN_NETWORK_CHANGED")
-            throw LanProtocolException("LAN_NETWORK_CHANGED")
-        }
+        validateEnvironment()
         val frame = try {
-            codec!!.encrypt(sequence.getAndIncrement(), type, plaintext)
+            outboundCodec!!.encrypt(sequence.getAndIncrement(), type, plaintext)
         } catch (error: LanProtocolException) {
             stop(error.code)
             throw error
@@ -501,6 +507,87 @@ class LanOutboundSession private constructor(
         }
     }
 
+    fun serve(methodHandler: BridgeMethodHandler) {
+        ensureActive()
+        if (!serving.compareAndSet(false, true)) {
+            throw LanProtocolException("LAN_SESSION_CLOSED", "LAN RPC loop is already serving")
+        }
+        val sessionToken = token ?: run {
+            serving.set(false)
+            throw LanProtocolException(stopCode ?: "LAN_SESSION_CLOSED")
+        }
+        val adapter = LanBridgeRpcDispatcher(
+            methodHandler = methodHandler,
+            token = sessionToken,
+        )
+        try {
+            while (active.get()) {
+                validateEnvironment()
+                val port = socket ?: return
+                val frame = try {
+                    port.readEncrypted(READ_POLL_MILLIS)
+                } catch (error: LanProtocolException) {
+                    if (!active.get() && error.code == "LAN_CONNECTION_CLOSED") return
+                    stop(error.code)
+                    throw error
+                } catch (error: Exception) {
+                    if (!active.get()) return
+                    stop("LAN_CONNECTION_CLOSED")
+                    throw LanProtocolException(
+                        "LAN_CONNECTION_CLOSED",
+                        "encrypted LAN frame read failed",
+                        error,
+                    )
+                } ?: continue
+                if (!active.get()) {
+                    frame.destroy()
+                    return
+                }
+                val receiver = inboundReceiver
+                if (receiver == null) {
+                    frame.destroy()
+                    if (!active.get()) return
+                    stop("LAN_SESSION_CLOSED")
+                    throw LanProtocolException("LAN_SESSION_CLOSED")
+                }
+                val opened = try {
+                    receiver.open(frame)
+                } catch (error: LanProtocolException) {
+                    stop(error.code)
+                    throw error
+                } finally {
+                    frame.destroy()
+                }
+                opened.use {
+                    val request = try {
+                        it.plaintext.decodeToString(throwOnInvalidSequence = true)
+                    } catch (error: CharacterCodingException) {
+                        stop("LAN_FRAME_INVALID")
+                        throw LanProtocolException(
+                            "LAN_FRAME_INVALID",
+                            "encrypted LAN request is not valid UTF-8",
+                            error,
+                        )
+                    }
+                    val result = adapter.dispatch(request)
+                    val response = result.response.encodeToByteArray()
+                    try {
+                        send(RESPONSE_FRAME_TYPE, response)
+                    } finally {
+                        response.fill(0)
+                    }
+                    if (result.closeSession) {
+                        stop("LAN_SESSION_REMOTE_CLOSED")
+                        return
+                    }
+                }
+            }
+        } finally {
+            adapter.close()
+            serving.set(false)
+        }
+    }
+
     @Synchronized
     override fun close() {
         stop("LAN_SESSION_STOPPED")
@@ -512,11 +599,26 @@ class LanOutboundSession private constructor(
         }
     }
 
+    private fun validateEnvironment() {
+        if (clock!!.now() >= expiresAt) {
+            stop("LAN_SESSION_EXPIRED")
+            throw LanProtocolException("LAN_SESSION_EXPIRED")
+        }
+        if (networkIdentity!!.current() != localInterface) {
+            stop("LAN_NETWORK_CHANGED")
+            throw LanProtocolException("LAN_NETWORK_CHANGED")
+        }
+    }
+
     private fun stop(code: String) {
         if (active.compareAndSet(true, false)) {
             stopCode = code
-            codec?.destroy()
-            codec = null
+            outboundCodec?.destroy()
+            outboundCodec = null
+            inboundReceiver?.close()
+            inboundReceiver = null
+            token?.close()
+            token = null
             socket?.closeQuietly()
             socket = null
             invitation?.close()
@@ -529,27 +631,47 @@ class LanOutboundSession private constructor(
             socket: LanSocketPort,
             invitation: LanInvitation,
             outboundKey: ByteArray,
+            inboundKey: ByteArray,
+            tokenBindingKey: ByteArray,
             transcriptHash: ByteArray,
             networkIdentity: LanNetworkIdentity,
             clock: LanClock,
             localInterface: LanLocalInterface,
             desktopFingerprint: String,
             expiresAt: Instant,
-        ): LanOutboundSession = LanOutboundSession(
-            socket = socket,
-            invitation = invitation,
-            codec = LanFrameCodec(
-                key = outboundKey,
+        ): LanOutboundSession {
+            val sessionToken = LanSessionToken.derive(
+                tokenBindingKey = tokenBindingKey,
                 transcriptHash = transcriptHash,
-                direction = LanFrameDirection.CLIENT_TO_DESKTOP,
-            ),
-            networkIdentity = networkIdentity,
-            clock = clock,
-            localInterface = localInterface,
-            desktopFingerprint = desktopFingerprint,
-            expiresAt = expiresAt,
-            stopCode = null,
-        )
+                invitationId = invitation.invitationId,
+                expiresAt = expiresAt,
+            )
+            return try {
+                LanOutboundSession(
+                    socket = socket,
+                    invitation = invitation,
+                    outboundCodec = LanFrameCodec(
+                        key = outboundKey,
+                        transcriptHash = transcriptHash,
+                        direction = LanFrameDirection.CLIENT_TO_DESKTOP,
+                    ),
+                    inboundReceiver = LanFrameReceiver(
+                        key = inboundKey,
+                        transcriptHash = transcriptHash,
+                    ),
+                    token = sessionToken,
+                    networkIdentity = networkIdentity,
+                    clock = clock,
+                    localInterface = localInterface,
+                    desktopFingerprint = desktopFingerprint,
+                    expiresAt = expiresAt,
+                    stopCode = null,
+                )
+            } catch (error: Exception) {
+                sessionToken.close()
+                throw error
+            }
+        }
 
         fun restoreAfterProcessDeath(
             desktopFingerprint: String,
@@ -557,7 +679,9 @@ class LanOutboundSession private constructor(
             expiresAt: Instant,
         ): LanOutboundSession = LanOutboundSession(
             socket = null,
-            codec = null,
+            outboundCodec = null,
+            inboundReceiver = null,
+            token = null,
             invitation = null,
             networkIdentity = null,
             clock = null,
@@ -566,6 +690,9 @@ class LanOutboundSession private constructor(
             expiresAt = expiresAt,
             stopCode = "LAN_PROCESS_RESTORED_RECONFIRM_REQUIRED",
         )
+
+        private const val READ_POLL_MILLIS = 250
+        private const val RESPONSE_FRAME_TYPE = "bridge.response"
     }
 }
 
