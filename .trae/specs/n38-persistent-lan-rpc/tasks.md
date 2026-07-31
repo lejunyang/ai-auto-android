@@ -8,7 +8,7 @@
 - [x] Task N38-RPC.6：实现持久 request/response 循环及切网、过期、关闭读中断
 - [x] Task N38-RPC.7：完成定向、App 全量、lint、构建、注释和差异验证
 - [x] Task N38-RPC.8：记录验收证据并创建单一职责提交
-- [ ] Task N38-RPC.9：与 Go N37 在真实跨实现 socket 上完成多轮 RPC、致命认证和关闭互操作
+- [x] Task N38-RPC.9：与 Go N37 在真实跨实现 socket 上完成多轮 RPC、致命认证和关闭互操作
 
 ## 依赖与波次
 

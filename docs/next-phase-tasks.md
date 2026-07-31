@@ -352,6 +352,15 @@ LAN token；认证违约、响应错配和 `session.close` 均失败关闭。CLI
 comments 已通过。该证据仍不能替代 Go listener 与 Android emulator 的真实 socket
 互操作、Windows 同 LAN 和防火墙矩阵，因此 N37 保持未勾选。
 
+**追加设备记录（Go/Kotlin 真实 socket 已通过，跨平台矩阵未完成）：**
+独立 change `n37-n38-cross-runtime-rpc` 在 N31 API 30、33、34 clean emulator
+上使用生产 Go listener/handshake/framer/`Session.Call` 与生产 Kotlin outbound
+session 完成真实 TCP 互操作。每个 API 的同一 socket 连续三次 `device.info` 后
+`session.close`，另一个独立 session 验证加密 `AUTH_INVALID` 回包和 Android
+致命关闭；最终设备、runtime、lease 和临时目录均为零。该证据闭合 Go/Kotlin
+真实 socket 缺口，但不替代 Windows 同 LAN、Windows 防火墙、真实 Wi-Fi/热点/VPN
+与切网矩阵，N37 继续保持未勾选。
+
 **失败清理：** 关闭 listener 和连接，清零临时私钥，撤销 invitation，删除二维码
 临时文件和防火墙测试规则。
 
@@ -395,6 +404,15 @@ assemble、lint 和中文注释门禁通过。当前未接入受测扫码 provid
 和对端断开均中断阻塞读取。强制定向 64/64、App 全量、lint、debug、
 AndroidTest、release、comments 和差异检查通过。Go/Kotlin 真实 socket 多轮 RPC、
 致命认证、deadline 与关闭互操作仍待执行，因此 N38 保持未勾选。
+
+**追加设备记录（API 30 crypto 兼容与真实 RPC 已通过）：** 首轮 API 30 设备证据
+发现 Android 11 不提供 `KeyPairGenerator("X25519")`，此前 JVM/API 33+ 测试未覆盖
+该生产阻塞。实现保持 N36 wire suite 不变：API 33/34 优先 JCA X25519，API 30 在
+generator/factory/agreement 缺失时使用 Tink 1.18 的 RFC 7748 字节 API；两条路径
+继续拒绝七个低阶点和全零 shared secret，并经双边 shared-secret 测试与 Go 真实
+握手验证一致。API 30、33、34 各通过多轮 `device.info`、`session.close` 和独立
+`AUTH_INVALID` session。相机扫码、可信系统时钟、切网、真机/OEM、真实无线网络
+和 Windows 防火墙仍未验收，N38 继续保持未勾选。
 
 **失败清理：** 关闭出站 socket，清零临时密钥和解析结果，撤销 session；不保留
 二维码图像。

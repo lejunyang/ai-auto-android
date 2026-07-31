@@ -4,12 +4,13 @@ package dev.aiauto.android.bridge.lan
  * 功能用途：按 N36 固定域分隔实现 canonical JSON、X25519、HKDF、双方确认和加密帧。
  */
 
+import com.google.crypto.tink.subtle.X25519 as TinkX25519
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
-import java.security.PrivateKey
+import java.security.NoSuchAlgorithmException
 import java.security.spec.X509EncodedKeySpec
 import java.util.Base64
 import javax.crypto.AEADBadTagException
@@ -51,13 +52,19 @@ class LanSessionKeys internal constructor(
 }
 
 class LanX25519KeyPair internal constructor(
-    internal val privateKey: PrivateKey,
+    internal val privateKey: LanX25519PrivateKey,
     val publicKey: ByteArray,
 ) {
     fun destroy() {
         publicKey.fill(0)
-        runCatching { (privateKey as? Destroyable)?.destroy() }
+        privateKey.destroy()
     }
+}
+
+internal interface LanX25519PrivateKey {
+    fun sharedSecret(peerPublicKey: ByteArray): ByteArray
+
+    fun destroy()
 }
 
 object LanBase64Url {
@@ -102,33 +109,61 @@ object PlatformX25519 {
         0x00,
     )
 
-    fun generate(): LanX25519KeyPair {
-        val keyPair = KeyPairGenerator.getInstance("X25519").generateKeyPair()
+    fun generate(): LanX25519KeyPair = generate(forcePortable = false)
+
+    internal fun generate(forcePortable: Boolean): LanX25519KeyPair {
+        if (forcePortable) return generatePortable()
+        return try {
+            generateJca()
+        } catch (_: NoSuchAlgorithmException) {
+            generatePortable()
+        }
+    }
+
+    private fun generateJca(): LanX25519KeyPair {
+        val generator = KeyPairGenerator.getInstance("X25519")
+        KeyFactory.getInstance("X25519")
+        KeyAgreement.getInstance("X25519")
+        val keyPair = generator.generateKeyPair()
         val encoded = keyPair.public.encoded
         if (encoded.size < 32) {
             throw LanProtocolException("LAN_EPHEMERAL_KEY_INVALID")
         }
         return LanX25519KeyPair(
-            privateKey = keyPair.private,
+            privateKey = JcaX25519PrivateKey(keyPair.private),
             publicKey = encoded.copyOfRange(encoded.size - 32, encoded.size),
         )
     }
 
-    fun sharedSecret(privateKey: PrivateKey, peerPublicKey: ByteArray): ByteArray {
+    private fun generatePortable(): LanX25519KeyPair {
+        val privateKey = TinkX25519.generatePrivateKey()
+        return try {
+            LanX25519KeyPair(
+                privateKey = PortableX25519PrivateKey(privateKey),
+                publicKey = TinkX25519.publicFromPrivate(privateKey),
+            )
+        } catch (error: Exception) {
+            privateKey.fill(0)
+            throw LanProtocolException(
+                "LAN_EPHEMERAL_KEY_INVALID",
+                "portable X25519 key generation failed",
+                error,
+            )
+        }
+    }
+
+    internal fun sharedSecret(
+        privateKey: LanX25519PrivateKey,
+        peerPublicKey: ByteArray,
+    ): ByteArray {
         if (peerPublicKey.size != 32) {
             throw LanProtocolException("LAN_EPHEMERAL_KEY_INVALID")
         }
         if (LanX25519PublicKeys.isLowOrder(peerPublicKey)) {
             throw LanProtocolException("LAN_EPHEMERAL_KEY_WEAK")
         }
-        val encoded = x509Prefix + peerPublicKey
         return try {
-            val peer = KeyFactory.getInstance("X25519")
-                .generatePublic(X509EncodedKeySpec(encoded))
-            val agreement = KeyAgreement.getInstance("X25519")
-            agreement.init(privateKey)
-            agreement.doPhase(peer, true)
-            agreement.generateSecret().also { secret ->
+            privateKey.sharedSecret(peerPublicKey).also { secret ->
                 if (secret.size != 32 || secret.all { it.toInt() == 0 }) {
                     secret.fill(0)
                     throw LanProtocolException("LAN_EPHEMERAL_KEY_WEAK")
@@ -142,8 +177,45 @@ object PlatformX25519 {
                 "X25519 peer key produced an invalid or all-zero shared secret",
                 error,
             )
-        } finally {
-            encoded.fill(0)
+        }
+    }
+
+    private class JcaX25519PrivateKey(
+        private var key: java.security.PrivateKey?,
+    ) : LanX25519PrivateKey {
+        override fun sharedSecret(peerPublicKey: ByteArray): ByteArray {
+            val encoded = x509Prefix + peerPublicKey
+            return try {
+                val peer = KeyFactory.getInstance("X25519")
+                    .generatePublic(X509EncodedKeySpec(encoded))
+                val agreement = KeyAgreement.getInstance("X25519")
+                agreement.init(checkNotNull(key) { "X25519 private key is destroyed" })
+                agreement.doPhase(peer, true)
+                agreement.generateSecret()
+            } finally {
+                encoded.fill(0)
+            }
+        }
+
+        override fun destroy() {
+            val current = key
+            key = null
+            runCatching { (current as? Destroyable)?.destroy() }
+        }
+    }
+
+    private class PortableX25519PrivateKey(
+        private var key: ByteArray?,
+    ) : LanX25519PrivateKey {
+        override fun sharedSecret(peerPublicKey: ByteArray): ByteArray =
+            TinkX25519.computeSharedSecret(
+                checkNotNull(key) { "X25519 private key is destroyed" },
+                peerPublicKey,
+            )
+
+        override fun destroy() {
+            key?.fill(0)
+            key = null
         }
     }
 }

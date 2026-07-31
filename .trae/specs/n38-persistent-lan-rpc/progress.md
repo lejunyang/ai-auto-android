@@ -58,3 +58,14 @@
   `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。
 - 提交、身份、trailer、集成和干净 worktree 状态已闭合；真实 Go/Kotlin socket
   多轮 RPC 继续保持未勾选，不以两端各自自动化证据代替。
+
+## Round 6
+
+- 独立 change `n37-n38-cross-runtime-rpc` 已在 API 30/33/34 N31 clean emulator
+  上完成真实 Go/Kotlin TCP socket 互操作。每个 API 先在同一 session 连续处理三次
+  `device.info` 与 `session.close`，再以独立 session 验证加密 `AUTH_INVALID`
+  response 和致命关闭。
+- API 30 首轮设备证据暴露 Android 11 缺少平台 X25519 provider；同一 RFC 7748
+  契约的 Tink fallback 修复后，API 30 portable 路径与 API 33/34 JCA 路径均和
+  Go 生产实现互操作。该证据不替代相机扫码、切网、真机/OEM 或 Windows 防火墙矩阵，
+  N38 路线图主任务仍保持未完成。

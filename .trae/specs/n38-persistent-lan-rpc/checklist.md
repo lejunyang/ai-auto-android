@@ -18,4 +18,4 @@
   `make comments` 与 `git diff --check` 通过
 - [x] 只修改允许目录，提交身份、信息和 trailer 符合约束
 - [x] 提交后 worktree 干净
-- [ ] Go N37 与 Android N38 的真实跨实现加密 socket 多轮 RPC 尚未完成
+- [x] Go N37 与 Android N38 的真实跨实现加密 socket 多轮 RPC 已完成

@@ -60,6 +60,8 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    // Android 11 缺少平台 X25519 provider；Tink 只作为同一 RFC 7748 字节契约的回退。
+    implementation(libs.tink)
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)

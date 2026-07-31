@@ -93,26 +93,55 @@ class LanCryptoVectorTest {
 
     @Test
     fun `platform X25519 rejects every declared low order point`() {
-        val ephemeral = PlatformX25519.generate()
-        try {
-            vector.getValue("lowOrderPublicKeys").jsonArray.forEach { element ->
-                val lowOrder = LanBase64Url.decode32(
-                    element.jsonObject.string("publicKey"),
-                )
-                try {
-                    assertTrue(lowOrder.any { it.toInt() != 0 })
+        listOf(false, true).forEach { forcePortable ->
+            val ephemeral = PlatformX25519.generate(forcePortable)
+            try {
+                vector.getValue("lowOrderPublicKeys").jsonArray.forEach { element ->
+                    val lowOrder = LanBase64Url.decode32(
+                        element.jsonObject.string("publicKey"),
+                    )
                     try {
-                        PlatformX25519.sharedSecret(ephemeral.privateKey, lowOrder)
-                        fail("${element.jsonObject.string("name")} should fail")
-                    } catch (error: LanProtocolException) {
-                        assertEquals("LAN_EPHEMERAL_KEY_WEAK", error.code)
+                        assertTrue(lowOrder.any { it.toInt() != 0 })
+                        try {
+                            PlatformX25519.sharedSecret(ephemeral.privateKey, lowOrder)
+                            fail("${element.jsonObject.string("name")} should fail")
+                        } catch (error: LanProtocolException) {
+                            assertEquals("LAN_EPHEMERAL_KEY_WEAK", error.code)
+                        }
+                    } finally {
+                        lowOrder.fill(0)
                     }
-                } finally {
-                    lowOrder.fill(0)
                 }
+            } finally {
+                ephemeral.destroy()
+            }
+        }
+    }
+
+    @Test
+    fun `portable X25519 fallback matches platform shared secret`() {
+        val platform = PlatformX25519.generate()
+        val portable = PlatformX25519.generate(forcePortable = true)
+        try {
+            val platformSecret = PlatformX25519.sharedSecret(
+                platform.privateKey,
+                portable.publicKey,
+            )
+            val portableSecret = PlatformX25519.sharedSecret(
+                portable.privateKey,
+                platform.publicKey,
+            )
+            try {
+                assertEquals(32, platformSecret.size)
+                assertTrue(platformSecret.contentEquals(portableSecret))
+                assertTrue(platformSecret.any { it.toInt() != 0 })
+            } finally {
+                platformSecret.fill(0)
+                portableSecret.fill(0)
             }
         } finally {
-            ephemeral.destroy()
+            platform.destroy()
+            portable.destroy()
         }
     }
 

@@ -34,3 +34,13 @@
   `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。
 - 原分支提交 `885c239` 的实现树已由集成提交等价包含。提交和集成状态已闭合，但
   Go/Kotlin 真实 socket 多轮 RPC 仍是独立未完成验收项，N37 主任务继续保持未完成。
+
+## Round 4
+
+- 独立 change `n37-n38-cross-runtime-rpc` 已在 API 30/33/34 N31 clean emulator
+  上完成生产 Go listener/session 与生产 Kotlin outbound session 的真实 TCP
+  互操作。每个 API 同一 socket 连续三次 `device.info` 后 `session.close`，另一个
+  独立 session 验证加密 `AUTH_INVALID` 回包后 Android 关闭 peer。
+- 该证据闭合本 change 的 Go/Kotlin 真实 socket 项，但不替代 Windows 同 LAN、
+  Windows 防火墙、真实 Wi-Fi/热点/VPN、切网和真机/OEM 矩阵；N37 路线图主任务仍
+  保持未完成。
