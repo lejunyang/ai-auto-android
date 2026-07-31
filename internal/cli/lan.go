@@ -33,6 +33,7 @@ type lanSession interface {
 	Capabilities() []string
 	Endpoint() lan.Endpoint
 	ExpiresAt() time.Time
+	Call(context.Context, string, any, any) error
 	Close() error
 }
 
@@ -90,6 +91,13 @@ type lanClosedResult struct {
 	Endpoint      lan.Endpoint `json:"endpoint"`
 	Capabilities  []string     `json:"capabilities"`
 	ExpiresAt     string       `json:"expiresAt"`
+}
+
+type lanRPCResult struct {
+	Phase     string          `json:"phase"`
+	Method    string          `json:"method"`
+	Iteration int             `json:"iteration"`
+	Result    json.RawMessage `json:"result"`
 }
 
 func (a *App) runLANCommand(
@@ -155,6 +163,8 @@ func (a *App) runLANListen(
 			"ttl",
 			"accept-timeout",
 			"port",
+			"rpc-method",
+			"rpc-count",
 		),
 		required: []string{"interface", "address"},
 	})
@@ -170,6 +180,13 @@ func (a *App) runLANListen(
 		return a.writeLANFailure(requestID, startedAt, err, compact)
 	}
 	port, err := parseLANPort(options["port"])
+	if err != nil {
+		return a.writeLANFailure(requestID, startedAt, err, compact)
+	}
+	rpcMethod, rpcCount, err := parseLANRPCProbe(
+		options["rpc-method"],
+		options["rpc-count"],
+	)
 	if err != nil {
 		return a.writeLANFailure(requestID, startedAt, err, compact)
 	}
@@ -246,12 +263,61 @@ func (a *App) runLANListen(
 	defer session.Close()
 	capabilities := session.Capabilities()
 	slices.Sort(capabilities)
+	endpoint := session.Endpoint()
+	expiresAt := session.ExpiresAt()
+	for iteration := 1; iteration <= rpcCount; iteration++ {
+		var result json.RawMessage
+		if err := session.Call(ctx, rpcMethod, map[string]any{}, &result); err != nil {
+			clear(result)
+			return a.writeLANFailure(requestID, startedAt, err, compact)
+		}
+		event := lanRPCResult{
+			Phase:     "rpc",
+			Method:    rpcMethod,
+			Iteration: iteration,
+			Result:    append(json.RawMessage(nil), result...),
+		}
+		clear(result)
+		if err := output.Write(
+			a.Stdout,
+			output.Success(requestID, startedAt, event),
+			compact,
+		); err != nil {
+			clear(event.Result)
+			return apperr.ExitInternal
+		}
+		clear(event.Result)
+	}
+	if rpcCount > 0 {
+		var closeResult struct {
+			Closed bool `json:"closed"`
+		}
+		if err := session.Call(
+			ctx,
+			"session.close",
+			map[string]any{},
+			&closeResult,
+		); err != nil {
+			return a.writeLANFailure(requestID, startedAt, err, compact)
+		}
+		if !closeResult.Closed {
+			return a.writeLANFailure(
+				requestID,
+				startedAt,
+				&lan.Error{
+					Code:    lan.CodeFrameInvalid,
+					Message: "LAN RPC peer did not confirm session close",
+				},
+				compact,
+			)
+		}
+	}
 	closed := lanClosedResult{
 		Phase:         "closed",
 		Authenticated: true,
-		Endpoint:      session.Endpoint(),
+		Endpoint:      endpoint,
 		Capabilities:  capabilities,
-		ExpiresAt:     session.ExpiresAt().UTC().Format(time.RFC3339),
+		ExpiresAt:     expiresAt.UTC().Format(time.RFC3339),
 	}
 	if err := session.Close(); err != nil {
 		return a.writeLANFailure(requestID, startedAt, err, compact)
@@ -351,6 +417,31 @@ func parseLANPort(raw string) (int, error) {
 		return 0, usageError("port must be between 1024 and 65535.")
 	}
 	return value, nil
+}
+
+func parseLANRPCProbe(method string, rawCount string) (string, int, error) {
+	if method == "" {
+		if rawCount != "" {
+			return "", 0, usageError(
+				"rpc-count requires rpc-method.",
+			)
+		}
+		return "", 0, nil
+	}
+	if method != "device.info" && method != "recording.list" {
+		return "", 0, usageError(
+			"rpc-method must be device.info or recording.list.",
+		)
+	}
+	count := 1
+	if rawCount != "" {
+		parsed, err := strconv.Atoi(rawCount)
+		if err != nil || parsed < 1 || parsed > 20 {
+			return "", 0, usageError("rpc-count must be between 1 and 20.")
+		}
+		count = parsed
+	}
+	return method, count, nil
 }
 
 func selectLANCandidate(

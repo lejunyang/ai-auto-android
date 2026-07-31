@@ -234,6 +234,90 @@ func TestLANListenClosesAuthenticatedSessionWithoutExposingToken(t *testing.T) {
 	}
 }
 
+func TestLANListenRunsBoundedReadOnlyRPCProbeBeforeClosing(t *testing.T) {
+	now := time.Date(2026, 7, 26, 2, 3, 4, 0, time.UTC)
+	session := &fakeLANSession{
+		capabilities: []string{
+			lan.CapabilityMutualConfirmation,
+			lan.CapabilityRPC,
+		},
+		endpoint: lan.Endpoint{
+			Host:        "192.168.50.12",
+			Family:      "ipv4",
+			Port:        47831,
+			InterfaceID: "if-7-en0",
+		},
+		expiresAt: now.Add(90 * time.Second),
+	}
+	pending := &fakeLANPending{
+		bundle:  fixedLANBundle(now),
+		session: session,
+	}
+	var stdout bytes.Buffer
+	app := lanTestApp(
+		&stdout,
+		&fakeLANStarter{pending: pending},
+		strings.NewReader(strings.Repeat("s", 128)),
+		nil,
+		now,
+	)
+
+	if exitCode := app.Run(context.Background(), []string{
+		"bridge", "lan", "listen",
+		"--interface", "if-7-en0",
+		"--address", "192.168.50.12",
+		"--rpc-method", "device.info",
+		"--rpc-count", "2",
+		"--json",
+	}); exitCode != 0 {
+		t.Fatalf("exit code = %d, output = %s", exitCode, stdout.String())
+	}
+	events := decodeLANEnvelopes(t, stdout.Bytes())
+	if len(events) != 4 {
+		t.Fatalf("event count = %d, want invitation + 2 RPC + closed", len(events))
+	}
+	for index := 1; index <= 2; index++ {
+		rpc := remarshalLANData[lanRPCResult](t, events[index].Data)
+		if rpc.Phase != "rpc" ||
+			rpc.Method != "device.info" ||
+			rpc.Iteration != index ||
+			!json.Valid(rpc.Result) {
+			t.Fatalf("RPC event[%d] = %#v", index, rpc)
+		}
+	}
+	if got := strings.Join(session.calls, ","); got != "device.info,device.info,session.close" {
+		t.Fatalf("RPC calls = %q", got)
+	}
+	if !session.closed || strings.Contains(stdout.String(), "lan-session-token") {
+		t.Fatalf("closed=%t output=%s", session.closed, stdout.String())
+	}
+}
+
+func TestLANListenRejectsArbitraryRPCMethodBeforeStartingListener(t *testing.T) {
+	starter := &fakeLANStarter{}
+	var stdout bytes.Buffer
+	app := lanTestApp(
+		&stdout,
+		starter,
+		strings.NewReader(strings.Repeat("s", 128)),
+		nil,
+		time.Date(2026, 7, 26, 2, 3, 4, 0, time.UTC),
+	)
+
+	if exitCode := app.Run(context.Background(), []string{
+		"bridge", "lan", "listen",
+		"--interface", "if-7-en0",
+		"--address", "192.168.50.12",
+		"--rpc-method", "action.execute",
+		"--json",
+	}); exitCode == 0 {
+		t.Fatalf("arbitrary RPC method unexpectedly succeeded: %s", stdout.String())
+	}
+	if starter.calls != 0 {
+		t.Fatalf("invalid RPC method started listener %d times", starter.calls)
+	}
+}
+
 func TestLANListenRejectsImplicitOrVPNSelectionBeforeStart(t *testing.T) {
 	tests := [][]string{
 		{
@@ -371,6 +455,8 @@ type fakeLANSession struct {
 	endpoint     lan.Endpoint
 	expiresAt    time.Time
 	closed       bool
+	calls        []string
+	callErr      error
 }
 
 func (session *fakeLANSession) Capabilities() []string {
@@ -383,6 +469,24 @@ func (session *fakeLANSession) Endpoint() lan.Endpoint {
 
 func (session *fakeLANSession) ExpiresAt() time.Time {
 	return session.expiresAt
+}
+
+func (session *fakeLANSession) Call(
+	_ context.Context,
+	method string,
+	_ any,
+	result any,
+) error {
+	session.calls = append(session.calls, method)
+	if session.callErr != nil {
+		return session.callErr
+	}
+	payload := []byte(`{"ok":true}`)
+	if method == "session.close" {
+		payload = []byte(`{"closed":true}`)
+		session.closed = true
+	}
+	return json.Unmarshal(payload, result)
 }
 
 func (session *fakeLANSession) Close() error {

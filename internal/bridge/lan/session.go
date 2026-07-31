@@ -16,6 +16,7 @@ import (
 
 // Session 是完成双方确认后的唯一 LAN transport，不包含 loopback Bridge token。
 type Session struct {
+	rpcMu        sync.Mutex
 	sendMu       sync.Mutex
 	recvMu       sync.Mutex
 	stateMu      sync.Mutex
