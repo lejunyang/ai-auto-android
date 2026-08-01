@@ -23,7 +23,6 @@ enum class CameraPermission {
 
 enum class ScannerAvailability {
     READY,
-    PERMISSION_REQUIRED,
     PERMISSION_DENIED,
     NO_CAMERA,
     PROVIDER_UNAVAILABLE,
@@ -58,7 +57,7 @@ data class LanPairingRestoreState(
 
 data class LanPairingUiState(
     val phase: LanPairingPhase = LanPairingPhase.INPUT,
-    val scannerAvailability: ScannerAvailability = ScannerAvailability.PERMISSION_REQUIRED,
+    val scannerAvailability: ScannerAvailability = ScannerAvailability.PROVIDER_UNAVAILABLE,
     val manualEntryAvailable: Boolean = true,
     val invitation: LanInvitationSummary? = null,
     val selectedCandidate: LanAddressCandidate? = null,
@@ -100,6 +99,17 @@ class LanPairingStateMachine(
     }
         private set
 
+    fun onScannerCapability(hardware: CameraHardware, providerAvailable: Boolean) {
+        state = state.copy(
+            scannerAvailability = when {
+                hardware == CameraHardware.ABSENT -> ScannerAvailability.NO_CAMERA
+                providerAvailable -> ScannerAvailability.READY
+                else -> ScannerAvailability.PROVIDER_UNAVAILABLE
+            },
+            manualEntryAvailable = true,
+        )
+    }
+
     fun onCameraCapability(
         hardware: CameraHardware,
         permission: CameraPermission,
@@ -109,15 +119,15 @@ class LanPairingStateMachine(
                 hardware == CameraHardware.ABSENT -> ScannerAvailability.NO_CAMERA
                 permission == CameraPermission.GRANTED -> ScannerAvailability.READY
                 permission == CameraPermission.DENIED -> ScannerAvailability.PERMISSION_DENIED
-                else -> ScannerAvailability.PERMISSION_REQUIRED
+                else -> ScannerAvailability.PROVIDER_UNAVAILABLE
             },
             manualEntryAvailable = true,
         )
     }
 
-    fun onScannerUnavailable() {
+    fun onScannerPermissionDenied() {
         state = state.copy(
-            scannerAvailability = ScannerAvailability.PROVIDER_UNAVAILABLE,
+            scannerAvailability = ScannerAvailability.PERMISSION_DENIED,
             manualEntryAvailable = true,
         )
     }

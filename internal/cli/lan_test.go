@@ -106,6 +106,11 @@ func TestLANListenStreamsFixedInvitationThenTimeoutWithoutSecrets(t *testing.T) 
 	if !json.Valid(invitation.InvitationJSON) {
 		t.Fatalf("invitation JSON is invalid: %q", invitation.InvitationJSON)
 	}
+	if invitation.QRFormat != lan.QRFormatTerminalUTF8 ||
+		invitation.QRText != "fixed-terminal-qr" ||
+		!invitation.QRGenerated {
+		t.Fatalf("terminal QR output = %#v", invitation)
+	}
 	if events[1].Error == nil || events[1].Error.Code != string(lan.CodeAcceptTimeout) {
 		t.Fatalf("timeout error = %#v", events[1].Error)
 	}
@@ -128,6 +133,27 @@ func TestLANListenStreamsFixedInvitationThenTimeoutWithoutSecrets(t *testing.T) 
 		starter.options.QRProvider != qr {
 		t.Fatalf("listener options = %#v", starter.options)
 	}
+}
+
+func TestDefaultAppInjectsBoundedTerminalQRProvider(t *testing.T) {
+	app := DefaultApp(strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{})
+	if app.LANQR == nil {
+		t.Fatal("DefaultApp did not inject the production QR provider")
+	}
+	representation, err := app.LANQR.Encode(
+		context.Background(),
+		[]byte(`{"kind":"ai-auto-lan-invitation"}`),
+	)
+	if err != nil {
+		t.Fatalf("production QR provider error = %v", err)
+	}
+	if representation.Format != lan.QRFormatTerminalUTF8 ||
+		!representation.Generated ||
+		len(representation.Data) == 0 ||
+		len(representation.Data) > lan.MaxTerminalQRBytes {
+		t.Fatalf("production QR representation = %#v", representation)
+	}
+	clear(representation.Data)
 }
 
 func TestLANListenClosesOnCancellationAndNetworkSwitch(t *testing.T) {
@@ -542,8 +568,9 @@ func fixedLANBundle(now time.Time) lan.InvitationBundle {
 		Payload:    payload,
 		ManualCode: "AIAUTO1-FIXED-MANUAL-CODE",
 		QR: lan.QRRepresentation{
-			Format:    "payload-only",
-			Generated: false,
+			Format:    lan.QRFormatTerminalUTF8,
+			Data:      []byte("fixed-terminal-qr"),
+			Generated: true,
 		},
 	}
 }

@@ -63,6 +63,7 @@ func DefaultApp(stdin io.Reader, stdout, stderr io.Writer) *App {
 		Stdout:       stdout,
 		Stderr:       stderr,
 		BridgeClient: bridge.NewClient(),
+		LANQR:        lan.NewTerminalQRProvider(),
 	}
 }
 

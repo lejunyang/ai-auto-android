@@ -9,6 +9,7 @@ import (
 	"encoding/base32"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"slices"
 	"strings"
@@ -35,6 +36,7 @@ type QRProvider interface {
 
 // InvitationOptions 固定 invitation 的接口、端口、TTL、能力和可注入测试源。
 type InvitationOptions struct {
+	Context      context.Context
 	Interface    NetworkInterface
 	Candidate    AddressCandidate
 	Port         int
@@ -232,10 +234,37 @@ func CreateInvitation(
 	manualCode := manualCodePrefix + base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(payload)
 	qr := QRRepresentation{Format: QRFormatPayloadOnly, Generated: false}
 	if options.QRProvider != nil {
-		qr, err = options.QRProvider.Encode(context.Background(), append([]byte(nil), payload...))
+		qrContext := options.Context
+		if qrContext == nil {
+			qrContext = context.Background()
+		}
+		providerPayload := append([]byte(nil), payload...)
+		qr, err = options.QRProvider.Encode(qrContext, providerPayload)
+		clear(providerPayload)
 		if err != nil {
-			clear(payload)
-			return InvitationBundle{}, nil, wrap(CodeInvitationSchemaInvalid, "QR provider rejected the invitation payload", err)
+			clear(qr.Data)
+			if ErrorCode(err) == CodeQRCapacityExceeded {
+				qr = QRRepresentation{
+					Format:    QRFormatPayloadOnly,
+					Generated: false,
+				}
+				err = nil
+			} else {
+				clear(payload)
+			}
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return InvitationBundle{}, nil, fail(
+					CodeCancelled,
+					"QR generation was cancelled",
+				)
+			}
+			if err != nil {
+				return InvitationBundle{}, nil, wrap(
+					CodeInvitationSchemaInvalid,
+					"QR provider rejected the invitation payload",
+					err,
+				)
+			}
 		}
 	}
 	cleanup = false

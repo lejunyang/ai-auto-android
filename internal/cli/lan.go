@@ -83,6 +83,7 @@ type lanInvitationResult struct {
 	ExpiresAt      string          `json:"expiresAt"`
 	QRGenerated    bool            `json:"qrGenerated"`
 	QRFormat       string          `json:"qrFormat"`
+	QRText         string          `json:"qrText,omitempty"`
 }
 
 type lanClosedResult struct {
@@ -240,6 +241,7 @@ func (a *App) runLANListen(
 		ExpiresAt:   bundle.Invitation.ExpiresAt,
 		QRGenerated: bundle.QR.Generated,
 		QRFormat:    bundle.QR.Format,
+		QRText:      string(bundle.QR.Data),
 	}
 	writeErr := output.Write(
 		a.Stdout,
@@ -247,6 +249,7 @@ func (a *App) runLANListen(
 		compact,
 	)
 	clear(invitationEvent.InvitationJSON)
+	invitationEvent.QRText = ""
 	if writeErr != nil {
 		return apperr.ExitInternal
 	}

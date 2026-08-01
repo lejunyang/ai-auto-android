@@ -57,7 +57,6 @@ class LanPairingViewModel(
     val uiState: StateFlow<LanPairingScreenState> = stateStore.asStateFlow()
 
     init {
-        machine.onScannerUnavailable()
         refreshInterfaces()
     }
 
@@ -80,6 +79,37 @@ class LanPairingViewModel(
         if (closed.get() || machine.state.stopAvailable) return
         machine.onScannedPayload(payload)
         refreshInterfaces()
+    }
+
+    @Synchronized
+    fun updateScannerCapability(
+        hardware: CameraHardware,
+        providerAvailable: Boolean,
+    ) {
+        if (closed.get()) return
+        machine.onScannerCapability(hardware, providerAvailable)
+        publish()
+    }
+
+    @Synchronized
+    fun onQrScanResult(result: LanQrScanResult) {
+        if (closed.get() || machine.state.stopAvailable) return
+        when (result) {
+            is LanQrScanResult.Success -> submitScannedInvitation(result.payload)
+            LanQrScanResult.PermissionDenied -> {
+                machine.onScannerPermissionDenied()
+                publish()
+            }
+            LanQrScanResult.Invalid -> {
+                machine.onFailure("LAN_INVITATION_SCHEMA_INVALID")
+                publish()
+            }
+            LanQrScanResult.ProviderFailed -> {
+                machine.onFailure("LAN_QR_PROVIDER_FAILED")
+                publish()
+            }
+            LanQrScanResult.Cancelled -> publish()
+        }
     }
 
     @Synchronized

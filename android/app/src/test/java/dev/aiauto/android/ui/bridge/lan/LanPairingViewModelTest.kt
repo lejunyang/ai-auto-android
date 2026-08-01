@@ -80,6 +80,50 @@ class LanPairingViewModelTest {
     }
 
     @Test
+    fun `scanner capability and result never connect before explicit confirmation`() {
+        val connector = FakeSessionLauncher()
+        val viewModel = viewModel(connector)
+
+        viewModel.updateScannerCapability(
+            hardware = CameraHardware.PRESENT,
+            providerAvailable = true,
+        )
+        assertEquals(
+            ScannerAvailability.READY,
+            viewModel.uiState.value.pairing.scannerAvailability,
+        )
+
+        viewModel.onQrScanResult(LanQrScanResult.Success(validPayload))
+
+        assertEquals(LanPairingPhase.REVIEW, viewModel.uiState.value.pairing.phase)
+        assertEquals(0, connector.attempts.get())
+        assertFalse(viewModel.uiState.value.toString().contains(validPayload))
+        assertFalse(viewModel.uiState.value.pairing.canRequestConnection)
+        viewModel.close()
+    }
+
+    @Test
+    fun `cancelled scanner keeps manual path and no camera is explicit`() {
+        val connector = FakeSessionLauncher()
+        val viewModel = viewModel(connector)
+        viewModel.updateScannerCapability(
+            hardware = CameraHardware.ABSENT,
+            providerAvailable = false,
+        )
+        assertEquals(
+            ScannerAvailability.NO_CAMERA,
+            viewModel.uiState.value.pairing.scannerAvailability,
+        )
+
+        viewModel.onQrScanResult(LanQrScanResult.Cancelled)
+
+        assertTrue(viewModel.uiState.value.pairing.manualEntryAvailable)
+        assertEquals(0, connector.attempts.get())
+        assertEquals(LanPairingPhase.INPUT, viewModel.uiState.value.pairing.phase)
+        viewModel.close()
+    }
+
+    @Test
     fun `explicit stop and close destroy active session and pending input`() {
         val connector = FakeSessionLauncher()
         val viewModel = viewModel(connector)

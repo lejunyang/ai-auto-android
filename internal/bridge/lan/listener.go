@@ -89,6 +89,7 @@ func StartListener(ctx context.Context, options ListenerOptions) (*PendingListen
 		return nil, err
 	}
 	bundle, privateKey, err := CreateInvitation(InvitationOptions{
+		Context:      ctx,
 		Interface:    options.Selected,
 		Candidate:    options.Candidate,
 		Port:         port,

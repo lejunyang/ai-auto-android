@@ -33,7 +33,7 @@ import dev.aiauto.android.bridge.lan.LanLocalInterface
 fun LanPairingScreen(
     state: LanPairingUiState,
     localInterfaces: List<LanLocalInterface>,
-    onRequestCameraPermission: () -> Unit,
+    onLaunchScanner: () -> Unit,
     onManualInvitation: (String) -> Unit,
     onSelectCandidate: (String, String) -> Unit,
     onSelectLocalInterface: (LanLocalInterface) -> Unit,
@@ -53,15 +53,15 @@ fun LanPairingScreen(
     ) {
         Text("LAN 桌面连接", style = MaterialTheme.typography.headlineSmall)
         Text(scannerStatusText(state.scannerAvailability))
-        if (state.scannerAvailability == ScannerAvailability.PERMISSION_REQUIRED) {
-            OutlinedButton(onClick = onRequestCameraPermission) {
-                Text("允许相机扫码")
+        if (state.scannerAvailability == ScannerAvailability.READY) {
+            OutlinedButton(onClick = onLaunchScanner) {
+                Text("打开受信扫码组件")
             }
         }
         OutlinedTextField(
             value = manualInvitation,
             onValueChange = {
-                manualInvitation = it.take(MAX_INVITATION_INPUT_CHARS)
+                manualInvitation = it.take(MAX_MANUAL_INVITATION_INPUT_CHARS)
             },
             label = { Text("手工邀请码") },
             modifier = Modifier.fillMaxWidth(),
@@ -158,12 +158,12 @@ private fun SelectionRow(
 }
 
 private fun scannerStatusText(availability: ScannerAvailability): String = when (availability) {
-    ScannerAvailability.READY -> "相机扫码可用，也可手工输入邀请码。"
-    ScannerAvailability.PERMISSION_REQUIRED -> "扫码需要相机权限；不授权仍可手工输入。"
-    ScannerAvailability.PERMISSION_DENIED -> "相机权限已拒绝，请改用手工邀请码。"
+    ScannerAvailability.READY -> "受信扫码组件可用；相机授权由该组件单独请求，也可手工输入。"
+    ScannerAvailability.PERMISSION_DENIED -> "扫码组件的相机权限已拒绝，请改用手工邀请码。"
     ScannerAvailability.NO_CAMERA -> "设备无可用相机，请使用手工邀请码。"
-    ScannerAvailability.PROVIDER_UNAVAILABLE -> "当前版本未接入受测扫码组件，请使用手工邀请码。"
+    ScannerAvailability.PROVIDER_UNAVAILABLE -> "未发现受信扫码组件，请使用手工邀请码。"
 }
 
-private const val MAX_INVITATION_INPUT_CHARS = 64 * 1024
+private const val MAX_MANUAL_INVITATION_INPUT_CHARS =
+    "AIAUTO1-".length + (64 * 1024 * 8 + 4) / 5
 private const val MAX_FINGERPRINT_INPUT_CHARS = 19

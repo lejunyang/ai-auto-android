@@ -4,6 +4,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- 配置用途：只发现受信 ZXing 扫码 Activity；本 App 不持有或绕过其相机权限。 -->
+    <queries>
+        <intent>
+            <action android:name="com.google.zxing.client.android.SCAN" />
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

@@ -81,6 +81,30 @@ func TestPendingListenerAcceptTimeoutClosesPortAndDestroysKey(t *testing.T) {
 	}
 }
 
+func TestStartListenerClosesBoundPortWhenQRContextIsCancelled(t *testing.T) {
+	source, selected := stableFakeNetwork()
+	binder := &capturingBlockingBinder{}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	pending, err := StartListener(ctx, ListenerOptions{
+		InterfaceSource: source,
+		Binder:          binder,
+		Selected:        selected,
+		Candidate:       selected.Candidates[0],
+		TTL:             30 * time.Second,
+		Capabilities:    []string{requiredConfirmation, requiredRPC},
+		Random:          bytes.NewReader(bytes.Repeat([]byte{0x48}, 256)),
+		QRProvider:      NewTerminalQRProvider(),
+	})
+	if pending != nil || ErrorCode(err) != CodeCancelled {
+		t.Fatalf("StartListener(cancelled) = %#v, %v", pending, err)
+	}
+	if binder.listener == nil || !binder.listener.isClosed() {
+		t.Fatal("cancelled QR generation did not close the bound listener")
+	}
+}
+
 func TestPendingListenerDetectsInterfaceChangeBeforeHandshake(t *testing.T) {
 	source, selected := stableFakeNetwork()
 	pending, err := StartListener(context.Background(), ListenerOptions{
@@ -261,6 +285,26 @@ func (listener *blockingListener) Close() error {
 
 func (listener *blockingListener) Addr() net.Addr {
 	return fakeAddr("127.0.0.1:47831")
+}
+
+func (listener *blockingListener) isClosed() bool {
+	listener.mu.Lock()
+	defer listener.mu.Unlock()
+	return listener.closed
+}
+
+type capturingBlockingBinder struct {
+	listener *blockingListener
+}
+
+func (binder *capturingBlockingBinder) Listen(
+	context.Context,
+	NetworkInterface,
+	AddressCandidate,
+	int,
+) (net.Listener, error) {
+	binder.listener = &blockingListener{}
+	return binder.listener, nil
 }
 
 type fakeAddr string

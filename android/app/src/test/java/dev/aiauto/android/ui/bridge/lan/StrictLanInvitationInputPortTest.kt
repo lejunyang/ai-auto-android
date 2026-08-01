@@ -56,7 +56,39 @@ class StrictLanInvitationInputPortTest {
         )
 
         assertFailure("LAN_FRAME_TOO_LARGE") {
-            port.parse(InvitationInputSource.MANUAL, "x".repeat(64 * 1024 + 1))
+            port.parse(
+                InvitationInputSource.MANUAL,
+                "AIAUTO1-${"A".repeat((64 * 1024 * 8 + 4) / 5 + 1)}",
+            )
+        }
+    }
+
+    @Test
+    fun `desktop manual code and scanned json use the same strict parser`() {
+        val port = StrictLanInvitationInputPort(
+            clock = LanClock { Instant.parse("2026-07-25T10:00:30Z") },
+        )
+        val manualCode = "AIAUTO1-${base32WithoutPadding(validPayload.encodeToByteArray())}"
+
+        val manualSummary = port.parse(InvitationInputSource.MANUAL, manualCode)
+        val scannedSummary = port.parse(InvitationInputSource.SCANNER, validPayload)
+
+        assertEquals(scannedSummary, manualSummary)
+        assertFalse(manualSummary.toString().contains(manualCode))
+        assertFalse(scannedSummary.toString().contains(validPayload))
+    }
+
+    @Test
+    fun `manual source keeps raw json compatibility while scanner rejects manual code`() {
+        val port = StrictLanInvitationInputPort(
+            clock = LanClock { Instant.parse("2026-07-25T10:00:30Z") },
+        )
+        val manualCode = "AIAUTO1-${base32WithoutPadding(validPayload.encodeToByteArray())}"
+
+        val manualSummary = port.parse(InvitationInputSource.MANUAL, validPayload)
+        assertEquals("8975-0256-F8CF-C56A", manualSummary.desktopFingerprint)
+        assertFailure("LAN_INVITATION_SCHEMA_INVALID") {
+            port.parse(InvitationInputSource.SCANNER, manualCode)
         }
     }
 
@@ -84,6 +116,8 @@ class StrictLanInvitationInputPortTest {
     }
 
     private companion object {
+        val BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".toCharArray()
+
         val REQUESTED_CAPABILITIES = listOf(
             "lan.bridge.mutual-confirmation.v1",
             "lan.bridge.rpc.v1",
@@ -97,6 +131,24 @@ class StrictLanInvitationInputPortTest {
                 }
                 .firstOrNull(File::isFile)
             requireNotNull(fixture) { "Unable to locate LAN invitation fixture" }.readText()
+        }
+
+        fun base32WithoutPadding(input: ByteArray): String {
+            val output = StringBuilder((input.size * 8 + 4) / 5)
+            var accumulator = 0
+            var bits = 0
+            input.forEach { value ->
+                accumulator = (accumulator shl 8) or (value.toInt() and 0xff)
+                bits += 8
+                while (bits >= 5) {
+                    bits -= 5
+                    output.append(BASE32_ALPHABET[(accumulator shr bits) and 0x1f])
+                }
+            }
+            if (bits > 0) {
+                output.append(BASE32_ALPHABET[(accumulator shl (5 - bits)) and 0x1f])
+            }
+            return output.toString()
         }
     }
 }

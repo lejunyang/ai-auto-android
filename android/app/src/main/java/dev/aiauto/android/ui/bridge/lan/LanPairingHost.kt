@@ -5,8 +5,13 @@ package dev.aiauto.android.ui.bridge.lan
  */
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import dev.aiauto.android.ui.components.ScreenScaffold
@@ -18,6 +23,21 @@ fun LanPairingHost(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scanner = remember(context) { AndroidLanQrScanner.discover(context) }
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        viewModel.onQrScanResult(
+            scanner?.parseResult(result) ?: LanQrScanResult.ProviderFailed,
+        )
+    }
+    LaunchedEffect(context, scanner) {
+        viewModel.updateScannerCapability(
+            hardware = AndroidLanQrScanner.cameraHardware(context),
+            providerAvailable = scanner != null,
+        )
+    }
 
     ScreenScaffold(
         title = "LAN 桌面连接",
@@ -26,7 +46,14 @@ fun LanPairingHost(
         LanPairingScreen(
             state = state.pairing,
             localInterfaces = state.localInterfaces,
-            onRequestCameraPermission = {},
+            onLaunchScanner = {
+                val launchResult = runCatching {
+                    launcher.launch(requireNotNull(scanner).createIntent())
+                }
+                if (launchResult.isFailure) {
+                    viewModel.onQrScanResult(LanQrScanResult.ProviderFailed)
+                }
+            },
             onManualInvitation = viewModel::submitManualInvitation,
             onSelectCandidate = viewModel::selectCandidate,
             onSelectLocalInterface = viewModel::selectLocalInterface,

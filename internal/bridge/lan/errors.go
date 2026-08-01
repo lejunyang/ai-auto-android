@@ -37,6 +37,7 @@ const (
 	CodeInterfaceAmbiguous   Code = "LAN_INTERFACE_AMBIGUOUS"
 	CodeInterfaceUnavailable Code = "LAN_INTERFACE_UNAVAILABLE"
 	CodeListenerBindFailed   Code = "LAN_LISTENER_BIND_FAILED"
+	CodeQRCapacityExceeded   Code = "LAN_QR_CAPACITY_EXCEEDED"
 	CodeAcceptTimeout        Code = "LAN_ACCEPT_TIMEOUT"
 	CodeConnectionClosed     Code = "LAN_CONNECTION_CLOSED"
 	CodeFrameInvalid         Code = "LAN_FRAME_INVALID"

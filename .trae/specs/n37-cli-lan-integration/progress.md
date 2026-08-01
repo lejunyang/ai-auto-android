@@ -52,3 +52,15 @@
   类型化 LAN CLI、早期无 ADB 分流、测试和 capability 窄导出。
 - 提交 author/committer 均为 `lejunyang <lejunyang@qq.com>`，消息含且仅含一次
   `Co-authored-by: TRAE CLI <noreply@bytedance.com>`；实现提交后 worktree 干净。
+
+## Round 5
+
+- 独立 change `n37-n38-qr-integration` 为生产 CLI 默认注入纯 Go、无 CGO 的固定
+  Version 28-L QR Model 2 provider，并通过 invitation 事件输出有界
+  `terminal-utf8-v1` representation；不调用外部命令、不打开 GUI、不创建二维码文件。
+- 仓库内 decoder 与 `/private/tmp` 独立 `gozxing` 均能精确还原 N36 payload；后者
+  实际确认 Version 28、EC L、1921 codewords。首轮跨实现 checksum 失败暴露并修正
+  alignment function map 后才记为通过。
+- QR 容量不足仅降级为 `payload-only`，不影响 `manualCode` 或 listener；取消和
+  provider 内部错误仍失败关闭。Go LAN 62 项、CLI 82 项、定向 race 及仓库全量门禁
+  通过。Windows 同 LAN、防火墙和真实 Wi-Fi/热点/VPN 矩阵仍未由本 change 验收。

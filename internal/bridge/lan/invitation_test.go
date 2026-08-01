@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -104,6 +105,72 @@ func TestCreateInvitationWithoutProviderReportsPayloadOnly(t *testing.T) {
 	}
 }
 
+func TestCreateInvitationKeepsManualCodeWhenQRCapacityIsExceeded(t *testing.T) {
+	selected := NetworkInterface{
+		ID:         "if-7-en0",
+		Name:       "en0",
+		Kind:       "wifi",
+		Candidates: privateCandidates("if-7-en0", "en0", "192.168.50.12"),
+	}
+	provider := &capturingQRProvider{
+		err: fail(CodeQRCapacityExceeded, "fixed capacity failure"),
+	}
+	bundle, privateKey, err := CreateInvitation(InvitationOptions{
+		Interface: selected,
+		Candidate: selected.Candidates[0],
+		Port:      47831,
+		TTL:       30 * time.Second,
+		Capabilities: []string{
+			requiredConfirmation,
+			requiredRPC,
+		},
+		Now:        func() time.Time { return time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC) },
+		Random:     bytes.NewReader(bytes.Repeat([]byte{0x25}, 128)),
+		QRProvider: provider,
+	})
+	if err != nil {
+		t.Fatalf("CreateInvitation() error = %v", err)
+	}
+	defer privateKey.Destroy()
+	if bundle.QR.Format != QRFormatPayloadOnly || bundle.QR.Generated ||
+		len(bundle.QR.Data) != 0 {
+		t.Fatalf("capacity fallback QR = %#v", bundle.QR)
+	}
+	decoded, err := DecodeManualInvitation(bundle.ManualCode)
+	if err != nil {
+		t.Fatalf("DecodeManualInvitation() error = %v", err)
+	}
+	defer clear(decoded)
+	if !bytes.Equal(decoded, bundle.Payload) {
+		t.Fatal("capacity fallback manual code did not preserve the payload")
+	}
+}
+
+func TestCreateInvitationFailsClosedOnUnexpectedQRProviderError(t *testing.T) {
+	selected := NetworkInterface{
+		ID:         "if-7-en0",
+		Name:       "en0",
+		Kind:       "wifi",
+		Candidates: privateCandidates("if-7-en0", "en0", "192.168.50.12"),
+	}
+	bundle, privateKey, err := CreateInvitation(InvitationOptions{
+		Interface: selected,
+		Candidate: selected.Candidates[0],
+		Port:      47831,
+		TTL:       30 * time.Second,
+		Capabilities: []string{
+			requiredConfirmation,
+			requiredRPC,
+		},
+		Now:        func() time.Time { return time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC) },
+		Random:     bytes.NewReader(bytes.Repeat([]byte{0x26}, 128)),
+		QRProvider: &capturingQRProvider{err: errors.New("unexpected encoder failure")},
+	})
+	if err == nil || privateKey != nil || len(bundle.Payload) != 0 {
+		t.Fatalf("CreateInvitation() = %#v, %#v, %v", bundle, privateKey, err)
+	}
+}
+
 func TestEphemeralPrivateKeyDestroyClearsControllableBytes(t *testing.T) {
 	key, err := NewEphemeralPrivateKey(bytes.NewReader(bytes.Repeat([]byte{0x35}, 64)))
 	if err != nil {
@@ -124,6 +191,7 @@ func TestEphemeralPrivateKeyDestroyClearsControllableBytes(t *testing.T) {
 type capturingQRProvider struct {
 	payload        []byte
 	representation QRRepresentation
+	err            error
 }
 
 func (provider *capturingQRProvider) Encode(
@@ -131,7 +199,7 @@ func (provider *capturingQRProvider) Encode(
 	payload []byte,
 ) (QRRepresentation, error) {
 	provider.payload = append([]byte(nil), payload...)
-	return provider.representation, nil
+	return provider.representation, provider.err
 }
 
 func assertInvitationContainsNoSecretFields(t *testing.T, payload []byte) {

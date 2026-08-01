@@ -52,3 +52,15 @@
   `Co-authored-by: TRAE CLI <noreply@bytedance.com>`；提交后 worktree 干净。
 - 提交前最终 App JVM 319/319、N38 定向 43/43、debug/release assemble、
   `lintDebug`、`make comments` 和 `git diff --check` 均通过。
+
+## Round 5
+
+- 独立 change `n37-n38-qr-integration` 接入精确受信的 ZXing 外部 scanner Activity；
+  启动使用显式 component 和固定 QR mode。App 明示相机硬件/provider 状态，但
+  `CAMERA` 由外部 provider 自行申请，本 App 不声明、不自动授权或绕过权限。
+- 扫码结果与桌面 `AIAUTO1-` 手工码复用 `StrictLanInvitationInputPort`，原始扫码
+  extras 在回调后删除，状态只保留安全摘要。扫码后仍要求候选地址、本地网卡和短指纹
+  三重确认，连接尝试数保持零直至用户明确操作。
+- Android LAN 42 项、LAN UI/scanner 25 项和 App JVM 总计 369 项通过；App 134 个
+  Gradle tasks、release 权限/DEX 静态审计及仓库全量门禁均通过。真实 scanner 安装、
+  相机授权拒绝、OEM 相机行为和真机 Wi-Fi 会话仍待人工验收。
