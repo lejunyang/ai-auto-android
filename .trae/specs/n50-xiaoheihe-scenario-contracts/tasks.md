@@ -7,7 +7,7 @@
 - [x] 实现 fail-closed validator、逐轮判定和统计重算
 - [x] 增加专用 schema-check、README 和固定 fake fixture
 - [x] 运行定向 Node/schema、N47 smoke、comments 与 diff-check
-- [ ] 审查允许范围、提交身份和 trailer 后提交
+- [x] 审查允许范围、提交身份和 trailer 后提交
 - [ ] 总计 10 轮真实设备场景保持未验收
 
 ## 依赖与边界

@@ -38,3 +38,11 @@
 - N47 离线 smoke 通过 Schema 检查与 59/59 测试；`make comments` 覆盖 441 个手写
   文件并通过 14 个检查器自测。允许目录内未发现 APK、截图、hierarchy、日志、压缩包、
   路径、secret、坐标、DOM/JavaScript 或可执行动作参数。
+
+## Round 4
+
+- 实现提交为 `562d012`（`test(lab): add xiaoheihe scenario contracts`），提交范围
+  仅含本 change spec 与 `test-lab/scenarios/xiaoheihe/`。
+- 实现提交 author 与 committer 均为 `lejunyang <lejunyang@qq.com>`；消息末尾
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>` 恰好一次。
+- 本轮不新增设备或真实 App 证据；真实 10 轮与 N50 路线图继续保持未完成。

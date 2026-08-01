@@ -15,6 +15,6 @@
 - [x] fixture 不计入真实十轮、真实兼容数或真实兼容率
 - [x] RED 与 GREEN 证据 append 到 progress
 - [x] 定向 Node/schema、N47 smoke、comments 与 diff-check 通过
-- [ ] 实现提交身份与唯一 trailer 正确
+- [x] 实现提交身份与唯一 trailer 正确
 - [ ] 真实 10 轮设备证据保持未验收
 - [ ] N50 路线图保持未勾选
