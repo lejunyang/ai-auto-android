@@ -62,3 +62,13 @@
 - `make comments` 覆盖 439 个手写文件与 14 个自测，`git diff --check` 通过。
   N47 concrete 五场景 provider、recording/visual 设备入口及八类 production residue
   provider 仍缺失，因此真实 N52 矩阵和主任务不得勾选。
+
+## Round 4
+
+- 实现提交为 `9f698a72f07fed8585057b5cd2761beb3a5683d9`
+  （`feat(test-lab): add production matrix ports`），仅包含本 change spec 与
+  `test-lab/matrix/local/`，`git show --check` 通过。
+- Author 与 Committer 均为 `lejunyang <lejunyang@qq.com>`；提交消息末尾
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>` 恰好一次。
+- 提交未修改 workflow、公共路线图、N47 runner/scripts、N48-N51、Android、Go、
+  SDK 或 cache，也未 push。真实设备矩阵仍未执行并保持未勾选。

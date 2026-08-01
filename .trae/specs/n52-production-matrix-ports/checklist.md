@@ -14,5 +14,5 @@
 - [x] 定向 fake 测试不实际运行 300 轮设备矩阵
 - [x] N52 Schema/21 项、N47/59 项、N34/49 项回归通过
 - [x] `make comments test verify build` 与 `git diff --check` 通过
-- [ ] Author/Committer 与 trailer 符合要求
+- [x] Author/Committer 与 trailer 符合要求
 - [ ] 真实 API 30/33/34 × 五场景 × 20 轮保持未验收
