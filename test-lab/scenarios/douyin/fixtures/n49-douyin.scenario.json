@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "1.0",
+  "scenarioId": "n49-douyin-public-browse-v1",
+  "manifest": {
+    "manifestId": "douyin-39.8.0-arm64.json",
+    "packageName": "com.ss.android.ugc.aweme",
+    "versionName": "39.8.0",
+    "versionCode": 390801,
+    "abi": "arm64-v8a",
+    "apkSha256": "863707c8bac6c18a33907c4c2292d7994b4be0bc38bde1f24b7370e34cfe0a42",
+    "signingCertificateSha256": "5182ae3b1b85337bb182cf24882449f84447ded18e296a747a9f6a0a2622512e"
+  },
+  "requiredRealRuns": 10,
+  "accountMode": "signed-out",
+  "sideEffectPolicy": "none",
+  "capabilities": [
+    {
+      "type": "observe-public-feed",
+      "policy": "observe-only"
+    },
+    {
+      "type": "vertical-swipe",
+      "policy": "fresh-content-change-required"
+    },
+    {
+      "type": "search-input",
+      "policy": "typed-n47-only"
+    },
+    {
+      "type": "page-navigation",
+      "policy": "typed-n47-only"
+    },
+    {
+      "type": "back",
+      "policy": "typed-n47-only"
+    },
+    {
+      "type": "home",
+      "policy": "typed-n47-only"
+    },
+    {
+      "type": "recents",
+      "policy": "typed-n47-only"
+    },
+    {
+      "type": "return-to-douyin",
+      "policy": "typed-n47-only"
+    },
+    {
+      "type": "long-press",
+      "policy": "unsupported-interaction-menu-risk"
+    }
+  ],
+  "protectedNodes": [
+    {
+      "type": "like",
+      "maxActionCommits": 0
+    },
+    {
+      "type": "comment",
+      "maxActionCommits": 0
+    },
+    {
+      "type": "follow",
+      "maxActionCommits": 0
+    },
+    {
+      "type": "send",
+      "maxActionCommits": 0
+    },
+    {
+      "type": "share",
+      "maxActionCommits": 0
+    },
+    {
+      "type": "favorite",
+      "maxActionCommits": 0
+    },
+    {
+      "type": "download",
+      "maxActionCommits": 0
+    }
+  ]
+}

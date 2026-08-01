@@ -1,0 +1,451 @@
+{
+  "schemaVersion": "1.0",
+  "reportId": "n49-douyin-fixture-contract-report",
+  "scenarioId": "n49-douyin-public-browse-v1",
+  "manifest": {
+    "manifestId": "douyin-39.8.0-arm64.json",
+    "packageName": "com.ss.android.ugc.aweme",
+    "versionName": "39.8.0",
+    "versionCode": 390801,
+    "abi": "arm64-v8a",
+    "apkSha256": "863707c8bac6c18a33907c4c2292d7994b4be0bc38bde1f24b7370e34cfe0a42",
+    "signingCertificateSha256": "5182ae3b1b85337bb182cf24882449f84447ded18e296a747a9f6a0a2622512e"
+  },
+  "requiredRealRuns": 10,
+  "runs": [
+    {
+      "runId": "fixture-douyin-content-change",
+      "iteration": 1,
+      "source": "fixture",
+      "apiLevel": 30,
+      "observationPackage": "com.ss.android.ugc.aweme",
+      "preObservationFresh": true,
+      "status": "passed",
+      "errorCode": null,
+      "classification": "content-change-verified",
+      "route": "semantic",
+      "actionType": "vertical-swipe",
+      "preObservationId": "observation-pre-1",
+      "postObservationId": "observation-post-1",
+      "preContentFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "postContentFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "actionCommits": 1,
+      "attempts": 1,
+      "retries": 0,
+      "protectedNodeCommits": {
+        "like": 0,
+        "comment": 0,
+        "follow": 0,
+        "send": 0,
+        "share": 0,
+        "favorite": 0,
+        "download": 0
+      },
+      "telemetry": {
+        "accountState": "signed-out",
+        "recommendationState": "dynamic-uncontrolled",
+        "personalizationAssessment": "unavailable-without-account"
+      },
+      "cleanup": {
+        "appDataCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "runId": "fixture-douyin-video-surface",
+      "iteration": 2,
+      "source": "fixture",
+      "apiLevel": 30,
+      "observationPackage": "com.ss.android.ugc.aweme",
+      "preObservationFresh": true,
+      "status": "blocked",
+      "errorCode": "VIDEO_SURFACE",
+      "classification": "video-surface",
+      "route": null,
+      "actionType": "observe",
+      "preObservationId": "observation-pre-2",
+      "postObservationId": null,
+      "preContentFingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "postContentFingerprint": null,
+      "actionCommits": 0,
+      "attempts": 0,
+      "retries": 0,
+      "protectedNodeCommits": {
+        "like": 0,
+        "comment": 0,
+        "follow": 0,
+        "send": 0,
+        "share": 0,
+        "favorite": 0,
+        "download": 0
+      },
+      "telemetry": {
+        "accountState": "signed-out",
+        "recommendationState": "dynamic-uncontrolled",
+        "personalizationAssessment": "unavailable-without-account"
+      },
+      "cleanup": {
+        "appDataCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "runId": "fixture-douyin-visual-only",
+      "iteration": 3,
+      "source": "fixture",
+      "apiLevel": 30,
+      "observationPackage": "com.ss.android.ugc.aweme",
+      "preObservationFresh": true,
+      "status": "blocked",
+      "errorCode": "VISUAL_ONLY",
+      "classification": "visual-only",
+      "route": "visual",
+      "actionType": "observe",
+      "preObservationId": "observation-pre-3",
+      "postObservationId": null,
+      "preContentFingerprint": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "postContentFingerprint": null,
+      "actionCommits": 0,
+      "attempts": 0,
+      "retries": 0,
+      "protectedNodeCommits": {
+        "like": 0,
+        "comment": 0,
+        "follow": 0,
+        "send": 0,
+        "share": 0,
+        "favorite": 0,
+        "download": 0
+      },
+      "telemetry": {
+        "accountState": "signed-out",
+        "recommendationState": "dynamic-uncontrolled",
+        "personalizationAssessment": "unavailable-without-account"
+      },
+      "cleanup": {
+        "appDataCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "runId": "fixture-douyin-login-wall",
+      "iteration": 4,
+      "source": "fixture",
+      "apiLevel": 30,
+      "observationPackage": "com.ss.android.ugc.aweme",
+      "preObservationFresh": true,
+      "status": "blocked",
+      "errorCode": "LOGIN_WALL",
+      "classification": "login-wall",
+      "route": null,
+      "actionType": "observe",
+      "preObservationId": "observation-pre-4",
+      "postObservationId": null,
+      "preContentFingerprint": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "postContentFingerprint": null,
+      "actionCommits": 0,
+      "attempts": 0,
+      "retries": 0,
+      "protectedNodeCommits": {
+        "like": 0,
+        "comment": 0,
+        "follow": 0,
+        "send": 0,
+        "share": 0,
+        "favorite": 0,
+        "download": 0
+      },
+      "telemetry": {
+        "accountState": "signed-out",
+        "recommendationState": "dynamic-uncontrolled",
+        "personalizationAssessment": "unavailable-without-account"
+      },
+      "cleanup": {
+        "appDataCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "runId": "fixture-douyin-advertisement",
+      "iteration": 5,
+      "source": "fixture",
+      "apiLevel": 30,
+      "observationPackage": "com.ss.android.ugc.aweme",
+      "preObservationFresh": true,
+      "status": "blocked",
+      "errorCode": "ADVERTISEMENT",
+      "classification": "advertisement",
+      "route": null,
+      "actionType": "observe",
+      "preObservationId": "observation-pre-5",
+      "postObservationId": null,
+      "preContentFingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "postContentFingerprint": null,
+      "actionCommits": 0,
+      "attempts": 0,
+      "retries": 0,
+      "protectedNodeCommits": {
+        "like": 0,
+        "comment": 0,
+        "follow": 0,
+        "send": 0,
+        "share": 0,
+        "favorite": 0,
+        "download": 0
+      },
+      "telemetry": {
+        "accountState": "signed-out",
+        "recommendationState": "dynamic-uncontrolled",
+        "personalizationAssessment": "unavailable-without-account"
+      },
+      "cleanup": {
+        "appDataCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "runId": "fixture-douyin-emulator-detected",
+      "iteration": 6,
+      "source": "fixture",
+      "apiLevel": 30,
+      "observationPackage": "com.ss.android.ugc.aweme",
+      "preObservationFresh": true,
+      "status": "blocked",
+      "errorCode": "EMULATOR_DETECTED",
+      "classification": "emulator-detected",
+      "route": null,
+      "actionType": "observe",
+      "preObservationId": "observation-pre-6",
+      "postObservationId": null,
+      "preContentFingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+      "postContentFingerprint": null,
+      "actionCommits": 0,
+      "attempts": 0,
+      "retries": 0,
+      "protectedNodeCommits": {
+        "like": 0,
+        "comment": 0,
+        "follow": 0,
+        "send": 0,
+        "share": 0,
+        "favorite": 0,
+        "download": 0
+      },
+      "telemetry": {
+        "accountState": "signed-out",
+        "recommendationState": "dynamic-uncontrolled",
+        "personalizationAssessment": "unavailable-without-account"
+      },
+      "cleanup": {
+        "appDataCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "runId": "fixture-douyin-api33-hierarchy",
+      "iteration": 7,
+      "source": "fixture",
+      "apiLevel": 33,
+      "observationPackage": "com.ss.android.ugc.aweme",
+      "preObservationFresh": true,
+      "status": "blocked",
+      "errorCode": "HIERARCHY_FAILURE_API33",
+      "classification": "hierarchy-failure-api33",
+      "route": null,
+      "actionType": "observe",
+      "preObservationId": "observation-pre-7",
+      "postObservationId": null,
+      "preContentFingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
+      "postContentFingerprint": null,
+      "actionCommits": 0,
+      "attempts": 0,
+      "retries": 0,
+      "protectedNodeCommits": {
+        "like": 0,
+        "comment": 0,
+        "follow": 0,
+        "send": 0,
+        "share": 0,
+        "favorite": 0,
+        "download": 0
+      },
+      "telemetry": {
+        "accountState": "signed-out",
+        "recommendationState": "dynamic-uncontrolled",
+        "personalizationAssessment": "unavailable-without-account"
+      },
+      "cleanup": {
+        "appDataCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "runId": "fixture-douyin-api34-hierarchy",
+      "iteration": 8,
+      "source": "fixture",
+      "apiLevel": 34,
+      "observationPackage": "com.ss.android.ugc.aweme",
+      "preObservationFresh": true,
+      "status": "blocked",
+      "errorCode": "HIERARCHY_FAILURE_API34",
+      "classification": "hierarchy-failure-api34",
+      "route": null,
+      "actionType": "observe",
+      "preObservationId": "observation-pre-8",
+      "postObservationId": null,
+      "preContentFingerprint": "3333333333333333333333333333333333333333333333333333333333333333",
+      "postContentFingerprint": null,
+      "actionCommits": 0,
+      "attempts": 0,
+      "retries": 0,
+      "protectedNodeCommits": {
+        "like": 0,
+        "comment": 0,
+        "follow": 0,
+        "send": 0,
+        "share": 0,
+        "favorite": 0,
+        "download": 0
+      },
+      "telemetry": {
+        "accountState": "signed-out",
+        "recommendationState": "dynamic-uncontrolled",
+        "personalizationAssessment": "unavailable-without-account"
+      },
+      "cleanup": {
+        "appDataCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "runId": "fixture-douyin-long-press",
+      "iteration": 9,
+      "source": "fixture",
+      "apiLevel": 30,
+      "observationPackage": "com.ss.android.ugc.aweme",
+      "preObservationFresh": true,
+      "status": "blocked",
+      "errorCode": "LONG_PRESS_UNSUPPORTED",
+      "classification": "long-press-unsupported",
+      "route": null,
+      "actionType": "long-press",
+      "preObservationId": "observation-pre-9",
+      "postObservationId": null,
+      "preContentFingerprint": "4444444444444444444444444444444444444444444444444444444444444444",
+      "postContentFingerprint": null,
+      "actionCommits": 0,
+      "attempts": 0,
+      "retries": 0,
+      "protectedNodeCommits": {
+        "like": 0,
+        "comment": 0,
+        "follow": 0,
+        "send": 0,
+        "share": 0,
+        "favorite": 0,
+        "download": 0
+      },
+      "telemetry": {
+        "accountState": "signed-out",
+        "recommendationState": "dynamic-uncontrolled",
+        "personalizationAssessment": "unavailable-without-account"
+      },
+      "cleanup": {
+        "appDataCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "runId": "fixture-douyin-unknown-commit",
+      "iteration": 10,
+      "source": "fixture",
+      "apiLevel": 30,
+      "observationPackage": "com.ss.android.ugc.aweme",
+      "preObservationFresh": true,
+      "status": "failed",
+      "errorCode": "ACTION_COMMIT_UNKNOWN",
+      "classification": "action-commit-unknown",
+      "route": "semantic",
+      "actionType": "vertical-swipe",
+      "preObservationId": "observation-pre-10",
+      "postObservationId": null,
+      "preContentFingerprint": "5555555555555555555555555555555555555555555555555555555555555555",
+      "postContentFingerprint": null,
+      "actionCommits": null,
+      "attempts": 1,
+      "retries": 0,
+      "protectedNodeCommits": {
+        "like": 0,
+        "comment": 0,
+        "follow": 0,
+        "send": 0,
+        "share": 0,
+        "favorite": 0,
+        "download": 0
+      },
+      "telemetry": {
+        "accountState": "signed-out",
+        "recommendationState": "dynamic-uncontrolled",
+        "personalizationAssessment": "unavailable-without-account"
+      },
+      "cleanup": {
+        "appDataCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    }
+  ],
+  "statistics": {
+    "totalRuns": 10,
+    "fixtureRuns": 10,
+    "realRuns": 0,
+    "completedRealRounds": 0,
+    "statusCounts": {
+      "passed": 1,
+      "failed": 1,
+      "blocked": 8
+    },
+    "classificationCounts": {
+      "content-change-verified": 1,
+      "video-surface": 1,
+      "visual-only": 1,
+      "login-wall": 1,
+      "advertisement": 1,
+      "emulator-detected": 1,
+      "hierarchy-failure-api33": 1,
+      "hierarchy-failure-api34": 1,
+      "long-press-unsupported": 1,
+      "action-commit-unknown": 1
+    },
+    "verifiedContentChanges": 1,
+    "unknownCommitRuns": 1,
+    "protectedNodeCommits": {
+      "like": 0,
+      "comment": 0,
+      "follow": 0,
+      "send": 0,
+      "share": 0,
+      "favorite": 0,
+      "download": 0
+    }
+  }
+}

@@ -1,0 +1,503 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiauto.dev/schema/test-lab/douyin/compatibility-report.schema.json",
+  "title": "N49 Douyin Safe Compatibility Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reportId",
+    "scenarioId",
+    "manifest",
+    "requiredRealRuns",
+    "runs",
+    "statistics"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "reportId": {
+      "$ref": "#/$defs/identifier"
+    },
+    "scenarioId": {
+      "const": "n49-douyin-public-browse-v1"
+    },
+    "manifest": {
+      "$ref": "#/$defs/manifest"
+    },
+    "requiredRealRuns": {
+      "const": 10
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/run"
+      }
+    },
+    "statistics": {
+      "$ref": "#/$defs/statistics"
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{1,126}[a-z0-9])$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifestId",
+        "packageName",
+        "versionName",
+        "versionCode",
+        "abi",
+        "apkSha256",
+        "signingCertificateSha256"
+      ],
+      "properties": {
+        "manifestId": {
+          "const": "douyin-39.8.0-arm64.json"
+        },
+        "packageName": {
+          "const": "com.ss.android.ugc.aweme"
+        },
+        "versionName": {
+          "const": "39.8.0"
+        },
+        "versionCode": {
+          "const": 390801
+        },
+        "abi": {
+          "const": "arm64-v8a"
+        },
+        "apkSha256": {
+          "const": "863707c8bac6c18a33907c4c2292d7994b4be0bc38bde1f24b7370e34cfe0a42"
+        },
+        "signingCertificateSha256": {
+          "const": "5182ae3b1b85337bb182cf24882449f84447ded18e296a747a9f6a0a2622512e"
+        }
+      }
+    },
+    "classification": {
+      "enum": [
+        "content-change-verified",
+        "video-surface",
+        "visual-only",
+        "login-wall",
+        "advertisement",
+        "emulator-detected",
+        "hierarchy-failure-api33",
+        "hierarchy-failure-api34",
+        "long-press-unsupported",
+        "action-commit-unknown"
+      ]
+    },
+    "protectedNodeCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "like",
+        "comment",
+        "follow",
+        "send",
+        "share",
+        "favorite",
+        "download"
+      ],
+      "properties": {
+        "like": {
+          "const": 0
+        },
+        "comment": {
+          "const": 0
+        },
+        "follow": {
+          "const": 0
+        },
+        "send": {
+          "const": 0
+        },
+        "share": {
+          "const": 0
+        },
+        "favorite": {
+          "const": 0
+        },
+        "download": {
+          "const": 0
+        }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accountState",
+        "recommendationState",
+        "personalizationAssessment"
+      ],
+      "properties": {
+        "accountState": {
+          "const": "signed-out"
+        },
+        "recommendationState": {
+          "const": "dynamic-uncontrolled"
+        },
+        "personalizationAssessment": {
+          "const": "unavailable-without-account"
+        }
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "appDataCleared",
+        "sessionCleared",
+        "artifactsCleared",
+        "snapshotRestored"
+      ],
+      "properties": {
+        "appDataCleared": {
+          "const": true
+        },
+        "sessionCleared": {
+          "const": true
+        },
+        "artifactsCleared": {
+          "const": true
+        },
+        "snapshotRestored": {
+          "const": true
+        }
+      }
+    },
+    "nullableIdentifier": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/identifier"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableSha256": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "iteration",
+        "source",
+        "apiLevel",
+        "observationPackage",
+        "preObservationFresh",
+        "status",
+        "errorCode",
+        "classification",
+        "route",
+        "actionType",
+        "preObservationId",
+        "postObservationId",
+        "preContentFingerprint",
+        "postContentFingerprint",
+        "actionCommits",
+        "attempts",
+        "retries",
+        "protectedNodeCommits",
+        "telemetry",
+        "cleanup"
+      ],
+      "properties": {
+        "runId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "iteration": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "source": {
+          "enum": [
+            "fixture",
+            "real"
+          ]
+        },
+        "apiLevel": {
+          "enum": [
+            30,
+            33,
+            34
+          ]
+        },
+        "observationPackage": {
+          "const": "com.ss.android.ugc.aweme"
+        },
+        "preObservationFresh": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "blocked"
+          ]
+        },
+        "errorCode": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 96,
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "classification": {
+          "$ref": "#/$defs/classification"
+        },
+        "route": {
+          "oneOf": [
+            {
+              "enum": [
+                "semantic",
+                "hybrid",
+                "visual"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actionType": {
+          "enum": [
+            "observe",
+            "vertical-swipe",
+            "search-input",
+            "page-navigation",
+            "back",
+            "home",
+            "recents",
+            "return-to-douyin",
+            "long-press"
+          ]
+        },
+        "preObservationId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "postObservationId": {
+          "$ref": "#/$defs/nullableIdentifier"
+        },
+        "preContentFingerprint": {
+          "$ref": "#/$defs/sha256"
+        },
+        "postContentFingerprint": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "actionCommits": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "retries": {
+          "const": 0
+        },
+        "protectedNodeCommits": {
+          "$ref": "#/$defs/protectedNodeCounts"
+        },
+        "telemetry": {
+          "$ref": "#/$defs/telemetry"
+        },
+        "cleanup": {
+          "$ref": "#/$defs/cleanup"
+        }
+      }
+    },
+    "statusCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "passed",
+        "failed",
+        "blocked"
+      ],
+      "properties": {
+        "passed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "classificationCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content-change-verified",
+        "video-surface",
+        "visual-only",
+        "login-wall",
+        "advertisement",
+        "emulator-detected",
+        "hierarchy-failure-api33",
+        "hierarchy-failure-api34",
+        "long-press-unsupported",
+        "action-commit-unknown"
+      ],
+      "properties": {
+        "content-change-verified": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "video-surface": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "visual-only": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "login-wall": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "advertisement": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "emulator-detected": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "hierarchy-failure-api33": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "hierarchy-failure-api34": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "long-press-unsupported": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "action-commit-unknown": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "totalRuns",
+        "fixtureRuns",
+        "realRuns",
+        "completedRealRounds",
+        "statusCounts",
+        "classificationCounts",
+        "verifiedContentChanges",
+        "unknownCommitRuns",
+        "protectedNodeCommits"
+      ],
+      "properties": {
+        "totalRuns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "fixtureRuns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "realRuns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "completedRealRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "statusCounts": {
+          "$ref": "#/$defs/statusCounts"
+        },
+        "classificationCounts": {
+          "$ref": "#/$defs/classificationCounts"
+        },
+        "verifiedContentChanges": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "unknownCommitRuns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "protectedNodeCommits": {
+          "$ref": "#/$defs/protectedNodeCounts"
+        }
+      }
+    }
+  }
+}

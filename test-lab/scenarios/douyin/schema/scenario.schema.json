@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiauto.dev/schema/test-lab/douyin/scenario.schema.json",
+  "title": "N49 Douyin Safe Compatibility Scenario",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "scenarioId",
+    "manifest",
+    "requiredRealRuns",
+    "accountMode",
+    "sideEffectPolicy",
+    "capabilities",
+    "protectedNodes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "scenarioId": {
+      "const": "n49-douyin-public-browse-v1"
+    },
+    "manifest": {
+      "$ref": "#/$defs/manifest"
+    },
+    "requiredRealRuns": {
+      "const": 10
+    },
+    "accountMode": {
+      "const": "signed-out"
+    },
+    "sideEffectPolicy": {
+      "const": "none"
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "$ref": "#/$defs/capability"
+      }
+    },
+    "protectedNodes": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "$ref": "#/$defs/protectedNode"
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifestId",
+        "packageName",
+        "versionName",
+        "versionCode",
+        "abi",
+        "apkSha256",
+        "signingCertificateSha256"
+      ],
+      "properties": {
+        "manifestId": {
+          "const": "douyin-39.8.0-arm64.json"
+        },
+        "packageName": {
+          "const": "com.ss.android.ugc.aweme"
+        },
+        "versionName": {
+          "const": "39.8.0"
+        },
+        "versionCode": {
+          "const": 390801
+        },
+        "abi": {
+          "const": "arm64-v8a"
+        },
+        "apkSha256": {
+          "const": "863707c8bac6c18a33907c4c2292d7994b4be0bc38bde1f24b7370e34cfe0a42"
+        },
+        "signingCertificateSha256": {
+          "const": "5182ae3b1b85337bb182cf24882449f84447ded18e296a747a9f6a0a2622512e"
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "policy"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "observe-public-feed",
+            "vertical-swipe",
+            "search-input",
+            "page-navigation",
+            "back",
+            "home",
+            "recents",
+            "return-to-douyin",
+            "long-press"
+          ]
+        },
+        "policy": {
+          "enum": [
+            "observe-only",
+            "fresh-content-change-required",
+            "typed-n47-only",
+            "unsupported-interaction-menu-risk"
+          ]
+        }
+      }
+    },
+    "protectedNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "maxActionCommits"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "like",
+            "comment",
+            "follow",
+            "send",
+            "share",
+            "favorite",
+            "download"
+          ]
+        },
+        "maxActionCommits": {
+          "const": 0
+        }
+      }
+    }
+  }
+}
