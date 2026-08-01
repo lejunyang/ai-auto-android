@@ -63,3 +63,18 @@
   失败关闭。production planner、typed Accessibility router/backend、
   `UserTouchMonitor` 和动作后 hierarchy 观察保持不变；失败轮仍由 finally 完成
   restore/stop，确认设备、runtime、lease、lock 与 N45 临时目录为零。
+
+## Round 5
+
+- host 固定 service 预置与回读均成功，但去掉 test-control `UiAutomation` 后，
+  Android instrumentation 默认抑制无障碍服务；API 30 首环境在动作前等待连接 15 秒
+  后以明确 `Enable Accessibility device test manually` 失败，并未再次出现
+  accessibility cache contention。该轮同样恢复、停止且确认零残留。
+- API 30 没有 `FLAG_DONT_USE_ACCESSIBILITY`，因此 test-control 继续以
+  `FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES` 连接 automation，仅用于启用并确认
+  固定 debug 服务；服务稳定后把 automation `eventTypes` 和 notification timeout
+  清零、回读确认静默，并在进入动作体前释放 `WRITE_SECURE_SETTINGS` shell identity。
+- finally 恢复阶段才短暂重新取得最小 shell permission；N45 production
+  `UserTouchMonitor` 仍接收 fixture 的语义事件，instrumentation automation 不再消费
+  accessibility events。host fake 9/9 与 AndroidTest 编译通过，设备效果待下一轮
+  API 30 矩阵验证。

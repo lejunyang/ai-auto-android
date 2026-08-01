@@ -55,6 +55,7 @@ class SecureAccessibilitySettings(
             Settings.Secure.ACCESSIBILITY_ENABLED,
         )
         automation.adoptShellPermissionIdentity(Manifest.permission.WRITE_SECURE_SETTINGS)
+        var shellIdentityAdopted = true
         var primaryFailure: Throwable? = null
         try {
             writeAccessibilityEnabled(expected, "0")
@@ -73,6 +74,9 @@ class SecureAccessibilitySettings(
                 componentName = enableIntent.componentName,
                 componentEnabled = true,
             )
+            quiesceAutomationAccessibility()
+            automation.dropShellPermissionIdentity()
+            shellIdentityAdopted = false
             return block()
         } catch (error: Throwable) {
             primaryFailure = error
@@ -81,6 +85,12 @@ class SecureAccessibilitySettings(
             var restoreFailure: Throwable? = null
             try {
                 N31EmulatorGate.validateUnchanged(expected, identityProvider())
+                if (!shellIdentityAdopted) {
+                    automation.adoptShellPermissionIdentity(
+                        Manifest.permission.WRITE_SECURE_SETTINGS,
+                    )
+                    shellIdentityAdopted = true
+                }
                 runCatching {
                     writeAccessibilityEnabled(expected, "0")
                 }.onFailure { error ->
@@ -119,7 +129,9 @@ class SecureAccessibilitySettings(
                     restoreFailure = error
                 }
             } finally {
-                automation.dropShellPermissionIdentity()
+                if (shellIdentityAdopted) {
+                    automation.dropShellPermissionIdentity()
+                }
             }
             restoreFailure?.let { error ->
                 if (primaryFailure != null) {
@@ -128,6 +140,21 @@ class SecureAccessibilitySettings(
                     throw error
                 }
             }
+        }
+    }
+
+    private fun quiesceAutomationAccessibility() {
+        /*
+         * API 30 没有 FLAG_DONT_USE_ACCESSIBILITY；保留 DONT_SUPPRESS 让测试服务在线，
+         * 但停止 UiAutomation 接收事件，避免它与被测服务争用同一 accessibility cache。
+         */
+        val quietInfo = automation.serviceInfo.apply {
+            eventTypes = 0
+            notificationTimeout = 0L
+        }
+        automation.serviceInfo = quietInfo
+        check(automation.serviceInfo.eventTypes == 0) {
+            "UiAutomation continued observing accessibility events"
         }
     }
 
