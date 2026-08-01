@@ -61,3 +61,14 @@
 - 本 change 未修改 Bridge、Go、protocol、N45/N51 spec、test-lab runner 或
   `docs/next-phase-tasks.md`。Bridge/N47 desktop visual port、production provider
   的外部授权调用方和 API 30/33/34 设备证据仍未接入；N47 主任务保持未勾选。
+
+## Round 4
+
+- 实现提交为 `04e3e34`（`feat(recording): require fresh visual replay rebind`）。
+  Author/Committer 均为 `lejunyang <lejunyang@qq.com>`，提交末尾恰好一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。
+- 提交包含 13 个文件，全部位于本 change spec、允许的 recording/replay/visual、
+  `RecordingHost.kt`、`RecordingViewModel.kt` 及对应 JVM 测试范围。提交后 worktree
+  干净；未修改其他并行 worktree。
+- 规格证据只确认本 change 的 fresh rebind 前置完成，不代表 Bridge/N47 desktop
+  port、production provider 外部调用方或任何设备命中已交付；N47 保持未勾选。

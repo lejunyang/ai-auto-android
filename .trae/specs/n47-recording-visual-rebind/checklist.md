@@ -13,4 +13,4 @@
 - [x] `:app:lintDebug`、`:app:assembleDebug`、comments 和 diff-check 通过
 - [ ] Bridge/N47 desktop port 与设备证据保持未完成
 - [ ] N47 路线图保持未勾选
-- [ ] 提交身份、唯一 trailer 与 worktree 状态正确
+- [x] 提交身份、唯一 trailer 与 worktree 状态正确

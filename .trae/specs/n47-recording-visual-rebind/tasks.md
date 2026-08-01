@@ -8,7 +8,7 @@
 - [x] 实现 N45 executor 对 fresh lease 的消费、重绑和动作后重新观察
 - [x] 接入 `RecordingHost`/`RecordingViewModel` production replay 组合
 - [x] 运行 Android JVM、lint、assemble、comments 与 diff-check
-- [ ] 审查允许范围并按单一职责提交
+- [x] 审查允许范围并按单一职责提交
 
 ## 依赖与边界
 
