@@ -9,4 +9,4 @@
 - [x] 每 profile 成功率不低于 95% 才勾选
 - [x] 最终设备/runtime/lease/temp 为零，报告权限为 0600
 - [x] 定向、Web fixture 构建、comments 与 diff-check 通过
-- [ ] 提交身份、trailer、集成和 worktree 清理正确
+- [x] 提交身份、trailer、集成和 worktree 清理正确
