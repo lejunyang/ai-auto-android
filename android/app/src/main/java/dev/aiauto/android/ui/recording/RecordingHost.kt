@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import dev.aiauto.android.R
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayAuthorizationProvider
 import dev.aiauto.android.ui.components.ScreenScaffold
 
 @Composable
@@ -32,6 +33,7 @@ fun RecordingHost(
     viewModel: RecordingViewModel,
     onBack: () -> Unit,
     observationProvider: RecordingEditorObservationProvider? = null,
+    visualReplayAuthorizationProvider: VisualReplayAuthorizationProvider? = null,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val recording = uiState.recording
@@ -81,7 +83,13 @@ fun RecordingHost(
                         onSecretChanged = { alias, value ->
                             secretValues[alias] = value.take(MAX_SECRET_INPUT_LENGTH)
                         },
-                        onReplay = { viewModel.replay(secretValues.toMap()) },
+                        onReplay = {
+                            viewModel.replay(
+                                secretValues = secretValues.toMap(),
+                                visualAuthorizationProvider =
+                                    visualReplayAuthorizationProvider,
+                            )
+                        },
                         onEdit = viewModel::openEditor,
                         onDelete = viewModel::deleteSelected,
                         onBack = viewModel::navigateBack,

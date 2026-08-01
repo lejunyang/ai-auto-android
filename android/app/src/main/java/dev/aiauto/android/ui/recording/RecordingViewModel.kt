@@ -21,6 +21,10 @@ import dev.aiauto.android.automation.recording.RecordingStatus
 import dev.aiauto.android.automation.recording.ReplayEngine
 import dev.aiauto.android.automation.recording.SecretResolver
 import dev.aiauto.android.automation.recording.ScriptEnvironmentProvider
+import dev.aiauto.android.automation.recording.replay.visual.AndroidVisualReplayActionExecutor
+import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualReplayExecutor
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayAuthorizationProvider
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayAuthorizationRegistry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -163,7 +167,10 @@ class RecordingViewModel(
         coordinator.select(id)
     }
 
-    fun replay(secretValues: Map<String, String>) {
+    fun replay(
+        secretValues: Map<String, String>,
+        visualAuthorizationProvider: VisualReplayAuthorizationProvider? = null,
+    ) {
         val script = mutableUiState.value.selectedScript ?: return
         val requiredRefs = requiredSecretRefs(script)
         if (!hasRequiredSecrets(requiredRefs, secretValues)) {
@@ -172,7 +179,11 @@ class RecordingViewModel(
         val replaySecrets = requiredRefs.associateWith { alias ->
             requireNotNull(secretValues[alias])
         }
-        coordinator.replay(script, replaySecrets)
+        coordinator.replay(
+            script = script,
+            secrets = replaySecrets,
+            visualAuthorizationProvider = visualAuthorizationProvider,
+        )
     }
 
     fun deleteSelected() {
@@ -241,6 +252,10 @@ class RecordingViewModel(
                             secretResolver = object : SecretResolver {
                                 override fun resolve(alias: String): String? = null
                             },
+                            explicitVisualReplay = ExplicitVisualReplayExecutor(
+                                authorizations = VisualReplayAuthorizationRegistry(),
+                                actions = AndroidVisualReplayActionExecutor,
+                            ),
                         ),
                     )
                     return RecordingViewModel(

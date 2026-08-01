@@ -14,6 +14,15 @@ import dev.aiauto.android.accessibility.model.UiNodeState
 import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualAction
 import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualReplayErrorCode
 import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualReplayResult
+import dev.aiauto.android.automation.recording.replay.visual.AuthorizedVisualReplayStepLease
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayAuthorizationProvider
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayAuthorizationRequest
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayRebindRequest
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayRunAuthorization
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayRunBinding
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayRunRequest
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayVerification
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayVerificationRequest
 import dev.aiauto.android.accessibility.model.ScreenPoint
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -286,6 +295,31 @@ class ReplayEngineTest {
     }
 
     @Test
+    fun `visual run port still requires a current authorization provider BitsUT`() {
+        val gateway = FakeGateway()
+        var calls = 0
+        val engine = ReplayEngine(
+            gateway = gateway,
+            secretResolver = secretResolver(null),
+            explicitVisualReplay = FakeVisualRunPort {
+                calls += 1
+                error("visual port must not run without current authorization")
+            },
+            time = FakeTime(),
+        )
+
+        val report = engine.replay(visualScript())
+
+        assertFalse(report.succeeded)
+        assertEquals(
+            ExplicitVisualReplayErrorCode.VISUAL_REBIND_REQUIRED.name,
+            report.steps.single().errorCode,
+        )
+        assertEquals(0, calls)
+        assertTrue(gateway.executed.isEmpty())
+    }
+
+    @Test
     fun `visual provenance uses explicit port without semantic gateway BitsUT`() {
         val gateway = FakeGateway()
         var calls = 0
@@ -293,7 +327,7 @@ class ReplayEngineTest {
         val engine = ReplayEngine(
             gateway = gateway,
             secretResolver = secretResolver(null),
-            explicitVisualReplay = ExplicitVisualReplayPort {
+            explicitVisualReplay = FakeVisualRunPort {
                 calls += 1
                 ExplicitVisualReplayResult.Success(
                     action = ExplicitVisualAction.Tap(ScreenPoint(100, 200)),
@@ -303,7 +337,10 @@ class ReplayEngineTest {
             time = visualTime,
         )
 
-        val report = engine.replay(visualScript())
+        val report = engine.replay(
+            visualScript(),
+            visualAuthorizationProvider = visualAuthorizationProvider(),
+        )
 
         assertTrue(report.succeeded)
         assertEquals(1, calls)
@@ -319,7 +356,7 @@ class ReplayEngineTest {
         val engine = ReplayEngine(
             gateway = gateway,
             secretResolver = secretResolver(null),
-            explicitVisualReplay = ExplicitVisualReplayPort {
+            explicitVisualReplay = FakeVisualRunPort {
                 calls += 1
                 ExplicitVisualReplayResult.Failure(
                     code = ExplicitVisualReplayErrorCode.POST_ACTION_VERIFICATION_FAILED,
@@ -334,6 +371,7 @@ class ReplayEngineTest {
             visualScript(
                 retry = RetryPolicy(maxAttempts = 5, backoffMs = 100),
             ),
+            visualAuthorizationProvider = visualAuthorizationProvider(),
         )
 
         assertFalse(report.succeeded)
@@ -352,7 +390,7 @@ class ReplayEngineTest {
         val engine = ReplayEngine(
             gateway = gateway,
             secretResolver = secretResolver(null),
-            explicitVisualReplay = ExplicitVisualReplayPort {
+            explicitVisualReplay = FakeVisualRunPort {
                 calls += 1
                 error("visual port must not run")
             },
@@ -373,7 +411,10 @@ class ReplayEngineTest {
             )
         }
 
-        val report = engine.replay(script)
+        val report = engine.replay(
+            script,
+            visualAuthorizationProvider = visualAuthorizationProvider(),
+        )
 
         assertFalse(report.succeeded)
         assertEquals("CONDITION_TIMEOUT", report.steps.single().errorCode)
@@ -390,7 +431,7 @@ class ReplayEngineTest {
         val engine = ReplayEngine(
             gateway = gateway,
             secretResolver = secretResolver(null),
-            explicitVisualReplay = ExplicitVisualReplayPort {
+            explicitVisualReplay = FakeVisualRunPort {
                 calls += 1
                 ExplicitVisualReplayResult.Success(
                     action = ExplicitVisualAction.Tap(ScreenPoint(100, 200)),
@@ -416,7 +457,10 @@ class ReplayEngineTest {
             )
         }
 
-        val report = engine.replay(script)
+        val report = engine.replay(
+            script,
+            visualAuthorizationProvider = visualAuthorizationProvider(),
+        )
 
         assertFalse(report.succeeded)
         assertEquals("CONDITION_TIMEOUT", report.steps.single().errorCode)
@@ -495,6 +539,20 @@ class ReplayEngineTest {
         ),
     )
 
+    private fun visualAuthorizationProvider() = VisualReplayAuthorizationProvider { request ->
+        FakeVisualRunAuthorization(
+            VisualReplayRunBinding(
+                runId = request.runId,
+                scriptId = request.scriptId,
+                scriptRevision = request.scriptRevision,
+                deviceSerial = "emulator-5554",
+                authorizedAtMs = request.requestedAtMs,
+                expiresAtMs = request.requestedAtMs + 10_000,
+                visualStepIds = request.visualStepIds,
+            ),
+        )
+    }
+
     private fun clickAction(node: UiNodeSnapshot): RecordedAction =
         requireNotNull(
             RecordingEventMapper().map(
@@ -572,5 +630,56 @@ class ReplayEngineTest {
             sleeps += ms
             now += ms
         }
+    }
+
+    /** 测试端口只验证 ReplayEngine 的运行授权生命周期，不替代 production rebind。 */
+    private class FakeVisualRunPort(
+        private val replayBlock: (dev.aiauto.android.automation.recording.replay.visual.VisualReplayRequest) ->
+            ExplicitVisualReplayResult,
+    ) : ExplicitVisualReplayPort, VisualReplayRunPort {
+        private var authorization: VisualReplayRunAuthorization? = null
+
+        override fun beginRun(
+            request: VisualReplayRunRequest,
+            authorizationRequest: VisualReplayAuthorizationRequest,
+            authorization: VisualReplayRunAuthorization?,
+        ): Boolean {
+            if (
+                authorization == null ||
+                authorization.binding.runId != request.runId ||
+                authorization.binding.scriptId != authorizationRequest.scriptId
+            ) {
+                authorization?.close()
+                return false
+            }
+            this.authorization = authorization
+            return true
+        }
+
+        override fun replay(
+            request: dev.aiauto.android.automation.recording.replay.visual.VisualReplayRequest,
+        ): ExplicitVisualReplayResult = replayBlock(request)
+
+        override fun endRun() {
+            authorization?.close()
+            authorization = null
+        }
+    }
+
+    private class FakeVisualRunAuthorization(
+        override val binding: VisualReplayRunBinding,
+    ) : VisualReplayRunAuthorization {
+        override fun currentDeviceSerial(): String = binding.deviceSerial
+
+        override fun acquire(
+            request: VisualReplayRebindRequest,
+        ): AuthorizedVisualReplayStepLease? = null
+
+        override fun verifyAfter(
+            lease: AuthorizedVisualReplayStepLease,
+            request: VisualReplayVerificationRequest,
+        ): VisualReplayVerification? = null
+
+        override fun close() = Unit
     }
 }

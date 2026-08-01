@@ -18,7 +18,12 @@ import dev.aiauto.android.bridge.AccessibilityCommandJsonParser
 import dev.aiauto.android.bridge.BridgeException
 import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualReplayErrorCode
 import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualReplayResult
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayAuthorizationProvider
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayAuthorizationRequest
 import dev.aiauto.android.automation.recording.replay.visual.VisualReplayRequest
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayRunAuthorization
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayRunRequest
+import java.util.UUID
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -44,6 +49,16 @@ interface ReplayTime {
 
 fun interface ExplicitVisualReplayPort {
     fun replay(request: VisualReplayRequest): ExplicitVisualReplayResult
+}
+
+interface VisualReplayRunPort {
+    fun beginRun(
+        request: VisualReplayRunRequest,
+        authorizationRequest: VisualReplayAuthorizationRequest,
+        authorization: VisualReplayRunAuthorization?,
+    ): Boolean
+
+    fun endRun()
 }
 
 object SystemReplayTime : ReplayTime {
@@ -236,28 +251,72 @@ class ReplayEngine(
         selectorMatcher = selectorMatcher,
         time = time,
     ),
+    private val runIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) {
     fun replay(
         script: AutomationScript,
         secrets: Map<String, String> = emptyMap(),
+        visualAuthorizationProvider: VisualReplayAuthorizationProvider? = null,
     ): ReplayReport {
         require(script.schemaVersion == RECORDING_SCHEMA_VERSION)
         val startedAt = time.nowMs()
         val results = mutableListOf<ReplayStepResult>()
         var requiresIntervention = false
         val targetPackages = script.targetPackages.toSet()
-
-        for (step in script.steps) {
-            val result = replayStep(
-                step = step,
-                environment = script.environment,
-                targetPackages = targetPackages,
-                secrets = secrets,
+        val visualStepIds = script.steps
+            .filter { it.provenance in EXPLICIT_VISUAL_PROVENANCE }
+            .map(RecordedStep::id)
+            .toSet()
+        val visualRun = visualStepIds.takeIf(Set<String>::isNotEmpty)?.let {
+            VisualReplayRunRequest(
+                runId = runIdFactory(),
+                scriptId = script.id,
+                scriptRevision = script.revision,
+                startedAtMs = startedAt,
+                visualStepIds = visualStepIds,
             )
-            results += result
-            if (result.status == ReplayStepStatus.FAILED) {
-                requiresIntervention = step.failurePolicy == "requestIntervention"
-                break
+        }
+        val runPort = explicitVisualReplay as? VisualReplayRunPort
+        val visualRunReady = visualRun?.let { request ->
+            val authorizationRequest = VisualReplayAuthorizationRequest(
+                runId = request.runId,
+                scriptId = request.scriptId,
+                scriptRevision = request.scriptRevision,
+                requestedAtMs = request.startedAtMs,
+                visualStepIds = request.visualStepIds,
+            )
+            val authorization = try {
+                visualAuthorizationProvider?.authorize(authorizationRequest)
+            } catch (_: Throwable) {
+                null
+            }
+            if (runPort == null) {
+                runCatching { authorization?.close() }
+                false
+            } else {
+                runPort.beginRun(request, authorizationRequest, authorization)
+            }
+        } ?: true
+
+        try {
+            for (step in script.steps) {
+                val result = replayStep(
+                    step = step,
+                    environment = script.environment,
+                    targetPackages = targetPackages,
+                    secrets = secrets,
+                    visualRun = visualRun,
+                    visualRunReady = visualRunReady,
+                )
+                results += result
+                if (result.status == ReplayStepStatus.FAILED) {
+                    requiresIntervention = step.failurePolicy == "requestIntervention"
+                    break
+                }
+            }
+        } finally {
+            if (visualRun != null) {
+                runPort?.endRun()
             }
         }
         return ReplayReport(
@@ -276,6 +335,8 @@ class ReplayEngine(
         environment: ScriptEnvironment?,
         targetPackages: Set<String>,
         secrets: Map<String, String>,
+        visualRun: VisualReplayRunRequest?,
+        visualRunReady: Boolean,
     ): ReplayStepResult {
         val resolved = resolveSecret(step.action, secrets) ?: return failure(
             step = step,
@@ -315,6 +376,20 @@ class ReplayEngine(
             }
         }
         if (step.provenance in EXPLICIT_VISUAL_PROVENANCE) {
+            val port = explicitVisualReplay ?: return failure(
+                step = step,
+                attempts = 0,
+                code = ExplicitVisualReplayErrorCode.VISUAL_REPLAY_UNAVAILABLE.name,
+                message = "Explicit visual replay is unavailable",
+            )
+            if (!visualRunReady || visualRun == null) {
+                return failure(
+                    step = step,
+                    attempts = 0,
+                    code = ExplicitVisualReplayErrorCode.VISUAL_REBIND_REQUIRED.name,
+                    message = "Fresh visual replay authorization is required",
+                )
+            }
             step.waitBefore?.let { predicate ->
                 when (val waited = waiter.await(predicate, targetPackages)) {
                     is AccessibilityResult.Failure -> return failure(
@@ -334,12 +409,6 @@ class ReplayEngine(
                     }
                 }
             }
-            val port = explicitVisualReplay ?: return failure(
-                step = step,
-                attempts = 0,
-                code = ExplicitVisualReplayErrorCode.VISUAL_REPLAY_UNAVAILABLE.name,
-                message = "Explicit visual replay is unavailable",
-            )
             val replayEnvironment = environment ?: return failure(
                 step = step,
                 attempts = 0,
@@ -352,6 +421,7 @@ class ReplayEngine(
                         step = step.copy(action = resolved),
                         environment = replayEnvironment,
                         targetPackages = targetPackages,
+                        run = visualRun,
                     ),
                 )
             ) {
@@ -386,7 +456,7 @@ class ReplayEngine(
 
                 is ExplicitVisualReplayResult.Failure -> failure(
                     step = step,
-                    attempts = if (visual.actionCommitCount > 0) 1 else 0,
+                    attempts = if (visual.actionCommitCount == 0) 0 else 1,
                     code = visual.code.name,
                     message = visual.message,
                 )

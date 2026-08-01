@@ -5,11 +5,15 @@ package dev.aiauto.android.automation.recording.replay.visual
  */
 
 import dev.aiauto.android.accessibility.model.AccessibilityResult
+import dev.aiauto.android.accessibility.AccessibilityRuntime
+import dev.aiauto.android.accessibility.model.AccessibilityCommand
 import dev.aiauto.android.accessibility.model.ActionExecution
 import dev.aiauto.android.accessibility.model.ScreenPoint
+import dev.aiauto.android.automation.recording.ExplicitVisualReplayPort
 import dev.aiauto.android.automation.recording.RecordedStep
 import dev.aiauto.android.automation.recording.RecordingProvenance
 import dev.aiauto.android.automation.recording.ScriptEnvironment
+import dev.aiauto.android.automation.recording.VisualReplayRunPort
 import dev.aiauto.android.observe.visual.NormalizedPoint
 import dev.aiauto.android.observe.visual.PixelBounds
 import dev.aiauto.android.observe.visual.VisualCandidate
@@ -73,6 +77,42 @@ fun interface VisualReplayActionExecutor {
     fun execute(action: ExplicitVisualAction): AccessibilityResult<ActionExecution>
 }
 
+fun interface BoundVisualReplayActionExecutor {
+    fun execute(
+        action: ExplicitVisualAction,
+        expectedPackage: String,
+    ): AccessibilityResult<ActionExecution>
+}
+
+/** production 动作端口只把已授权 N45 动作收窄为绑定目标包的 Accessibility 命令。 */
+object AndroidVisualReplayActionExecutor : BoundVisualReplayActionExecutor {
+    override fun execute(
+        action: ExplicitVisualAction,
+        expectedPackage: String,
+    ): AccessibilityResult<ActionExecution> = AccessibilityRuntime.execute(
+        command = when (action) {
+            is ExplicitVisualAction.Tap -> AccessibilityCommand.Tap(
+                point = action.point,
+                expectedPackage = expectedPackage,
+            )
+
+            is ExplicitVisualAction.LongClick -> AccessibilityCommand.Tap(
+                point = action.point,
+                durationMs = action.durationMs,
+                expectedPackage = expectedPackage,
+            )
+
+            is ExplicitVisualAction.Swipe -> AccessibilityCommand.Swipe(
+                start = action.start,
+                end = action.end,
+                durationMs = action.durationMs,
+                expectedPackage = expectedPackage,
+            )
+        },
+        expectedPackage = expectedPackage,
+    )
+}
+
 data class VisualReplayVerificationRequest(
     val sourceObservationId: String,
     val action: ExplicitVisualAction,
@@ -81,6 +121,7 @@ data class VisualReplayVerificationRequest(
 
 data class VisualReplayVerification(
     val sourceObservationId: String,
+    val deviceSerial: String? = null,
     val foregroundPackage: String,
     val naturalWidth: Int,
     val naturalHeight: Int,
@@ -89,6 +130,8 @@ data class VisualReplayVerification(
     val secureWindow: Boolean,
     val observedAtMs: Long,
     val stateChanged: Boolean,
+    val windowBounds: PixelBounds? = null,
+    val systemBars: ReplayInsets? = null,
 )
 
 fun interface VisualReplayVerifier {
@@ -99,6 +142,7 @@ data class VisualReplayRequest(
     val step: RecordedStep,
     val environment: ScriptEnvironment,
     val targetPackages: Set<String>,
+    val run: VisualReplayRunRequest? = null,
 )
 
 data class PreparedVisualReplay(
@@ -118,6 +162,8 @@ sealed interface VisualReplayPreparationResult {
 
 enum class ExplicitVisualReplayErrorCode {
     VISUAL_REPLAY_UNAVAILABLE,
+    VISUAL_REBIND_REQUIRED,
+    DEVICE_SERIAL_CHANGED,
     OBSERVATION_NOT_FOUND,
     OBSERVATION_ID_MISMATCH,
     OBSERVATION_EXPIRED,
@@ -129,6 +175,7 @@ enum class ExplicitVisualReplayErrorCode {
     SECURE_WINDOW,
     INVALID_COORDINATE,
     ACTION_FAILED,
+    ACTION_COMMIT_UNKNOWN,
     POST_ACTION_VERIFICATION_FAILED,
     UNSUPPORTED_ACTION,
 }
@@ -212,6 +259,16 @@ class ExplicitVisualReplayPlanner(
             )
         }
         val candidate = lease.candidates.single()
+        if (
+            !candidate.point.valid() ||
+            !candidate.bounds.valid() ||
+            !candidate.bounds.contains(candidate.point)
+        ) {
+            return rejected(
+                ExplicitVisualReplayErrorCode.TARGET_MISMATCH,
+                "Candidate geometry is invalid",
+            )
+        }
         if (candidate.confidence < MIN_CONFIDENCE || target.confidence < MIN_CONFIDENCE) {
             return rejected(
                 ExplicitVisualReplayErrorCode.CANDIDATE_LOW_CONFIDENCE,
@@ -221,9 +278,16 @@ class ExplicitVisualReplayPlanner(
         if (
             candidate.observationId != lease.observation.id ||
             target.imageSha256 != lease.observation.png.sha256 ||
+            abs(target.confidence - candidate.confidence) > EPSILON ||
             target.normalizedPoint?.let {
                 abs(it.x - candidate.point.x) > EPSILON ||
                     abs(it.y - candidate.point.y) > EPSILON
+            } == true ||
+            target.normalizedBounds?.let {
+                abs(it.left - candidate.bounds.left) > EPSILON ||
+                    abs(it.top - candidate.bounds.top) > EPSILON ||
+                    abs(it.right - candidate.bounds.right) > EPSILON ||
+                    abs(it.bottom - candidate.bounds.bottom) > EPSILON
             } == true
         ) {
             return rejected(
@@ -257,6 +321,9 @@ class ExplicitVisualReplayPlanner(
             environment.logicalHeight != lease.observation.screen.height ||
             environment.rotation != lease.observation.screen.rotation ||
             environment.densityDpi != lease.recordedDensityDpi ||
+            screen.naturalWidth != lease.observation.screen.width ||
+            screen.naturalHeight != lease.observation.screen.height ||
+            screen.rotation != lease.observation.screen.rotation ||
             screen.densityDpi != lease.recordedDensityDpi ||
             screen.densityDpi <= 0
         ) {
@@ -432,15 +499,197 @@ object VisualCoordinateTransformer {
         )
 }
 
-class ExplicitVisualReplayExecutor(
-    private val observations: VisualReplayObservationPort,
-    private val screens: VisualReplayScreenReader,
-    private val actions: VisualReplayActionExecutor,
-    private val verifier: VisualReplayVerifier,
+class ExplicitVisualReplayExecutor private constructor(
+    private val authorizations: VisualReplayAuthorizationRegistry?,
+    private val actions: BoundVisualReplayActionExecutor?,
+    private val legacyObservations: VisualReplayObservationPort?,
+    private val legacyScreens: VisualReplayScreenReader?,
+    private val legacyActions: VisualReplayActionExecutor?,
+    private val legacyVerifier: VisualReplayVerifier?,
     private val nowMs: () -> Long = System::currentTimeMillis,
     private val planner: ExplicitVisualReplayPlanner = ExplicitVisualReplayPlanner(nowMs),
-) {
-    fun replay(request: VisualReplayRequest): ExplicitVisualReplayResult {
+) : ExplicitVisualReplayPort, VisualReplayRunPort {
+    constructor(
+        authorizations: VisualReplayAuthorizationRegistry,
+        actions: BoundVisualReplayActionExecutor,
+        nowMs: () -> Long = System::currentTimeMillis,
+        planner: ExplicitVisualReplayPlanner = ExplicitVisualReplayPlanner(nowMs),
+    ) : this(
+        authorizations = authorizations,
+        actions = actions,
+        legacyObservations = null,
+        legacyScreens = null,
+        legacyActions = null,
+        legacyVerifier = null,
+        nowMs = nowMs,
+        planner = planner,
+    )
+
+    /**
+     * 仅保留给既有 N45 debug/device harness；production recording factory 不使用该入口。
+     */
+    internal constructor(
+        observations: VisualReplayObservationPort,
+        screens: VisualReplayScreenReader,
+        actions: VisualReplayActionExecutor,
+        verifier: VisualReplayVerifier,
+        nowMs: () -> Long = System::currentTimeMillis,
+        planner: ExplicitVisualReplayPlanner = ExplicitVisualReplayPlanner(nowMs),
+    ) : this(
+        authorizations = null,
+        actions = null,
+        legacyObservations = observations,
+        legacyScreens = screens,
+        legacyActions = actions,
+        legacyVerifier = verifier,
+        nowMs = nowMs,
+        planner = planner,
+    )
+
+    override fun beginRun(
+        request: VisualReplayRunRequest,
+        authorizationRequest: VisualReplayAuthorizationRequest,
+        authorization: VisualReplayRunAuthorization?,
+    ): Boolean {
+        val registry = authorizations ?: return false
+        registry.endRun()
+        if (
+            authorization == null ||
+            !registry.replace(authorizationRequest, authorization)
+        ) {
+            return false
+        }
+        return registry.beginRun(request)
+    }
+
+    fun beginRun(request: VisualReplayRunRequest): Boolean =
+        authorizations?.beginRun(request) == true
+
+    override fun endRun() {
+        authorizations?.endRun()
+    }
+
+    override fun replay(request: VisualReplayRequest): ExplicitVisualReplayResult {
+        if (authorizations == null) {
+            return replayLegacy(request)
+        }
+        val historicalTarget = request.step.visualTarget
+            ?: return failure(ExplicitVisualReplayErrorCode.TARGET_MISMATCH, "Visual target missing")
+        val run = request.run
+            ?: return failure(
+                ExplicitVisualReplayErrorCode.VISUAL_REBIND_REQUIRED,
+                "Current visual replay authorization is missing",
+            )
+        val rebindRequest = VisualReplayRebindRequest(
+            run = run,
+            stepId = request.step.id,
+            historicalTarget = historicalTarget,
+            environment = request.environment,
+            targetPackages = request.targetPackages,
+        )
+        val rebound = when (
+            val result = authorizations.acquire(rebindRequest)
+        ) {
+            is VisualReplayRebindResult.Rejected -> return failure(
+                result.code,
+                "Current visual replay rebind was rejected",
+            )
+
+            is VisualReplayRebindResult.Ready -> result
+        }
+        val lease = rebound.lease
+        try {
+            val reboundRequest = request.copy(
+                step = request.step.copy(visualTarget = lease.reboundTarget),
+            )
+            val prepared = when (
+                val result = planner.prepare(
+                    reboundRequest,
+                    lease.visual,
+                    lease.screenBefore,
+                )
+            ) {
+                is VisualReplayPreparationResult.Rejected -> return failure(
+                    result.code,
+                    result.message,
+                )
+                is VisualReplayPreparationResult.Ready -> result.prepared
+            }
+            val action = prepared.action
+            val preCommitRejection = authorizations.validateBeforeCommit(
+                authorization = rebound.authorization,
+                lease = lease,
+                request = rebindRequest,
+            )
+            if (preCommitRejection != null) {
+                return failure(
+                    preCommitRejection,
+                    "Visual authorization changed before action commit",
+                )
+            }
+            val execution = try {
+                requireNotNull(actions).execute(action, lease.targetPackage)
+            } catch (_: Exception) {
+                return failure(
+                    ExplicitVisualReplayErrorCode.ACTION_COMMIT_UNKNOWN,
+                    "Visual action commit status is unknown",
+                    commits = 1,
+                )
+            }
+            val committed = when (execution) {
+                is AccessibilityResult.Failure -> return failure(
+                    ExplicitVisualReplayErrorCode.ACTION_FAILED,
+                    execution.error.message,
+                )
+
+                is AccessibilityResult.Success -> execution.value
+            }
+            val actionCommittedAtMs = nowMs()
+            val verification = try {
+                rebound.authorization.verifyAfter(
+                    lease,
+                    VisualReplayVerificationRequest(
+                        prepared.observationId,
+                        action,
+                        prepared.screenBefore,
+                    ),
+                )
+            } catch (_: Throwable) {
+                null
+            }
+            if (
+                authorizations.validateBeforeCommit(
+                    authorization = rebound.authorization,
+                    lease = lease,
+                    request = rebindRequest,
+                ) != null ||
+                !verification.validFor(
+                    prepared.observationId,
+                    lease.deviceSerial,
+                    prepared.screenBefore,
+                    actionCommittedAtMs,
+                    nowMs(),
+                )
+            ) {
+                return failure(
+                    ExplicitVisualReplayErrorCode.POST_ACTION_VERIFICATION_FAILED,
+                    "Post action visual verification failed",
+                    commits = 1,
+                )
+            }
+            return ExplicitVisualReplayResult.Success(action, committed)
+        } finally {
+            lease.close()
+        }
+    }
+
+    private fun failure(
+        code: ExplicitVisualReplayErrorCode,
+        message: String,
+        commits: Int = 0,
+    ) = ExplicitVisualReplayResult.Failure(code, message, commits)
+
+    private fun replayLegacy(request: VisualReplayRequest): ExplicitVisualReplayResult {
         val target = request.step.visualTarget
             ?: return failure(ExplicitVisualReplayErrorCode.TARGET_MISMATCH, "Visual target missing")
         val observationId = target.observationId
@@ -448,13 +697,14 @@ class ExplicitVisualReplayExecutor(
                 ExplicitVisualReplayErrorCode.OBSERVATION_ID_MISMATCH,
                 "Observation id missing",
             )
+        val observations = requireNotNull(legacyObservations)
         val lease = observations.acquire(observationId)
             ?: return failure(
                 ExplicitVisualReplayErrorCode.OBSERVATION_NOT_FOUND,
                 "Observation not found",
             )
         try {
-            val screen = screens.current()
+            val screen = requireNotNull(legacyScreens).current()
                 ?: return failure(
                     ExplicitVisualReplayErrorCode.SCREEN_METADATA_MISMATCH,
                     "Current screen unavailable",
@@ -464,10 +714,11 @@ class ExplicitVisualReplayExecutor(
                     result.code,
                     result.message,
                 )
+
                 is VisualReplayPreparationResult.Ready -> result.prepared
             }
             val action = prepared.action
-            val execution = when (val result = actions.execute(action)) {
+            val execution = when (val result = requireNotNull(legacyActions).execute(action)) {
                 is AccessibilityResult.Failure -> return failure(
                     ExplicitVisualReplayErrorCode.ACTION_FAILED,
                     result.error.message,
@@ -476,7 +727,7 @@ class ExplicitVisualReplayExecutor(
                 is AccessibilityResult.Success -> result.value
             }
             val verification = try {
-                verifier.verify(
+                requireNotNull(legacyVerifier).verify(
                     VisualReplayVerificationRequest(
                         prepared.observationId,
                         action,
@@ -486,7 +737,7 @@ class ExplicitVisualReplayExecutor(
             } catch (_: RuntimeException) {
                 null
             }
-            if (!verification.validFor(prepared.observationId, prepared.screenBefore)) {
+            if (!verification.validLegacy(prepared.observationId, prepared.screenBefore)) {
                 return failure(
                     ExplicitVisualReplayErrorCode.POST_ACTION_VERIFICATION_FAILED,
                     "Post action visual verification failed",
@@ -498,16 +749,29 @@ class ExplicitVisualReplayExecutor(
             observations.revoke(observationId)
         }
     }
-
-    private fun failure(
-        code: ExplicitVisualReplayErrorCode,
-        message: String,
-        commits: Int = 0,
-    ) = ExplicitVisualReplayResult.Failure(code, message, commits)
-
 }
 
 private fun VisualReplayVerification?.validFor(
+    observationId: String,
+    expectedDeviceSerial: String,
+    screen: VisualReplayScreen,
+    actionCommittedAtMs: Long,
+    verifiedAtMs: Long,
+): Boolean = this != null &&
+    sourceObservationId == observationId &&
+    deviceSerial == expectedDeviceSerial &&
+    foregroundPackage == screen.foregroundPackage &&
+    naturalWidth == screen.naturalWidth &&
+    naturalHeight == screen.naturalHeight &&
+    densityDpi == screen.densityDpi &&
+    rotation == screen.rotation &&
+    windowBounds == screen.windowBounds &&
+    systemBars == screen.systemBars &&
+    !secureWindow &&
+    observedAtMs in actionCommittedAtMs..verifiedAtMs &&
+    stateChanged
+
+private fun VisualReplayVerification?.validLegacy(
     observationId: String,
     screen: VisualReplayScreen,
 ): Boolean = this != null &&
@@ -545,6 +809,23 @@ private fun <T> AccessibilityResult<T>.successOrNull(): T? =
 
 private fun NormalizedPoint.valid(): Boolean =
     x.isFinite() && y.isFinite() && x in 0.0..1.0 && y in 0.0..1.0
+
+private fun dev.aiauto.android.observe.visual.NormalizedBounds.valid(): Boolean =
+    left.isFinite() &&
+        top.isFinite() &&
+        right.isFinite() &&
+        bottom.isFinite() &&
+        left in 0.0..1.0 &&
+        top in 0.0..1.0 &&
+        right in 0.0..1.0 &&
+        bottom in 0.0..1.0 &&
+        right > left &&
+        bottom > top
+
+private fun dev.aiauto.android.observe.visual.NormalizedBounds.contains(
+    point: NormalizedPoint,
+): Boolean =
+    point.x in left..right && point.y in top..bottom
 
 private fun VisualObservation.geometryValid(): Boolean =
     screen.width > 0 &&

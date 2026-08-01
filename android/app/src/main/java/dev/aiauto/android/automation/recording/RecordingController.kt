@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 import dev.aiauto.android.accessibility.model.GlobalAction
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayAuthorizationProvider
 
 data class RecordingControllerState(
     val draft: RecordingDraft = RecordingDraft(),
@@ -55,6 +56,14 @@ interface RecordingCoordinator : Closeable {
         script: AutomationScript = requireNotNull(state.value.selectedScript),
         secrets: Map<String, String> = emptyMap(),
     )
+
+    fun replay(
+        script: AutomationScript,
+        secrets: Map<String, String>,
+        visualAuthorizationProvider: VisualReplayAuthorizationProvider? = null,
+    ) {
+        replay(script, secrets)
+    }
 }
 
 class RecordingController(
@@ -187,11 +196,19 @@ class RecordingController(
         script: AutomationScript,
         secrets: Map<String, String>,
     ) {
+        replay(script, secrets, visualAuthorizationProvider = null)
+    }
+
+    override fun replay(
+        script: AutomationScript,
+        secrets: Map<String, String>,
+        visualAuthorizationProvider: VisualReplayAuthorizationProvider?,
+    ) {
         scope.launch {
             setBusy(true)
             runCatching {
                 withContext(dispatcher) {
-                    replayEngine.replay(script, secrets)
+                    replayEngine.replay(script, secrets, visualAuthorizationProvider)
                 }
             }
                 .onSuccess { report ->

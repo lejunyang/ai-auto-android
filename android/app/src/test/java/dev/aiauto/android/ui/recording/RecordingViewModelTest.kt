@@ -13,6 +13,7 @@ import dev.aiauto.android.automation.recording.RecordingControllerState
 import dev.aiauto.android.automation.recording.RecordingCoordinator
 import dev.aiauto.android.automation.recording.ScriptEnvironment
 import dev.aiauto.android.automation.recording.ScriptEnvironmentProvider
+import dev.aiauto.android.automation.recording.replay.visual.VisualReplayAuthorizationProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -127,6 +128,26 @@ class RecordingViewModelTest {
         }
 
     @Test
+    fun `detail replay forwards only the current visual authorization provider BitsUT`() =
+        runTest(dispatcher) {
+            val script = secretScript()
+            val coordinator = FakeRecordingCoordinator(mapOf(script.id to script))
+            val viewModel = viewModel(coordinator)
+            val provider = VisualReplayAuthorizationProvider { null }
+            runCurrent()
+            viewModel.openScript(script.id)
+            runCurrent()
+
+            viewModel.replay(
+                secretValues = mapOf("account.password" to "run-only-value"),
+                visualAuthorizationProvider = provider,
+            )
+
+            assertTrue(coordinator.replayedVisualProvider === provider)
+            assertEquals(script, coordinator.replayedScript)
+        }
+
+    @Test
     fun `finish saves current name and opens saved script detail BitsUT`() =
         runTest(dispatcher) {
             val script = secretScript()
@@ -236,6 +257,7 @@ class RecordingViewModelTest {
         var selectedId: String? = null
         var replayedScript: AutomationScript? = null
         var replayedSecrets: Map<String, String>? = null
+        var replayedVisualProvider: VisualReplayAuthorizationProvider? = null
         var closed = false
 
         override fun start(
@@ -285,6 +307,16 @@ class RecordingViewModelTest {
         ) {
             replayedScript = script
             replayedSecrets = secrets
+        }
+
+        override fun replay(
+            script: AutomationScript,
+            secrets: Map<String, String>,
+            visualAuthorizationProvider: VisualReplayAuthorizationProvider?,
+        ) {
+            replayedScript = script
+            replayedSecrets = secrets
+            replayedVisualProvider = visualAuthorizationProvider
         }
 
         override fun close() {
