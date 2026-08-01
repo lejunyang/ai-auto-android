@@ -9,6 +9,7 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "schema": "node src/schema-check.mjs",
-    "smoke": "npm run schema && npm test"
+    "smoke": "npm run schema && npm test",
+    "production": "node src/production-cli.mjs"
   }
 }
