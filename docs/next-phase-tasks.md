@@ -862,6 +862,17 @@ observation；不复用已关闭的 N44 lease，也不回落裸坐标 `android_a
 当前仍缺独立 OCR/model candidate provider，以及 API 30/33/34 的完整
 `MCP → Bridge → N45 → post observation` 设备闭环，因此 N47 保持未勾选。
 
+**追加实现记录（固定 production fixture runner 已接）：** 新增只接受
+`--profile api-30|api-33|api-34` 的固定 CLI，调用方不能传入 serial、package、APK、
+task、scene 或 action。runner 固定组装 N31 lifecycle、native/WebView/Canvas 三个
+本地场景、aactl semantic/input 和无坐标 attested visual adapter，并在场景前后绑定
+serial、fingerprint、clean snapshot；成功、失败、取消和 unknown commit 均执行四步
+场景清理、owned emulator stop 与八类 residue 门。N47 完整 smoke 73/73、N34
+49/49、Make 全量和 Android 111 tasks 通过。当前缺少可由 host 安全建立并最终撤销的
+debug test-only Bridge/Accessibility 授权 provider，真实 CLI 因
+`PRODUCTION_FIXTURE_AUTHORIZATION_UNAVAILABLE` 在 build、emulator start、安装和动作
+之前零设备失败关闭；因此 API 设备闭环与 N47 主任务继续保持未完成。
+
 **失败清理：** 停止场景、关闭 Bridge、清除 App 数据和产物并恢复快照。
 
 **建议提交：** `test(lab): add cross-app scenario runner`
@@ -894,6 +905,13 @@ API 34 有 hierarchy 但 target package 不可见。三轮均完成安装同字�
 `pm clear`、clean restore 和 stop。该证据只证明启动观察基线，不满足搜索、点击、
 长按、滚动、系统导航或连续 10 次验收，N48 保持未勾选。
 
+**追加实现记录（安全场景契约已完成）：** `test-lab/scenarios/bilibili/` 已固定
+B站 `9.5.0` manifest identity、十轮计划、公开搜索/结果、系统导航和清理契约。
+consent/privacy/permission/login/update/ad/unknown 均零提交；API 33 hierarchy
+unavailable 与 API 34 package invisible 为稳定 blocker，长按在无法证明无点赞/
+收藏/下载/分享副作用时为 unsupported。N48 Schema/fixtures 和 Node 20/20、N47
+59/59 通过；仓库 fixture 不计真实轮次，真实连续十轮仍为零，因此 N48 保持未勾选。
+
 **失败清理：** 清除 App 数据、搜索历史、截图和场景缓存，恢复快照。
 
 **建议提交：** `test(lab): add bilibili compatibility scenario`
@@ -924,6 +942,13 @@ package 可见的单次 hierarchy，未命中固定登录/广告/网络/模拟�
 `base.apk` 复核失败，后续 clean 轮成功，失败未被改写为通过。全过程不点赞、评论、
 关注、发送、点击或 swipe；N49 的动作覆盖和连续 10 次仍未开始，任务保持未勾选。
 
+**追加实现记录（安全场景契约已完成）：** `test-lab/scenarios/douyin/` 已固定抖音
+`39.8.0` identity、十轮计划、video Surface/visual-only/登录墙/广告/模拟器检测和
+hierarchy failure 分类。点赞、评论、关注、发送、分享、收藏、下载恒为零；纵向
+swipe 必须有 fresh pre/post observation 与内容变化，长按互动菜单默认 unsupported，
+unknown commit 不重试。N49 Node 13/13、N47 59/59 通过；fixture 重算
+`realRuns=0`，真实连续十轮仍未验收，N49 保持未勾选。
+
 **失败清理：** 清除 App 数据、缓存、截图和 session，恢复快照。
 
 **建议提交：** `test(lab): add douyin compatibility scenario`
@@ -952,6 +977,13 @@ clean profile 均完成 target package 可见的单次 hierarchy，并稳定命�
 consent/permission 信号；runner 未点击或授权。三轮均完成 verified install、数据
 清理和 restore。搜索、详情、长按、滚动、swipe、多页面与十轮统计尚未执行，N50
 保持未勾选。
+
+**追加实现记录（安全场景契约已完成）：** `test-lab/scenarios/xiaoheihe/` 已固定
+小黑盒 `1.3.392` identity、十轮计划、native/WebView 路由、公开搜索/详情和
+Back/Home/Recents 契约。三 API consent/permission 阻塞均零提交且不能计兼容成功；
+长按不得触发关注、收藏、评论、发帖、下载或分享，dynamic/ad/network 独立分类，
+unknown commit 不重试。N50 Node 20/20、N47 59/59 通过；10 个 fixture 轮次不计真实
+证据，真实十轮仍为零，因此 N50 保持未勾选。
 
 **失败清理：** 清除 App 数据、搜索历史、产物和 session，恢复快照。
 
@@ -1033,6 +1065,17 @@ route/page/error、95% 成功率、100% 清理率和未知提交门，并拒绝�
 通过，跨平台 Node 24 workflow 仅运行离线 fake smoke。N32 test-only Bridge 仍只读，
 N47 visual production route 与 emulator 动作授权链尚无设备验收，真实
 3 × 5 × 20 矩阵未运行，因此主任务保持未勾选。
+
+**追加实现记录（production ports/CLI 已接，concrete provider 未齐）：** N52 新增
+零参数固定 production CLI、N31 lifecycle adapter、五场景与八类 residue 的严格
+provider contract、serial/fingerprint/clean snapshot 绑定和 `0600` 原子报告发布。
+CLI 不接受 skip、serial、task、scenario、action、report 或工具路径参数；工具根从
+`AACTL_TOOLCHAIN_ROOT` 或兼容 `ANDROID_TOOLS_ROOT` 解析，SDK/AVD/Java/state 必须
+位于显式根内，仓库代码和测试不包含本机 `/Volumes` 路径。N52 完整 smoke 41/41、
+N47 59/59、N34 49/49、Make 与 Android 152 tasks 通过。当前五场景 production
+provider 与八类 residue inspector 尚未全部 concrete 接入；默认在零 emulator 启动
+阶段返回 provider unavailable，不使用 fake 或硬编码零。真实 300 轮仍未运行，
+N52 保持未勾选。
 
 **失败清理：** 停止本任务创建的本地 AVD，释放设备锁，删除临时快照和超预算产物；
 不得执行共享 `adb kill-server`。
