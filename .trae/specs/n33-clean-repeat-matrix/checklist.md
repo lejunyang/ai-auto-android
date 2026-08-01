@@ -9,4 +9,4 @@
 - [x] 每轮显式 serial、固定 fingerprint 且先恢复 clean
 - [x] 最终设备、runtime、lease、owned emulator 和临时目录为零
 - [x] 定向测试、构建、lint、comments 与 diff-check 通过
-- [ ] 提交身份、trailer、集成和 worktree 清理正确
+- [x] 提交身份、trailer、集成和 worktree 清理正确

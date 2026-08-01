@@ -63,3 +63,12 @@
   Node 238/238 通过，Git 历史和干净工作区 APK 路径均为零。
 - N33 runner fake 测试已加入 `verify.yml` 的 Ubuntu、Windows、macOS portability
   job，仓库实现只依赖显式 `AACTL_TOOLCHAIN_ROOT`，不硬编码本机卷名或用户目录。
+
+## Round 5
+
+- 实现提交 `db2c268` 的 Author 与 Committer 均为
+  `lejunyang <lejunyang@qq.com>`，要求的 co-author trailer 恰好一次；`main` 在
+  干净状态下以 fast-forward 等价集成该提交。
+- 临时 worktree `/private/tmp/ai-auto-n33-matrix` 在确认干净且提交已是 `main`
+  祖先后，使用非强制 `git worktree remove` 清理；随后完成 `worktree prune` 并
+  删除已合入分支 `n33-clean-repeat-matrix`。最终只保留 `main` worktree。
