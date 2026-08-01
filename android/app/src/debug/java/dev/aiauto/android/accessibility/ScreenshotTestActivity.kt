@@ -5,9 +5,13 @@ package dev.aiauto.android.accessibility
  */
 
 import android.app.Activity
+import android.graphics.Color
 import android.os.Bundle
+import android.view.MotionEvent
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 
 import kotlinx.coroutines.CoroutineScope
@@ -24,59 +28,101 @@ class ScreenshotTestActivity : Activity() {
     private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var userTouchTarget: Button
     private lateinit var statusView: TextView
+    private lateinit var visualStatusView: TextView
     private var sessionStopHarness: SessionStopVerificationHarness? = null
     @Volatile
     private var currentStatus = "READY"
+    @Volatile
+    private var currentVisualStatus = "VISUAL_READY"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
+            ScrollView(this).apply {
+                isFillViewport = true
                 addView(
-                    TextView(context).apply {
-                        text = "Non-sensitive screenshot test surface"
-                        textSize = 24f
-                        contentDescription = "Screenshot test surface"
-                    },
-                )
-                addView(
-                    Button(context).apply {
-                        text = "Run screenshot verification"
-                        setOnClickListener { runScreenshotVerification() }
-                    },
-                )
-                addView(
-                    Button(context).apply {
-                        text = "Run session stop verification"
-                        setOnClickListener { startSessionStopVerification() }
-                    },
-                )
-                addView(
-                    Button(context).apply {
-                        text = "Arm user touch verification"
-                        setOnClickListener { armUserTouchVerification(this) }
-                    },
-                )
-                addView(
-                    Button(context).apply {
-                        text = "Automation target"
-                        contentDescription = AUTOMATION_TARGET_DESCRIPTION
-                    },
-                )
-                addView(
-                    Button(context).apply {
-                        text = "User touch target"
-                        contentDescription = USER_TARGET_DESCRIPTION
-                        userTouchTarget = this
-                        setOnClickListener { verifyUserTouchResult() }
-                    },
-                )
-                addView(
-                    TextView(context).apply {
-                        text = "READY"
-                        contentDescription = "READY"
-                        statusView = this
+                    LinearLayout(context).apply {
+                        orientation = LinearLayout.VERTICAL
+                        addView(
+                            TextView(context).apply {
+                                text = "Non-sensitive screenshot test surface"
+                                textSize = 24f
+                                contentDescription = "Screenshot test surface"
+                            },
+                        )
+                        addView(
+                            Button(context).apply {
+                                text = "Visual tap target"
+                                contentDescription = VISUAL_TAP_TARGET_DESCRIPTION
+                                minimumHeight = dpToPixels(VISUAL_BUTTON_HEIGHT_DP)
+                                setOnClickListener { setVisualStatus("TAP_PASS") }
+                            },
+                        )
+                        addView(
+                            Button(context).apply {
+                                text = "Visual long-click target"
+                                contentDescription = VISUAL_LONG_CLICK_TARGET_DESCRIPTION
+                                minimumHeight = dpToPixels(VISUAL_BUTTON_HEIGHT_DP)
+                                setOnLongClickListener {
+                                    setVisualStatus("LONG_CLICK_PASS")
+                                    true
+                                }
+                            },
+                        )
+                        addView(
+                            VisualSwipeTargetView(context) {
+                                setVisualStatus("SWIPE_PASS")
+                            }.apply {
+                                contentDescription = VISUAL_SWIPE_TARGET_DESCRIPTION
+                                minimumHeight = dpToPixels(VISUAL_SWIPE_HEIGHT_DP)
+                            },
+                        )
+                        addView(
+                            TextView(context).apply {
+                                text = "VISUAL_READY"
+                                contentDescription = "VISUAL_READY"
+                                visualStatusView = this
+                            },
+                        )
+                        addView(
+                            Button(context).apply {
+                                text = "Run screenshot verification"
+                                setOnClickListener { runScreenshotVerification() }
+                            },
+                        )
+                        addView(
+                            Button(context).apply {
+                                text = "Run session stop verification"
+                                setOnClickListener { startSessionStopVerification() }
+                            },
+                        )
+                        addView(
+                            Button(context).apply {
+                                text = "Arm user touch verification"
+                                setOnClickListener { armUserTouchVerification(this) }
+                            },
+                        )
+                        addView(
+                            Button(context).apply {
+                                text = "Automation target"
+                                contentDescription = AUTOMATION_TARGET_DESCRIPTION
+                            },
+                        )
+                        addView(
+                            Button(context).apply {
+                                text = "User touch target"
+                                contentDescription = USER_TARGET_DESCRIPTION
+                                userTouchTarget = this
+                                setOnClickListener { verifyUserTouchResult() }
+                            },
+                        )
+                        addView(
+                            TextView(context).apply {
+                                text = "READY"
+                                contentDescription = "READY"
+                                statusView = this
+                            },
+                        )
                     },
                 )
             },
@@ -223,6 +269,18 @@ class ScreenshotTestActivity : Activity() {
         statusView.contentDescription = status
     }
 
+    private fun setVisualStatus(status: String) {
+        currentVisualStatus = status
+        visualStatusView.text = status
+        visualStatusView.contentDescription = status
+    }
+
+    fun resetVisualActionState() {
+        setVisualStatus("VISUAL_READY")
+    }
+
+    fun currentVisualActionStatus(): String = currentVisualStatus
+
     fun currentVerificationStatus(): String = currentStatus
 
     fun userTouchTargetCenter(): Pair<Float, Float> {
@@ -237,6 +295,58 @@ class ScreenshotTestActivity : Activity() {
     companion object {
         const val AUTOMATION_TARGET_DESCRIPTION = "Automation target"
         const val USER_TARGET_DESCRIPTION = "User touch target"
+        const val VISUAL_TAP_TARGET_DESCRIPTION = "N45 visual tap target"
+        const val VISUAL_LONG_CLICK_TARGET_DESCRIPTION = "N45 visual long-click target"
+        const val VISUAL_SWIPE_TARGET_DESCRIPTION = "N45 visual swipe target"
         const val EVENT_SETTLE_MS = 500L
+        private const val VISUAL_SWIPE_HEIGHT_DP = 80
+        private const val VISUAL_BUTTON_HEIGHT_DP = 48
+    }
+
+    private fun dpToPixels(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
+}
+
+/**
+ * debug-only 滑动目标显式暴露 scrollable 语义，并仅在单次真实纵向手势后更新本地状态。
+ */
+private class VisualSwipeTargetView(
+    context: android.content.Context,
+    private val onSwipe: () -> Unit,
+) : View(context) {
+    private var downY: Float? = null
+
+    init {
+        setBackgroundColor(Color.rgb(32, 96, 160))
+        isFocusable = true
+    }
+
+    override fun onInitializeAccessibilityNodeInfo(
+        info: android.view.accessibility.AccessibilityNodeInfo,
+    ) {
+        super.onInitializeAccessibilityNodeInfo(info)
+        info.isScrollable = true
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
+                downY = event.y
+            }
+            MotionEvent.ACTION_UP -> {
+                val start = downY
+                downY = null
+                parent?.requestDisallowInterceptTouchEvent(false)
+                if (start != null && kotlin.math.abs(start - event.y) >= height / 4f) {
+                    onSwipe()
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                downY = null
+                parent?.requestDisallowInterceptTouchEvent(false)
+            }
+        }
+        return true
     }
 }

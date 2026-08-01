@@ -32,7 +32,28 @@ class InstrumentationTestIdentityProvider(
             requiredArgument(ARGUMENT_FINGERPRINT),
             requiredArgument(ARGUMENT_BUILD_FINGERPRINT),
         )
-        profile.verifyLocalObservation(observeLocalDevice())
+        val local = observeLocalDevice()
+        profile.verifyLocalObservation(
+            if (arguments.containsKey(ARGUMENT_N45_RESOLUTION)) {
+                verifyN45MatrixGeometry(local)
+                LocalDeviceObservation(
+                    local.buildFingerprint(),
+                    local.apiLevel(),
+                    local.hardware(),
+                    local.qemuLike(),
+                    N31_BASE_WIDTH,
+                    N31_BASE_HEIGHT,
+                    N31_BASE_DENSITY_DPI,
+                    local.localeTag(),
+                    local.timezoneId(),
+                    local.navigationMode(),
+                    local.webViewPackage(),
+                    local.webViewVersion(),
+                )
+            } else {
+                local
+            },
+        )
         /*
          * ADB serial 无法由普通 App 可靠读取；它由 N31 runner/ANDROID_SERIAL 外层边界
          * 显式提供，但只有本地 profile attestation 通过后才会进入 TestIdentity。
@@ -96,11 +117,36 @@ class InstrumentationTestIdentityProvider(
             "Missing required N32 instrumentation argument: $name"
         }
 
+    private fun verifyN45MatrixGeometry(observation: LocalDeviceObservation) {
+        val resolution = requiredArgument(ARGUMENT_N45_RESOLUTION)
+        val rotation = requiredArgument(ARGUMENT_N45_ROTATION).toIntOrNull()
+        check(resolution in N45_RESOLUTIONS && rotation in N45_ROTATIONS) {
+            "N45 matrix geometry is outside the fixed test contract"
+        }
+        val parts = resolution.split('x').map(String::toInt)
+        val expectedWidth = if (rotation == 90) parts[1] else parts[0]
+        val expectedHeight = if (rotation == 90) parts[0] else parts[1]
+        check(
+            observation.widthPixels() == expectedWidth &&
+                observation.heightPixels() == expectedHeight &&
+                observation.densityDpi() == N31_BASE_DENSITY_DPI,
+        ) {
+            "N45 matrix geometry drifted from the runner attestation"
+        }
+    }
+
     companion object {
         const val ARGUMENT_SERIAL = "n32EmulatorSerial"
         const val ARGUMENT_PROFILE_ID = "n32ProfileId"
         const val ARGUMENT_FINGERPRINT = "n32AvdFingerprint"
         const val ARGUMENT_BUILD_FINGERPRINT = "n32ExpectedBuildFingerprint"
         const val ARGUMENT_MARKER = "n32TestOnlyMarker"
+        const val ARGUMENT_N45_RESOLUTION = "n45MatrixResolution"
+        const val ARGUMENT_N45_ROTATION = "n45MatrixRotation"
+        private const val N31_BASE_WIDTH = 1_080
+        private const val N31_BASE_HEIGHT = 2_400
+        private const val N31_BASE_DENSITY_DPI = 420
+        private val N45_RESOLUTIONS = setOf("720x1600", "1080x2400", "1440x3200")
+        private val N45_ROTATIONS = setOf(0, 90)
     }
 }

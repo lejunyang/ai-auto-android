@@ -16,13 +16,23 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import dev.aiauto.android.accessibility.model.AccessibilityErrorCode
 import dev.aiauto.android.accessibility.model.AccessibilityResult
+import dev.aiauto.android.accessibility.model.ActionExecution
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
+import dev.aiauto.android.accessibility.action.AccessibilityActionRouter
+import dev.aiauto.android.accessibility.settings.AccessibilitySettings
+import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.accessibility.snapshot.AccessibilitySnapshotter
 import dev.aiauto.android.accessibility.snapshot.recycleSafely
+import dev.aiauto.android.accessibility.selector.SelectorMatcher
+import dev.aiauto.android.automation.recording.replay.visual.ExplicitVisualAction
 import dev.aiauto.android.automation.session.AutomationSessionRuntime
+import dev.aiauto.android.automation.session.toAccessibilityCommand
 
 class ScreenshotTestAccessibilityService : AccessibilityService() {
     private lateinit var userTouchMonitor: UserTouchMonitor
+    private lateinit var n45ActionRouter: AccessibilityActionRouter
+    private lateinit var n45Preferences:
+        android.content.SharedPreferences
     private val userTouchCount = AtomicInteger()
     private val runtimeStopHandled = AtomicBoolean()
     @Volatile
@@ -57,6 +67,26 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
                 motionEventSources = touchConfiguration.motionEventSources
             }
         }
+        n45Preferences = getSharedPreferences(
+            N45_SETTINGS_NAME,
+            MODE_PRIVATE,
+        )
+        val n45Settings = AccessibilitySettingsRepository(n45Preferences)
+        n45Settings.save(
+            AccessibilitySettings(
+                disclosureAccepted = true,
+                targetPackages = setOf(packageName),
+            ),
+        )
+        n45ActionRouter = AccessibilityActionRouter(
+            backend = AndroidAccessibilityBackend(
+                service = this,
+                settingsRepository = n45Settings,
+                snapshotter = AccessibilitySnapshotter(),
+                userTouchMonitor = userTouchMonitor,
+            ),
+            selectorMatcher = SelectorMatcher(),
+        )
         connectedService = this
         connectedLatch.countDown()
     }
@@ -64,6 +94,9 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         if (connectedService === this) {
             connectedService = null
+        }
+        if (::n45Preferences.isInitialized) {
+            n45Preferences.edit().clear().commit()
         }
         super.onDestroy()
     }
@@ -131,6 +164,20 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
     fun awaitUserTouch(timeoutSeconds: Long): Boolean =
         userTouchLatch.await(timeoutSeconds, TimeUnit.SECONDS)
 
+    /** 仅供 debug N45 harness 调用生产 command 映射与真实 Accessibility router/backend。 */
+    fun executeN45VisualAction(
+        action: ExplicitVisualAction,
+        expectedPackage: String,
+    ): AccessibilityResult<ActionExecution> {
+        if (!::n45ActionRouter.isInitialized || expectedPackage != packageName) {
+            return AccessibilityResult.Failure(
+                code = AccessibilityErrorCode.PACKAGE_NOT_ALLOWED,
+                message = "The N45 debug fixture only accepts its own package",
+            )
+        }
+        return n45ActionRouter.execute(action.toAccessibilityCommand(expectedPackage))
+    }
+
     private fun withNode(
         contentDescription: String,
         action: (AccessibilityNodeInfo) -> Boolean,
@@ -170,6 +217,7 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
             private set
 
         private var connectedLatch = CountDownLatch(1)
+        private const val N45_SETTINGS_NAME = "n45-visual-device-matrix"
 
         fun awaitConnected(timeoutSeconds: Long): ScreenshotTestAccessibilityService {
             check(connectedLatch.await(timeoutSeconds, TimeUnit.SECONDS)) {

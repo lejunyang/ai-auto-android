@@ -100,27 +100,30 @@ internal class AndroidAuthorizedVisualActionContextFactory(
     private fun executeVisualAction(
         action: ExplicitVisualAction,
         targetPackage: String,
-    ): AccessibilityResult<dev.aiauto.android.accessibility.model.ActionExecution> {
-        val command = when (action) {
-            is ExplicitVisualAction.Tap -> AccessibilityCommand.Tap(
-                action.point,
-                expectedPackage = targetPackage,
-            )
-            is ExplicitVisualAction.LongClick ->
-                AccessibilityCommand.Tap(
-                    action.point,
-                    action.durationMs,
-                    expectedPackage = targetPackage,
-                )
-            is ExplicitVisualAction.Swipe -> AccessibilityCommand.Swipe(
-                start = action.start,
-                end = action.end,
-                durationMs = action.durationMs,
-                expectedPackage = targetPackage,
-            )
-        }
-        return AccessibilityRuntime.execute(command, targetPackage)
-    }
+    ): AccessibilityResult<dev.aiauto.android.accessibility.model.ActionExecution> =
+        AccessibilityRuntime.execute(action.toAccessibilityCommand(targetPackage), targetPackage)
+}
+
+/** 将 N45 显式动作收窄为生产类型化无障碍命令，供授权会话与 debug 设备验收共用。 */
+internal fun ExplicitVisualAction.toAccessibilityCommand(
+    targetPackage: String,
+): AccessibilityCommand = when (this) {
+    is ExplicitVisualAction.Tap -> AccessibilityCommand.Tap(
+        point,
+        expectedPackage = targetPackage,
+    )
+    is ExplicitVisualAction.LongClick ->
+        AccessibilityCommand.Tap(
+            point,
+            durationMs,
+            expectedPackage = targetPackage,
+        )
+    is ExplicitVisualAction.Swipe -> AccessibilityCommand.Swipe(
+        start = start,
+        end = end,
+        durationMs = durationMs,
+        expectedPackage = targetPackage,
+    )
 }
 
 internal data class AuthorizedVisualTarget(
