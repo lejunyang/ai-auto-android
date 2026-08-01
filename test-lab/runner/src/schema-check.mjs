@@ -136,6 +136,9 @@ const main = async () => {
   for (const fixture of [
     "native-fixture.scenario.json",
     "web-fixture.scenario.json",
+    "production-native-fixture.scenario.json",
+    "production-webview-fixture.scenario.json",
+    "production-canvas-fixture.scenario.json",
   ]) {
     const errors = validateRunnerDocument(
       schemas.scenario,
@@ -163,7 +166,7 @@ const main = async () => {
     throw new Error(`N34 scenario-result: ${artifactErrors.join("; ")}`);
   }
   process.stdout.write(
-    "N47 schema validation passed: 3 schemas, 2 fixture scenarios, N34 result mapping.\n",
+    "N47 schema validation passed: 3 schemas, 5 fixture scenarios, N34 result mapping.\n",
   );
 };
 

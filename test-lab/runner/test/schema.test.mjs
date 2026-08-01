@@ -39,6 +39,41 @@ test("native 和 Web fixture 场景通过严格 Schema 且合计覆盖十类动�
   );
 });
 
+test("production native WebView Canvas 场景固定包、route 和 input 引用", async () => {
+  const schemas = await loadRunnerSchemas();
+  const scenarios = await Promise.all([
+    "production-native-fixture.scenario.json",
+    "production-webview-fixture.scenario.json",
+    "production-canvas-fixture.scenario.json",
+  ].map(loadFixture));
+
+  for (const scenario of scenarios) {
+    assert.deepEqual(validateRunnerDocument(schemas.scenario, scenario), []);
+  }
+  assert.deepEqual(
+    scenarios.map(({ id }) => id),
+    [
+      "production-native-fixture",
+      "production-webview-fixture",
+      "production-canvas-fixture",
+    ],
+  );
+  assert.deepEqual(
+    [...new Set(scenarios.flatMap((scenario) => scenario.targetPackages))].sort(),
+    ["dev.aiauto.fixture", "dev.aiauto.webfixture"],
+  );
+  assert.deepEqual(
+    scenarios.flatMap((scenario) => scenario.steps)
+      .filter((step) => step.action.type === "input")
+      .map((step) => step.action.valueRef),
+    ["production-fixture-input", "production-fixture-input"],
+  );
+  assert.deepEqual(
+    scenarios[2].steps.map((step) => step.allowedRoutes),
+    [["semantic"], ["semantic"], ["visual"]],
+  );
+});
+
 test("场景拒绝未知字段、副作用策略、未知动作和越权包", async () => {
   const schemas = await loadRunnerSchemas();
   const base = oneStepScenario();

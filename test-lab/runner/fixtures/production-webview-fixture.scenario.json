@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "1.0",
+  "id": "production-webview-fixture",
+  "title": "Fixed production WebView fixture",
+  "sideEffectPolicy": "none",
+  "targetPackages": [
+    "dev.aiauto.webfixture"
+  ],
+  "defaultTimeoutMs": 5000,
+  "steps": [
+    {
+      "id": "launch-webview",
+      "targetPackage": "dev.aiauto.webfixture",
+      "preconditions": [
+        {
+          "id": "launcher-visible",
+          "kind": "foreground-package"
+        }
+      ],
+      "action": {
+        "type": "launch",
+        "package": "dev.aiauto.webfixture"
+      },
+      "postconditions": [
+        {
+          "id": "webview-ready",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 5000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "tap-webview",
+      "targetPackage": "dev.aiauto.webfixture",
+      "preconditions": [
+        {
+          "id": "webview-click-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "tap",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture click button"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "webview-clicked",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "input-webview",
+      "targetPackage": "dev.aiauto.webfixture",
+      "preconditions": [
+        {
+          "id": "webview-input-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "input",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture text input"
+        },
+        "valueRef": "production-fixture-input"
+      },
+      "postconditions": [
+        {
+          "id": "webview-input-updated",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    }
+  ]
+}

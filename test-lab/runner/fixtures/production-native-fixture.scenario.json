@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "1.0",
+  "id": "production-native-fixture",
+  "title": "Fixed production native fixture",
+  "sideEffectPolicy": "none",
+  "targetPackages": [
+    "dev.aiauto.fixture"
+  ],
+  "defaultTimeoutMs": 5000,
+  "steps": [
+    {
+      "id": "launch-native",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "launcher-visible",
+          "kind": "foreground-package"
+        }
+      ],
+      "action": {
+        "type": "launch",
+        "package": "dev.aiauto.fixture"
+      },
+      "postconditions": [
+        {
+          "id": "native-main",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 5000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "tap-native",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "native-click-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "tap",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture click target"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "native-clicked",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "input-native",
+      "targetPackage": "dev.aiauto.fixture",
+      "preconditions": [
+        {
+          "id": "native-input-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "input",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Fixture text input"
+        },
+        "valueRef": "production-fixture-input"
+      },
+      "postconditions": [
+        {
+          "id": "native-input-updated",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 3000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    }
+  ]
+}

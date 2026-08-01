@@ -7,6 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "production-fixture": "node src/production-fixture-runner.mjs",
     "test": "node --test test/*.test.mjs",
     "schema": "node src/schema-check.mjs",
     "smoke": "npm run schema && npm test"

@@ -58,6 +58,9 @@ test("fixture 场景不包含第三方包、URL、账号、凭据或命令字段
   const scenarios = [
     await loadFixture("native-fixture.scenario.json"),
     await loadFixture("web-fixture.scenario.json"),
+    await loadFixture("production-native-fixture.scenario.json"),
+    await loadFixture("production-webview-fixture.scenario.json"),
+    await loadFixture("production-canvas-fixture.scenario.json"),
   ];
   const encoded = JSON.stringify(scenarios);
 

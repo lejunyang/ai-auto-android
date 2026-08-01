@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "1.0",
+  "id": "production-canvas-fixture",
+  "title": "Fixed production Canvas fixture",
+  "sideEffectPolicy": "none",
+  "targetPackages": [
+    "dev.aiauto.webfixture"
+  ],
+  "defaultTimeoutMs": 5000,
+  "steps": [
+    {
+      "id": "launch-canvas-host",
+      "targetPackage": "dev.aiauto.webfixture",
+      "preconditions": [
+        {
+          "id": "launcher-visible",
+          "kind": "foreground-package"
+        }
+      ],
+      "action": {
+        "type": "launch",
+        "package": "dev.aiauto.webfixture"
+      },
+      "postconditions": [
+        {
+          "id": "webview-ready",
+          "kind": "semantic-state"
+        }
+      ],
+      "timeoutMs": 5000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "switch-canvas-mode",
+      "targetPackage": "dev.aiauto.webfixture",
+      "preconditions": [
+        {
+          "id": "canvas-switch-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "tap",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Switch to single canvas mode"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "canvas-ready",
+          "kind": "node-present"
+        }
+      ],
+      "timeoutMs": 5000,
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "minimumScore": 1,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    },
+    {
+      "id": "tap-canvas",
+      "targetPackage": "dev.aiauto.webfixture",
+      "preconditions": [
+        {
+          "id": "canvas-ready",
+          "kind": "node-present"
+        }
+      ],
+      "action": {
+        "type": "tap",
+        "target": {
+          "kind": "semantic-name",
+          "name": "Canvas fixture canvas-result ready"
+        }
+      },
+      "postconditions": [
+        {
+          "id": "canvas-tapped",
+          "kind": "node-present"
+        }
+      ],
+      "timeoutMs": 5000,
+      "allowedRoutes": [
+        "visual"
+      ],
+      "minimumScore": 0.95,
+      "acceptedPageClasses": [
+        "normal"
+      ],
+      "dynamicRegions": []
+    }
+  ]
+}
