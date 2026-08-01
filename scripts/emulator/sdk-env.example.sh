@@ -5,6 +5,8 @@ set -eu
 
 : "${SDK_BASE:?Set SDK_BASE to the external versioned SDK directory}"
 
+export AACTL_TOOLCHAIN_ROOT="$SDK_BASE"
+export ANDROID_TOOLS_ROOT="$SDK_BASE"
 export GOROOT="$SDK_BASE/go-1.26.5"
 export GOPATH="$SDK_BASE/go-path"
 export GOCACHE="$SDK_BASE/go-cache"

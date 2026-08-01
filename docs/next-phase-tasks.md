@@ -3,10 +3,10 @@
 > 本文件是 N31-N54 唯一执行与状态源，不回写当前 MVP 验收清单。
 >
 > **当前执行状态（2026-08-01）：** N31、N32、N34、N36、N39、N40、N42、
-> N43、N44、N46 已取得对应实现、测试或设备证据并合入 `main`。N37/N38 的持续
-> 加密 Bridge RPC 已分别集成，但真实 Go/Kotlin socket 互操作和平台矩阵仍待验收；
-> N33 的 API 30 平台滚动 surface 已被设备证据否定，保持未完成并等待控件重设计。
-> 下一阶段任务不回写当前 MVP 验收结果。
+> N43、N44、N46 已取得对应实现、测试或设备证据并合入 `main`。N37/N38 的持续加密
+> Bridge RPC 和 Go/Kotlin 真实 socket 已通过，但跨平台、相机与真机矩阵仍待验收；
+> N33 已改用 ListView 并通过 API 30 纵向单轮，完整三 API 矩阵仍未完成。下一阶段
+> 任务不回写当前 MVP 验收结果。
 >
 > Task N35 实现已集成到 `main`，但正式验收仍待 macOS、Windows 各 20 次断线恢复
 > 与不会串设备的证据，继续保持未完成。N31/N39/N42 的临时分支已在确认补丁等价
@@ -27,6 +27,16 @@
   Bridge session、截图、日志和临时凭据。
 - 第三方 APK 不自动下载、不提交 Git、不重新分发；只使用用户提供或官方许可来源，
   并在仓库外缓存中校验版本、ABI 和 SHA-256。
+- 本地 SDK/cache 根由 `AACTL_TOOLCHAIN_ROOT` 显式配置，并兼容旧
+  `ANDROID_TOOLS_ROOT`；仓库 runner 不绑定 macOS 卷名、Windows 盘符或用户目录。
+
+**跨平台与 CI 修复（2026-08-01）：** GitHub 公共 API 确认远端 `verify.yml`
+最新 run `30197184628` 的 Ubuntu/macOS Go、Android、协议、Skills 与 metadata
+均成功，Windows 唯一失败在 gofmt；三个附加跨平台 workflow 也仅 Windows 失败。
+独立 portability change 固定源码 checkout 为 LF、batch 为 CRLF，增加跨平台格式
+脚本、Windows `.exe` fake SDK 验证、N34 当前平台绝对路径/junction 语义，并把
+LAN/N43/N46 runner 的机器专属工具根迁移为显式环境变量。远端仍停留在
+`5dcc70f`，必须将本地提交 push 后才能取得新的 Actions 结论。
 
 ## Wave 1：测试基础、无线连接、脚本模型与受控页面
 

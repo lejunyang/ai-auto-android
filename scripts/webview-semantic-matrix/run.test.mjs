@@ -9,8 +9,9 @@ import {
   runWebViewSemanticMatrix,
 } from "./run.mjs";
 
-const root = "/Volumes/aigo S7 Media/SDK/android-tools";
+const root = "/opt/aiauto-tools";
 const environment = Object.freeze({
+  AACTL_TOOLCHAIN_ROOT: root,
   ANDROID_SDK_ROOT: `${root}/android-sdk`,
   ANDROID_AVD_HOME: `${root}/android-avd`,
   JAVA_HOME: `${root}/jdk/Contents/Home`,

@@ -33,6 +33,10 @@ import {
 
 const temporaryRoot = os.tmpdir();
 const directoryLinkType = process.platform === "win32" ? "junction" : "dir";
+const platformAbsoluteOutside = path.join(
+  path.parse(temporaryRoot).root,
+  "aiauto-outside-secret.txt",
+);
 const collectFailureArtifacts = (options) =>
   collectFailureArtifactsRaw({ ...options, trustedScreenshotVerifier });
 
@@ -285,7 +289,7 @@ test("invalid text encoding fails closed and removes every staged source", async
   );
 });
 
-for (const unsafeFile of ["../outside-secret.txt", "/tmp/outside-secret.txt"]) {
+for (const unsafeFile of ["../outside-secret.txt", platformAbsoluteOutside]) {
   test(`source filename ${unsafeFile} is rejected before external access`, async () => {
     const artifactRoot = await mkdtemp(
       path.join(temporaryRoot, "n34-path-file-"),
@@ -297,7 +301,7 @@ for (const unsafeFile of ["../outside-secret.txt", "/tmp/outside-secret.txt"]) {
     await writeFile(sentinel, "OUTSIDE_SECRET_MUST_NOT_BE_READ", { mode: 0o600 });
     const run = makeRun();
     const { sources } = await makeStaging(artifactRoot, run);
-    sources.log.file = unsafeFile === "/tmp/outside-secret.txt"
+    sources.log.file = unsafeFile === platformAbsoluteOutside
       ? sentinel
       : unsafeFile;
 
@@ -355,7 +359,7 @@ for (const unsafeIdentity of [
   });
 }
 
-test("symlink source file is blocked without reading or deleting its target", async () => {
+test("symlink source file is blocked without reading or deleting its target", async (context) => {
   const artifactRoot = await mkdtemp(
     path.join(temporaryRoot, "n34-symlink-file-"),
   );
@@ -368,7 +372,20 @@ test("symlink source file is blocked without reading or deleting its target", as
   const { stagingDir, sources } = await makeStaging(artifactRoot, run);
   const stagedLog = path.join(stagingDir, sources.log.file);
   await rm(stagedLog);
-  await symlink(sentinel, stagedLog, "file");
+  try {
+    await symlink(sentinel, stagedLog, "file");
+  } catch (error) {
+    if (
+      process.platform === "win32"
+      && (error.code === "EPERM" || error.code === "EACCES")
+    ) {
+      await rm(artifactRoot, { recursive: true, force: true });
+      await rm(outsideRoot, { recursive: true, force: true });
+      context.skip("Windows runner does not grant file symlink permission");
+      return;
+    }
+    throw error;
+  }
 
   const result = await collectFailureArtifacts({
     artifactRoot,

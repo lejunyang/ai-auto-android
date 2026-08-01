@@ -9,6 +9,7 @@ import {
   loadProfiles,
   runCommand,
 } from "../../emulator/runner.mjs";
+import { resolveToolchainEnvironment } from "../../toolchain-environment.mjs";
 import { createAndroidApkInspector } from "./apk-inspector.mjs";
 import { runVerifiedExternalAppLifecycle } from "./lifecycle.mjs";
 import { loadExternalAppManifest } from "./manifest.mjs";
@@ -56,24 +57,17 @@ const parseArguments = (argv) => {
 };
 
 const requiredEnvironment = (environment) => {
-  const values = {
-    sdkRoot: environment.ANDROID_SDK_ROOT,
-    avdRoot: environment.ANDROID_AVD_HOME,
-    javaHome: environment.JAVA_HOME,
-    stateRoot: environment.AACTL_EMULATOR_STATE,
-    cacheRoot: environment.AACTL_ANDROID_APK_CACHE,
-  };
-  const expectedRoot = "/Volumes/aigo S7 Media/SDK/android-tools";
-  for (const value of Object.values(values)) {
-    if (
-      typeof value !== "string"
-      || !path.isAbsolute(value)
-      || (value !== expectedRoot && !value.startsWith(`${expectedRoot}${path.sep}`))
-    ) {
-      fail("ENVIRONMENT_INVALID");
-    }
+  try {
+    return resolveToolchainEnvironment(environment, {
+      sdkRoot: "ANDROID_SDK_ROOT",
+      avdRoot: "ANDROID_AVD_HOME",
+      javaHome: "JAVA_HOME",
+      stateRoot: "AACTL_EMULATOR_STATE",
+      cacheRoot: "AACTL_ANDROID_APK_CACHE",
+    });
+  } catch {
+    fail("ENVIRONMENT_INVALID");
   }
-  return values;
 };
 
 export const runVerifiedInstall = async ({

@@ -50,12 +50,7 @@ jobs:
 
       - name: Check Go formatting
         shell: bash
-        run: |
-          files=$(gofmt -l .)
-          if [[ -n "$files" ]]; then
-            printf 'Go files require formatting:\n%s\n' "$files"
-            exit 1
-          fi
+        run: sh ./scripts/check-go-format.sh
 
       - name: Run Go tests
         run: go test ./...
@@ -74,6 +69,34 @@ jobs:
             -ldflags "-s -w -X github.com/lejunyang/ai-auto-android/internal/cli.Version=ci" \
             -o "$RUNNER_TEMP/aactl$suffix" \
             ./cmd/aactl
+
+  portability:
+    name: Portable Node (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+
+      - name: Validate toolchain roots and emulator paths
+        run: >-
+          node --test
+          scripts/toolchain-environment.test.mjs
+          scripts/emulator/runner.test.mjs
 
   protocol:
     name: Protocol fixtures

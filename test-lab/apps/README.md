@@ -9,8 +9,12 @@ manifest 是不可直接使用的占位模板，所有身份、来源、大小�
 调用方必须显式传入仓库外绝对路径，例如：
 
 ```text
-/Volumes/aigo S7 Media/SDK/android-tools/android-apk-cache
+<toolchain-root>/android-apk-cache
 ```
+
+本地、CI 和 Windows 可分别选择不同的绝对工具根。runner 从
+`AACTL_TOOLCHAIN_ROOT` 读取首选根，并兼容已有 `ANDROID_TOOLS_ROOT`；所有 SDK、
+cache、AVD 和状态路径必须位于该根内。仓库不要求固定卷名、盘符或用户目录。
 
 制品按 SHA-256 放置，文件名固定为 `artifact`，不使用 `.apk` 扩展名：
 
@@ -40,9 +44,9 @@ const manifest = await loadExternalAppManifest("test-lab/apps/manifests/app.json
 const inspector = await createAndroidApkInspector({
   repositoryRoot: "/absolute/repository",
   buildToolsDirectory:
-    "/Volumes/aigo S7 Media/SDK/android-tools/android-sdk/build-tools/36.0.0",
+    "/absolute/toolchain-root/android-sdk/build-tools/36.0.0",
   javaPath:
-    "/Volumes/aigo S7 Media/SDK/android-tools/jdk-temurin-21.0.7+6/Contents/Home/bin/java",
+    "/absolute/toolchain-root/jdk/Contents/Home/bin/java",
 });
 const descriptor = await verifyExternalAppArtifact({
   manifest,

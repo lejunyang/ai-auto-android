@@ -37,11 +37,7 @@ comments:
 	@node scripts/check-comment-coverage.mjs --self-test
 
 go-fmt:
-	@files=$$(gofmt -l .); \
-	if [ -n "$$files" ]; then \
-		printf 'Go files require formatting:\n%s\n' "$$files" >&2; \
-		exit 1; \
-	fi
+	@sh ./scripts/check-go-format.sh
 
 go-test:
 	@$(GO) test ./...

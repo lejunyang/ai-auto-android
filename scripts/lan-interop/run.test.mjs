@@ -51,8 +51,9 @@ test("只接受固定 profile、接口 ID 和私网 IPv4", () => {
 });
 
 test("所有工具链路径必须位于统一外置根", () => {
-  const root = "/Volumes/aigo S7 Media/SDK/android-tools";
+  const root = "/opt/aiauto-tools";
   assert.equal(requiredEnvironment({
+    AACTL_TOOLCHAIN_ROOT: root,
     ANDROID_SDK_ROOT: `${root}/android-sdk`,
     ANDROID_AVD_HOME: `${root}/android-avd`,
     JAVA_HOME: `${root}/jdk/Contents/Home`,
@@ -62,6 +63,7 @@ test("所有工具链路径必须位于统一外置根", () => {
   }).stateRoot, `${root}/emulator-state`);
   assert.throws(
     () => requiredEnvironment({
+      AACTL_TOOLCHAIN_ROOT: root,
       ANDROID_SDK_ROOT: "/tmp/android-sdk",
       ANDROID_AVD_HOME: `${root}/android-avd`,
       JAVA_HOME: `${root}/jdk/Contents/Home`,

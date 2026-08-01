@@ -10,6 +10,7 @@ import {
   loadProfiles,
   runCommand,
 } from "../emulator/runner.mjs";
+import { resolveToolchainEnvironment } from "../toolchain-environment.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..", "..");
@@ -27,7 +28,6 @@ const resultDirectory = path.join(
 );
 const testClass =
   "dev.aiauto.webfixture.N43SemanticReplayDeviceTest";
-const expectedRoot = "/Volumes/aigo S7 Media/SDK/android-tools";
 const profilePattern = /^api-(?:30|33|34)$/u;
 const serialPattern = /^emulator-[0-9]{4,5}$/u;
 const sha256Pattern = /^[0-9a-f]{64}$/u;
@@ -51,24 +51,18 @@ export const parseMatrixArguments = (argv) => {
 };
 
 export const matrixEnvironment = (environment) => {
-  const roots = {
-    sdkRoot: environment.ANDROID_SDK_ROOT,
-    avdRoot: environment.ANDROID_AVD_HOME,
-    javaHome: environment.JAVA_HOME,
-    stateRoot: environment.AACTL_EMULATOR_STATE,
-    goCache: environment.GOCACHE,
-    goModCache: environment.GOMODCACHE,
-  };
-  for (const value of Object.values(roots)) {
-    if (
-      typeof value !== "string"
-      || !path.isAbsolute(value)
-      || (value !== expectedRoot && !value.startsWith(`${expectedRoot}${path.sep}`))
-    ) {
-      fail("ENVIRONMENT_INVALID");
-    }
+  try {
+    return resolveToolchainEnvironment(environment, {
+      sdkRoot: "ANDROID_SDK_ROOT",
+      avdRoot: "ANDROID_AVD_HOME",
+      javaHome: "JAVA_HOME",
+      stateRoot: "AACTL_EMULATOR_STATE",
+      goCache: "GOCACHE",
+      goModCache: "GOMODCACHE",
+    });
+  } catch {
+    fail("ENVIRONMENT_INVALID");
   }
-  return Object.freeze(roots);
 };
 
 const exactAttributes = (source) => {

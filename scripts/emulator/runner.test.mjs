@@ -249,6 +249,68 @@ test("Windows tool paths use native executables without batch or shell wrapping"
   });
 });
 
+test("Windows fake SDK verifies native exe tools and package metadata", async () => {
+  const stateRoot = await createState();
+  const sdkRoot = path.join(stateRoot, "sdk");
+  const javaHome = path.join(stateRoot, "java");
+  const profile = profileDocument.profiles[0];
+  const files = [
+    path.join(sdkRoot, "platform-tools", "adb.exe"),
+    path.join(sdkRoot, "emulator", "emulator.exe"),
+    path.join(javaHome, "bin", "java.exe"),
+    path.join(
+      sdkRoot,
+      "cmdline-tools",
+      "latest",
+      "lib",
+      "avdmanager-classpath.jar",
+    ),
+  ];
+  await Promise.all(files.map(async (file) => {
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, "");
+  }));
+  for (const [directory, revision] of [
+    ["cmdline-tools/latest", "22.0"],
+    ["platform-tools", "37.0.0"],
+    ["emulator", "36.6.11"],
+    ["platforms/android-36", "2"],
+    ["build-tools/36.0.0", "36.0.0"],
+    ["system-images/android-33/google_apis/arm64-v8a", "12"],
+  ]) {
+    const metadata = path.join(sdkRoot, directory, "source.properties");
+    await mkdir(path.dirname(metadata), { recursive: true });
+    await writeFile(metadata, `Pkg.Revision=${revision}\n`);
+  }
+  await writeFile(
+    path.join(stateRoot, "package-receipts.json"),
+    JSON.stringify({
+      packages: {
+        [profile.systemImage]: {
+          revision: profile.packageRevision,
+          sha256: profile.packageSha256,
+        },
+      },
+    }),
+  );
+  const runner = new EmulatorRunner({
+    stateRoot,
+    sdkRoot,
+    avdRoot: path.join(stateRoot, "avd"),
+    javaHome,
+    profiles: profileDocument,
+    platform: "win32",
+    minimumFreeBytes: 0,
+  });
+
+  const verified = await runner.verifyProfile("api-33");
+
+  assert.equal(verified.profile.id, "api-33");
+  assert.equal(verified.tools.adb, path.join(sdkRoot, "platform-tools", "adb.exe"));
+  assert.equal(verified.tools.emulator, path.join(sdkRoot, "emulator", "emulator.exe"));
+  assert.equal(verified.tools.java, path.join(javaHome, "bin", "java.exe"));
+});
+
 test("runtime state write failure releases leases only after process cleanup", async () => {
   const stateRoot = await createState();
   let releases = 0;
@@ -410,6 +472,7 @@ test("fake SDK completes create start boot snapshot restore stop and delete", as
   const sdkRoot = path.join(stateRoot, "sdk");
   const avdRoot = path.join(stateRoot, "avd");
   const profile = profileDocument.profiles[0];
+  const executableSuffix = process.platform === "win32" ? ".exe" : "";
   const imageDirectory = path.join(
     sdkRoot,
     "system-images",
@@ -418,10 +481,10 @@ test("fake SDK completes create start boot snapshot restore stop and delete", as
     "arm64-v8a",
   );
   const toolFiles = [
-    path.join(sdkRoot, "platform-tools", "adb"),
-    path.join(sdkRoot, "emulator", "emulator"),
+    path.join(sdkRoot, "platform-tools", `adb${executableSuffix}`),
+    path.join(sdkRoot, "emulator", `emulator${executableSuffix}`),
     path.join(sdkRoot, "cmdline-tools", "latest", "lib", "avdmanager-classpath.jar"),
-    path.join(stateRoot, "java", "bin", "java"),
+    path.join(stateRoot, "java", "bin", `java${executableSuffix}`),
   ];
   await Promise.all(toolFiles.map(async (file) => {
     await mkdir(path.dirname(file), { recursive: true });

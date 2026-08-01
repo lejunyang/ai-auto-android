@@ -8,8 +8,9 @@ import {
   runPassiveSmokeMatrix,
 } from "../src/passive-smoke-cli.mjs";
 
-const root = "/Volumes/aigo S7 Media/SDK/android-tools";
+const root = "/opt/aiauto-tools";
 const environment = Object.freeze({
+  AACTL_TOOLCHAIN_ROOT: root,
   ANDROID_SDK_ROOT: `${root}/android-sdk`,
   ANDROID_AVD_HOME: `${root}/android-avd`,
   JAVA_HOME: `${root}/jdk/Contents/Home`,
@@ -169,6 +170,16 @@ test("CLI 只接受一个固定 profile 参数和统一外置环境", () => {
     );
   }
   assert.equal(passiveSmokeEnvironment(environment).cacheRoot, `${root}/android-apk-cache`);
+  assert.equal(passiveSmokeEnvironment({
+    AACTL_TOOLCHAIN_ROOT: "D:\\aiauto-tools",
+    ANDROID_SDK_ROOT: "D:\\aiauto-tools\\android-sdk",
+    ANDROID_AVD_HOME: "D:\\aiauto-tools\\android-avd",
+    JAVA_HOME: "D:\\aiauto-tools\\jdk",
+    AACTL_EMULATOR_STATE: "D:\\aiauto-tools\\emulator-state",
+    AACTL_ANDROID_APK_CACHE: "D:\\aiauto-tools\\android-apk-cache",
+    GOCACHE: "D:\\aiauto-tools\\go-cache",
+    GOMODCACHE: "D:\\aiauto-tools\\go-mod-cache",
+  }).sdkRoot, "D:\\aiauto-tools\\android-sdk");
   assert.throws(
     () => passiveSmokeEnvironment({
       ...environment,

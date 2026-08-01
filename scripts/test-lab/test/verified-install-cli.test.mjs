@@ -4,15 +4,14 @@ import test from "node:test";
 
 import { runVerifiedInstall } from "../src/verified-install-cli.mjs";
 
+const toolchainRoot = "/opt/aiauto-tools";
 const environment = Object.freeze({
-  ANDROID_SDK_ROOT: "/Volumes/aigo S7 Media/SDK/android-tools/android-sdk",
-  ANDROID_AVD_HOME: "/Volumes/aigo S7 Media/SDK/android-tools/android-avd",
-  JAVA_HOME:
-    "/Volumes/aigo S7 Media/SDK/android-tools/jdk-temurin-21.0.7+6/Contents/Home",
-  AACTL_EMULATOR_STATE:
-    "/Volumes/aigo S7 Media/SDK/android-tools/emulator-state",
-  AACTL_ANDROID_APK_CACHE:
-    "/Volumes/aigo S7 Media/SDK/android-tools/android-apk-cache",
+  AACTL_TOOLCHAIN_ROOT: toolchainRoot,
+  ANDROID_SDK_ROOT: `${toolchainRoot}/android-sdk`,
+  ANDROID_AVD_HOME: `${toolchainRoot}/android-avd`,
+  JAVA_HOME: `${toolchainRoot}/jdk/Contents/Home`,
+  AACTL_EMULATOR_STATE: `${toolchainRoot}/emulator-state`,
+  AACTL_ANDROID_APK_CACHE: `${toolchainRoot}/android-apk-cache`,
 });
 const descriptor = Object.freeze({
   package: "com.example.fixture",

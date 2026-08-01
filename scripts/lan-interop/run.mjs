@@ -13,6 +13,7 @@ import {
   loadProfiles,
   runCommand,
 } from "../emulator/runner.mjs";
+import { resolveToolchainEnvironment } from "../toolchain-environment.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..", "..");
@@ -21,7 +22,6 @@ const gradlew = path.join(repositoryRoot, "android", "gradlew");
 const fixedTestClass =
   "dev.aiauto.android.bridge.lan.LanCrossRuntimeDeviceTest";
 const fixedMarker = "AI_AUTO_TEST_ONLY_V1";
-const externalRoot = "/Volumes/aigo S7 Media/SDK/android-tools";
 const profilePattern = /^api-(?:30|33|34)$/u;
 const interfacePattern = /^if-[1-9][0-9]{0,5}-[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u;
 const addressPattern =
@@ -66,24 +66,18 @@ export const parseArguments = (argv) => {
 };
 
 export const requiredEnvironment = (environment) => {
-  const values = {
-    sdkRoot: environment.ANDROID_SDK_ROOT,
-    avdRoot: environment.ANDROID_AVD_HOME,
-    javaHome: environment.JAVA_HOME,
-    stateRoot: environment.AACTL_EMULATOR_STATE,
-    goCache: environment.GOCACHE,
-    goModCache: environment.GOMODCACHE,
-  };
-  for (const value of Object.values(values)) {
-    if (
-      typeof value !== "string"
-      || !path.isAbsolute(value)
-      || (value !== externalRoot && !value.startsWith(`${externalRoot}${path.sep}`))
-    ) {
-      fail("ENVIRONMENT_INVALID");
-    }
+  try {
+    return resolveToolchainEnvironment(environment, {
+      sdkRoot: "ANDROID_SDK_ROOT",
+      avdRoot: "ANDROID_AVD_HOME",
+      javaHome: "JAVA_HOME",
+      stateRoot: "AACTL_EMULATOR_STATE",
+      goCache: "GOCACHE",
+      goModCache: "GOMODCACHE",
+    });
+  } catch {
+    fail("ENVIRONMENT_INVALID");
   }
-  return Object.freeze(values);
 };
 
 const exactKeys = (value, keys) => {

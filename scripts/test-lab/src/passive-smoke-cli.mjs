@@ -10,6 +10,7 @@ import {
   loadProfiles,
   runCommand,
 } from "../../emulator/runner.mjs";
+import { resolveToolchainEnvironment } from "../../toolchain-environment.mjs";
 import { createAndroidApkInspector } from "./apk-inspector.mjs";
 import { runVerifiedExternalAppLifecycle } from "./lifecycle.mjs";
 import { loadExternalAppManifest } from "./manifest.mjs";
@@ -21,7 +22,6 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..", "..", "..");
 const manifestRoot = path.join(repositoryRoot, "test-lab", "apps", "manifests");
 const profileFile = path.join(repositoryRoot, "scripts", "emulator", "profiles.json");
-const expectedRoot = "/Volumes/aigo S7 Media/SDK/android-tools";
 const profilePattern = /^api-(?:30|33|34)$/u;
 const fixedManifests = Object.freeze([
   "bilibili-9.5.0-arm64.json",
@@ -49,25 +49,19 @@ export const parsePassiveSmokeArguments = (argv) => {
 };
 
 export const passiveSmokeEnvironment = (environment) => {
-  const roots = {
-    sdkRoot: environment.ANDROID_SDK_ROOT,
-    avdRoot: environment.ANDROID_AVD_HOME,
-    javaHome: environment.JAVA_HOME,
-    stateRoot: environment.AACTL_EMULATOR_STATE,
-    cacheRoot: environment.AACTL_ANDROID_APK_CACHE,
-    goCache: environment.GOCACHE,
-    goModCache: environment.GOMODCACHE,
-  };
-  for (const value of Object.values(roots)) {
-    if (
-      typeof value !== "string"
-      || !path.isAbsolute(value)
-      || (value !== expectedRoot && !value.startsWith(`${expectedRoot}${path.sep}`))
-    ) {
-      fail("ENVIRONMENT_INVALID");
-    }
+  try {
+    return resolveToolchainEnvironment(environment, {
+      sdkRoot: "ANDROID_SDK_ROOT",
+      avdRoot: "ANDROID_AVD_HOME",
+      javaHome: "JAVA_HOME",
+      stateRoot: "AACTL_EMULATOR_STATE",
+      cacheRoot: "AACTL_ANDROID_APK_CACHE",
+      goCache: "GOCACHE",
+      goModCache: "GOMODCACHE",
+    });
+  } catch {
+    fail("ENVIRONMENT_INVALID");
   }
-  return Object.freeze(roots);
 };
 
 const assertSuccess = (result, code) => {
