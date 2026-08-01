@@ -9,7 +9,7 @@
 - [x] 在 N31 clean emulator 运行一次只读 visual propose
 - [x] 更新 N44 append-only 证据与路线图状态
 - [x] 运行定向、race、全量、comments 与 diff-check
-- [ ] 创建单一职责提交并集成
+- [x] 创建单一职责提交并集成
 
 ## 建议提交
 

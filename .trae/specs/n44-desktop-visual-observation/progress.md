@@ -53,3 +53,12 @@
   server pending cleanup 为 0，未执行任何动作。
 - runner 随后恢复 clean、停止 `emulator-5584` 并执行 Gradle clean。最终 doctor
   健康，设备、runtime、AVD/port lease 和构建 APK 均为零。
+
+## Round 4
+
+- 实现提交 `3157f83` 的 Author 与 Committer 均为
+  `lejunyang <lejunyang@qq.com>`，要求的 co-author trailer 恰好一次；`main` 在
+  干净状态下以 fast-forward 集成该提交。
+- 临时 worktree `/private/tmp/ai-auto-n44-desktop-visual` 在确认干净且提交已是
+  `main` 祖先后，使用非强制 `git worktree remove` 清理；随后完成
+  `worktree prune` 并删除已合入分支。N37/N38 QR worktree 保持独立继续运行。

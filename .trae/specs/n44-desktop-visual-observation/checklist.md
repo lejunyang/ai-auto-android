@@ -11,4 +11,4 @@
 - [x] 成功、失败、取消与关闭路径清零全部图片并撤销 observation
 - [x] N31 emulator 单次只读 visual propose 有设备证据
 - [x] 定向、race、全量、comments 与 diff-check 通过
-- [ ] 提交身份、trailer、集成与 worktree 清理正确
+- [x] 提交身份、trailer、集成与 worktree 清理正确
