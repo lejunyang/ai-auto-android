@@ -63,7 +63,8 @@ aactl bridge close --device SERIAL --json
 
 ## MCP 配置
 
-`aactl mcp serve` 通过 stdio 暴露五个类型化工具。MCP 客户端可使用以下通用配置；
+`aactl mcp serve` 通过 stdio 暴露六个类型化工具，其中视觉候选工具只读且不会执行
+动作。MCP 客户端可使用以下通用配置；
 `command` 必须是客户端实际可访问的可执行文件路径，或已在其 `PATH` 中的
 `aactl`：
 

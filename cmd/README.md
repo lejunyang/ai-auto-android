@@ -63,10 +63,13 @@ aactl mcp serve
 ```
 
 MCP 暴露 `android_devices_list`、`android_device_get`、`android_observe`、
-`android_action_execute` 和 `android_recording_replay`。其中
+`android_visual_target_propose`、`android_action_execute` 和
+`android_recording_replay`。其中
 `android_observe` 统一支持 screenshot、hierarchy 和已建立 Bridge 会话下的
 semantic、recordings；CLI 的 semantic 观察命令是 `bridge snapshot`，录制列表
-命令是 `recording list`。MCP 的 `android_recording_replay` 为兼容性保留，但
+命令是 `recording list`。`android_visual_target_propose` 在同轮稳定设备和前台包
+下绑定 PNG、脱敏 hierarchy、screen/rotation 与 template 候选，只读且不执行动作。
+MCP 的 `android_recording_replay` 为兼容性保留，但
 MVP 始终返回 `CONFIRMATION_REQUIRED`，不会调用回放 service。MCP 不暴露
 doctor、配对、连接、Bridge 会话管理、Bridge action 或任意 shell，并在运行时
 强制拒绝 `app.stop`。

@@ -38,3 +38,11 @@
   `lejunyang <lejunyang@qq.com>`，trailer 恰好一次；提交范围仅含本规格允许的
   session/provider/test 文件。worktree 提交后 clean，真实手工 screenshot
   instrumentation 仍未执行。
+
+## Round 3
+
+- 后续 desktop integration change 已提供同 observation 的可信 ADB PNG/hierarchy
+  capture，并注册共享 MCP visual tool；因此本文件 Round 1/2 所述“桌面未注册”只
+  是当时的历史边界，不再是当前 N44 阻塞。
+- App 用户授权 visual session 路径保持不变；桌面路径不复用 App screenshot
+  authorization，也不放宽 App 的 sensitive/secure 与会话代次安全门。

@@ -18,6 +18,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/output"
 	"github.com/lejunyang/ai-auto-android/internal/process"
 	"github.com/lejunyang/ai-auto-android/internal/service"
+	"github.com/lejunyang/ai-auto-android/internal/visual"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -41,6 +42,7 @@ type App struct {
 	// TrustedDevices 允许测试替换可信无线设备档案存储；生产环境默认使用用户配置目录。
 	TrustedDevices adb.TrustedDeviceStore
 	Automation     service.Automation
+	DesktopVisual  *visual.DesktopProposalService
 	MCPTransport   sdkmcp.Transport
 	// LANInterfaces 等窄端口允许测试替换网络、listener、随机源和二维码 provider。
 	LANInterfaces lan.InterfaceSource
@@ -280,6 +282,7 @@ func (a *App) automationService(client *adb.Client) (service.Automation, error) 
 
 func (a *App) serveMCP(ctx context.Context) error {
 	var automation service.Automation
+	desktopVisual := a.DesktopVisual
 	if a.Automation != nil {
 		automation = a.Automation
 	} else {
@@ -292,12 +295,13 @@ func (a *App) serveMCP(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		desktopVisual = visual.NewDesktopProposalService(client, visual.DesktopOptions{})
 	}
 	transport := a.MCPTransport
 	if transport == nil {
 		transport = &sdkmcp.StdioTransport{}
 	}
-	return mcpserver.Run(ctx, automation, Version, transport)
+	return mcpserver.Run(ctx, automation, Version, transport, desktopVisual)
 }
 
 func extractJSONFlag(args []string) ([]string, bool) {

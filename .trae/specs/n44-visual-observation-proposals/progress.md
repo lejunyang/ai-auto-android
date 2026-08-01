@@ -46,3 +46,12 @@
 - 主线未推送提交统一 author/committer 后，N44 主实现和规格证据分别对应
   `ccb801d`、`5b8bffe`；最终 tree 与提交消息未变化，身份均为
   `lejunyang <lejunyang@qq.com>`。
+
+## Round 4
+
+- 独立 desktop integration change 已补齐同轮可信 ADB capture，并把
+  `android_visual_target_propose` 注册到共享 MCP server。该后续实现不改变本规格
+  的 visual schema、候选映射和 fail-closed 核心，只关闭此前明确保留的桌面公开
+  采集与注册缺口。
+- 生产桌面 provider 当前只提供 hierarchy-derived `template` 候选；OCR/model
+  provider 仍属于可替换扩展，不影响 N44 的“统一候选来源模型”和只读服务验收。

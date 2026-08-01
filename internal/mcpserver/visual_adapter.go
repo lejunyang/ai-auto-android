@@ -1,6 +1,6 @@
 package mcpserver
 
-// 功能用途：提供未注册到共享 server 的只读视觉候选 MCP adapter，并约束图片清零生命周期。
+// 功能用途：提供可复用的只读视觉候选 adapter，并约束独立 observation 图片清零生命周期。
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// ToolVisualTargetPropose 是独立 adapter 的候选工具名；主 server 尚未公开注册。
+// ToolVisualTargetPropose 是共享与独立 adapter 统一使用的只读候选工具名。
 const ToolVisualTargetPropose = "android_visual_target_propose"
 
 // VisualProposeInput 只绑定 observation 和预期前台包，不包含动作字段。

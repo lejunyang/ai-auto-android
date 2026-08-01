@@ -546,7 +546,7 @@ hybrid-required；N43 已按目标完成兼容分级、语义流程、失败关�
 
 **建议提交：** `test(android): validate webview semantic replay`
 
-### [ ] Task N44：视觉 Observation 与 AI 候选
+### [x] Task N44：视觉 Observation 与 AI 候选
 
 **目标：** 把截图、语义树和屏幕元数据绑定为同一次观察，并让 AI 只提出候选。
 
@@ -579,6 +579,21 @@ crop 映射、会话代次、稳定 hierarchy、自然屏幕/crop 几何、低�
 关闭。显式授权 App AI 会话已能把同 observation 元数据与最小 PNG 传给 Provider，
 结束后撤销并清零；独立 adapter 仍未注册到共享 MCP server，因为桌面端尚无能同时
 提供可信 PNG/hierarchy 的采集端口，因此主任务保持未勾选。
+
+**追加桌面公开路径（N44 已完成）：** 独立 change
+`n44-desktop-visual-observation` 提供生产
+`device -> hierarchy -> screenshot -> hierarchy -> device` 稳定门，前后设备、
+hierarchy、前台包或 rotation 漂移均零候选失败关闭。PNG、自然方向 screen、完整
+capture crop 与脱敏 UIAutomator tree 绑定同一短生命周期 observation；password
+节点及后代不返回 label。共享 MCP 现注册只读
+`android_visual_target_propose`，生产 provider 从唯一 role/label 节点生成
+`template` 候选，`actionCommitCount` 固定为 0。transport 在 visual response 写出
+成功或失败后按 observation ID 清零服务端图片，connection/server 关闭也清理 pending。
+API 34 clean `emulator-5584` 的生产 MCP smoke 返回同 observation PNG、
+`dev.aiauto.fixture`、rotation 0、脱敏 hierarchy 和唯一候选，未执行动作；最终
+doctor 健康，设备、runtime、lease 与构建 APK 均为零。N44 的 App 用户授权路径和
+桌面公开路径均已闭合，因此本任务现勾选完成；该结论不代表 N41 截图编辑或 N45
+历史视觉步骤 rebind 已完成。
 
 **失败清理：** 清零图片字节、删除临时 PNG 和候选，撤销 observation ID。
 

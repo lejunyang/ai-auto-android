@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | CLI | stdout 上的单个 JSON 信封 | 人工调用和 Skills；日志、提示写 stderr |
 | App Bridge | TCP loopback 上 UTF-8 NDJSON + JSON-RPC 2.0 | 电脑到 Android App 的短期会话 |
-| MCP | stdio | 五个类型化工具，共用 `service.Automation` |
+| MCP | stdio | 六个类型化工具；五个共用 `service.Automation`，visual proposal 使用独立只读 capture 端口 |
 
 Schema 位于 [`../protocol/schema/v1/`](../protocol/schema/v1/)，运行限制位于
 [`../protocol/limits.json`](../protocol/limits.json)，版本规则位于
@@ -211,12 +211,15 @@ CLI 退出码：
 - `android_devices_list`
 - `android_device_get`
 - `android_observe`
+- `android_visual_target_propose`
 - `android_action_execute`
 - `android_recording_replay`
 
 MCP 不暴露 doctor、Wi-Fi 配对/连接、Bridge open/info/action/close、录制列表或
 任意 shell。`android_observe` 支持 `screenshot`、`hierarchy` 和已建立 Bridge
-会话后的 `semantic`；动作工具只走直接 ADB 类型化动作。
+会话后的 `semantic`；`android_visual_target_propose` 仅从一次稳定且明确包的
+PNG/UIAutomator observation 提出 template 候选，返回的 `actionCommitCount` 固定
+为 0；动作工具只走直接 ADB 类型化动作。
 
 ## 验证
 

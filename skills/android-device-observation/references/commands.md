@@ -26,6 +26,26 @@ aactl observe screenshot --device SERIAL --output screen.png --json
 
 MCP 返回图像内容和结构化元数据。将客户端管理的图像视为敏感产物。
 
+## 同轮视觉候选
+
+只在已重新发现且明确选择的设备上调用。`expectedPackage` 必须来自调用前最新观察，
+`target` 至少提供一个明确的 `role` 或 `label`；两者同时提供时必须命中同一唯一
+UIAutomator 节点。
+
+```json
+{
+  "device": "SERIAL",
+  "expectedPackage": "com.example.app",
+  "target": {"role": "button", "label": "Continue"}
+}
+```
+
+工具名为 `android_visual_target_propose`。它在一次稳定门内绑定 PNG、前后相同的
+UIAutomator hierarchy、前台包、screen/rotation 和短生命周期 observation，只返回
+template 候选，`actionCommitCount` 固定为 `0`。包、设备、层级或 rotation 漂移，
+黑屏/保护窗口、无候选或多候选都会失败关闭，不会执行点击或坐标动作。服务端在 MCP
+响应写出后清零图片；客户端收到的图像仍按敏感产物处理。
+
 ## UIAutomator 层级
 
 ```bash
@@ -78,4 +98,7 @@ MCP 不暴露 Bridge 的 open、info、action 或 close。必须在用户直接�
 
 ## 当前命令边界
 
-CLI 仅支持 `observe screenshot` 和 `observe hierarchy`。语义观察使用 `bridge snapshot`；MCP 通过 `android_observe` 统一三种数据源。
+CLI 仅支持 `observe screenshot` 和 `observe hierarchy`。语义观察使用
+`bridge snapshot`；MCP 通过 `android_observe` 统一基础数据源，并通过
+`android_visual_target_propose` 提供同轮脱敏视觉候选。原始 hierarchy 不具有视觉
+候选路径的脱敏和稳定保证。

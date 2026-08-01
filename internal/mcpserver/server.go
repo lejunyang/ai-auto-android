@@ -1,6 +1,6 @@
 package mcpserver
 
-// 功能用途：本文件注册五个类型化 MCP 工具，并把调用映射到共享自动化服务。
+// 功能用途：本文件注册六个类型化 MCP 工具，并把调用映射到共享自动化与只读视觉服务。
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/protocol"
 	"github.com/lejunyang/ai-auto-android/internal/service"
+	"github.com/lejunyang/ai-auto-android/internal/visual"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -27,6 +28,7 @@ var ToolNames = []string{
 	ToolDevicesList,
 	ToolDeviceGet,
 	ToolObserve,
+	ToolVisualTargetPropose,
 	ToolActionExecute,
 	ToolRecordingReplay,
 }
@@ -79,6 +81,14 @@ type recordingReplayInput struct {
 
 // New 创建只暴露设备查询、观察、低风险动作和受确认保护回放的 MCP 服务器。
 func New(automation service.Automation, version string) *mcp.Server {
+	return newServer(automation, version, nil)
+}
+
+func newServer(
+	automation service.Automation,
+	version string,
+	desktopVisual *desktopVisualRuntime,
+) *mcp.Server {
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "aactl", Version: version},
 		&mcp.ServerOptions{
@@ -87,6 +97,7 @@ func New(automation service.Automation, version string) *mcp.Server {
 			},
 		},
 	)
+	addDesktopVisualTool(server, desktopVisual)
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        ToolDevicesList,
@@ -223,8 +234,18 @@ func Run(
 	automation service.Automation,
 	version string,
 	transport mcp.Transport,
+	desktopVisual ...*visual.DesktopProposalService,
 ) error {
-	return New(automation, version).Run(ctx, transport)
+	var proposalService *visual.DesktopProposalService
+	if len(desktopVisual) > 0 {
+		proposalService = desktopVisual[0]
+	}
+	runtime := newDesktopVisualRuntime(proposalService)
+	defer runtime.close()
+	return newServer(automation, version, runtime).Run(
+		ctx,
+		runtime.wrapTransport(transport),
+	)
 }
 
 func readOnlyAnnotations() *mcp.ToolAnnotations {

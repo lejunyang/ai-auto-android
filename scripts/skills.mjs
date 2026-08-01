@@ -27,6 +27,7 @@ const requiredContent = {
     "aactl observe screenshot",
     "aactl observe hierarchy",
     "aactl bridge snapshot",
+    "android_visual_target_propose",
     "隐私",
     "脱敏",
     "产物",

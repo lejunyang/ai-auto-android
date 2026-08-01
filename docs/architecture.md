@@ -12,6 +12,9 @@
   +-- CLI JSON -------------------------+
   +-- MCP stdio ------------------------+--> Go service.Automation
   +-- Agent Skills（调用 CLI/MCP）------+          |
+             |                                     |
+             +--> DesktopVisual capture -----------+--> visual.Registry / Proposal
+                                                   |      |
                                                    +-- DirectBackend
                                                    |     |
                                                    |     +-- argv 形式调用官方 adb
@@ -40,7 +43,7 @@ Android App                                                   v
 | `internal/service` | CLI 与 MCP 共用的设备、观察、动作和回放语义 |
 | `internal/adb` | ADB 定位、诊断、设备归一化、类型化命令和端口转发 |
 | `internal/bridge` | Bridge 握手、短期会话、NDJSON 客户端和 forward 生命周期 |
-| `internal/mcpserver` | 五个 MCP tools；不暴露配对、Bridge 管理或任意 shell |
+| `internal/mcpserver` | 六个 MCP tools；视觉候选只读，不暴露配对、Bridge 管理或任意 shell |
 | `protocol/` | JSON Schema Draft 2020-12、版本、限制和契约夹具 |
 | Android `accessibility` | 目标包约束、脱敏快照、选择器匹配和动作路由 |
 | Android `automation/session` | 观察、单步规划、风险检查、执行、验证和停止 |
@@ -145,6 +148,21 @@ Android Bridge -> AccessibilityRuntime -> 重新获取当前窗口 -> 执行 -> 
 - CLI 没有 `devices watch` 或录制编辑命令；`recording list` 仅返回脱敏摘要。
 - CLI 的语义观察命令是 `bridge snapshot`；MCP 将三种观察统一为
   `android_observe`。
+
+### 3. 桌面视觉候选
+
+```text
+MCP visual propose -> 明确 serial/package/target
+  -> device info -> hierarchy -> screenshot -> hierarchy -> device info
+  -> 双 hierarchy 与设备身份稳定门
+  -> PNG 尺寸/rotation + 脱敏 UIAutomator tree -> 短期 visual observation
+  -> hierarchy-derived template candidate -> ImageContent + structuredContent
+  -> transport 写出完成后撤销 observation 并清零服务端图片
+```
+
+该路径只提出候选，`actionCommitCount` 固定为 0，不执行 tap、swipe 或其他动作。
+password 节点及其后代不返回 label；普通 `android_observe kind=hierarchy` 是原始
+UIAutomator XML，不具有该视觉 observation 的脱敏与同轮稳定保证。
 - Bridge 不传输截图；像素截图始终走直接 ADB 后端。
 - 协议动作集合大于当前 Bridge 执行集合；能力必须以协商结果和实际错误为准。
 - 蓝牙、Root、Shizuku、Device Owner、OCR、视觉自愈、设备农场和互联网远控
