@@ -47,6 +47,21 @@ class MainActivity : Activity() {
         render()
     }
 
+    override fun onPause() {
+        state.recordForegroundExit()
+        super.onPause()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            state.recordForegroundReturn()
+            render()
+        } else {
+            state.recordForegroundExit()
+        }
+    }
+
     private fun bindInput() {
         findViewById<EditText>(R.id.text_input).apply {
             setText(state.inputValue)
@@ -170,6 +185,7 @@ class MainActivity : Activity() {
 
     private fun bindReset() {
         findViewById<View>(R.id.reset_target).setOnClickListener {
+            findViewById<View>(R.id.fixture_root).requestFocus()
             findViewById<ListView>(R.id.vertical_scroll_target).setSelection(0)
             findViewById<HorizontalScrollView>(R.id.horizontal_swipe_target).scrollTo(0, 0)
             state.reset()

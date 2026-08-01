@@ -23,6 +23,10 @@ test("verify workflow 使用仓库格式脚本并覆盖三平台 portability", a
     true,
   );
   assert.equal(workflow.includes("scripts/emulator/runner.test.mjs"), true);
+  assert.equal(
+    workflow.includes("scripts/native-fixture-matrix/run.test.mjs"),
+    true,
+  );
 });
 
 test("gitattributes 固定源码 LF 和 Windows batch CRLF", async () => {

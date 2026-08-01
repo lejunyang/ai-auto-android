@@ -5,8 +5,8 @@
 > **当前执行状态（2026-08-01）：** N31、N32、N34、N36、N39、N40、N42、
 > N43、N44、N46 已取得对应实现、测试或设备证据并合入 `main`。N37/N38 的持续加密
 > Bridge RPC 和 Go/Kotlin 真实 socket 已通过，但跨平台、相机与真机矩阵仍待验收；
-> N33 已改用 ListView 并通过 API 30 纵向单轮，完整三 API 矩阵仍未完成。下一阶段
-> 任务不回写当前 MVP 验收结果。
+> N33 已完成 ListView 重设计与 API 30/33/34 各 20 轮 clean 完整矩阵。下一阶段任务
+> 不回写当前 MVP 验收结果。
 >
 > Task N35 实现已集成到 `main`，但正式验收仍待 macOS、Windows 各 20 次断线恢复
 > 与不会串设备的证据，继续保持未完成。N31/N39/N42 的临时分支已在确认补丁等价
@@ -116,7 +116,7 @@ release APK 检查为零测试入口，真机或非测试签名调用全部失�
 
 **建议提交：** `test(android): add emulator-only control plane`
 
-### [ ] Task N33：扩展 Native Device Fixture
+### [x] Task N33：扩展 Native Device Fixture
 
 **目标：** 用受控原生 App 覆盖真实自动化所需的多动作和多页面基础能力。
 
@@ -162,6 +162,17 @@ N33 继续保持未勾选。
 一次向上 swipe 后，vertical-only instrumentation 1/1 通过真实 offset/state 后置；
 最终设备/runtime/lease 为零。该证据关闭原纵向 surface blocker，但 API 33/34、
 Back/Home/Recents/应用切换和三版本各 20 轮成功率仍未验收，N33 保持未勾选。
+
+**追加最终矩阵（N33 已完成）：** 独立 change `n33-clean-repeat-matrix` 增加固定
+profile 的 clean 编排器，每轮仅运行一次完整 `fixtureScenario=all`，严格解析新鲜
+JUnit，并绑定 N31 serial/fingerprint。Reset 显式释放输入焦点，避免 Launcher 重入
+时 IME 压缩窗口；系统返回使用两阶段握手，Home/Settings 由 Activity 生命周期覆盖，
+API 33 Recents overlay 由窗口失焦/恢复覆盖。Recents 后置不再依赖 API 33 会失真的
+`currentPackageName`，而是验证类型化全局动作成功、唯一 application window 属于
+launcher/system，并在重入后重新观察 `SYSTEM_RETURN:RECENTS`。最终 API 30
+`emulator-5578`、API 33 `emulator-5580`、API 34 `emulator-5582` 各 20/20，
+总计 60/60、成功率 100%；三份报告为 `0600`，不含 hierarchy、截图或失败 stack。
+最终 doctor 健康，设备、runtime、AVD/port lease、owned emulator 和临时目录均为零。
 
 **失败清理：** 清除 fixture 数据并恢复 AVD 快照；失败产物交给 N34 管理。
 

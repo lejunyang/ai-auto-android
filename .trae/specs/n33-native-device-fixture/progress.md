@@ -106,3 +106,22 @@
 - 两种方案均被真实设备证据否定，实验实现已完整撤销，fixture 源码与主分支基线
   一致；未启动 API 33/34 或重复矩阵。最终设备、runtime、AVD/port lease 和 owned
   emulator 均为零，N33 继续保持未完成。
+
+## Round 5
+
+- 平台 `ListView` 重设计已先关闭 API 30 纵向真实 offset 阻塞；本轮在其基础上完成
+  系统返回生命周期和完整 clean matrix。Home/Settings 使用 Activity
+  `onPause/onResume`，API 33 Recents overlay 使用窗口失焦/恢复，共享同一幂等
+  两阶段握手。
+- Reset 现将焦点交给根布局，避免历史文本输入焦点在 Launcher 重入时重新拉起 IME、
+  压缩窗口并使下方 system 节点离开可观察树。设备 RED 先稳定证明 Reset 后输入仍
+  聚焦，修复后 API 30 完整单轮通过。
+- API 33 的 `currentPackageName` 在 Recents 中仍报告 Fixture；一次只读 hierarchy
+  与 application-window 观察证明实际 overview 属于
+  `com.google.android.apps.nexuslauncher`。测试改为验证类型化全局动作返回 true、
+  唯一 application window 为 launcher/system，并在重入后验证
+  `SYSTEM_RETURN:RECENTS`，不依赖固定 SystemUI resource ID、raw ADB 或坐标。
+- 最终 API 30 `emulator-5578`、API 33 `emulator-5580`、API 34
+  `emulator-5582` 各 20/20，总计 60/60，成功率均为 100%。每轮从 N31 clean
+  snapshot 运行一次完整 `all` 场景；三份脱敏报告为 `0600`，最终设备、runtime、
+  AVD/port lease、owned emulator 和临时目录均为零。

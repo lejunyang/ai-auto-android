@@ -4,12 +4,14 @@ package dev.aiauto.fixture
  * 测试用途：用 UI Automator 逐步验证原生动作、三页 Back 栈和系统导航，提供可重复矩阵入口。
  */
 
+import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Rect
 import android.os.Bundle
+import android.view.accessibility.AccessibilityWindowInfo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
@@ -18,6 +20,7 @@ import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -168,7 +171,12 @@ class NativeFixtureDeviceTest {
             "Fixture mark Recents navigation target",
             "RECENTS",
         )
-        device.pressRecentApps()
+        assertTrue(
+            "Recents global action must be accepted by UiAutomation",
+            instrumentation.uiAutomation.performGlobalAction(
+                AccessibilityService.GLOBAL_ACTION_RECENTS,
+            ),
+        )
         val recentsPackage = awaitForeignForegroundPackage()
         assertNotEquals(packageName, recentsPackage)
         assertTrue(
@@ -176,7 +184,7 @@ class NativeFixtureDeviceTest {
             recentsPackage == launcherPackage || isSystemPackage(recentsPackage),
         )
         device.waitForIdle()
-        assertEquals(recentsPackage, device.currentPackageName)
+        assertEquals(recentsPackage, observedUniqueApplicationPackage())
         launchThroughMainLauncherIntent()
         awaitStateAfterReveal(R.id.recents_return_state, "SYSTEM_RETURN:RECENTS")
 
@@ -207,6 +215,10 @@ class NativeFixtureDeviceTest {
         }
         awaitStateAfterReveal(R.id.reset_state, "RESET:DONE")
         awaitStateAfterReveal(R.id.page_state, "PAGE:MAIN")
+        assertFalse(
+            "Fixture reset must release text input focus before system navigation",
+            requireObject(R.id.text_input).isFocused,
+        )
     }
 
     private fun markExternalNavigation(targetId: Int, description: String, kind: String) {
@@ -317,7 +329,18 @@ class NativeFixtureDeviceTest {
             }
             Thread.sleep(100)
         }
-        throw AssertionError("Missing node ${resourceName(id)} with text=$expected")
+        val observed = device.findObject(selector)?.text
+        val pending = device.findObject(
+            By.res(packageName, resourceName(R.id.system_pending_state)),
+        )?.text
+        val page = device.findObject(
+            By.res(packageName, resourceName(R.id.page_state)),
+        )?.text
+        throw AssertionError(
+            "Missing node ${resourceName(id)} with text=$expected; " +
+                "observed=$observed, pending=$pending, page=$page, " +
+                "foreground=${device.currentPackageName}",
+        )
     }
 
     private fun revealObjectBelow(id: Int): UiObject2 =
@@ -363,21 +386,36 @@ class NativeFixtureDeviceTest {
     }
 
     private fun awaitForeignForegroundPackage(): String {
-        assertTrue(device.wait(Until.gone(By.pkg(packageName).depth(0)), TIMEOUT))
         val deadline = System.currentTimeMillis() + TIMEOUT
         while (System.currentTimeMillis() < deadline) {
-            val observed = device.currentPackageName
+            val observed = observedUniqueApplicationPackage()
             if (!observed.isNullOrBlank() && observed != packageName) {
                 device.waitForIdle()
-                val stable = device.currentPackageName
+                val stable = observedUniqueApplicationPackage()
                 if (!stable.isNullOrBlank() && stable != packageName) {
                     return stable
                 }
             }
             Thread.sleep(100)
         }
-        throw AssertionError("No non-fixture foreground package was observed")
+        throw AssertionError(
+            "No non-fixture foreground package was observed; " +
+                "current=${device.currentPackageName}, " +
+                "uniqueApplication=${observedUniqueApplicationPackage()}, " +
+                "applicationWindows=${observedApplicationPackages()}, " +
+                "fixtureRootVisible=${device.hasObject(By.pkg(packageName).depth(0))}",
+        )
     }
+
+    private fun observedUniqueApplicationPackage(): String? =
+        observedApplicationPackages().singleOrNull()
+
+    private fun observedApplicationPackages(): Set<String> =
+        instrumentation.uiAutomation.windows
+            .asSequence()
+            .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+            .mapNotNull { it.root?.packageName?.toString() }
+            .toSortedSet()
 
     private fun observedLauncherPackages(): Set<String> {
         val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)

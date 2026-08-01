@@ -22,6 +22,7 @@ class FixtureState {
         private set
     var pendingExternalNavigation: String = NONE
         private set
+    private var pendingNavigationLeftForeground: Boolean = false
 
     fun recordInput(value: String) {
         inputValue = value
@@ -57,15 +58,23 @@ class FixtureState {
 
     fun recordExternalNavigation(kind: String) {
         pendingExternalNavigation = kind
+        pendingNavigationLeftForeground = false
         hasReturnedFromSystem = false
     }
 
+    fun recordForegroundExit() {
+        if (pendingExternalNavigation != NONE) {
+            pendingNavigationLeftForeground = true
+        }
+    }
+
     fun recordForegroundReturn() {
-        if (pendingExternalNavigation == NONE) {
+        if (pendingExternalNavigation == NONE || !pendingNavigationLeftForeground) {
             return
         }
         lastExternalNavigation = pendingExternalNavigation
         pendingExternalNavigation = NONE
+        pendingNavigationLeftForeground = false
         hasReturnedFromSystem = true
     }
 
@@ -79,6 +88,7 @@ class FixtureState {
         hasReturnedFromSystem = false
         lastExternalNavigation = NONE
         pendingExternalNavigation = NONE
+        pendingNavigationLeftForeground = false
     }
 
     companion object {

@@ -97,6 +97,7 @@ jobs:
           node --test
           scripts/toolchain-environment.test.mjs
           scripts/emulator/runner.test.mjs
+          scripts/native-fixture-matrix/run.test.mjs
 
   protocol:
     name: Protocol fixtures

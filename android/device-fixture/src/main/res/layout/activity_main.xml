@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 配置用途：以稳定 resource ID、固定无障碍名称和独立状态节点承载全部原生自动化动作。 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fixture_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
     android:orientation="vertical"
     android:padding="12dp">
 

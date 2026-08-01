@@ -38,8 +38,17 @@ class FixtureStateTest {
         assertFalse(state.hasReturnedFromSystem)
 
         state.recordForegroundReturn()
+        assertEquals("HOME", state.pendingExternalNavigation)
+        assertFalse(state.hasReturnedFromSystem)
+        assertEquals("NONE", state.lastExternalNavigation)
+
+        state.recordForegroundExit()
+        state.recordForegroundReturn()
         assertEquals("NONE", state.pendingExternalNavigation)
         assertTrue(state.hasReturnedFromSystem)
+        assertEquals("HOME", state.lastExternalNavigation)
+
+        state.recordForegroundReturn()
         assertEquals("HOME", state.lastExternalNavigation)
     }
 
@@ -53,6 +62,7 @@ class FixtureStateTest {
             recordHorizontalSwipe()
             recordDialogDismissed()
             recordExternalNavigation("RECENTS")
+            recordForegroundExit()
             recordForegroundReturn()
         }
 
