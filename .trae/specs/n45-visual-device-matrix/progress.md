@@ -170,3 +170,16 @@
   `fixed-to-user-rotation` 和 `user-rotation`。runner 现按固定 profile API 显式选择：
   API 30 使用 `set-*`，API 33/34 使用新语法；初始配置与 snapshot 晚回写后的重申
   共用同一命令生成器，不做动态 shell fallback。
+
+## Round 14
+
+- API 33 与 API 34 均完成同轮六环境矩阵；结合 Round 13 的 API 30，三 API 共
+  18/18 环境通过，每环境 1 test、0 failure、0 error、0 skip。三份仓库外报告均为
+  `succeeded:true`、`cleaned:true`。
+- 每个环境复用 production planner、类型化 Accessibility router/backend，
+  覆盖 tap、long-click、swipe、动作后 hierarchy 验证，以及低置信度、多候选、
+  过期、包/屏幕/secure 漂移零提交和 post-fail 单次提交不重放。
+- API 30、33、34 最终轮结束后均确认 devices、runtime、AVD/port lock 与 N45
+  临时目录为零；release APK 双重扫描保持 N45 harness/marker 零入口。
+- 设备矩阵与功能验收已满足 N45 路线图证据。最终仓库全量验证、文档提交与 worktree
+  清理在下一轮完成后再勾选对应收口项。

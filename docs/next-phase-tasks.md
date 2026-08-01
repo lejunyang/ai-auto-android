@@ -678,7 +678,7 @@ clean、停止 emulator 并清理 build，设备、runtime、lease 与 APK 均�
 
 **建议提交：** `feat(android): add recording step editor`
 
-### [ ] Task N45：显式坐标与视觉步骤回放
+### [x] Task N45：显式坐标与视觉步骤回放
 
 **目标：** 安全执行没有 selector 的显式坐标 tap、long-click 和 swipe。
 
@@ -721,6 +721,19 @@ point/bounds；Planner 复用 N44 `VisualProposalService` 完成 crop/rotation �
 AndroidTest APK、N47 59/59、N52 21/21、仓库 test/verify/build 和 Android
 test/lint/build 均通过。N47 desktop visual route、历史脚本 rebind 及 API 30/33/34
 多分辨率/旋转设备命中尚未验收，因此 N45/N47/N52 主任务继续保持未勾选。
+
+**完成记录（18/18 设备矩阵已验收）：** debug/androidTest-only harness 与固定 host
+runner 在 API 30、33、34 的 `720x1600`、`1080x2400`、`1440x3200` 和 rotation
+0/90 下各 6/6 通过，总计 18/18；每环境 1 test、0 failure、0 error、0 skip。
+设备用例实际复用 production planner 与类型化 Accessibility router/backend，
+覆盖 tap、long-click、swipe、独立后置 hierarchy、低置信度、多候选、过期、包/
+屏幕/secure 漂移零提交，以及 post-fail 单次提交不重放。API 30 的
+`UiAutomation` cache 争用通过动作期 event 静默与最小 shell permission 生命周期
+修复；API 30 与 API 33/34 分别使用对应 WindowManager rotation 命令，并在同一
+有界窗口复核 size、density 和实际 `mRotation`。三份仓库外报告均为
+`succeeded:true`、`cleaned:true`，最终 devices、runtime、AVD/port lock 和临时
+目录为零，release APK 双重扫描无测试入口。因此 N45 现勾选完成；该结论不代表
+N47 真实 App runner 或 N52 300 轮矩阵已经完成。
 
 **失败清理：** 停止当前回放，清除 observation 和截图，恢复 fixture 状态。
 
@@ -835,6 +848,19 @@ argv 不含明文/action；stream 缺失/错误、进程异常和成功 data 畸
 端到端 fake 覆盖 values→route→stdin→post snapshot→condition→cleanup。N47
 全包 59/59、N34 49/49、Go race/全量测试、verify/comments/diff-check 通过。
 真实 emulator input、visual/hybrid adapter 和第三方 App 仍未验收，任务保持未勾选。
+
+**追加实现记录（fresh visual rebind 与 attested 原子端口已接）：** production
+recording replay 现在要求当前 run 的 fresh authorization，绑定 run/script/revision/
+step、serial、package、screen、candidate、hash、geometry、confidence 和 expiry；
+历史 observation ID/hash 只作提示，不能授权未来 replay，step lease 仅消费一次，
+unknown commit 不重放。桌面侧新增无坐标 `android_visual_action_execute`，同一调用
+内完成 fresh device/hierarchy/screenshot、唯一 candidate、pre-commit attestation、
+Bridge `visual.action.execute`、N45 planner/typed Accessibility executor 和 post
+observation；不复用已关闭的 N44 lease，也不回落裸坐标 `android_action_execute`。
+图片与 wire buffer 在所有路径清零，release、真机、无 Bridge/Accessibility 默认
+失败关闭。Go race/vet、Android 396/396、lint、debug/release、Make 全量均通过。
+当前仍缺独立 OCR/model candidate provider，以及 API 30/33/34 的完整
+`MCP → Bridge → N45 → post observation` 设备闭环，因此 N47 保持未勾选。
 
 **失败清理：** 停止场景、关闭 Bridge、清除 App 数据和产物并恢复快照。
 
@@ -957,6 +983,14 @@ package 可见，API 33 hierarchy 不可用；支付宝 `12.12.10.8000` 在 API 
 runner 未点击同意、权限、登录或任何宿主页面，也未进入、搜索或识别小程序。因此本
 证据只确认两个固定宿主可安装并被动启动，不产生完整语义/混合/仅视觉/不支持的任何
 小程序样例，N51 保持未勾选。
+
+**追加实现记录（离线分类契约已完成）：** `test-lab/scenarios/miniapps/` 已提供严格
+探索报告 Schema、host package/version/page identity、完整语义/混合/仅视觉/不支持
+四级分类、限额摘要与 SHA-256、统计重算和 unknown-key/secret/path/任意动作拒绝。
+N42/N43 fixture 明确标记为 fixture，不计入微信或支付宝真实样例；低置信度、未知页面
+和身份漂移均失败关闭。N51 定向 17/17、N47 59/59、N52 21/21 通过。真实微信/支付宝
+公开小程序样例仍为零，且不得通过登录、同意、权限或私有 deep link 绕过，因此 N51
+保持未勾选。
 
 **失败清理：** 清除宿主 App 数据、截图、缓存和 session；恢复快照。
 
