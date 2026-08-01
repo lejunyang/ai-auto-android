@@ -47,8 +47,25 @@ jobs:
       - name: Validate N34 bounded artifact semantics
         run: npm run smoke --prefix test-lab/artifacts
 
-      - name: Validate N47 scenario contracts
-        run: npm run smoke --prefix test-lab/runner
+      - name: Validate N47 schemas
+        run: npm run schema --prefix test-lab/runner
+
+      - name: Validate N47 portable scenario contracts
+        run: >-
+          node --test
+          test-lab/runner/test/aggregation.test.mjs
+          test-lab/runner/test/fixture-contract.test.mjs
+          test-lab/runner/test/runner.test.mjs
+          test-lab/runner/test/schema.test.mjs
+
+      - name: Validate N47 Unix executable adapter
+        if: runner.os != 'Windows'
+        run: >-
+          node --test
+          test-lab/runner/test/aactl-adapter.test.mjs
+          test-lab/runner/test/aactl-lifecycle.test.mjs
+          test-lab/runner/test/aactl-semantic-ports.test.mjs
+          test-lab/runner/test/aactl-stdin-input.test.mjs
 
       - name: Validate N52 fixed fake matrix
         run: npm run smoke --prefix test-lab/matrix/local

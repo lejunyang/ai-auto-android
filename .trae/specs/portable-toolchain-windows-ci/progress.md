@@ -75,3 +75,24 @@
   Committer 均为 `lejunyang <lejunyang@qq.com>`，提交末尾恰好一次要求的 trailer。
 - 临时 worktree 干净且已非强制移除，随后执行 `git worktree prune` 并删除已等价
   集成的临时分支。本机仓库外 `android-tools.env` 已增加兼容根变量，不进入 Git。
+
+## Round 7
+
+- 复核时确认公开 verify run `30197184628` 对应远端 `5dcc70f`，不能代表已包含
+  `c26cc7e` 的本地 `main`。当前 Go format 脚本、`.gitattributes`、Windows fake
+  executable 与 N34 junction 修复均仍在，定向 Go format/test/vet/build、portable
+  Node 26/26、N34 49/49、N47 59/59、N52 21/21 通过。
+- 进一步审计发现 `local-api-matrix.yml` 原先在 Windows 无条件运行 N47 全量 smoke，
+  其中 adapter 明确要求无扩展名 `aactl`、Unix execute bits 和文件 symlink。该安全
+  边界在 Windows 不成立，且会在 N34 先前失败关闭后成为后续风险。
+- workflow 已把 N47 schema 与平台无关的 aggregation、fixture、runner、schema
+  25 项保留在三平台；34 项 Unix executable adapter 测试仅在 Ubuntu/macOS 运行，
+  不削弱其 mode、symlink、固定身份和 stdin 安全断言。静态 portability 测试锁定
+  Windows matrix、portable 文件清单与 Unix 条件，避免回退到无条件 N47 smoke。
+- portability 静态测试已接入 `verify.yml`，最终定向 portable Node 与 CRLF snapshot
+  均为 27/27，N47 分组仍合计 59/59；workflow YAML 解析、路径/行尾审计、
+  `make comments`、`make test`、`make verify`、`make build` 与 `git diff --check`
+  通过。
+- Android 全模块 `testDebugUnitTest`、`lintDebug`、`assembleDebug`、
+  `assembleDebugAndroidTest`、`assembleRelease` 共 374 tasks 通过。首次执行仅因
+  sandbox 无权写外置 Gradle cache 失败，按相同命令授权重跑后成功，不是代码失败。

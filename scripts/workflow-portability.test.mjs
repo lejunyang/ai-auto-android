@@ -22,6 +22,7 @@ test("verify workflow 使用仓库格式脚本并覆盖三平台 portability", a
     workflow.includes("scripts/toolchain-environment.test.mjs"),
     true,
   );
+  assert.equal(workflow.includes("scripts/workflow-portability.test.mjs"), true);
   assert.equal(workflow.includes("scripts/emulator/runner.test.mjs"), true);
   assert.equal(
     workflow.includes("scripts/native-fixture-matrix/run.test.mjs"),
@@ -46,4 +47,40 @@ test("gitattributes 固定源码 LF 和 Windows batch CRLF", async () => {
   }
   assert.equal(attributes.includes("*.bat text eol=crlf"), true);
   assert.equal(attributes.includes("*.cmd text eol=crlf"), true);
+});
+
+test("local matrix 在 Windows 保留 N47 核心且隔离 Unix executable 测试", async () => {
+  const workflow = await readFile(
+    path.join(repositoryRoot, ".github", "workflows", "local-api-matrix.yml"),
+    "utf8",
+  );
+  const unixStep = workflow.match(
+    /- name: Validate N47 Unix executable adapter\n(?<body>[\s\S]*?)(?=\n      - name:)/u,
+  )?.groups?.body ?? "";
+
+  assert.equal(workflow.includes("- windows-latest"), true);
+  for (const portableTest of [
+    "test-lab/runner/test/aggregation.test.mjs",
+    "test-lab/runner/test/fixture-contract.test.mjs",
+    "test-lab/runner/test/runner.test.mjs",
+    "test-lab/runner/test/schema.test.mjs",
+  ]) {
+    assert.equal(workflow.includes(portableTest), true, portableTest);
+  }
+  assert.equal(
+    unixStep.includes("if: runner.os != 'Windows'"),
+    true,
+  );
+  for (const unixAdapterTest of [
+    "test-lab/runner/test/aactl-adapter.test.mjs",
+    "test-lab/runner/test/aactl-lifecycle.test.mjs",
+    "test-lab/runner/test/aactl-semantic-ports.test.mjs",
+    "test-lab/runner/test/aactl-stdin-input.test.mjs",
+  ]) {
+    assert.equal(unixStep.includes(unixAdapterTest), true, unixAdapterTest);
+  }
+  assert.equal(
+    workflow.includes("npm run smoke --prefix test-lab/runner"),
+    false,
+  );
 });

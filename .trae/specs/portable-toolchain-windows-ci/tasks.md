@@ -17,3 +17,7 @@
 提交末尾保留且仅保留一次：
 
 `Co-authored-by: TRAE CLI <noreply@bytedance.com>`
+
+## 复核任务
+
+- [x] 复核后续 Windows matrix，隔离 N47 仅适用于 Unix 的 executable 安全测试

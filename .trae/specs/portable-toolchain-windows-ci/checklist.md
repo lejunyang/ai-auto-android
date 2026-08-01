@@ -10,3 +10,4 @@
 - [x] Emulator runner tests 不依赖 POSIX 可执行位
 - [x] 相关 Node、Go、Android、comments 与 diff-check 通过
 - [x] 提交身份、trailer、集成和 worktree 清理正确
+- [x] Windows 运行 N47 平台无关契约，Unix executable 安全断言保留在 Ubuntu/macOS

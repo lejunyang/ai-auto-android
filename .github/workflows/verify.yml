@@ -95,6 +95,7 @@ jobs:
       - name: Validate toolchain roots and emulator paths
         run: >-
           node --test
+          scripts/workflow-portability.test.mjs
           scripts/toolchain-environment.test.mjs
           scripts/emulator/runner.test.mjs
           scripts/native-fixture-matrix/run.test.mjs
