@@ -34,7 +34,7 @@ const releaseApk = path.join(
   "outputs",
   "apk",
   "release",
-  "app-release.apk",
+  "app-release-unsigned.apk",
 );
 const resultDirectory = path.join(
   repositoryRoot,
@@ -560,6 +560,7 @@ export const runVisualDeviceMatrix = async ({
         "-p",
         "android",
         "--no-daemon",
+        "--no-configuration-cache",
         ":test-control-core:verifyReleaseApk",
         `-PreleaseApk=${releaseApk}`,
       ], {

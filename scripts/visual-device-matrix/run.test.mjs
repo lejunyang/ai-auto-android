@@ -300,7 +300,15 @@ test("单 profile 串行运行六个环境并只把 owned emulator 传给 instru
     calls.some(
       ([name, , args]) =>
         name === "command"
-        && args?.includes(":test-control-core:verifyReleaseApk"),
+        && args?.includes(":test-control-core:verifyReleaseApk")
+        && args?.includes("--no-configuration-cache")
+        && args?.some(
+          (value) =>
+            value.endsWith(
+              `${path.sep}app${path.sep}build${path.sep}outputs${path.sep}`
+              + `apk${path.sep}release${path.sep}app-release-unsigned.apk`,
+            ),
+        ),
     ),
     true,
   );
