@@ -100,3 +100,15 @@
   height 与 420 dpi 全部匹配；超时错误包含期望与最后实际几何，且在身份构建、
   service 启用和动作提交前失败关闭。其他 N31/N32 流程仍单次观察，不引入等待。
 - 失败轮由 runner 恢复/停止并再次确认设备、runtime、lock 与临时目录为零。
+
+## Round 8
+
+- 第六轮 `720x1600@0` 已完整通过 production planner、tap/long-click/swipe、后置
+  hierarchy 和全部安全拒绝，证明 API 30 automation 静默消除了原 cache 争用。
+- 第二环境 `720x1600@90` 在动作前超时，期望 `1600x720@420`、实际始终为
+  `720x1600@420`。runner 原先只写并回读 `Settings.System.user_rotation=1`，该配置
+  值在 API 30 未强制 WindowManager 实际旋转，因此此前 host 验证是假阳性。
+- runner 改用 Android 11 AOSP `wm set-user-rotation lock <0|1>`，并从
+  `dumpsys input` 严格解析唯一 `SurfaceOrientation` 作为实际方向真值；App 侧
+  metrics 收敛门继续作为第二重验证。缺失、重复、非法 orientation 或 settings
+  回退均失败关闭。

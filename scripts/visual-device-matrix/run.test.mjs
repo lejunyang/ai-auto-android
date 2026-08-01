@@ -5,11 +5,13 @@ import test from "node:test";
 import { deflateRawSync } from "node:zlib";
 
 import {
+  configureFixedVisualCase,
   inspectReleaseApkBytes,
   matrixCases,
   matrixEnvironment,
   parseArguments,
   parseJUnitResult,
+  parseSurfaceOrientation,
   runVisualDeviceMatrix,
   selectFreshJUnit,
 } from "./run.mjs";
@@ -212,6 +214,66 @@ test("矩阵固定为三分辨率和两种 rotation", () => {
     { resolution: "1440x3200", rotation: 0 },
     { resolution: "1440x3200", rotation: 90 },
   ]);
+});
+
+test("只接受 dumpsys input 的唯一实际 SurfaceOrientation", () => {
+  assert.equal(
+    parseSurfaceOrientation("Input Reader State:\n  SurfaceOrientation: 1\n"),
+    1,
+  );
+  for (const output of [
+    "",
+    "SurfaceOrientation: 9\n",
+    "SurfaceOrientation: 0\nSurfaceOrientation: 1\n",
+    "surfaceOrientation: 1\n",
+  ]) {
+    assert.throws(() => parseSurfaceOrientation(output), {
+      code: "DEVICE_CONFIG_DRIFT",
+    });
+  }
+});
+
+test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", async () => {
+  const calls = [];
+  const emulator = {
+    readSnapshotMarker: async () => "clean",
+    tools: () => ({ adb: "/external/android-sdk/platform-tools/adb" }),
+    environment: () => environment,
+    command: async (_executable, args) => {
+      calls.push(args);
+      const command = args.slice(2);
+      if (command.join(" ") === "shell wm size") {
+        return { code: 0, stdout: "Physical size: 1080x2400\nOverride size: 720x1600\n" };
+      }
+      if (command.join(" ") === "shell wm density") {
+        return { code: 0, stdout: "Physical density: 420\nOverride density: 420\n" };
+      }
+      if (command.join(" ") === "shell dumpsys input") {
+        return { code: 0, stdout: "Input Reader State:\n  SurfaceOrientation: 1\n" };
+      }
+      return { code: 0, stdout: "", stderr: "" };
+    },
+  };
+
+  const configured = await configureFixedVisualCase(
+    emulator,
+    { id: "api-30", densityDpi: 420 },
+    { serial: "emulator-5554", deviceFingerprint: "a".repeat(64), state: "booted" },
+    "720x1600",
+    90,
+  );
+
+  assert.equal(configured.rotation, 90);
+  assert.equal(
+    calls.some((args) =>
+      args.join(" ") ===
+      "-s emulator-5554 shell wm set-user-rotation lock 1"),
+    true,
+  );
+  assert.equal(
+    calls.some((args) => args.includes("user_rotation")),
+    false,
+  );
 });
 
 test("严格解析唯一 N45 JUnit 且筛除旧结果", () => {

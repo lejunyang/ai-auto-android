@@ -104,6 +104,15 @@ export const matrixCases = () => Object.freeze(
     rotations.map((rotation) => Object.freeze({ resolution, rotation }))),
 );
 
+export const parseSurfaceOrientation = (output) => {
+  if (typeof output !== "string" || Buffer.byteLength(output, "utf8") > 4 * 1024 * 1024) {
+    fail("DEVICE_CONFIG_DRIFT");
+  }
+  const values = [...output.matchAll(/^\s*SurfaceOrientation:\s*([0-3])\s*$/gmu)];
+  if (values.length !== 1) fail("DEVICE_CONFIG_DRIFT");
+  return Number(values[0][1]);
+};
+
 const exactAttributes = (source) => {
   const attributes = {};
   for (const match of source.matchAll(/\s([A-Za-z][A-Za-z0-9_-]*)="([^"]*)"/gu)) {
@@ -366,7 +375,7 @@ const assertContext = (value, booted) => {
   }
 };
 
-const configureFixedVisualCase = async (
+export const configureFixedVisualCase = async (
   emulator,
   profile,
   booted,
@@ -387,8 +396,7 @@ const configureFixedVisualCase = async (
   const commands = [
     ["shell", "wm", "size", resolution],
     ["shell", "wm", "density", String(profile.densityDpi)],
-    ["shell", "settings", "put", "system", "accelerometer_rotation", "0"],
-    ["shell", "settings", "put", "system", "user_rotation", rotationValue],
+    ["shell", "wm", "set-user-rotation", "lock", rotationValue],
   ];
   // 这里只接受上方枚举生成的固定矩阵命令，调用方不能传入 serial、shell 或额外参数。
   for (const args of commands) {
@@ -415,7 +423,7 @@ const configureFixedVisualCase = async (
     ),
     emulator.command(
       adb,
-      ["-s", booted.serial, "shell", "settings", "get", "system", "user_rotation"],
+      ["-s", booted.serial, "shell", "dumpsys", "input"],
       { env: environment, timeoutMs: 10_000 },
     ),
   ]);
@@ -429,7 +437,7 @@ const configureFixedVisualCase = async (
   if (
     actualSize !== resolution
     || actualDensity !== profile.densityDpi
-    || currentRotation.stdout.trim() !== rotationValue
+    || parseSurfaceOrientation(currentRotation.stdout) !== Number(rotationValue)
   ) {
     fail("DEVICE_CONFIG_DRIFT");
   }
