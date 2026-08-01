@@ -1,0 +1,773 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiauto.dev/schema/test-lab/bilibili/compatibility-report.schema.json",
+  "title": "N48 Bilibili Safe Compatibility Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reportId",
+    "identity",
+    "profile",
+    "planId",
+    "plannedIterations",
+    "evidenceKind",
+    "rounds",
+    "statistics"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "reportId": {
+      "const": "bilibili-safe-compatibility-v1"
+    },
+    "identity": {
+      "$ref": "#/$defs/identity"
+    },
+    "profile": {
+      "$ref": "#/$defs/profile"
+    },
+    "planId": {
+      "const": "bilibili-unlogged-public-content-v1"
+    },
+    "plannedIterations": {
+      "const": 10
+    },
+    "evidenceKind": {
+      "enum": [
+        "fixture",
+        "real-device"
+      ]
+    },
+    "rounds": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/round"
+      }
+    },
+    "statistics": {
+      "$ref": "#/$defs/statistics"
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest",
+        "packageName",
+        "versionName",
+        "versionCode",
+        "abi",
+        "sizeBytes",
+        "apkSha256",
+        "signingCertificateSha256"
+      ],
+      "properties": {
+        "manifest": {
+          "const": "bilibili-9.5.0-arm64.json"
+        },
+        "packageName": {
+          "const": "tv.danmaku.bili"
+        },
+        "versionName": {
+          "const": "9.5.0"
+        },
+        "versionCode": {
+          "const": 9050300
+        },
+        "abi": {
+          "const": "arm64-v8a"
+        },
+        "sizeBytes": {
+          "const": 203302151
+        },
+        "apkSha256": {
+          "const": "618b8517d6226300c7223b22b9c9d985df4e2a339d9ea957e96f60cea7a9bf6a"
+        },
+        "signingCertificateSha256": {
+          "const": "93ba270f5521139ecafe4bb638ac5b1198bc548f62d9fd8f8580a079faf5910e"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "apiLevel",
+        "abi",
+        "snapshot"
+      ],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "api-30",
+            "api-33",
+            "api-34"
+          ]
+        },
+        "apiLevel": {
+          "enum": [
+            30,
+            33,
+            34
+          ]
+        },
+        "abi": {
+          "const": "arm64-v8a"
+        },
+        "snapshot": {
+          "const": "clean"
+        }
+      }
+    },
+    "packageName": {
+      "enum": [
+        "tv.danmaku.bili",
+        "dev.aiauto.fixture",
+        "com.android.launcher",
+        "com.android.systemui"
+      ]
+    },
+    "actionId": {
+      "enum": [
+        "launch",
+        "open-public-search",
+        "input-public-query",
+        "click-public-result",
+        "scroll-public-result",
+        "swipe-public-result",
+        "long-press-safe-content",
+        "back",
+        "home",
+        "recents",
+        "return-from-recents",
+        "switch-fixture",
+        "return-from-fixture"
+      ]
+    },
+    "route": {
+      "enum": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ]
+    },
+    "roundStatus": {
+      "enum": [
+        "passed",
+        "blocked",
+        "failed",
+        "unsupported"
+      ]
+    },
+    "roundClassification": {
+      "enum": [
+        "compatible",
+        "consent",
+        "privacy",
+        "permission",
+        "login",
+        "update",
+        "advertisement",
+        "unknown",
+        "long-press-side-effect-unproven",
+        "cleanup-failure",
+        "unknown-commit",
+        "api33-hierarchy-unavailable",
+        "api34-package-invisible"
+      ]
+    },
+    "stepClassification": {
+      "enum": [
+        "normal",
+        "consent",
+        "privacy",
+        "permission",
+        "login",
+        "update",
+        "advertisement",
+        "unknown",
+        "long-press-side-effect-unproven"
+      ]
+    },
+    "blockerCode": {
+      "enum": [
+        "BILIBILI_CONSENT_BLOCKED",
+        "BILIBILI_PRIVACY_BLOCKED",
+        "BILIBILI_PERMISSION_BLOCKED",
+        "BILIBILI_LOGIN_BLOCKED",
+        "BILIBILI_UPDATE_BLOCKED",
+        "BILIBILI_ADVERTISEMENT_BLOCKED",
+        "BILIBILI_UNKNOWN_BLOCKED",
+        "BILIBILI_LONG_PRESS_UNSUPPORTED",
+        "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+        "BILIBILI_API34_PACKAGE_INVISIBLE",
+        "ACTION_COMMIT_UNKNOWN",
+        "SCENARIO_CLEANUP_FAILED"
+      ]
+    },
+    "sideEffectProof": {
+      "oneOf": [
+        {
+          "const": "not-required"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "noLike",
+            "noFavorite",
+            "noDownload",
+            "noShare"
+          ],
+          "properties": {
+            "noLike": {
+              "type": "boolean"
+            },
+            "noFavorite": {
+              "type": "boolean"
+            },
+            "noDownload": {
+              "type": "boolean"
+            },
+            "noShare": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "evidenceBinding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "fixtureId"
+          ],
+          "properties": {
+            "kind": {
+              "const": "fixture"
+            },
+            "fixtureId": {
+              "const": "n48-contract-fake-v1"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runId",
+            "runReportSha256",
+            "profileFingerprintSha256",
+            "verifiedApkSha256",
+            "actualRun"
+          ],
+          "properties": {
+            "kind": {
+              "const": "n47-run-report"
+            },
+            "runId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "runReportSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "profileFingerprintSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "verifiedApkSha256": {
+              "const": "618b8517d6226300c7223b22b9c9d985df4e2a339d9ea957e96f60cea7a9bf6a"
+            },
+            "actualRun": {
+              "const": true
+            }
+          }
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "stepId",
+        "actionId",
+        "preForegroundPackage",
+        "postForegroundPackage",
+        "status",
+        "classification",
+        "route",
+        "attempts",
+        "actionCommits",
+        "postObserved",
+        "sideEffectProof"
+      ],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 15
+        },
+        "stepId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "actionId": {
+          "$ref": "#/$defs/actionId"
+        },
+        "preForegroundPackage": {
+          "$ref": "#/$defs/packageName"
+        },
+        "postForegroundPackage": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/packageName"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "blocked",
+            "unsupported",
+            "unknown-commit"
+          ]
+        },
+        "classification": {
+          "$ref": "#/$defs/stepClassification"
+        },
+        "route": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/route"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "actionCommits": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "postObserved": {
+          "type": "boolean"
+        },
+        "sideEffectProof": {
+          "$ref": "#/$defs/sideEffectProof"
+        }
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "appDataCleared",
+        "searchHistoryCleared",
+        "sessionCleared",
+        "artifactsCleared",
+        "snapshotRestored"
+      ],
+      "properties": {
+        "appDataCleared": {
+          "type": "boolean"
+        },
+        "searchHistoryCleared": {
+          "type": "boolean"
+        },
+        "sessionCleared": {
+          "type": "boolean"
+        },
+        "artifactsCleared": {
+          "type": "boolean"
+        },
+        "snapshotRestored": {
+          "type": "boolean"
+        }
+      }
+    },
+    "round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "iteration",
+        "evidenceKind",
+        "evidenceBinding",
+        "apiLevel",
+        "status",
+        "classification",
+        "blockerCode",
+        "steps",
+        "cleanup"
+      ],
+      "properties": {
+        "iteration": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "evidenceKind": {
+          "enum": [
+            "fixture",
+            "real-device"
+          ]
+        },
+        "evidenceBinding": {
+          "$ref": "#/$defs/evidenceBinding"
+        },
+        "apiLevel": {
+          "enum": [
+            30,
+            33,
+            34
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/roundStatus"
+        },
+        "classification": {
+          "$ref": "#/$defs/roundClassification"
+        },
+        "blockerCode": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/blockerCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "steps": {
+          "type": "array",
+          "maxItems": 15,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        },
+        "cleanup": {
+          "$ref": "#/$defs/cleanup"
+        }
+      }
+    },
+    "routeCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ],
+      "properties": {
+        "semantic": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 150
+        },
+        "hybrid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 150
+        },
+        "visual": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 150
+        }
+      }
+    },
+    "classificationCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advertisement",
+        "api33-hierarchy-unavailable",
+        "api34-package-invisible",
+        "compatible",
+        "consent",
+        "cleanup-failure",
+        "long-press-side-effect-unproven",
+        "login",
+        "permission",
+        "privacy",
+        "unknown",
+        "unknown-commit",
+        "update"
+      ],
+      "properties": {
+        "advertisement": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "api33-hierarchy-unavailable": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "api34-package-invisible": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "compatible": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "consent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "cleanup-failure": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "long-press-side-effect-unproven": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "login": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "permission": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "privacy": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "unknown": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "unknown-commit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "update": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "blockerCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ACTION_COMMIT_UNKNOWN",
+        "BILIBILI_ADVERTISEMENT_BLOCKED",
+        "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+        "BILIBILI_API34_PACKAGE_INVISIBLE",
+        "BILIBILI_CONSENT_BLOCKED",
+        "BILIBILI_LOGIN_BLOCKED",
+        "BILIBILI_LONG_PRESS_UNSUPPORTED",
+        "BILIBILI_PERMISSION_BLOCKED",
+        "BILIBILI_PRIVACY_BLOCKED",
+        "BILIBILI_UNKNOWN_BLOCKED",
+        "BILIBILI_UPDATE_BLOCKED",
+        "SCENARIO_CLEANUP_FAILED"
+      ],
+      "properties": {
+        "ACTION_COMMIT_UNKNOWN": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "BILIBILI_ADVERTISEMENT_BLOCKED": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "BILIBILI_API33_HIERARCHY_UNAVAILABLE": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "BILIBILI_API34_PACKAGE_INVISIBLE": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "BILIBILI_CONSENT_BLOCKED": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "BILIBILI_LOGIN_BLOCKED": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "BILIBILI_LONG_PRESS_UNSUPPORTED": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "BILIBILI_PERMISSION_BLOCKED": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "BILIBILI_PRIVACY_BLOCKED": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "BILIBILI_UNKNOWN_BLOCKED": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "BILIBILI_UPDATE_BLOCKED": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "SCENARIO_CLEANUP_FAILED": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plannedRounds",
+        "reportedRounds",
+        "fixtureRounds",
+        "realRounds",
+        "passedRounds",
+        "blockedRounds",
+        "failedRounds",
+        "unsupportedRounds",
+        "successRate",
+        "actionCommits",
+        "unknownCommitRounds",
+        "cleanedRounds",
+        "routeCounts",
+        "classificationCounts",
+        "blockerCounts",
+        "tenRoundRealEvidenceComplete"
+      ],
+      "properties": {
+        "plannedRounds": {
+          "const": 10
+        },
+        "reportedRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "fixtureRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "realRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "passedRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "blockedRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "failedRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "unsupportedRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "successRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "actionCommits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 150
+        },
+        "unknownCommitRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "cleanedRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "routeCounts": {
+          "$ref": "#/$defs/routeCounts"
+        },
+        "classificationCounts": {
+          "$ref": "#/$defs/classificationCounts"
+        },
+        "blockerCounts": {
+          "$ref": "#/$defs/blockerCounts"
+        },
+        "tenRoundRealEvidenceComplete": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

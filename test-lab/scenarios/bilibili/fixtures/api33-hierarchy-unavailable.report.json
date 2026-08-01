@@ -1,0 +1,274 @@
+{
+  "schemaVersion": "1.0",
+  "reportId": "bilibili-safe-compatibility-v1",
+  "identity": {
+    "manifest": "bilibili-9.5.0-arm64.json",
+    "packageName": "tv.danmaku.bili",
+    "versionName": "9.5.0",
+    "versionCode": 9050300,
+    "abi": "arm64-v8a",
+    "sizeBytes": 203302151,
+    "apkSha256": "618b8517d6226300c7223b22b9c9d985df4e2a339d9ea957e96f60cea7a9bf6a",
+    "signingCertificateSha256": "93ba270f5521139ecafe4bb638ac5b1198bc548f62d9fd8f8580a079faf5910e"
+  },
+  "profile": {
+    "profileId": "api-33",
+    "apiLevel": 33,
+    "abi": "arm64-v8a",
+    "snapshot": "clean"
+  },
+  "planId": "bilibili-unlogged-public-content-v1",
+  "plannedIterations": 10,
+  "evidenceKind": "fixture",
+  "rounds": [
+    {
+      "iteration": 1,
+      "evidenceKind": "fixture",
+      "evidenceBinding": {
+        "kind": "fixture",
+        "fixtureId": "n48-contract-fake-v1"
+      },
+      "apiLevel": 33,
+      "status": "blocked",
+      "classification": "api33-hierarchy-unavailable",
+      "blockerCode": "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+      "steps": [],
+      "cleanup": {
+        "appDataCleared": true,
+        "searchHistoryCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "iteration": 2,
+      "evidenceKind": "fixture",
+      "evidenceBinding": {
+        "kind": "fixture",
+        "fixtureId": "n48-contract-fake-v1"
+      },
+      "apiLevel": 33,
+      "status": "blocked",
+      "classification": "api33-hierarchy-unavailable",
+      "blockerCode": "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+      "steps": [],
+      "cleanup": {
+        "appDataCleared": true,
+        "searchHistoryCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "iteration": 3,
+      "evidenceKind": "fixture",
+      "evidenceBinding": {
+        "kind": "fixture",
+        "fixtureId": "n48-contract-fake-v1"
+      },
+      "apiLevel": 33,
+      "status": "blocked",
+      "classification": "api33-hierarchy-unavailable",
+      "blockerCode": "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+      "steps": [],
+      "cleanup": {
+        "appDataCleared": true,
+        "searchHistoryCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "iteration": 4,
+      "evidenceKind": "fixture",
+      "evidenceBinding": {
+        "kind": "fixture",
+        "fixtureId": "n48-contract-fake-v1"
+      },
+      "apiLevel": 33,
+      "status": "blocked",
+      "classification": "api33-hierarchy-unavailable",
+      "blockerCode": "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+      "steps": [],
+      "cleanup": {
+        "appDataCleared": true,
+        "searchHistoryCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "iteration": 5,
+      "evidenceKind": "fixture",
+      "evidenceBinding": {
+        "kind": "fixture",
+        "fixtureId": "n48-contract-fake-v1"
+      },
+      "apiLevel": 33,
+      "status": "blocked",
+      "classification": "api33-hierarchy-unavailable",
+      "blockerCode": "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+      "steps": [],
+      "cleanup": {
+        "appDataCleared": true,
+        "searchHistoryCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "iteration": 6,
+      "evidenceKind": "fixture",
+      "evidenceBinding": {
+        "kind": "fixture",
+        "fixtureId": "n48-contract-fake-v1"
+      },
+      "apiLevel": 33,
+      "status": "blocked",
+      "classification": "api33-hierarchy-unavailable",
+      "blockerCode": "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+      "steps": [],
+      "cleanup": {
+        "appDataCleared": true,
+        "searchHistoryCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "iteration": 7,
+      "evidenceKind": "fixture",
+      "evidenceBinding": {
+        "kind": "fixture",
+        "fixtureId": "n48-contract-fake-v1"
+      },
+      "apiLevel": 33,
+      "status": "blocked",
+      "classification": "api33-hierarchy-unavailable",
+      "blockerCode": "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+      "steps": [],
+      "cleanup": {
+        "appDataCleared": true,
+        "searchHistoryCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "iteration": 8,
+      "evidenceKind": "fixture",
+      "evidenceBinding": {
+        "kind": "fixture",
+        "fixtureId": "n48-contract-fake-v1"
+      },
+      "apiLevel": 33,
+      "status": "blocked",
+      "classification": "api33-hierarchy-unavailable",
+      "blockerCode": "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+      "steps": [],
+      "cleanup": {
+        "appDataCleared": true,
+        "searchHistoryCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "iteration": 9,
+      "evidenceKind": "fixture",
+      "evidenceBinding": {
+        "kind": "fixture",
+        "fixtureId": "n48-contract-fake-v1"
+      },
+      "apiLevel": 33,
+      "status": "blocked",
+      "classification": "api33-hierarchy-unavailable",
+      "blockerCode": "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+      "steps": [],
+      "cleanup": {
+        "appDataCleared": true,
+        "searchHistoryCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    },
+    {
+      "iteration": 10,
+      "evidenceKind": "fixture",
+      "evidenceBinding": {
+        "kind": "fixture",
+        "fixtureId": "n48-contract-fake-v1"
+      },
+      "apiLevel": 33,
+      "status": "blocked",
+      "classification": "api33-hierarchy-unavailable",
+      "blockerCode": "BILIBILI_API33_HIERARCHY_UNAVAILABLE",
+      "steps": [],
+      "cleanup": {
+        "appDataCleared": true,
+        "searchHistoryCleared": true,
+        "sessionCleared": true,
+        "artifactsCleared": true,
+        "snapshotRestored": true
+      }
+    }
+  ],
+  "statistics": {
+    "plannedRounds": 10,
+    "reportedRounds": 10,
+    "fixtureRounds": 10,
+    "realRounds": 0,
+    "passedRounds": 0,
+    "blockedRounds": 10,
+    "failedRounds": 0,
+    "unsupportedRounds": 0,
+    "successRate": 0,
+    "actionCommits": 0,
+    "unknownCommitRounds": 0,
+    "cleanedRounds": 10,
+    "routeCounts": {
+      "semantic": 0,
+      "hybrid": 0,
+      "visual": 0
+    },
+    "classificationCounts": {
+      "advertisement": 0,
+      "api33-hierarchy-unavailable": 10,
+      "api34-package-invisible": 0,
+      "cleanup-failure": 0,
+      "compatible": 0,
+      "consent": 0,
+      "long-press-side-effect-unproven": 0,
+      "login": 0,
+      "permission": 0,
+      "privacy": 0,
+      "unknown": 0,
+      "unknown-commit": 0,
+      "update": 0
+    },
+    "blockerCounts": {
+      "ACTION_COMMIT_UNKNOWN": 0,
+      "BILIBILI_ADVERTISEMENT_BLOCKED": 0,
+      "BILIBILI_API33_HIERARCHY_UNAVAILABLE": 10,
+      "BILIBILI_API34_PACKAGE_INVISIBLE": 0,
+      "BILIBILI_CONSENT_BLOCKED": 0,
+      "BILIBILI_LOGIN_BLOCKED": 0,
+      "BILIBILI_LONG_PRESS_UNSUPPORTED": 0,
+      "BILIBILI_PERMISSION_BLOCKED": 0,
+      "BILIBILI_PRIVACY_BLOCKED": 0,
+      "BILIBILI_UNKNOWN_BLOCKED": 0,
+      "BILIBILI_UPDATE_BLOCKED": 0,
+      "SCENARIO_CLEANUP_FAILED": 0
+    },
+    "tenRoundRealEvidenceComplete": false
+  }
+}

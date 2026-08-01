@@ -1,0 +1,202 @@
+{
+  "schemaVersion": "1.0",
+  "planId": "bilibili-unlogged-public-content-v1",
+  "identity": {
+    "manifest": "bilibili-9.5.0-arm64.json",
+    "packageName": "tv.danmaku.bili",
+    "versionName": "9.5.0",
+    "versionCode": 9050300,
+    "abi": "arm64-v8a",
+    "sizeBytes": 203302151,
+    "apkSha256": "618b8517d6226300c7223b22b9c9d985df4e2a339d9ea957e96f60cea7a9bf6a",
+    "signingCertificateSha256": "93ba270f5521139ecafe4bb638ac5b1198bc548f62d9fd8f8580a079faf5910e"
+  },
+  "plannedIterations": 10,
+  "sideEffectPolicy": "none",
+  "queryRetention": "runtime-only",
+  "steps": [
+    {
+      "sequence": 1,
+      "stepId": "launch-bilibili",
+      "actionId": "launch",
+      "preForegroundPackage": "com.android.launcher",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 2,
+      "stepId": "open-public-search",
+      "actionId": "open-public-search",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 3,
+      "stepId": "input-public-query",
+      "actionId": "input-public-query",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 4,
+      "stepId": "click-public-result",
+      "actionId": "click-public-result",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 5,
+      "stepId": "scroll-public-result",
+      "actionId": "scroll-public-result",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 6,
+      "stepId": "swipe-public-result",
+      "actionId": "swipe-public-result",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 7,
+      "stepId": "long-press-safe-content",
+      "actionId": "long-press-safe-content",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ],
+      "longPressProofRequired": true
+    },
+    {
+      "sequence": 8,
+      "stepId": "back-result-detail",
+      "actionId": "back",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 9,
+      "stepId": "back-search-results",
+      "actionId": "back",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 10,
+      "stepId": "home-from-bilibili",
+      "actionId": "home",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "com.android.launcher",
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 11,
+      "stepId": "recents-from-home",
+      "actionId": "recents",
+      "preForegroundPackage": "com.android.launcher",
+      "postForegroundPackage": "com.android.systemui",
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 12,
+      "stepId": "return-bilibili-from-recents",
+      "actionId": "return-from-recents",
+      "preForegroundPackage": "com.android.systemui",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 13,
+      "stepId": "switch-native-fixture",
+      "actionId": "switch-fixture",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "dev.aiauto.fixture",
+      "allowedRoutes": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 14,
+      "stepId": "return-bilibili-from-fixture",
+      "actionId": "return-from-fixture",
+      "preForegroundPackage": "dev.aiauto.fixture",
+      "postForegroundPackage": "tv.danmaku.bili",
+      "allowedRoutes": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ],
+      "longPressProofRequired": false
+    },
+    {
+      "sequence": 15,
+      "stepId": "final-home",
+      "actionId": "home",
+      "preForegroundPackage": "tv.danmaku.bili",
+      "postForegroundPackage": "com.android.launcher",
+      "allowedRoutes": [
+        "semantic"
+      ],
+      "longPressProofRequired": false
+    }
+  ]
+}

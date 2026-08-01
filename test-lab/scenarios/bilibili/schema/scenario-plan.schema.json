@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiauto.dev/schema/test-lab/bilibili/scenario-plan.schema.json",
+  "title": "N48 Bilibili Safe Scenario Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "planId",
+    "identity",
+    "plannedIterations",
+    "sideEffectPolicy",
+    "queryRetention",
+    "steps"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "planId": {
+      "const": "bilibili-unlogged-public-content-v1"
+    },
+    "identity": {
+      "$ref": "#/$defs/identity"
+    },
+    "plannedIterations": {
+      "const": 10
+    },
+    "sideEffectPolicy": {
+      "const": "none"
+    },
+    "queryRetention": {
+      "const": "runtime-only"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "items": {
+        "$ref": "#/$defs/planStep"
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest",
+        "packageName",
+        "versionName",
+        "versionCode",
+        "abi",
+        "sizeBytes",
+        "apkSha256",
+        "signingCertificateSha256"
+      ],
+      "properties": {
+        "manifest": {
+          "const": "bilibili-9.5.0-arm64.json"
+        },
+        "packageName": {
+          "const": "tv.danmaku.bili"
+        },
+        "versionName": {
+          "const": "9.5.0"
+        },
+        "versionCode": {
+          "const": 9050300
+        },
+        "abi": {
+          "const": "arm64-v8a"
+        },
+        "sizeBytes": {
+          "const": 203302151
+        },
+        "apkSha256": {
+          "const": "618b8517d6226300c7223b22b9c9d985df4e2a339d9ea957e96f60cea7a9bf6a"
+        },
+        "signingCertificateSha256": {
+          "const": "93ba270f5521139ecafe4bb638ac5b1198bc548f62d9fd8f8580a079faf5910e"
+        }
+      }
+    },
+    "packageName": {
+      "enum": [
+        "tv.danmaku.bili",
+        "dev.aiauto.fixture",
+        "com.android.launcher",
+        "com.android.systemui"
+      ]
+    },
+    "actionId": {
+      "enum": [
+        "launch",
+        "open-public-search",
+        "input-public-query",
+        "click-public-result",
+        "scroll-public-result",
+        "swipe-public-result",
+        "long-press-safe-content",
+        "back",
+        "home",
+        "recents",
+        "return-from-recents",
+        "switch-fixture",
+        "return-from-fixture"
+      ]
+    },
+    "route": {
+      "enum": [
+        "semantic",
+        "hybrid",
+        "visual"
+      ]
+    },
+    "planStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "stepId",
+        "actionId",
+        "preForegroundPackage",
+        "postForegroundPackage",
+        "allowedRoutes",
+        "longPressProofRequired"
+      ],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 15
+        },
+        "stepId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "actionId": {
+          "$ref": "#/$defs/actionId"
+        },
+        "preForegroundPackage": {
+          "$ref": "#/$defs/packageName"
+        },
+        "postForegroundPackage": {
+          "$ref": "#/$defs/packageName"
+        },
+        "allowedRoutes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/route"
+          }
+        },
+        "longPressProofRequired": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
