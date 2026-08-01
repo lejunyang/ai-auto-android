@@ -32,4 +32,4 @@
 - [x] App unit/lint/debug/androidTest/release 通过。
 - [x] `make comments/test/verify/build` 与 `git diff --check` 通过。
 - [x] 真机相机/provider/权限待人工清单已明确，不夸大自动化证据。
-- [ ] Git 身份、trailer、提交边界和干净 worktree 已审计。
+- [x] Git 身份、trailer、提交边界和干净 worktree 已审计。

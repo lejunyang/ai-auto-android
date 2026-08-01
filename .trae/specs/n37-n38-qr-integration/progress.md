@@ -76,3 +76,12 @@
   门禁通过。改动只位于允许范围，未加入 APK、二维码、邀请、密钥、缓存或构建产物。
 - 自动化证据不替代真机：仍需用户安装受信 ZXing provider、人工处理其相机权限，并在
   真实屏幕/终端上验证扫码、拒绝后手工码、短指纹核对和真实 Wi-Fi 会话。
+
+## Round 6
+
+- 功能提交 `db2234f0b070d4349937300f507dd08026e8a238` 使用
+  `feat(bridge): complete lan qr pairing flow`，包含 change spec、N37 终端二维码、
+  N38 scanner/手工码闭环、测试和既有 N37/N38 append-only 证据。
+- Author 与 Committer 均为 `lejunyang <lejunyang@qq.com>`；提交消息末尾恰好一次
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。提交路径审计未发现越界文件，
+  `git show --check` 通过，功能提交后 worktree 干净。

@@ -21,7 +21,7 @@
 - [x] 运行 Android LAN/UI 定向、App unit/lint/debug/androidTest/release。
 - [x] 运行 `make comments`、`make test`、`make verify`、`make build` 和差异检查。
 - [x] 审计无 invitation/二维码/密钥/缓存/构建产物入库。
-- [ ] 以单一职责 Conventional Commit 提交并确认 worktree 干净。
+- [x] 以单一职责 Conventional Commit 提交并确认 worktree 干净。
 
 ## 依赖与汇合
 
