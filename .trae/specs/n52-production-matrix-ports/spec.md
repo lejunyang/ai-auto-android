@@ -9,10 +9,11 @@ production。
 
 ## 固定入口
 
-- CLI 不接受任何参数、环境变量覆盖或配置文件覆盖；任意 argv 均返回
+- CLI 不接受任何参数或配置文件覆盖；任意 argv 均返回
   `PRODUCTION_CLI_ARGUMENT_FORBIDDEN`。
-- 工具根固定为 `/Volumes/aigo S7 Media/SDK/android-tools`，报告固定写入
-  `emulator-state/reports/n52-production-matrix.json`。
+- 工具根必须由 `AACTL_TOOLCHAIN_ROOT` 或兼容 `ANDROID_TOOLS_ROOT` 显式提供；
+  SDK、AVD、Java 和 state 路径必须位于该根内。报告固定写入该 state root 的
+  `reports/n52-production-matrix.json`。
 - profile、scenario、iteration 只允许既有 API 30/33/34 × native/WebView/Canvas/
   recording editor/recording replay × 20 轮，共 300 轮。
 - CLI 不接受 serial、task、scenario、action、iteration、skip、报告路径或工具路径；

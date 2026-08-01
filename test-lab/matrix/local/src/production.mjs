@@ -20,8 +20,10 @@ import {
   loadRunnerSchemas,
   validateRunnerDocument,
 } from "../../../runner/src/schema-validator.mjs";
+import {
+  resolveToolchainEnvironment,
+} from "../../../../scripts/toolchain-environment.mjs";
 
-const TOOL_ROOT = "/Volumes/aigo S7 Media/SDK/android-tools";
 const profileIdentity = new Map([
   ["api-30", 30],
   ["api-33", 33],
@@ -100,35 +102,47 @@ const requiredCapabilities = Object.freeze([
 const stableId = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const sha256 = /^[a-f0-9]{64}$/u;
 const stableErrorCode = /^[A-Z][A-Z0-9_]{2,95}$/u;
+const windowsAbsolute = /^(?:[A-Za-z]:[\\/]|\\\\)/u;
+const profilesFile = path.resolve(
+  import.meta.dirname,
+  "..",
+  "..",
+  "..",
+  "..",
+  "scripts",
+  "emulator",
+  "profiles.json",
+);
 
-export const FIXED_PRODUCTION_CONFIG = Object.freeze({
-  toolRoot: TOOL_ROOT,
-  sdkRoot: path.join(TOOL_ROOT, "android-sdk"),
-  avdRoot: path.join(TOOL_ROOT, "android-avd"),
-  stateRoot: path.join(TOOL_ROOT, "emulator-state"),
-  javaHome: path.join(
-    TOOL_ROOT,
-    "jdk-temurin-21.0.7+6",
-    "Contents",
-    "Home",
-  ),
-  profilesFile: path.resolve(
-    import.meta.dirname,
-    "..",
-    "..",
-    "..",
-    "..",
-    "scripts",
-    "emulator",
-    "profiles.json",
-  ),
-  reportFile: path.join(
-    TOOL_ROOT,
-    "emulator-state",
-    "reports",
-    "n52-production-matrix.json",
-  ),
-});
+export const resolveProductionConfig = (environment) => {
+  let roots;
+  try {
+    roots = resolveToolchainEnvironment(environment, {
+      sdkRoot: "ANDROID_SDK_ROOT",
+      avdRoot: "ANDROID_AVD_HOME",
+      stateRoot: "AACTL_EMULATOR_STATE",
+      javaHome: "JAVA_HOME",
+    });
+  } catch {
+    fail("PRODUCTION_ENVIRONMENT_INVALID");
+  }
+  const flavor = windowsAbsolute.test(roots.toolchainRoot)
+    ? path.win32
+    : path.posix;
+  return Object.freeze({
+    toolRoot: roots.toolchainRoot,
+    sdkRoot: roots.sdkRoot,
+    avdRoot: roots.avdRoot,
+    stateRoot: roots.stateRoot,
+    javaHome: roots.javaHome,
+    profilesFile,
+    reportFile: flavor.join(
+      roots.stateRoot,
+      "reports",
+      "n52-production-matrix.json",
+    ),
+  });
+};
 
 export class ProductionMatrixError extends LocalMatrixError {
   constructor(code) {
@@ -139,6 +153,62 @@ export class ProductionMatrixError extends LocalMatrixError {
 
 const fail = (code) => {
   throw new ProductionMatrixError(code);
+};
+
+export const assertProductionConfig = (config) => {
+  if (
+    !exactKeys(config, [
+      "avdRoot",
+      "javaHome",
+      "profilesFile",
+      "reportFile",
+      "sdkRoot",
+      "stateRoot",
+      "toolRoot",
+    ])
+    || config.profilesFile !== profilesFile
+  ) {
+    fail("PRODUCTION_CONFIG_DRIFT");
+  }
+  const flavor = windowsAbsolute.test(config.toolRoot)
+    ? path.win32
+    : path.posix;
+  let contained;
+  try {
+    contained = resolveToolchainEnvironment({
+      AACTL_TOOLCHAIN_ROOT: config.toolRoot,
+      ANDROID_SDK_ROOT: config.sdkRoot,
+      ANDROID_AVD_HOME: config.avdRoot,
+      AACTL_EMULATOR_STATE: config.stateRoot,
+      JAVA_HOME: config.javaHome,
+    }, {
+      sdkRoot: "ANDROID_SDK_ROOT",
+      avdRoot: "ANDROID_AVD_HOME",
+      stateRoot: "AACTL_EMULATOR_STATE",
+      javaHome: "JAVA_HOME",
+    });
+  } catch {
+    fail("PRODUCTION_CONFIG_DRIFT");
+  }
+  if (
+    !flavor.isAbsolute(config.toolRoot)
+    || !flavor.isAbsolute(config.sdkRoot)
+    || !flavor.isAbsolute(config.avdRoot)
+    || !flavor.isAbsolute(config.stateRoot)
+    || !flavor.isAbsolute(config.javaHome)
+    || contained.toolchainRoot !== config.toolRoot
+    || contained.sdkRoot !== config.sdkRoot
+    || contained.avdRoot !== config.avdRoot
+    || contained.stateRoot !== config.stateRoot
+    || contained.javaHome !== config.javaHome
+    || config.reportFile !== flavor.join(
+      config.stateRoot,
+      "reports",
+      "n52-production-matrix.json",
+    )
+  ) {
+    fail("PRODUCTION_CONFIG_DRIFT");
+  }
 };
 
 const exactKeys = (value, expected) =>
@@ -334,10 +404,11 @@ const validateScenarioOutput = async (context, expected, output) => {
   return output.report;
 };
 
-export const createProductionSession = async ({ adapterFactory }) => {
+export const createProductionSession = async ({ adapterFactory, config }) => {
   assertAdapterFactory(adapterFactory);
+  assertProductionConfig(config);
   const adapters = await callProvider(
-    () => adapterFactory.create(FIXED_PRODUCTION_CONFIG),
+    () => adapterFactory.create(config),
     "PRODUCTION_ADAPTER_FACTORY_FAILED",
   );
   try {
@@ -678,6 +749,7 @@ const preflightCapabilities = async (ports) => {
 export const runProductionCli = async ({
   argv,
   adapterFactory,
+  environment = process.env,
   matrixIdFactory = crypto.randomUUID,
   clock = productionClock(),
   runMatrix = runLocalMatrix,
@@ -694,7 +766,8 @@ export const runProductionCli = async ({
   ) {
     fail("PRODUCTION_CLI_DEPENDENCY_INVALID");
   }
-  const session = await createProductionSession({ adapterFactory });
+  const config = resolveProductionConfig(environment);
+  const session = await createProductionSession({ adapterFactory, config });
   let report = null;
   let primaryError = null;
   try {
@@ -718,6 +791,6 @@ export const runProductionCli = async ({
   }
   if (closeError !== null) throw closeError;
   if (primaryError !== null) throw primaryError;
-  await reportWriter(FIXED_PRODUCTION_CONFIG.reportFile, report);
+  await reportWriter(config.reportFile, report);
   return report;
 };

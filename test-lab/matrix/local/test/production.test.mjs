@@ -8,9 +8,9 @@ import test from "node:test";
 import { promisify } from "node:util";
 
 import {
-  FIXED_PRODUCTION_CONFIG,
   ProductionMatrixError,
   createProductionSession,
+  resolveProductionConfig,
   runProductionCli,
   writeProductionReport,
 } from "../src/production.mjs";
@@ -22,6 +22,14 @@ import {
 import { runLocalMatrix } from "../src/matrix.mjs";
 
 const execFileAsync = promisify(execFile);
+const TEST_ENVIRONMENT = Object.freeze({
+  AACTL_TOOLCHAIN_ROOT: "/opt/aiauto-tools",
+  ANDROID_SDK_ROOT: "/opt/aiauto-tools/android-sdk",
+  ANDROID_AVD_HOME: "/opt/aiauto-tools/android-avd",
+  AACTL_EMULATOR_STATE: "/opt/aiauto-tools/emulator-state",
+  JAVA_HOME: "/opt/aiauto-tools/jdk/Contents/Home",
+});
+const TEST_CONFIG = resolveProductionConfig(TEST_ENVIRONMENT);
 const BINDING = Object.freeze({
   profileId: "api-30",
   apiLevel: 30,
@@ -113,6 +121,12 @@ const SCENARIOS = new Map([
 const probeAll = async (ports) => {
   for (const profile of PROFILES) await ports.capabilities.probe(profile);
 };
+
+const createTestSession = (adapterFactory) =>
+  createProductionSession({
+    adapterFactory,
+    config: TEST_CONFIG,
+  });
 
 const report = () => Object.freeze({
   schemaVersion: "1.0",
@@ -250,14 +264,13 @@ const productionFactory = ({
   },
 });
 
-test("固定 production 配置只指向外置工具根和唯一报告路径", () => {
-  assert.deepEqual(FIXED_PRODUCTION_CONFIG, {
-    toolRoot: "/Volumes/aigo S7 Media/SDK/android-tools",
-    sdkRoot: "/Volumes/aigo S7 Media/SDK/android-tools/android-sdk",
-    avdRoot: "/Volumes/aigo S7 Media/SDK/android-tools/android-avd",
-    stateRoot: "/Volumes/aigo S7 Media/SDK/android-tools/emulator-state",
-    javaHome:
-      "/Volumes/aigo S7 Media/SDK/android-tools/jdk-temurin-21.0.7+6/Contents/Home",
+test("production 配置只接受显式外置工具根和唯一报告路径", () => {
+  assert.deepEqual(TEST_CONFIG, {
+    toolRoot: "/opt/aiauto-tools",
+    sdkRoot: "/opt/aiauto-tools/android-sdk",
+    avdRoot: "/opt/aiauto-tools/android-avd",
+    stateRoot: "/opt/aiauto-tools/emulator-state",
+    javaHome: "/opt/aiauto-tools/jdk/Contents/Home",
     profilesFile: path.resolve(
       import.meta.dirname,
       "..",
@@ -269,10 +282,34 @@ test("固定 production 配置只指向外置工具根和唯一报告路径", ()
       "profiles.json",
     ),
     reportFile:
-      "/Volumes/aigo S7 Media/SDK/android-tools/emulator-state/reports/"
+      "/opt/aiauto-tools/emulator-state/reports/"
       + "n52-production-matrix.json",
   });
-  assert.equal(Object.isFrozen(FIXED_PRODUCTION_CONFIG), true);
+  assert.equal(Object.isFrozen(TEST_CONFIG), true);
+  assert.deepEqual(
+    resolveProductionConfig({
+      AACTL_TOOLCHAIN_ROOT: "D:\\aiauto\\tools",
+      ANDROID_SDK_ROOT: "D:\\aiauto\\tools\\android-sdk",
+      ANDROID_AVD_HOME: "D:\\aiauto\\tools\\android-avd",
+      AACTL_EMULATOR_STATE: "D:\\aiauto\\tools\\emulator-state",
+      JAVA_HOME: "D:\\aiauto\\tools\\jdk\\Home",
+    }).reportFile,
+    "D:\\aiauto\\tools\\emulator-state\\reports\\n52-production-matrix.json",
+  );
+  for (const environment of [
+    {},
+    {
+      ...TEST_ENVIRONMENT,
+      ANDROID_SDK_ROOT: "/outside/android-sdk",
+    },
+  ]) {
+    assert.throws(
+      () => resolveProductionConfig(environment),
+      (error) =>
+        error instanceof ProductionMatrixError
+        && error.code === "PRODUCTION_ENVIRONMENT_INVALID",
+    );
+  }
 });
 
 test("固定 CLI 拒绝任意 skip、serial、task、scenario、action 和路径参数", async () => {
@@ -304,6 +341,30 @@ test("固定 CLI 拒绝任意 skip、serial、task、scenario、action 和路径
   }
 });
 
+test("programmatic session 拒绝工具根外的 SDK、AVD、state 或 Java 路径", async () => {
+  for (const key of ["sdkRoot", "avdRoot", "stateRoot", "javaHome"]) {
+    let factoryCalls = 0;
+    await assert.rejects(
+      () => createProductionSession({
+        adapterFactory: {
+          create: async () => {
+            factoryCalls += 1;
+          },
+        },
+        config: {
+          ...TEST_CONFIG,
+          [key]: "/outside/tool",
+        },
+      }),
+      (error) =>
+        error instanceof ProductionMatrixError
+        && error.code === "PRODUCTION_CONFIG_DRIFT",
+      key,
+    );
+    assert.equal(factoryCalls, 0, key);
+  }
+});
+
 test("production CLI 进程入口拒绝参数且不触发 adapter 或设备", async () => {
   const cli = path.resolve(
     import.meta.dirname,
@@ -326,9 +387,7 @@ test("production CLI 进程入口拒绝参数且不触发 adapter 或设备", as
 
 test("三类 capability probe 全部完成后才允许 lifecycle start", async () => {
   const calls = [];
-  const { ports } = await createProductionSession({
-    adapterFactory: productionFactory({ calls }),
-  });
+  const { ports } = await createTestSession(productionFactory({ calls }));
 
   await probeAll(ports);
   const planned = {
@@ -358,9 +417,9 @@ test("三类 capability probe 全部完成后才允许 lifecycle start", async (
 test("任一 production provider unavailable 在零 lifecycle start 时失败关闭", async () => {
   for (const kind of ["lifecycle", "scenario", "residue"]) {
     const calls = [];
-    const { ports } = await createProductionSession({
-      adapterFactory: productionFactory({ calls, unavailable: kind }),
-    });
+    const { ports } = await createTestSession(
+      productionFactory({ calls, unavailable: kind }),
+    );
     await assert.rejects(
       () => ports.capabilities.probe({ profileId: "api-30", apiLevel: 30 }),
       (error) =>
@@ -382,9 +441,7 @@ test("五场景固定分派并逐字验证 serial fingerprint 和 clean snapshot
     "recording-editor",
     "recording-replay",
   ]) {
-    const { ports } = await createProductionSession({
-      adapterFactory: productionFactory({ calls }),
-    });
+    const { ports } = await createTestSession(productionFactory({ calls }));
     await probeAll(ports);
     const device = await ports.lifecycle.startClean({
       profile,
@@ -415,9 +472,7 @@ test("五场景固定分派并逐字验证 serial fingerprint 和 clean snapshot
   const drifting = productionFactory({
     scenarioFingerprint: "b".repeat(64),
   });
-  const { ports: driftPorts } = await createProductionSession({
-    adapterFactory: drifting,
-  });
+  const { ports: driftPorts } = await createTestSession(drifting);
   await probeAll(driftPorts);
   const driftDevice = await driftPorts.lifecycle.startClean({
     profile,
@@ -438,9 +493,7 @@ test("五场景固定分派并逐字验证 serial fingerprint 和 clean snapshot
 });
 
 test("scenario 必须匹配 lifecycle 固定的 scenario 和 iteration 且只能尝试一次", async () => {
-  const { ports } = await createProductionSession({
-    adapterFactory: productionFactory(),
-  });
+  const { ports } = await createTestSession(productionFactory());
   await probeAll(ports);
   const device = await ports.lifecycle.startClean({
     profile: PROFILE,
@@ -480,9 +533,7 @@ test("scenario 必须匹配 lifecycle 固定的 scenario 和 iteration 且只能
 
 test("residue 只按固定八类顺序检查并绑定同一设备身份", async () => {
   const calls = [];
-  const { ports } = await createProductionSession({
-    adapterFactory: productionFactory({ calls }),
-  });
+  const { ports } = await createTestSession(productionFactory({ calls }));
   const profile = { profileId: "api-30", apiLevel: 30 };
   await probeAll(ports);
   const device = await ports.lifecycle.startClean({
@@ -510,9 +561,9 @@ test("residue 只按固定八类顺序检查并绑定同一设备身份", async 
 });
 
 test("residue 非零、stop binding drift 和 unknown commit 由 N52 失败关闭", async () => {
-  const { ports: residuePorts } = await createProductionSession({
-    adapterFactory: productionFactory({ residueFailure: "logs" }),
-  });
+  const { ports: residuePorts } = await createTestSession(
+    productionFactory({ residueFailure: "logs" }),
+  );
   await probeAll(residuePorts);
   const residueDevice = await residuePorts.lifecycle.startClean({
     profile: PROFILE,
@@ -534,9 +585,7 @@ test("residue 非零、stop binding drift 和 unknown commit 由 N52 失败关�
 });
 
 test("scenario 和 residue 拒绝未由本 session lifecycle 产生的任意 serial", async () => {
-  const { ports } = await createProductionSession({
-    adapterFactory: productionFactory(),
-  });
+  const { ports } = await createTestSession(productionFactory());
   await probeAll(ports);
   await assert.rejects(
     () => ports.scenario.run({
@@ -597,6 +646,7 @@ test("固定 CLI 使用注入 runMatrix 跑唯一 300 轮计划并在报告后�
   );
   const result = await runProductionCli({
     argv: [],
+    environment: TEST_ENVIRONMENT,
     adapterFactory: productionFactory({ calls }),
     matrixIdFactory: () => MATRIX_ID,
     clock: fixedClock(),
@@ -612,7 +662,7 @@ test("固定 CLI 使用注入 runMatrix 跑唯一 300 轮计划并在报告后�
     },
     reportWriter: async (reportFile, value) => {
       calls.push(["write", reportFile]);
-      assert.equal(reportFile, FIXED_PRODUCTION_CONFIG.reportFile);
+      assert.equal(reportFile, TEST_CONFIG.reportFile);
       await writeProductionReport(destination, value);
     },
   });

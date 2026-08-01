@@ -72,3 +72,15 @@
   `Co-authored-by: TRAE CLI <noreply@bytedance.com>` 恰好一次。
 - 提交未修改 workflow、公共路线图、N47 runner/scripts、N48-N51、Android、Go、
   SDK 或 cache，也未 push。真实设备矩阵仍未执行并保持未勾选。
+
+## Round 5
+
+- 集成复核发现 production config 把本机
+  `/Volumes/aigo S7 Media/SDK/android-tools` 写入仓库代码、测试和规格，违反工具根
+  可移植性约束；零参数 CLI 不等于可以固定某台机器路径。
+- 新实现复用共享 `resolveToolchainEnvironment`：根从 `AACTL_TOOLCHAIN_ROOT` 或
+  `ANDROID_TOOLS_ROOT` 读取，SDK、AVD、Java、state 必须为显式根内绝对路径；报告
+  仍固定为该 state root 下的 `reports/n52-production-matrix.json`，调用方不能通过
+  argv 覆盖。
+- tests 改用 `/opt/aiauto-tools` 和 Windows 盘符 fixture，新增缺失根、子路径逃逸和
+  Windows report path 验证；仓库 production code/tests 不再包含真实机器卷名。

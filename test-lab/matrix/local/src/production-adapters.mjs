@@ -5,7 +5,7 @@ import {
 } from "../../../../scripts/emulator/runner.mjs";
 
 import {
-  FIXED_PRODUCTION_CONFIG,
+  assertProductionConfig,
   ProductionMatrixError,
 } from "./production.mjs";
 
@@ -46,14 +46,7 @@ const exactKeys = (value, expected) =>
     === JSON.stringify([...expected].sort());
 
 const assertFixedConfig = (config) => {
-  if (
-    !exactKeys(config, Object.keys(FIXED_PRODUCTION_CONFIG))
-    || Object.entries(FIXED_PRODUCTION_CONFIG).some(
-      ([key, value]) => config[key] !== value,
-    )
-  ) {
-    fail("PRODUCTION_CONFIG_DRIFT");
-  }
+  assertProductionConfig(config);
 };
 
 const assertProfile = (profile) => {

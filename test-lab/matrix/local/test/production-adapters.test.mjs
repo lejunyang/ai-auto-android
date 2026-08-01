@@ -7,9 +7,9 @@ import {
   createN31LifecycleAdapter,
 } from "../src/production-adapters.mjs";
 import {
-  FIXED_PRODUCTION_CONFIG,
   ProductionMatrixError,
   createProductionSession,
+  resolveProductionConfig,
   runProductionCli,
 } from "../src/production.mjs";
 import {
@@ -21,6 +21,14 @@ const PROFILE = Object.freeze({
   profileId: "api-30",
   apiLevel: 30,
 });
+const TEST_ENVIRONMENT = Object.freeze({
+  AACTL_TOOLCHAIN_ROOT: "/opt/aiauto-tools",
+  ANDROID_SDK_ROOT: "/opt/aiauto-tools/android-sdk",
+  ANDROID_AVD_HOME: "/opt/aiauto-tools/android-avd",
+  AACTL_EMULATOR_STATE: "/opt/aiauto-tools/emulator-state",
+  JAVA_HOME: "/opt/aiauto-tools/jdk/Contents/Home",
+});
+const TEST_CONFIG = resolveProductionConfig(TEST_ENVIRONMENT);
 const BINDING = Object.freeze({
   profileId: "api-30",
   apiLevel: 30,
@@ -84,7 +92,7 @@ const fakeRunner = ({
 const createLifecycle = async (options = {}) => {
   const runner = fakeRunner(options);
   const adapter = await createN31LifecycleAdapter(
-    FIXED_PRODUCTION_CONFIG,
+    TEST_CONFIG,
     {
       loadProfiles: async (file) => {
         options.calls?.push(["profiles", file]);
@@ -243,6 +251,7 @@ test("默认 factory 通过 CLI 明确关闭尚未接入的 N47 scenario provide
   await assert.rejects(
     () => runProductionCli({
       argv: [],
+      environment: TEST_ENVIRONMENT,
       adapterFactory: factory,
       matrixIdFactory: () => MATRIX_ID,
       clock: fixedClock(),
@@ -283,7 +292,10 @@ test("provider factory 中途失败时关闭已创建 lifecycle 且不创建 por
   });
 
   await assert.rejects(
-    () => createProductionSession({ adapterFactory: factory }),
+    () => createProductionSession({
+      adapterFactory: factory,
+      config: TEST_CONFIG,
+    }),
     (error) =>
       error instanceof ProductionMatrixError
       && error.code === "PRODUCTION_SCENARIO_PROVIDER_UNAVAILABLE",
