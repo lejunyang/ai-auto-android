@@ -11,7 +11,7 @@ import {
   matrixEnvironment,
   parseArguments,
   parseJUnitResult,
-  parseSurfaceOrientation,
+  parseWindowRotation,
   runVisualDeviceMatrix,
   selectFreshJUnit,
 } from "./run.mjs";
@@ -216,18 +216,18 @@ test("矩阵固定为三分辨率和两种 rotation", () => {
   ]);
 });
 
-test("只接受 dumpsys input 的唯一实际 SurfaceOrientation", () => {
+test("只接受 dumpsys window 的唯一实际 mRotation", () => {
   assert.equal(
-    parseSurfaceOrientation("Input Reader State:\n  SurfaceOrientation: 1\n"),
+    parseWindowRotation("DisplayRotation\n  mRotation=1 mDeferredRotationPauseCount=0\n"),
     1,
   );
   for (const output of [
     "",
-    "SurfaceOrientation: 9\n",
-    "SurfaceOrientation: 0\nSurfaceOrientation: 1\n",
-    "surfaceOrientation: 1\n",
+    "mRotation=9\n",
+    "mRotation=0\nmRotation=1\n",
+    "mUserRotation=ROTATION_90\n",
   ]) {
-    assert.throws(() => parseSurfaceOrientation(output), {
+    assert.throws(() => parseWindowRotation(output), {
       code: "DEVICE_CONFIG_DRIFT",
     });
   }
@@ -248,8 +248,11 @@ test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", 
       if (command.join(" ") === "shell wm density") {
         return { code: 0, stdout: "Physical density: 420\nOverride density: 420\n" };
       }
-      if (command.join(" ") === "shell dumpsys input") {
-        return { code: 0, stdout: "Input Reader State:\n  SurfaceOrientation: 1\n" };
+      if (command.join(" ") === "shell dumpsys window displays") {
+        return {
+          code: 0,
+          stdout: "DisplayRotation\n  mRotation=1 mDeferredRotationPauseCount=0\n",
+        };
       }
       return { code: 0, stdout: "", stderr: "" };
     },
@@ -264,6 +267,12 @@ test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", 
   );
 
   assert.equal(configured.rotation, 90);
+  assert.equal(
+    calls.some((args) =>
+      args.join(" ") ===
+      "-s emulator-5554 shell wm set-fix-to-user-rotation enabled"),
+    true,
+  );
   assert.equal(
     calls.some((args) =>
       args.join(" ") ===

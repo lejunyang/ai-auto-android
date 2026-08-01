@@ -112,3 +112,16 @@
   `dumpsys input` 严格解析唯一 `SurfaceOrientation` 作为实际方向真值；App 侧
   metrics 收敛门继续作为第二重验证。缺失、重复、非法 orientation 或 settings
   回退均失败关闭。
+
+## Round 9
+
+- 第七轮在 instrumentation 前以 `DEVICE_CONFIG_DRIFT` 停止；限定 owned API 30
+  诊断显示 `set-user-rotation lock 1` 返回成功，WindowManager 为
+  `mUserRotationMode=LOCKED`、`mUserRotation=ROTATION_90`，但
+  `mFixedToUserRotation=false` 且实际 `mRotation=0`。
+- 同次诊断显示 `dumpsys input` 含多个 inactive viewport 的
+  `SurfaceOrientation`，不能作为唯一 display 真值。诊断 finally 已 restore/stop，
+  设备、runtime 和 lock 为零。
+- runner 现先执行 AOSP `wm set-fix-to-user-rotation enabled`，再锁定 0/90；
+  严格解析 `dumpsys window displays` 的唯一 `mRotation=<0|1>`，随后仍由 App
+  metrics 做第二重收敛验证。命令退出成功但实际 rotation 未变时继续失败关闭。
