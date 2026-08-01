@@ -1,4 +1,4 @@
-// 测试用途：验证 N31 production lifecycle 接线、补偿清理与缺失 provider 失败关闭。
+// 测试用途：验证 N31 lifecycle、concrete residue 接线、补偿清理与缺失能力失败关闭。
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -301,4 +301,81 @@ test("provider factory 中途失败时关闭已创建 lifecycle 且不创建 por
       && error.code === "PRODUCTION_SCENARIO_PROVIDER_UNAVAILABLE",
   );
   assert.deepEqual(calls, [["close:lifecycle"]]);
+});
+
+test("默认 concrete residue 缺少 typed providers 时 capability 零启动失败关闭", async () => {
+  const calls = [];
+  const lifecycle = {
+    probe: async (profile) => ({
+      ...profile,
+      capabilities: [],
+    }),
+    startClean: async () => {
+      calls.push(["start"]);
+      return BINDING;
+    },
+    stop: async () => ({ ...BINDING, stopped: true }),
+    close: async () => calls.push(["close:lifecycle"]),
+  };
+  const scenario = {
+    probe: async (profile) => ({
+      ...profile,
+      capabilities: [
+        "compose.test",
+        "fixture.canvas",
+        "fixture.editor",
+        "fixture.native",
+        "fixture.webview",
+        "recording.replay",
+        "semantic.action",
+        "system.navigation",
+        "visual.action",
+      ],
+    }),
+    close: async () => calls.push(["close:scenario"]),
+  };
+  for (const scenarioId of [
+    "native-fixture",
+    "webview-fixture",
+    "canvas-fixture",
+    "recording-editor",
+    "recording-replay",
+  ]) {
+    scenario[scenarioId] = async () => {
+      throw new Error("scenario must not run");
+    };
+  }
+  const factory = createDefaultProductionAdapterFactory({
+    lifecycleFactory: async () => lifecycle,
+    scenarioFactory: async () => scenario,
+    residueFactory: async (config) => {
+      const defaultFactory = createDefaultProductionAdapterFactory();
+      const adapters = await defaultFactory.create(config);
+      return {
+        ...adapters.residue,
+        close: adapters.close,
+      };
+    },
+  });
+
+  await assert.rejects(
+    () => runProductionCli({
+      argv: [],
+      environment: TEST_ENVIRONMENT,
+      adapterFactory: factory,
+      matrixIdFactory: () => MATRIX_ID,
+      clock: fixedClock(),
+      reportWriter: async () => {
+        throw new Error("report must not publish");
+      },
+    }),
+    (error) =>
+      error instanceof ProductionMatrixError
+      && error.code === "PRODUCTION_RESIDUE_PROVIDER_UNAVAILABLE",
+  );
+  assert.equal(calls.some(([name]) => name === "start"), false);
+  assert.deepEqual(calls, [
+    ["close:scenario"],
+    ["close:lifecycle"],
+  ]);
 });

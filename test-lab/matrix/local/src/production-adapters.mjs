@@ -1,4 +1,4 @@
-// 功能用途：将固定 N31 lifecycle 接入 N52，并为缺失场景/残留 provider 提供失败关闭实现。
+// 功能用途：将固定 N31 lifecycle 与安全残留检查接入 N52，并对缺失 typed capability 失败关闭。
 import {
   EmulatorRunner,
   loadProfiles,
@@ -8,6 +8,9 @@ import {
   assertProductionConfig,
   ProductionMatrixError,
 } from "./production.mjs";
+import {
+  createProductionResidueAdapter,
+} from "./production-residue.mjs";
 
 const profileIdentity = new Map([
   ["api-30", 30],
@@ -257,18 +260,6 @@ const unavailableScenarioAdapter = () => {
   return Object.freeze(adapter);
 };
 
-const unavailableResidueAdapter = () => {
-  const adapter = {
-    probe: async () => fail("PRODUCTION_RESIDUE_PROVIDER_UNAVAILABLE"),
-    close: async () => {},
-  };
-  for (const kind of residueKinds) {
-    adapter[kind] = async () =>
-      fail("PRODUCTION_RESIDUE_PROVIDER_UNAVAILABLE");
-  }
-  return Object.freeze(adapter);
-};
-
 const assertFactoryDependencies = (dependencies) => {
   if (
     !exactKeys(
@@ -297,7 +288,7 @@ export const createDefaultProductionAdapterFactory = (
   dependencies = {
     lifecycleFactory: createN31LifecycleAdapter,
     scenarioFactory: async () => unavailableScenarioAdapter(),
-    residueFactory: async () => unavailableResidueAdapter(),
+    residueFactory: createProductionResidueAdapter,
   },
 ) => {
   assertFactoryDependencies(dependencies);
