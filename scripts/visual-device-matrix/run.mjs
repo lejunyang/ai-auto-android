@@ -452,6 +452,21 @@ export const configureFixedVisualCase = async (
       break;
     }
     if (Date.now() >= rotationDeadline) fail("DEVICE_CONFIG_DRIFT");
+    if (actualRotation !== Number(rotationValue)) {
+      for (const args of [
+        ["shell", "wm", "set-fix-to-user-rotation", "enabled"],
+        ["shell", "wm", "set-user-rotation", "lock", rotationValue],
+      ]) {
+        assertSuccess(
+          await emulator.command(
+            adb,
+            ["-s", booted.serial, ...args],
+            { env: environment, timeoutMs: 10_000 },
+          ),
+          "DEVICE_CONFIG_FAILED",
+        );
+      }
+    }
     await new Promise((resolve) => setTimeout(resolve, ROTATION_SETTLE_POLL_MS));
   }
   return Object.freeze({

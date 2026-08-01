@@ -147,3 +147,15 @@
 - host 配置门改为在同一个有界窗口内同时轮询 size、density 与唯一 `mRotation`；
   只有三者同轮一致才继续。瞬时旧值或 WindowManager dump 切换期歧义会继续等待，
   命令失败或最终超时仍失败关闭。
+
+## Round 12
+
+- 原子门后的完整矩阵仍在 App 启动前失败。直接复用 production
+  `configureFixedVisualCase` 逐环境诊断确认前五个配置通过，唯一失败为
+  `1440x3200@90`；诊断 finally 已 restore/stop 并确认零残留。
+- 失败窗口内 22 次 size/density 读取始终为 `1440x3200` 和 420 dpi，
+  `mUserRotation` 仅短暂出现一次 90，随后被仍在完成的 snapshot restore 回写为 0；
+  所有命令退出码均为 0。
+- 有界 host 配置门在实际 rotation 未匹配时重新声明 fixed-to-user 与目标 rotation，
+  直至三项同轮一致或 10 秒超时。该重申只修复 snapshot 后的系统配置漂移，发生在
+  instrumentation 和任何 App 动作之前，不构成动作重放。

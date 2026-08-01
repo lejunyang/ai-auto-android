@@ -236,6 +236,7 @@ test("只接受 dumpsys window 的唯一实际 mRotation", () => {
 test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", async () => {
   const calls = [];
   let rotationReads = 0;
+  const rotationSequence = [0, 0, 1];
   const emulator = {
     readSnapshotMarker: async () => "clean",
     tools: () => ({ adb: "/external/android-sdk/platform-tools/adb" }),
@@ -251,10 +252,14 @@ test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", 
       }
       if (command.join(" ") === "shell dumpsys window displays") {
         rotationReads += 1;
+        const rotation = rotationSequence[Math.min(
+          rotationReads - 1,
+          rotationSequence.length - 1,
+        )];
         return {
           code: 0,
           stdout: `DisplayRotation
-  mRotation=${rotationReads === 1 ? 0 : 1} mDeferredRotationPauseCount=0
+  mRotation=${rotation} mDeferredRotationPauseCount=0
 `,
         };
       }
@@ -271,7 +276,7 @@ test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", 
   );
 
   assert.equal(configured.rotation, 90);
-  assert.equal(rotationReads, 2);
+  assert.equal(rotationReads, 3);
   assert.equal(
     calls.some((args) =>
       args.join(" ") ===
@@ -279,10 +284,10 @@ test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", 
     true,
   );
   assert.equal(
-    calls.some((args) =>
+    calls.filter((args) =>
       args.join(" ") ===
-      "-s emulator-5554 shell wm set-user-rotation lock 1"),
-    true,
+      "-s emulator-5554 shell wm set-user-rotation lock 1").length,
+    3,
   );
   assert.equal(
     calls.some((args) => args.includes("user_rotation")),
