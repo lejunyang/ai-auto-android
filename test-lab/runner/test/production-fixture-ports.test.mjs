@@ -72,6 +72,7 @@ const fixture = ({
   authorizationAvailable = true,
   authorizationSetupFailure = false,
   residue = {},
+  useDefaultRandomUUID = false,
 } = {}) => {
   const calls = [];
   let online = false;
@@ -230,6 +231,9 @@ const fixture = ({
       now: () => "2026-08-01T12:00:00.000Z",
     },
   };
+  if (useDefaultRandomUUID) {
+    delete value.dependencies.randomUUID;
+  }
   return { calls, value };
 };
 
@@ -335,11 +339,10 @@ test("固定 build/install argv 组装 aactl visual 并执行四步清理", asyn
       && ["am", "pm"].includes(argv[3]))
     .map(([name, _executable, argv]) =>
       name === "command" ? argv[3] : name);
-  assert.deepEqual(lifecycleOrder.slice(-7), [
+  assert.deepEqual(lifecycleOrder.slice(-6), [
     "authorization-stop",
     "am",
     "authorization-close",
-    "pm",
     "pm",
     "pm",
     "restore",
@@ -351,6 +354,31 @@ test("固定 build/install argv 组装 aactl visual 并执行四步清理", asyn
   assert.equal(
     current.calls.filter(([name]) => name === "visual-ports").length,
     1,
+  );
+});
+
+test("默认 UUID provider 在 Node 24 可直接生成场景 run ID", async () => {
+  const current = fixture({ useDefaultRandomUUID: true });
+  const ports = await createProductionFixturePorts({
+    environment,
+    authorization: current.value.authorization,
+  }, current.value.dependencies);
+  await ports.capabilities.probe({ profileId: "api-33", apiLevel: 33 });
+  const started = await ports.lifecycle.startClean({
+    profileId: "api-33",
+    apiLevel: 33,
+  });
+
+  await ports.scenarios.run({
+    scenarioId: "production-native-fixture",
+    iteration: 1,
+    started,
+  });
+
+  const setup = current.calls.find(([name]) => name === "authorization-setup");
+  assert.match(
+    setup[3],
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
   );
 });
 
@@ -389,12 +417,11 @@ test("授权 setup 失败仍按固定顺序执行四步补偿且不运行场景"
         && ["am", "pm"].includes(argv[3]))
       .map(([name, _executable, argv]) =>
         name === "command" ? argv[3] : name)
-      .slice(-7),
+      .slice(-6),
     [
       "authorization-stop",
       "am",
       "authorization-close",
-      "pm",
       "pm",
       "pm",
       "restore",

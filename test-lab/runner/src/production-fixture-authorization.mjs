@@ -81,10 +81,16 @@ const resolveEnvironment = (environment) => {
 };
 
 const parseSigner = (output) => {
-  const matches = [...output.matchAll(
-    /Signer #1 certificate SHA-256 digest:\s*([0-9A-Fa-f:]{95})/gu,
+  const signerLines = output
+    .split(/\r?\n/u)
+    .filter((line) =>
+      /^Signer #[1-9][0-9]* certificate SHA-256 digest:/u.test(line));
+  const matches = [...signerLines.join("\n").matchAll(
+    /^Signer #1 certificate SHA-256 digest:\s*((?:[0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}|[0-9A-Fa-f]{64})$/gmu,
   )];
-  if (matches.length !== 1) fail("PRODUCTION_FIXTURE_AUTHORIZATION_SIGNER_REJECTED");
+  if (signerLines.length !== 1 || matches.length !== 1) {
+    fail("PRODUCTION_FIXTURE_AUTHORIZATION_SIGNER_REJECTED");
+  }
   const digest = matches[0][1].replaceAll(":", "").toLowerCase();
   if (!sha256Pattern.test(digest)) {
     fail("PRODUCTION_FIXTURE_AUTHORIZATION_SIGNER_REJECTED");

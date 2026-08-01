@@ -402,7 +402,7 @@ const defaultDependencies = Object.freeze({
   createAactlPorts: createAactlScenarioPorts,
   createVisualPorts: createAttestedVisualScenarioPorts,
   runScenario,
-  randomUUID: crypto.randomUUID,
+  randomUUID: () => crypto.randomUUID(),
   now: () => new Date().toISOString(),
 });
 
@@ -723,8 +723,15 @@ export const createProductionFixturePorts = async (
     closeBridge: async (context) => {
       await authorization.closeBridge(context);
     },
-    clearAppData: async () => {
-      for (const packageValue of fixedPackages) {
+    clearAppData: async (context) => {
+      const packageValues = [appPackage, ...context.targetPackages];
+      if (
+        new Set(packageValues).size !== 2
+        || packageValues.some((packageValue) => !fixedPackages.includes(packageValue))
+      ) {
+        fail("PRODUCTION_FIXTURE_CONTEXT_DRIFT");
+      }
+      for (const packageValue of packageValues) {
         const result = await runAdbShell(
           ["pm", "clear", packageValue],
           "PRODUCTION_FIXTURE_APP_DATA_CLEAR_FAILED",

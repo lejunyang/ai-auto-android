@@ -873,6 +873,18 @@ debug test-only Bridge/Accessibility 授权 provider，真实 CLI 因
 `PRODUCTION_FIXTURE_AUTHORIZATION_UNAVAILABLE` 在 build、emulator start、安装和动作
 之前零设备失败关闭；因此 API 设备闭环与 N47 主任务继续保持未完成。
 
+**追加实现记录（test-only 授权 provider 已接，设备 endpoint 仍阻塞）：**
+独立 change `n47-test-authorization-provider` 已提供固定 debug/androidTest 双签名
+校验、N31 profile/serial/fingerprint/build fingerprint/clean marker 绑定、loopback
+control endpoint、真实生产 Accessibility service、完整 Bridge、stdin pairing code
+及全路径 teardown；release APK 扫描保持 0 findings。后续 API 30 真实轮先后发现并
+修复 Node 24 未绑定 `randomUUID`、清理未安装 fixture 包和 build-tools 36 连续 hex
+signer 输出三个 host 缺陷，N47 runner 为 74/74、授权 provider 为 8/8。最终
+API 30 instrumentation
+仍未在有界窗口内监听 control endpoint，API 33/34 因此未启动；每个失败轮均清零
+设备、runtime、AVD/port lease 和 production 临时目录，没有重复未知动作。N47
+设备闭环和真实 App 连续轮仍未完成，任务保持未勾选。
+
 **失败清理：** 停止场景、关闭 Bridge、清除 App 数据和产物并恢复快照。
 
 **建议提交：** `test(lab): add cross-app scenario runner`
@@ -1076,6 +1088,16 @@ N47 59/59、N34 49/49、Make 与 Android 152 tasks 通过。当前五场景 prod
 provider 与八类 residue inspector 尚未全部 concrete 接入；默认在零 emulator 启动
 阶段返回 provider unavailable，不使用 fake 或硬编码零。真实 300 轮仍未运行，
 N52 保持未勾选。
+
+**追加实现记录（八类 residue inspector 已接，场景 provider 与真实矩阵未完成）：**
+独立 change `n52-production-residue-provider` 已将固定 App 数据、Bridge session、
+测试服务、截图、日志、owned process、runtime 和 lease 接入真实检查；文件系统端
+使用 `lstat`/`realpath`/`O_NOFOLLOW`、身份前后复核和固定条目/字节/深度预算，拒绝
+symlink、路径逃逸与 ABA 竞态，typed provider 缺失时零设备失败关闭。N52 全量
+61/61、N47 74/74、授权 provider 8/8、Make 全量和 Android 136 tasks 通过。当前
+五场景 production
+provider 尚未全部 concrete，且 N47 API 30 control endpoint 尚无设备闭环，因此
+真实 3 × 5 × 20 矩阵仍为零；N52 保持未勾选，N53/N54 的条件尚未满足。
 
 **失败清理：** 停止本任务创建的本地 AVD，释放设备锁，删除临时快照和超预算产物；
 不得执行共享 `adb kill-server`。

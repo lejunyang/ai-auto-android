@@ -294,6 +294,58 @@ test("真机 release 未知 fingerprint marker signer 与任意 package 均拒�
   });
 });
 
+test("signer parser 兼容 apksigner 连续摘要", async () => {
+  const current = fixture();
+  current.dependencies.command = async (executable, argv, options) => {
+    current.calls.push(["command", executable, [...argv], options]);
+    if (argv.includes("--print-certs")) {
+      return successfulCommand(
+        argv,
+        `Signer #1 certificate SHA-256 digest: ${trustedSigner}\n`,
+      );
+    }
+    if (argv[2] === "forward" && argv[3] === "tcp:0") {
+      return successfulCommand(argv, "41247\n");
+    }
+    return successfulCommand(argv);
+  };
+  const provider = createProductionFixtureAuthorization(
+    { environment },
+    current.dependencies,
+  );
+  await provider.probe({ profileId: "api-33", apiLevel: 33 });
+  await provider.setup(context);
+  assert.equal(
+    current.calls.some(([name]) => name === "spawn"),
+    true,
+  );
+});
+
+test("signer parser 拒绝真实多 signer 输出", async () => {
+  const current = fixture();
+  current.dependencies.command = async (executable, argv, options) => {
+    current.calls.push(["command", executable, [...argv], options]);
+    if (argv.includes("--print-certs")) {
+      return successfulCommand(
+        argv,
+        `Signer #1 certificate SHA-256 digest: ${trustedSigner}\n`
+          + `Signer #2 certificate SHA-256 digest: ${"ab".repeat(32)}\n`,
+      );
+    }
+    return successfulCommand(argv);
+  };
+  const provider = createProductionFixtureAuthorization(
+    { environment },
+    current.dependencies,
+  );
+  await provider.probe({ profileId: "api-33", apiLevel: 33 });
+  await assert.rejects(
+    () => provider.setup(context),
+    (error) => error.code === "PRODUCTION_FIXTURE_AUTHORIZATION_SIGNER_REJECTED",
+  );
+  assert.equal(current.calls.some(([name]) => name === "spawn"), false);
+});
+
 test("closeBridge 总是关闭 aactl、停止 endpoint、等待 instrumentation 并移除 control forward", async () => {
   const current = fixture();
   const provider = createProductionFixtureAuthorization(
