@@ -1,0 +1,55 @@
+{
+  "runId": "fixture-blocked-api-30-iteration-1",
+  "source": "fixture",
+  "fixtureSource": "N50_OFFLINE_CONTRACT",
+  "binding": {
+    "scenarioId": "n50-xiaoheihe-public-browse-v1",
+    "manifestFile": "xiaoheihe-1.3.392-arm64.json",
+    "packageName": "com.max.xiaoheihe",
+    "versionName": "1.3.392",
+    "versionCode": 1114,
+    "abi": "arm64-v8a",
+    "apkSha256": "ee56e4220c98f160f5b744cb90aab8de87787801c45fa5bcb9cb1b531067b0ea",
+    "signingCertificateSha256": "ef42d004ab18b04e0789a9c2a246156589423f9186a345a5b0c52fcb6612d82c",
+    "apiLevel": 30,
+    "iteration": 1
+  },
+  "observations": [
+    {
+      "observationId": "obs-01",
+      "sequence": 1,
+      "foreground": "xiaoheihe",
+      "surface": "native",
+      "consent": "blocked",
+      "permission": "blocked",
+      "dynamicContent": "stable",
+      "advertisement": "absent",
+      "network": "available"
+    }
+  ],
+  "steps": [],
+  "cleanup": {
+    "searchHistory": "cleared",
+    "appData": "cleared",
+    "bridge": "cleared",
+    "session": "cleared",
+    "artifacts": "cleared",
+    "snapshot": "restored"
+  },
+  "decision": {
+    "compatible": false,
+    "reasonCodes": [
+      "CONSENT_BLOCKED",
+      "PERMISSION_BLOCKED",
+      "STEP_SEQUENCE_INCOMPLETE"
+    ],
+    "actionCommits": 0,
+    "executedSteps": 0,
+    "completedSteps": 0,
+    "routeCounts": {
+      "nativeAccessibilitySteps": 0,
+      "webviewAccessibilitySteps": 0,
+      "systemNavigationSteps": 0
+    }
+  }
+}

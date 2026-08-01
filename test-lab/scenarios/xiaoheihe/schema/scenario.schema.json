@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiauto.dev/schema/test-lab/scenarios/xiaoheihe/scenario-v1.json",
+  "title": "N50 Xiaoheihe Safe Compatibility Scenario",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "scenarioId",
+    "manifestBinding",
+    "execution",
+    "steps"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "scenarioId": {
+      "const": "n50-xiaoheihe-public-browse-v1"
+    },
+    "manifestBinding": {
+      "$ref": "#/$defs/manifestBinding"
+    },
+    "execution": {
+      "$ref": "#/$defs/execution"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    }
+  },
+  "$defs": {
+    "manifestBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifestFile",
+        "packageName",
+        "versionName",
+        "versionCode",
+        "abi",
+        "apkSha256",
+        "signingCertificateSha256"
+      ],
+      "properties": {
+        "manifestFile": {
+          "const": "xiaoheihe-1.3.392-arm64.json"
+        },
+        "packageName": {
+          "const": "com.max.xiaoheihe"
+        },
+        "versionName": {
+          "const": "1.3.392"
+        },
+        "versionCode": {
+          "const": 1114
+        },
+        "abi": {
+          "const": "arm64-v8a"
+        },
+        "apkSha256": {
+          "const": "ee56e4220c98f160f5b744cb90aab8de87787801c45fa5bcb9cb1b531067b0ea"
+        },
+        "signingCertificateSha256": {
+          "const": "ef42d004ab18b04e0789a9c2a246156589423f9186a345a5b0c52fcb6612d82c"
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supportedApiLevels",
+        "requiredRuns",
+        "loginState",
+        "sideEffectPolicy",
+        "domInjection",
+        "javascriptInjection",
+        "forbiddenEffects"
+      ],
+      "properties": {
+        "supportedApiLevels": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "enum": [
+              30,
+              33,
+              34
+            ]
+          }
+        },
+        "requiredRuns": {
+          "const": 10
+        },
+        "loginState": {
+          "const": "logged-out"
+        },
+        "sideEffectPolicy": {
+          "const": "none"
+        },
+        "domInjection": {
+          "const": false
+        },
+        "javascriptInjection": {
+          "const": false
+        },
+        "forbiddenEffects": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": {
+            "enum": [
+              "login",
+              "follow",
+              "favorite",
+              "comment",
+              "post",
+              "download",
+              "share"
+            ]
+          }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "stepId",
+        "action",
+        "target",
+        "routePolicy",
+        "postObservationRequired"
+      ],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 11
+        },
+        "stepId": {
+          "$ref": "#/$defs/stepName"
+        },
+        "action": {
+          "$ref": "#/$defs/stepName"
+        },
+        "target": {
+          "enum": [
+            "xiaoheihe-public-content",
+            "android-system-ui",
+            "fixture-peer"
+          ]
+        },
+        "routePolicy": {
+          "enum": [
+            "content-accessibility",
+            "system-navigation"
+          ]
+        },
+        "postObservationRequired": {
+          "const": true
+        }
+      }
+    },
+    "stepName": {
+      "enum": [
+        "public-search-input",
+        "public-search-submit",
+        "public-detail-open",
+        "long-press-safe-content",
+        "public-list-scroll",
+        "public-list-swipe",
+        "back",
+        "home",
+        "recents",
+        "switch-to-fixture-peer",
+        "cross-app-return"
+      ]
+    }
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "1.0",
+  "scenarioId": "n50-xiaoheihe-public-browse-v1",
+  "manifestBinding": {
+    "manifestFile": "xiaoheihe-1.3.392-arm64.json",
+    "packageName": "com.max.xiaoheihe",
+    "versionName": "1.3.392",
+    "versionCode": 1114,
+    "abi": "arm64-v8a",
+    "apkSha256": "ee56e4220c98f160f5b744cb90aab8de87787801c45fa5bcb9cb1b531067b0ea",
+    "signingCertificateSha256": "ef42d004ab18b04e0789a9c2a246156589423f9186a345a5b0c52fcb6612d82c"
+  },
+  "execution": {
+    "supportedApiLevels": [
+      30,
+      33,
+      34
+    ],
+    "requiredRuns": 10,
+    "loginState": "logged-out",
+    "sideEffectPolicy": "none",
+    "domInjection": false,
+    "javascriptInjection": false,
+    "forbiddenEffects": [
+      "login",
+      "follow",
+      "favorite",
+      "comment",
+      "post",
+      "download",
+      "share"
+    ]
+  },
+  "steps": [
+    {
+      "sequence": 1,
+      "stepId": "public-search-input",
+      "action": "public-search-input",
+      "target": "xiaoheihe-public-content",
+      "routePolicy": "content-accessibility",
+      "postObservationRequired": true
+    },
+    {
+      "sequence": 2,
+      "stepId": "public-search-submit",
+      "action": "public-search-submit",
+      "target": "xiaoheihe-public-content",
+      "routePolicy": "content-accessibility",
+      "postObservationRequired": true
+    },
+    {
+      "sequence": 3,
+      "stepId": "public-detail-open",
+      "action": "public-detail-open",
+      "target": "xiaoheihe-public-content",
+      "routePolicy": "content-accessibility",
+      "postObservationRequired": true
+    },
+    {
+      "sequence": 4,
+      "stepId": "long-press-safe-content",
+      "action": "long-press-safe-content",
+      "target": "xiaoheihe-public-content",
+      "routePolicy": "content-accessibility",
+      "postObservationRequired": true
+    },
+    {
+      "sequence": 5,
+      "stepId": "public-list-scroll",
+      "action": "public-list-scroll",
+      "target": "xiaoheihe-public-content",
+      "routePolicy": "content-accessibility",
+      "postObservationRequired": true
+    },
+    {
+      "sequence": 6,
+      "stepId": "public-list-swipe",
+      "action": "public-list-swipe",
+      "target": "xiaoheihe-public-content",
+      "routePolicy": "content-accessibility",
+      "postObservationRequired": true
+    },
+    {
+      "sequence": 7,
+      "stepId": "back",
+      "action": "back",
+      "target": "xiaoheihe-public-content",
+      "routePolicy": "system-navigation",
+      "postObservationRequired": true
+    },
+    {
+      "sequence": 8,
+      "stepId": "home",
+      "action": "home",
+      "target": "android-system-ui",
+      "routePolicy": "system-navigation",
+      "postObservationRequired": true
+    },
+    {
+      "sequence": 9,
+      "stepId": "recents",
+      "action": "recents",
+      "target": "android-system-ui",
+      "routePolicy": "system-navigation",
+      "postObservationRequired": true
+    },
+    {
+      "sequence": 10,
+      "stepId": "switch-to-fixture-peer",
+      "action": "switch-to-fixture-peer",
+      "target": "fixture-peer",
+      "routePolicy": "system-navigation",
+      "postObservationRequired": true
+    },
+    {
+      "sequence": 11,
+      "stepId": "cross-app-return",
+      "action": "cross-app-return",
+      "target": "xiaoheihe-public-content",
+      "routePolicy": "system-navigation",
+      "postObservationRequired": true
+    }
+  ]
+}
