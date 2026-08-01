@@ -78,3 +78,15 @@
   `UserTouchMonitor` 仍接收 fixture 的语义事件，instrumentation automation 不再消费
   accessibility events。host fake 9/9 与 AndroidTest 编译通过，设备效果待下一轮
   API 30 矩阵验证。
+
+## Round 6
+
+- host 预置与 test-control 同时存在时，API 30 的 enabled service 列表没有发生状态
+  变化，系统未重新绑定刚安装的 debug service；第四轮在动作前等待 test service
+  连接超时，限定日志没有出现 gesture 或 accessibility cache contention。finally
+  仍完成 restore/stop，设备、runtime、lock 与临时目录为零。
+- 该证据否定 host 预置方案与当前 clean snapshot/test-control 生命周期的组合，因此
+  撤回 runner 中的 APK 安装、secure settings 写入和对应 fake；恢复由已验收
+  `SecureAccessibilitySettings` 单点启用/恢复服务。
+- 保留 Round 5 的 API 30 automation 静默与最小 shell permission 改动；下一轮只验证
+  test-control 正常连接后，动作期 eventTypes 为零是否消除 cache 争用。
