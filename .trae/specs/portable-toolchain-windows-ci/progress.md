@@ -67,3 +67,11 @@
   `/Volumes/aigo S7 Media` 路径为零。
 - GitHub 远端 `main` 仍为 `5dcc70f`，没有包含本地后续 16+ 提交。本 change 未
   push，也未伪报远端 Actions 已变绿；远程复验必须在用户允许 push 后进行。
+
+## Round 6
+
+- 单一职责提交 `4f895da` 已以等价集成提交 `c26cc7e` 落入 `main`，stable
+  patch-id 均为 `0651c24d0cba1e5e082f0aa337babaee92491e16`。Author 与
+  Committer 均为 `lejunyang <lejunyang@qq.com>`，提交末尾恰好一次要求的 trailer。
+- 临时 worktree 干净且已非强制移除，随后执行 `git worktree prune` 并删除已等价
+  集成的临时分支。本机仓库外 `android-tools.env` 已增加兼容根变量，不进入 Git。

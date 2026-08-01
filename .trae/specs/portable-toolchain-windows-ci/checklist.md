@@ -9,4 +9,4 @@
 - [x] N34 artifact tests 不依赖 POSIX `/tmp` 或 Unix mode
 - [x] Emulator runner tests 不依赖 POSIX 可执行位
 - [x] 相关 Node、Go、Android、comments 与 diff-check 通过
-- [ ] 提交身份、trailer、集成和 worktree 清理正确
+- [x] 提交身份、trailer、集成和 worktree 清理正确
