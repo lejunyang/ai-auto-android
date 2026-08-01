@@ -67,6 +67,30 @@ class AndroidBridgeMethodsTest {
     }
 
     @Test
+    fun `attested visual method is exposed only through its injected narrow gateway`() {
+        val context = mockk<Context>()
+        every { context.applicationContext } returns context
+        val visual = FakeAttestedVisualGateway()
+        val methods = AndroidBridgeMethods(
+            context = context,
+            recording = FakeRecordingGateway(),
+            accessibility = UnavailableGateway(),
+            attestedVisual = visual,
+        )
+        val params = buildJsonObject { put("opaqueEvidence", "test-only") }
+
+        val result = methods.handle("visual.action.execute", params)
+
+        assertEquals(params, visual.lastParams)
+        assertEquals(JsonPrimitive("not_committed"), result["commitStatus"])
+        assertTrue(
+            methods.capabilities()
+                .single { it.name == "visual.action.execute" }
+                .available,
+        )
+    }
+
+    @Test
     fun `recording list returns only sanitized protocol summary fields`() {
         val context = mockk<Context>()
         every { context.applicationContext } returns context
@@ -261,6 +285,21 @@ class AndroidBridgeMethodsTest {
         override fun replay(scriptId: String): ReplayReport? {
             lastScriptId = scriptId
             return report
+        }
+    }
+
+    private class FakeAttestedVisualGateway : AttestedVisualActionBridgeGateway {
+        var lastParams: JsonObject? = null
+
+        override fun isAvailable(): Boolean = true
+
+        override fun execute(params: JsonObject): JsonObject {
+            lastParams = params
+            return buildJsonObject {
+                put("commitStatus", "not_committed")
+                put("actionCommits", 0)
+                put("verified", false)
+            }
         }
     }
 

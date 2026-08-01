@@ -85,6 +85,8 @@ class AndroidBridgeMethods(
     private val recording: RecordingBridgeGateway,
     private val accessibility: AccessibilityBridgeGateway =
         RuntimeAccessibilityBridgeGateway,
+    private val attestedVisual: AttestedVisualActionBridgeGateway =
+        UnavailableAttestedVisualActionBridgeGateway,
     private val commandParser: AccessibilityCommandJsonParser =
         AccessibilityCommandJsonParser(),
 ) : BridgeMethodHandler {
@@ -123,6 +125,16 @@ class AndroidBridgeMethods(
                 reason = accessibilityReason,
             ),
             BridgeCapability(
+                name = "visual.action.execute",
+                available = attestedVisual.isAvailable(),
+                permission = if (attestedVisual.isAvailable()) "granted" else "denied",
+                reason = if (attestedVisual.isAvailable()) {
+                    null
+                } else {
+                    "Attested visual actions require an authorized debug disposable emulator."
+                },
+            ),
+            BridgeCapability(
                 name = "recording.replay",
                 available = recordingAvailable,
                 permission = if (recordingAvailable) "granted" else "denied",
@@ -135,6 +147,7 @@ class AndroidBridgeMethods(
         "device.info" -> deviceInfo(params)
         "ui.snapshot" -> snapshot(params)
         "action.execute" -> execute(params)
+        "visual.action.execute" -> attestedVisual.execute(params)
         "recording.replay" -> replay(params)
         "recording.list" -> recordingList(params)
 
@@ -491,6 +504,7 @@ internal object AndroidBridgeMethodsFactory {
         return AndroidBridgeMethods(
             context = applicationContext,
             recording = RuntimeRecordingBridgeGateway(store),
+            attestedVisual = AndroidAttestedVisualActionGateway.production(applicationContext),
         )
     }
 }

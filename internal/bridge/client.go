@@ -180,7 +180,12 @@ func (c *Client) call(
 	if err != nil {
 		return apperr.Wrap(apperr.CodeInvalidArgument, "Bridge request could not be encoded.", false, err)
 	}
-	if len(payload)+1 > MaxMessageBytes {
+	defer clearBridgeBytes(payload)
+	wirePayload := make([]byte, len(payload)+1)
+	copy(wirePayload, payload)
+	wirePayload[len(payload)] = '\n'
+	defer clearBridgeBytes(wirePayload)
+	if len(wirePayload) > MaxMessageBytes {
 		return apperr.New(
 			apperr.CodeMessageTooLarge,
 			"Bridge request exceeds the 1048576 byte limit.",
@@ -196,7 +201,7 @@ func (c *Client) call(
 			return connectionError(err)
 		}
 	}
-	if _, err := connection.Write(append(payload, '\n')); err != nil {
+	if _, err := connection.Write(wirePayload); err != nil {
 		return mapNetworkError(callContext, err)
 	}
 	responsePayload, err := readBoundedLine(connection)
@@ -216,6 +221,12 @@ func (c *Client) call(
 		return err
 	}
 	return response.DecodeResult(result)
+}
+
+func clearBridgeBytes(value []byte) {
+	for index := range value {
+		value[index] = 0
+	}
 }
 
 func (c *Client) dial(ctx context.Context, localPort int) (net.Conn, error) {

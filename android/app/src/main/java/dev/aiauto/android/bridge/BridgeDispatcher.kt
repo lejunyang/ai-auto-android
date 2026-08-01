@@ -183,6 +183,7 @@ class BridgeDispatcher(
             METHOD_DEVICE_INFO,
             METHOD_UI_SNAPSHOT,
             METHOD_ACTION_EXECUTE,
+            METHOD_VISUAL_ACTION_EXECUTE,
             METHOD_RECORDING_LIST,
             METHOD_RECORDING_REPLAY,
             -> methodHandler.handle(request.method, request.params)
@@ -476,6 +477,7 @@ class BridgeDispatcher(
         const val METHOD_DEVICE_INFO = "device.info"
         const val METHOD_UI_SNAPSHOT = "ui.snapshot"
         const val METHOD_ACTION_EXECUTE = "action.execute"
+        const val METHOD_VISUAL_ACTION_EXECUTE = "visual.action.execute"
         const val METHOD_RECORDING_LIST = "recording.list"
         const val METHOD_RECORDING_REPLAY = "recording.replay"
 

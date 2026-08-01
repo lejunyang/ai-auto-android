@@ -97,8 +97,8 @@ func TestMCPServeReservesCLIStdoutForProtocolTransport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(listed.Tools) != 6 {
-		t.Fatalf("tools = %d, want 6", len(listed.Tools))
+	if len(listed.Tools) != 7 {
+		t.Fatalf("tools = %d, want 7", len(listed.Tools))
 	}
 	if err := session.Close(); err != nil {
 		t.Fatalf("session.Close() error = %v", err)

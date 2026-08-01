@@ -14,6 +14,7 @@ import (
 
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
+	"github.com/lejunyang/ai-auto-android/internal/visual"
 )
 
 func TestServiceOpenStoresSessionWithoutReturningToken(t *testing.T) {
@@ -316,6 +317,85 @@ func TestServiceActionAddsIdempotencyKey(t *testing.T) {
 	}
 }
 
+func TestServiceAttestedVisualActionClearsImageAndNeverRetriesUnknownCommit(t *testing.T) {
+	forwarder := &fakeForwarder{}
+	client := &fakeRPCClient{
+		callErr: apperr.New(
+			apperr.CodeDeviceUnreachable,
+			"connection reset after write",
+			true,
+			nil,
+		),
+	}
+	store := newMemoryStore()
+	store.Save(validSessionAt("2026-07-18T00:15:00Z"))
+	service := testService(forwarder, client, store)
+	image := []byte("private-png")
+	request := visual.AttestedActionPortRequest{
+		DeviceSerial:      "SERIAL",
+		DeviceFingerprint: strings.Repeat("a", 64),
+		TargetPackage:     "com.example.notes",
+		Observation: visual.Observation{
+			ID:                "019fbcaa-0000-7000-8000-000000000047",
+			ForegroundPackage: "com.example.notes",
+		},
+		Candidate: visual.Candidate{
+			ObservationID: "019fbcaa-0000-7000-8000-000000000047",
+		},
+		PNGBytes: image,
+	}
+
+	_, err := service.ExecuteAttestedVisualAction(
+		context.Background(),
+		request,
+	)
+
+	status, code, ok := visual.AttestedActionPortErrorStatus(err)
+	if !ok || status != visual.ActionCommitUnknown ||
+		code != visual.CodeActionCommitUnknown {
+		t.Fatalf("error status=%q code=%q ok=%v error=%v", status, code, ok, err)
+	}
+	if client.callCount != 1 || client.lastMethod != "visual.action.execute" {
+		t.Fatalf("calls=%d method=%q", client.callCount, client.lastMethod)
+	}
+	if !allBridgeZero(image) {
+		t.Fatal("attested action image was not cleared")
+	}
+}
+
+func TestServiceAttestedVisualActionRejectsMissingSessionBeforeRPC(t *testing.T) {
+	client := &fakeRPCClient{}
+	service := testService(&fakeForwarder{}, client, newMemoryStore())
+	image := []byte("private-png")
+	request := visual.AttestedActionPortRequest{
+		DeviceSerial:      "SERIAL",
+		DeviceFingerprint: strings.Repeat("a", 64),
+		TargetPackage:     "com.example.notes",
+		Observation: visual.Observation{
+			ID:                "019fbcaa-0000-7000-8000-000000000047",
+			ForegroundPackage: "com.example.notes",
+		},
+		Candidate: visual.Candidate{
+			ObservationID: "019fbcaa-0000-7000-8000-000000000047",
+		},
+		PNGBytes: image,
+	}
+
+	_, err := service.ExecuteAttestedVisualAction(
+		context.Background(),
+		request,
+	)
+
+	status, code, ok := visual.AttestedActionPortErrorStatus(err)
+	if !ok || status != visual.ActionCommitNotCommitted ||
+		code != visual.CodeActionNotAuthorized {
+		t.Fatalf("error status=%q code=%q ok=%v error=%v", status, code, ok, err)
+	}
+	if client.callCount != 0 || !allBridgeZero(image) {
+		t.Fatalf("rpc calls=%d image=%q", client.callCount, image)
+	}
+}
+
 func TestServiceReplayAddsIdempotencyKeyAndScriptID(t *testing.T) {
 	forwarder := &fakeForwarder{}
 	client := &fakeRPCClient{
@@ -488,8 +568,21 @@ func (f *fakeRPCClient) Call(
 		*destination = append((*destination)[:0], f.callResult...)
 	case *SessionCloseResult:
 		destination.Closed = true
+	case *visual.AttestedActionPortResult:
+		if len(f.callResult) != 0 {
+			_ = json.Unmarshal(f.callResult, destination)
+		}
 	}
 	return nil
+}
+
+func allBridgeZero(value []byte) bool {
+	for _, item := range value {
+		if item != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 type memoryStore struct {

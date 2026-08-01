@@ -12,6 +12,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
 	"github.com/lejunyang/ai-auto-android/internal/output"
+	"github.com/lejunyang/ai-auto-android/internal/visual"
 )
 
 // Forwarder 提供绑定到明确设备的端口转发创建与清理。
@@ -235,6 +236,96 @@ func (s *Service) Action(
 			"idempotencyKey": idempotencyKey,
 		},
 	)
+}
+
+// ExecuteAttestedVisualAction 发送一次不可重放的完整视觉 evidence，并清零图片输入。
+func (s *Service) ExecuteAttestedVisualAction(
+	ctx context.Context,
+	request visual.AttestedActionPortRequest,
+) (visual.AttestedActionPortResult, error) {
+	defer clearBridgeBytes(request.PNGBytes)
+	if adb.ValidateSerial(request.DeviceSerial) != nil ||
+		adb.ValidatePackageName(request.TargetPackage) != nil ||
+		request.Observation.ForegroundPackage != request.TargetPackage ||
+		request.Candidate.ObservationID != request.Observation.ID {
+		return visual.AttestedActionPortResult{}, visual.NewAttestedActionPortError(
+			visual.ActionCommitNotCommitted,
+			visual.CodeObservationInvalid,
+			apperr.New(
+				apperr.CodeInvalidArgument,
+				"Attested visual action identity is invalid.",
+				false,
+				nil,
+			),
+		)
+	}
+	session, err := s.store.Load(request.DeviceSerial)
+	if err != nil {
+		return visual.AttestedActionPortResult{}, visual.NewAttestedActionPortError(
+			visual.ActionCommitNotCommitted,
+			visual.CodeActionNotAuthorized,
+			err,
+		)
+	}
+	if !s.now().Before(session.ExpiresAt) {
+		_ = s.cleanup(context.WithoutCancel(ctx), session)
+		return visual.AttestedActionPortResult{}, visual.NewAttestedActionPortError(
+			visual.ActionCommitNotCommitted,
+			visual.CodeActionNotAuthorized,
+			apperr.New(
+				apperr.CodeAuthExpired,
+				"The local bridge session has expired. Run bridge open again.",
+				false,
+				map[string]any{"device": request.DeviceSerial},
+			),
+		)
+	}
+	encodedRequest, err := json.Marshal(request)
+	if err != nil {
+		return visual.AttestedActionPortResult{}, visual.NewAttestedActionPortError(
+			visual.ActionCommitNotCommitted,
+			visual.CodeObservationInvalid,
+			err,
+		)
+	}
+	defer clearBridgeBytes(encodedRequest)
+	if len(encodedRequest) > MaxMessageBytes-4096 {
+		return visual.AttestedActionPortResult{}, visual.NewAttestedActionPortError(
+			visual.ActionCommitNotCommitted,
+			visual.CodeImageBudgetExceeded,
+			apperr.New(
+				apperr.CodeMessageTooLarge,
+				"Attested visual evidence exceeds the bridge request budget.",
+				false,
+				nil,
+			),
+		)
+	}
+	var result visual.AttestedActionPortResult
+	err = s.client.Call(
+		ctx,
+		session.LocalPort,
+		session.Token,
+		"visual.action.execute",
+		request,
+		&result,
+	)
+	if err != nil {
+		if isSessionAuthError(err) {
+			_ = s.cleanup(context.WithoutCancel(ctx), session)
+			return visual.AttestedActionPortResult{}, visual.NewAttestedActionPortError(
+				visual.ActionCommitNotCommitted,
+				visual.CodeActionNotAuthorized,
+				err,
+			)
+		}
+		return visual.AttestedActionPortResult{}, visual.NewAttestedActionPortError(
+			visual.ActionCommitUnknown,
+			visual.CodeActionCommitUnknown,
+			err,
+		)
+	}
+	return result, nil
 }
 
 // ListRecordings 列出当前 App Bridge 会话可见的录制摘要。

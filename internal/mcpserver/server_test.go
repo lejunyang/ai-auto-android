@@ -15,7 +15,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func TestServerExposesExactlySixStrictStructuredTools(t *testing.T) {
+func TestServerExposesExactlySevenStrictStructuredTools(t *testing.T) {
 	automation := &fakeAutomation{}
 	session := connectClient(t, automation)
 

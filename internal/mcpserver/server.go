@@ -1,6 +1,6 @@
 package mcpserver
 
-// 功能用途：本文件注册六个类型化 MCP 工具，并把调用映射到共享自动化与只读视觉服务。
+// 功能用途：本文件注册七个类型化 MCP 工具，并映射共享自动化、只读视觉和原子视觉动作。
 
 import (
 	"context"
@@ -29,6 +29,7 @@ var ToolNames = []string{
 	ToolDeviceGet,
 	ToolObserve,
 	ToolVisualTargetPropose,
+	ToolVisualActionExecute,
 	ToolActionExecute,
 	ToolRecordingReplay,
 }
@@ -88,6 +89,7 @@ func newServer(
 	automation service.Automation,
 	version string,
 	desktopVisual *desktopVisualRuntime,
+	attestedVisual ...desktopAttestedExecutor,
 ) *mcp.Server {
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "aactl", Version: version},
@@ -98,6 +100,11 @@ func newServer(
 		},
 	)
 	addDesktopVisualTool(server, desktopVisual)
+	var attestedExecutor desktopAttestedExecutor
+	if len(attestedVisual) > 0 {
+		attestedExecutor = attestedVisual[0]
+	}
+	addDesktopAttestedActionTool(server, attestedExecutor)
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        ToolDevicesList,
@@ -234,15 +241,12 @@ func Run(
 	automation service.Automation,
 	version string,
 	transport mcp.Transport,
-	desktopVisual ...*visual.DesktopProposalService,
+	desktopVisual *visual.DesktopProposalService,
+	attestedVisual *visual.DesktopAttestedActionService,
 ) error {
-	var proposalService *visual.DesktopProposalService
-	if len(desktopVisual) > 0 {
-		proposalService = desktopVisual[0]
-	}
-	runtime := newDesktopVisualRuntime(proposalService)
+	runtime := newDesktopVisualRuntime(desktopVisual)
 	defer runtime.close()
-	return newServer(automation, version, runtime).Run(
+	return newServer(automation, version, runtime, attestedVisual).Run(
 		ctx,
 		runtime.wrapTransport(transport),
 	)

@@ -52,6 +52,12 @@ const (
 	CodeCandidateAmbiguous       Code = "CANDIDATE_AMBIGUOUS"
 	CodeProviderFailed           Code = "PROVIDER_FAILED"
 	CodeJSONInvalid              Code = "JSON_INVALID"
+	CodeDeviceFingerprintChanged Code = "DEVICE_FINGERPRINT_CHANGED"
+	CodeScreenMetadataChanged    Code = "SCREEN_METADATA_CHANGED"
+	CodeActionFailed             Code = "ACTION_FAILED"
+	CodeActionNotAuthorized      Code = "ACTION_NOT_AUTHORIZED"
+	CodeActionCommitUnknown      Code = "ACTION_COMMIT_UNKNOWN"
+	CodePostActionVerification   Code = "POST_ACTION_VERIFICATION_FAILED"
 )
 
 type visualError struct {

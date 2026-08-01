@@ -43,7 +43,9 @@ type App struct {
 	TrustedDevices adb.TrustedDeviceStore
 	Automation     service.Automation
 	DesktopVisual  *visual.DesktopProposalService
-	MCPTransport   sdkmcp.Transport
+	// DesktopAttestedVisual 允许测试显式注入原子视觉执行服务；生产由同一 ADB/Bridge 构造。
+	DesktopAttestedVisual *visual.DesktopAttestedActionService
+	MCPTransport          sdkmcp.Transport
 	// LANInterfaces 等窄端口允许测试替换网络、listener、随机源和二维码 provider。
 	LANInterfaces lan.InterfaceSource
 	LANBinder     lan.ListenerBinder
@@ -284,6 +286,7 @@ func (a *App) automationService(client *adb.Client) (service.Automation, error) 
 func (a *App) serveMCP(ctx context.Context) error {
 	var automation service.Automation
 	desktopVisual := a.DesktopVisual
+	desktopAttestedVisual := a.DesktopAttestedVisual
 	if a.Automation != nil {
 		automation = a.Automation
 	} else {
@@ -292,17 +295,30 @@ func (a *App) serveMCP(ctx context.Context) error {
 			return err
 		}
 		client := adb.NewClient(path, a.Executor)
-		automation, err = a.automationService(client)
+		bridgeService, err := a.bridgeService(client)
 		if err != nil {
 			return err
 		}
+		automation = service.New(client, bridgeService)
 		desktopVisual = visual.NewDesktopProposalService(client, visual.DesktopOptions{})
+		desktopAttestedVisual = visual.NewDesktopAttestedActionService(
+			client,
+			bridgeService,
+			visual.DesktopAttestedActionOptions{},
+		)
 	}
 	transport := a.MCPTransport
 	if transport == nil {
 		transport = &sdkmcp.StdioTransport{}
 	}
-	return mcpserver.Run(ctx, automation, Version, transport, desktopVisual)
+	return mcpserver.Run(
+		ctx,
+		automation,
+		Version,
+		transport,
+		desktopVisual,
+		desktopAttestedVisual,
+	)
 }
 
 func extractJSONFlag(args []string) ([]string, bool) {
