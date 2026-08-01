@@ -159,3 +159,14 @@
 - 有界 host 配置门在实际 rotation 未匹配时重新声明 fixed-to-user 与目标 rotation，
   直至三项同轮一致或 10 秒超时。该重申只修复 snapshot 后的系统配置漂移，发生在
   instrumentation 和任何 App 动作之前，不构成动作重放。
+
+## Round 13
+
+- API 30 完整同轮六环境最终全部通过，报告为 6/6、0 failure、0 skip、
+  `succeeded:true`、`cleaned:true`；结束后设备、runtime、lock 和临时目录为零。
+- API 33 首环境在 App 启动前以 `DEVICE_CONFIG_FAILED` 停止。限定诊断显示
+  `wm set-fix-to-user-rotation enabled` 返回 255；该命令仅是 Android 11 语法。
+- Android 13/14 AOSP `WindowManagerShellCommand` 使用
+  `fixed-to-user-rotation` 和 `user-rotation`。runner 现按固定 profile API 显式选择：
+  API 30 使用 `set-*`，API 33/34 使用新语法；初始配置与 snapshot 晚回写后的重申
+  共用同一命令生成器，不做动态 shell fallback。

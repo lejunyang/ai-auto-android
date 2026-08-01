@@ -12,6 +12,7 @@ import {
   parseArguments,
   parseJUnitResult,
   parseWindowRotation,
+  rotationCommands,
   runVisualDeviceMatrix,
   selectFreshJUnit,
 } from "./run.mjs";
@@ -233,6 +234,21 @@ test("只接受 dumpsys window 的唯一实际 mRotation", () => {
   }
 });
 
+test("rotation 命令按固定 API 选择平台语法", () => {
+  assert.deepEqual(rotationCommands(30, "1"), [
+    ["shell", "wm", "set-fix-to-user-rotation", "enabled"],
+    ["shell", "wm", "set-user-rotation", "lock", "1"],
+  ]);
+  for (const apiLevel of [33, 34]) {
+    assert.deepEqual(rotationCommands(apiLevel, "0"), [
+      ["shell", "wm", "fixed-to-user-rotation", "enabled"],
+      ["shell", "wm", "user-rotation", "lock", "0"],
+    ]);
+  }
+  assert.throws(() => rotationCommands(31, "0"), { code: "MATRIX_CASE_INVALID" });
+  assert.throws(() => rotationCommands(33, "2"), { code: "MATRIX_CASE_INVALID" });
+});
+
 test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", async () => {
   const calls = [];
   let rotationReads = 0;
@@ -269,7 +285,7 @@ test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", 
 
   const configured = await configureFixedVisualCase(
     emulator,
-    { id: "api-30", densityDpi: 420 },
+    { id: "api-33", apiLevel: 33, densityDpi: 420 },
     { serial: "emulator-5554", deviceFingerprint: "a".repeat(64), state: "booted" },
     "720x1600",
     90,
@@ -280,13 +296,13 @@ test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", 
   assert.equal(
     calls.some((args) =>
       args.join(" ") ===
-      "-s emulator-5554 shell wm set-fix-to-user-rotation enabled"),
+      "-s emulator-5554 shell wm fixed-to-user-rotation enabled"),
     true,
   );
   assert.equal(
     calls.filter((args) =>
       args.join(" ") ===
-      "-s emulator-5554 shell wm set-user-rotation lock 1").length,
+      "-s emulator-5554 shell wm user-rotation lock 1").length,
     3,
   );
   assert.equal(

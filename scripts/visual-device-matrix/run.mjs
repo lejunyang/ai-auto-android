@@ -115,6 +115,21 @@ export const parseWindowRotation = (output) => {
   return Number(values[0][1]);
 };
 
+export const rotationCommands = (apiLevel, rotationValue) => {
+  if (![30, 33, 34].includes(apiLevel) || !["0", "1"].includes(rotationValue)) {
+    fail("MATRIX_CASE_INVALID");
+  }
+  return apiLevel === 30
+    ? Object.freeze([
+      Object.freeze(["shell", "wm", "set-fix-to-user-rotation", "enabled"]),
+      Object.freeze(["shell", "wm", "set-user-rotation", "lock", rotationValue]),
+    ])
+    : Object.freeze([
+      Object.freeze(["shell", "wm", "fixed-to-user-rotation", "enabled"]),
+      Object.freeze(["shell", "wm", "user-rotation", "lock", rotationValue]),
+    ]);
+};
+
 const exactAttributes = (source) => {
   const attributes = {};
   for (const match of source.matchAll(/\s([A-Za-z][A-Za-z0-9_-]*)="([^"]*)"/gu)) {
@@ -398,8 +413,7 @@ export const configureFixedVisualCase = async (
   const commands = [
     ["shell", "wm", "size", resolution],
     ["shell", "wm", "density", String(profile.densityDpi)],
-    ["shell", "wm", "set-fix-to-user-rotation", "enabled"],
-    ["shell", "wm", "set-user-rotation", "lock", rotationValue],
+    ...rotationCommands(profile.apiLevel, rotationValue),
   ];
   // 这里只接受上方枚举生成的固定矩阵命令，调用方不能传入 serial、shell 或额外参数。
   for (const args of commands) {
@@ -453,10 +467,7 @@ export const configureFixedVisualCase = async (
     }
     if (Date.now() >= rotationDeadline) fail("DEVICE_CONFIG_DRIFT");
     if (actualRotation !== Number(rotationValue)) {
-      for (const args of [
-        ["shell", "wm", "set-fix-to-user-rotation", "enabled"],
-        ["shell", "wm", "set-user-rotation", "lock", rotationValue],
-      ]) {
+      for (const args of rotationCommands(profile.apiLevel, rotationValue)) {
         assertSuccess(
           await emulator.command(
             adb,
