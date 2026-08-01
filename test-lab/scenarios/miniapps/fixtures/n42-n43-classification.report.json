@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "1.0",
+  "reportId": "fixture-n42-n43-classification-contract",
+  "samples": [
+    {
+      "sampleId": "fixture-n42-n43-full-semantic",
+      "source": "fixture",
+      "host": {
+        "kind": "fixture",
+        "platform": "n42-n43-web-fixture",
+        "packageName": "dev.aiauto.webfixture",
+        "versionName": "1.0",
+        "versionCode": 1,
+        "fixtureSource": "N42_N43"
+      },
+      "page": {
+        "pageId": "page-contract-home-v1",
+        "sampleIdentity": "contract-page-revision-1",
+        "state": "known",
+        "fingerprintSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "observations": {
+        "hierarchy": {
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "byteCount": 4096,
+          "retainedBytes": 0,
+          "nodeCount": 12,
+          "textNodeCount": 4,
+          "actionableNodeCount": 3,
+          "webViewNodeCount": 1,
+          "canvasNodeCount": 0,
+          "truncated": false
+        },
+        "screenshot": {
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "byteCount": 8192,
+          "width": 1080,
+          "height": 1920,
+          "retainedBytes": 0,
+          "truncated": false
+        }
+      },
+      "probes": [
+        {
+          "probeId": "probe-semantic-click",
+          "type": "semantic-click",
+          "confidence": "high",
+          "status": "verified",
+          "actionCommits": 1,
+          "binding": {
+            "sampleId": "fixture-n42-n43-full-semantic",
+            "hostPackage": "dev.aiauto.webfixture",
+            "hostVersionName": "1.0",
+            "hostVersionCode": 1,
+            "pageId": "page-contract-home-v1",
+            "pageSampleIdentity": "contract-page-revision-1",
+            "pageFingerprintSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        },
+        {
+          "probeId": "probe-semantic-input",
+          "type": "semantic-input",
+          "confidence": "high",
+          "status": "verified",
+          "actionCommits": 1,
+          "binding": {
+            "sampleId": "fixture-n42-n43-full-semantic",
+            "hostPackage": "dev.aiauto.webfixture",
+            "hostVersionName": "1.0",
+            "hostVersionCode": 1,
+            "pageId": "page-contract-home-v1",
+            "pageSampleIdentity": "contract-page-revision-1",
+            "pageFingerprintSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        },
+        {
+          "probeId": "probe-semantic-scroll",
+          "type": "semantic-scroll",
+          "confidence": "high",
+          "status": "verified",
+          "actionCommits": 1,
+          "binding": {
+            "sampleId": "fixture-n42-n43-full-semantic",
+            "hostPackage": "dev.aiauto.webfixture",
+            "hostVersionName": "1.0",
+            "hostVersionCode": 1,
+            "pageId": "page-contract-home-v1",
+            "pageSampleIdentity": "contract-page-revision-1",
+            "pageFingerprintSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ],
+      "decision": {
+        "classification": "full-semantic",
+        "reasonCodes": [],
+        "semanticVerifiedCount": 3,
+        "visualVerified": false,
+        "failClosed": false
+      }
+    }
+  ],
+  "statistics": {
+    "totalSamples": 1,
+    "fixtureSamples": 1,
+    "realSamples": 0,
+    "realHostCounts": {
+      "weixin": 0,
+      "alipay": 0
+    },
+    "classificationCounts": {
+      "full-semantic": 1,
+      "hybrid": 0,
+      "visual-only": 0,
+      "unsupported": 0
+    },
+    "realClassificationCounts": {
+      "full-semantic": 0,
+      "hybrid": 0,
+      "visual-only": 0,
+      "unsupported": 0
+    },
+    "failClosedSamples": 0
+  }
+}

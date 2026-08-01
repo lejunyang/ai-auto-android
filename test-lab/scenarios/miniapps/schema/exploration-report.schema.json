@@ -1,0 +1,556 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiauto.dev/schema/test-lab/miniapps/exploration-report.schema.json",
+  "title": "N51 Miniapp Exploration Classification Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reportId",
+    "samples",
+    "statistics"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "reportId": {
+      "$ref": "#/$defs/identifier"
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {
+        "$ref": "#/$defs/sample"
+      }
+    },
+    "statistics": {
+      "$ref": "#/$defs/statistics"
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{1,126}[a-z0-9])$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "versionName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32,
+      "pattern": "^[0-9]+(?:\\.[0-9A-Za-z]+){0,7}$"
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "platform",
+        "packageName",
+        "versionName",
+        "versionCode"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "real",
+            "fixture"
+          ]
+        },
+        "platform": {
+          "enum": [
+            "weixin",
+            "alipay",
+            "n42-n43-web-fixture"
+          ]
+        },
+        "packageName": {
+          "enum": [
+            "com.tencent.mm",
+            "com.eg.android.AlipayGphone",
+            "dev.aiauto.webfixture"
+          ]
+        },
+        "versionName": {
+          "$ref": "#/$defs/versionName"
+        },
+        "versionCode": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "fixtureSource": {
+          "const": "N42_N43"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "kind",
+            "platform",
+            "packageName"
+          ],
+          "properties": {
+            "kind": {
+              "const": "real"
+            },
+            "platform": {
+              "enum": [
+                "weixin",
+                "alipay"
+              ]
+            },
+            "packageName": {
+              "enum": [
+                "com.tencent.mm",
+                "com.eg.android.AlipayGphone"
+              ]
+            }
+          }
+        },
+        {
+          "required": [
+            "kind",
+            "platform",
+            "packageName",
+            "fixtureSource"
+          ],
+          "properties": {
+            "kind": {
+              "const": "fixture"
+            },
+            "platform": {
+              "const": "n42-n43-web-fixture"
+            },
+            "packageName": {
+              "const": "dev.aiauto.webfixture"
+            },
+            "fixtureSource": {
+              "const": "N42_N43"
+            }
+          }
+        }
+      ]
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pageId",
+        "sampleIdentity",
+        "state",
+        "fingerprintSha256"
+      ],
+      "properties": {
+        "pageId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "sampleIdentity": {
+          "$ref": "#/$defs/identifier"
+        },
+        "state": {
+          "enum": [
+            "known",
+            "unknown"
+          ]
+        },
+        "fingerprintSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "hierarchySummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "byteCount",
+        "retainedBytes",
+        "nodeCount",
+        "textNodeCount",
+        "actionableNodeCount",
+        "webViewNodeCount",
+        "canvasNodeCount",
+        "truncated"
+      ],
+      "properties": {
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "byteCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1048576
+        },
+        "retainedBytes": {
+          "const": 0
+        },
+        "nodeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "textNodeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "actionableNodeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "webViewNodeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "canvasNodeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "screenshotSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "byteCount",
+        "width",
+        "height",
+        "retainedBytes",
+        "truncated"
+      ],
+      "properties": {
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "byteCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10485760
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "retainedBytes": {
+          "const": 0
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hierarchy",
+        "screenshot"
+      ],
+      "properties": {
+        "hierarchy": {
+          "$ref": "#/$defs/hierarchySummary"
+        },
+        "screenshot": {
+          "$ref": "#/$defs/screenshotSummary"
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampleId",
+        "hostPackage",
+        "hostVersionName",
+        "hostVersionCode",
+        "pageId",
+        "pageSampleIdentity",
+        "pageFingerprintSha256"
+      ],
+      "properties": {
+        "sampleId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "hostPackage": {
+          "enum": [
+            "com.tencent.mm",
+            "com.eg.android.AlipayGphone",
+            "dev.aiauto.webfixture"
+          ]
+        },
+        "hostVersionName": {
+          "$ref": "#/$defs/versionName"
+        },
+        "hostVersionCode": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "pageId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "pageSampleIdentity": {
+          "$ref": "#/$defs/identifier"
+        },
+        "pageFingerprintSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "probeId",
+        "type",
+        "confidence",
+        "status",
+        "actionCommits",
+        "binding"
+      ],
+      "properties": {
+        "probeId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "type": {
+          "enum": [
+            "semantic-click",
+            "semantic-input",
+            "semantic-scroll",
+            "visual-candidate"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "low"
+          ]
+        },
+        "status": {
+          "enum": [
+            "verified",
+            "unavailable",
+            "failed",
+            "blocked"
+          ]
+        },
+        "actionCommits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "reasonCodes",
+        "semanticVerifiedCount",
+        "visualVerified",
+        "failClosed"
+      ],
+      "properties": {
+        "classification": {
+          "enum": [
+            "full-semantic",
+            "hybrid",
+            "visual-only",
+            "unsupported"
+          ]
+        },
+        "reasonCodes": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "enum": [
+              "PAGE_UNKNOWN",
+              "LOW_CONFIDENCE_PROBE",
+              "SAMPLE_IDENTITY_DRIFT",
+              "HOST_IDENTITY_DRIFT",
+              "PAGE_IDENTITY_DRIFT",
+              "DUPLICATE_PROBE_TYPE",
+              "INSUFFICIENT_ROUTE_EVIDENCE",
+              "NO_VERIFIED_ROUTE"
+            ]
+          }
+        },
+        "semanticVerifiedCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "visualVerified": {
+          "type": "boolean"
+        },
+        "failClosed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampleId",
+        "source",
+        "host",
+        "page",
+        "observations",
+        "probes",
+        "decision"
+      ],
+      "properties": {
+        "sampleId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "source": {
+          "enum": [
+            "real",
+            "fixture"
+          ]
+        },
+        "host": {
+          "$ref": "#/$defs/host"
+        },
+        "page": {
+          "$ref": "#/$defs/page"
+        },
+        "observations": {
+          "$ref": "#/$defs/observations"
+        },
+        "probes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/probe"
+          }
+        },
+        "decision": {
+          "$ref": "#/$defs/decision"
+        }
+      }
+    },
+    "hostCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "weixin",
+        "alipay"
+      ],
+      "properties": {
+        "weixin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "alipay": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        }
+      }
+    },
+    "classificationCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "full-semantic",
+        "hybrid",
+        "visual-only",
+        "unsupported"
+      ],
+      "properties": {
+        "full-semantic": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "hybrid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "visual-only": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "unsupported": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "totalSamples",
+        "fixtureSamples",
+        "realSamples",
+        "realHostCounts",
+        "classificationCounts",
+        "realClassificationCounts",
+        "failClosedSamples"
+      ],
+      "properties": {
+        "totalSamples": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "fixtureSamples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "realSamples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "realHostCounts": {
+          "$ref": "#/$defs/hostCounts"
+        },
+        "classificationCounts": {
+          "$ref": "#/$defs/classificationCounts"
+        },
+        "realClassificationCounts": {
+          "$ref": "#/$defs/classificationCounts"
+        },
+        "failClosedSamples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        }
+      }
+    }
+  }
+}
