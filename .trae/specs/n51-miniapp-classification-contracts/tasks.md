@@ -8,7 +8,7 @@
 - [x] 增加专用 schema-check、README 和固定离线 fixture
 - [x] 运行 Node 定向测试、schema-check、comments 和 diff-check
 - [x] 方便时运行 N47/N52 现有离线 smoke
-- [ ] 审查允许范围、提交身份和 trailer 后提交
+- [x] 审查允许范围、提交身份和 trailer 后提交
 - [ ] 微信/支付宝真实宿主小程序证据保持未验收
 
 ## 建议提交

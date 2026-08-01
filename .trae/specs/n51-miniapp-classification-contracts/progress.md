@@ -30,3 +30,12 @@
   N47 离线 smoke 59/59、N52 离线 smoke 21/21，`make comments` 覆盖 426 个手写文件。
 - 全程未操作设备、未下载 APK、未登录账号、未搜索或猜测 deep link；微信/支付宝
   真实小程序四级样例均为零，N51 与路线图勾选保持未完成。
+
+## Round 3
+
+- 分类契约实现提交为 `44cb22d`，提交范围仅含本 change spec 与
+  `test-lab/scenarios/miniapps/`，提交后 worktree 干净。
+- 实现提交 author 与 committer 均为 `lejunyang <lejunyang@qq.com>`；消息末尾
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>` 恰好一次。
+- 本轮只记录已经验证的离线契约证据，不新增真实宿主样例；N51 与路线图勾选继续保持
+  未完成。

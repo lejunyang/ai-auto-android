@@ -12,6 +12,6 @@
 - [x] Node 定向测试和专用 schema-check 通过
 - [x] `make comments` 与 `git diff --check` 通过
 - [x] N47/N52 现有离线 smoke 在方便条件下通过
-- [ ] 提交 author/committer 与 trailer 正确
+- [x] 提交 author/committer 与 trailer 正确
 - [ ] 微信/支付宝真实小程序样例保持未验收
 - [ ] N51 路线图保持未勾选
