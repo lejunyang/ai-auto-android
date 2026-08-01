@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
 import android.webkit.WebView
@@ -32,10 +33,13 @@ class InstrumentationTestIdentityProvider(
             requiredArgument(ARGUMENT_FINGERPRINT),
             requiredArgument(ARGUMENT_BUILD_FINGERPRINT),
         )
-        val local = observeLocalDevice()
+        val local = if (arguments.containsKey(ARGUMENT_N45_RESOLUTION)) {
+            awaitN45MatrixGeometry()
+        } else {
+            observeLocalDevice()
+        }
         profile.verifyLocalObservation(
             if (arguments.containsKey(ARGUMENT_N45_RESOLUTION)) {
-                verifyN45MatrixGeometry(local)
                 LocalDeviceObservation(
                     local.buildFingerprint(),
                     local.apiLevel(),
@@ -117,7 +121,7 @@ class InstrumentationTestIdentityProvider(
             "Missing required N32 instrumentation argument: $name"
         }
 
-    private fun verifyN45MatrixGeometry(observation: LocalDeviceObservation) {
+    private fun awaitN45MatrixGeometry(): LocalDeviceObservation {
         val resolution = requiredArgument(ARGUMENT_N45_RESOLUTION)
         val rotation = requiredArgument(ARGUMENT_N45_ROTATION).toIntOrNull()
         check(resolution in N45_RESOLUTIONS && rotation in N45_ROTATIONS) {
@@ -126,13 +130,25 @@ class InstrumentationTestIdentityProvider(
         val parts = resolution.split('x').map(String::toInt)
         val expectedWidth = if (rotation == 90) parts[1] else parts[0]
         val expectedHeight = if (rotation == 90) parts[0] else parts[1]
-        check(
-            observation.widthPixels() == expectedWidth &&
+        val deadline = SystemClock.uptimeMillis() + N45_GEOMETRY_TIMEOUT_MS
+        var observation: LocalDeviceObservation
+        do {
+            observation = observeLocalDevice()
+            if (
+                observation.widthPixels() == expectedWidth &&
                 observation.heightPixels() == expectedHeight &&
-                observation.densityDpi() == N31_BASE_DENSITY_DPI,
-        ) {
-            "N45 matrix geometry drifted from the runner attestation"
-        }
+                observation.densityDpi() == N31_BASE_DENSITY_DPI
+            ) {
+                return observation
+            }
+            SystemClock.sleep(N45_GEOMETRY_POLL_MS)
+        } while (SystemClock.uptimeMillis() < deadline)
+        error(
+            "N45 matrix geometry did not settle: " +
+                "expected=${expectedWidth}x$expectedHeight@$N31_BASE_DENSITY_DPI, " +
+                "actual=${observation.widthPixels()}x${observation.heightPixels()}@" +
+                observation.densityDpi(),
+        )
     }
 
     companion object {
@@ -146,6 +162,8 @@ class InstrumentationTestIdentityProvider(
         private const val N31_BASE_WIDTH = 1_080
         private const val N31_BASE_HEIGHT = 2_400
         private const val N31_BASE_DENSITY_DPI = 420
+        private const val N45_GEOMETRY_TIMEOUT_MS = 10_000L
+        private const val N45_GEOMETRY_POLL_MS = 100L
         private val N45_RESOLUTIONS = setOf("720x1600", "1080x2400", "1440x3200")
         private val N45_ROTATIONS = setOf(0, 90)
     }

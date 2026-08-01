@@ -90,3 +90,13 @@
   `SecureAccessibilitySettings` 单点启用/恢复服务。
 - 保留 Round 5 的 API 30 automation 静默与最小 shell permission 改动；下一轮只验证
   test-control 正常连接后，动作期 eventTypes 为零是否消除 cache 争用。
+
+## Round 7
+
+- 撤回 host 预置后的第五轮未进入 service 或动作路径：新鲜 JUnit 在 0.093 秒内因
+  App 侧 `WindowManager.maximumWindowMetrics` 尚未收敛到 host 已回读的
+  `720x1600@0` 而失败；日志没有 `UiAutomation`、gesture 或 cache contention。
+- N45 identity provider 现仅对固定 N45 参数轮询最多 10 秒，等待 App 侧 width、
+  height 与 420 dpi 全部匹配；超时错误包含期望与最后实际几何，且在身份构建、
+  service 启用和动作提交前失败关闭。其他 N31/N32 流程仍单次观察，不引入等待。
+- 失败轮由 runner 恢复/停止并再次确认设备、runtime、lock 与临时目录为零。
