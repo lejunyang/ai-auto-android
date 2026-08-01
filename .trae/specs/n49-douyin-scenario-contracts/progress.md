@@ -52,3 +52,14 @@
   `git diff --check` 与禁用制品检查通过。
 - 全程未操作设备、ADB、抖音 App、APK/cache 或任何 session/snapshot。真实连续
   10 轮仍为零，N49 路线图未修改且必须保持未勾选。
+
+## Round 4
+
+- 实现提交为 `92ee0b2`（`test(lab): add douyin scenario contracts`），提交范围仅含
+  本 change spec 与 `test-lab/scenarios/douyin/`，提交后 worktree 干净。
+- 实现提交 author 与 committer 均为 `lejunyang <lejunyang@qq.com>`；消息末尾
+  `Co-authored-by: TRAE CLI <noreply@bytedance.com>` 恰好一次。
+- 提交路径审计确认未修改共享 runner/Schema、路线图、manifest、其他任务、
+  Android/Go 或 APK/cache；`docs/next-phase-tasks.md` 中 N49 仍为 `[ ]`。
+- 本轮规格证据仅确认离线契约交付，不新增设备、真实 App 或连续 10 轮证据；N49
+  主任务继续保持未完成。

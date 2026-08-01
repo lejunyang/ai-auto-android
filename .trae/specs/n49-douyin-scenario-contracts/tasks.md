@@ -8,7 +8,7 @@
 - [x] 增加固定 fake fixture、专用 schema-check 和 README
 - [x] 运行 N49 定向 Node/schema 与 N47 离线回归
 - [x] 运行 `make comments` 与 `git diff --check`
-- [ ] 审查允许范围、提交身份和 trailer 后提交
+- [x] 审查允许范围、提交身份和 trailer 后提交
 - [ ] 真实设备连续 10 轮保持未验收
 - [ ] N49 路线图保持未勾选
 

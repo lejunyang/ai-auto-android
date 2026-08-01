@@ -15,6 +15,6 @@
 - [x] 任意 package/APK/action、坐标、secret、路径和 raw content 均被拒绝
 - [x] RED 与 GREEN 证据已 append 到 `progress.md`
 - [x] N49 Node/schema、N47 回归、comments 与 diff-check 通过
-- [ ] 提交 author/committer 与唯一 trailer 正确
+- [x] 提交 author/committer 与唯一 trailer 正确
 - [ ] 未操作设备，真实 10 轮保持未验收
 - [ ] N49 路线图保持未勾选
