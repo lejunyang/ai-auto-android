@@ -134,7 +134,14 @@ class N45VisualDeviceHarness(
             actions = VisualReplayActionExecutor { visual ->
                 assertIdentityUnchanged(currentIdentity())
                 actionAttempts += 1
-                service.executeN45VisualAction(visual, applicationContext.packageName)
+                service.executeN45VisualAction(
+                    visual,
+                    applicationContext.packageName,
+                ).also { result ->
+                    if (result is AccessibilityResult.Success) {
+                        SystemClock.sleep(visual.settleDelayMs())
+                    }
+                }
             },
             verifier = VisualReplayVerifier { request ->
                 assertIdentityUnchanged(currentIdentity())
@@ -433,11 +440,13 @@ class N45VisualDeviceHarness(
         const val REQUIRED_SNAPSHOT_MARKER = "clean"
         const val ARGUMENT_RESOLUTION = "n45MatrixResolution"
         const val ARGUMENT_ROTATION = "n45MatrixRotation"
+        const val TAP_DURATION_MS = 100L
         const val LONG_CLICK_DURATION_MS = 750L
         const val SWIPE_DURATION_MS = 450L
         const val SWIPE_EDGE_FRACTION = 0.2
         const val POST_ACTION_TIMEOUT_MS = 5_000L
         const val POST_ACTION_POLL_MS = 50L
+        const val POST_ACTION_SETTLE_MS = 250L
 
         fun pointJson(x: Int, y: Int) = buildJsonObject {
             put("x", JsonPrimitive(x))
@@ -467,6 +476,12 @@ class N45VisualDeviceHarness(
             } while (SystemClock.uptimeMillis() < deadline)
             return false
         }
+
+        fun ExplicitVisualAction.settleDelayMs(): Long = when (this) {
+            is ExplicitVisualAction.Tap -> TAP_DURATION_MS
+            is ExplicitVisualAction.LongClick -> durationMs
+            is ExplicitVisualAction.Swipe -> durationMs
+        } + POST_ACTION_SETTLE_MS
 
         fun dev.aiauto.android.accessibility.model.UiBounds.centerNatural(
             screen: VisualReplayScreen,

@@ -33,3 +33,17 @@
   覆盖 414 个手写文件且 14 个检查器正反例通过，`git diff --check` 通过。
 - 本 worker 未启动或操作 emulator；API 30/33/34 的真实 18 环境矩阵仍待主线程运行，
   对应 tasks/checklist 保持未勾选，不能把 fake 或编译结果描述为设备命中证据。
+
+## Round 3
+
+- 主线程首次 API 30 矩阵在 release 扫描前失败：runner 固定路径误写为
+  `app-release.apk`，而 AGP 9 产物是 `app-release-unsigned.apk`。修正固定路径并对
+  N32 Java inspector 与 N45 ZIP scanner 做双重零入口验证；既有 JavaExec 关闭
+  configuration cache 后正常通过。
+- 修复后 API 30 启动设备，但首个产品轮在 instrumentation 进程以
+  `keyDispatchingTimedOut` 终止。限定日志显示 MotionEvent 在 debug Activity
+  处理约 4.6 秒；N45 异步 gesture 被平台接受后，verifier 立即递归 snapshot，与仍
+  在分发的长按/滑动争用同一窗口。
+- debug harness 现仅在动作被接受后等待该动作 duration 加 250ms，再开始只读后置
+  观察；不修改 production executor、不重放动作、不放宽后置条件。两次失败均由
+  runner finally 恢复/停止，设备、runtime、lease 与临时目录为零。
