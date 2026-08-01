@@ -47,3 +47,19 @@
 - debug harness 现仅在动作被接受后等待该动作 duration 加 250ms，再开始只读后置
   观察；不修改 production executor、不重放动作、不放宽后置条件。两次失败均由
   runner finally 恢复/停止，设备、runtime、lease 与临时目录为零。
+
+## Round 4
+
+- 上述 settle 修复编译通过后，API 30 首环境仍以同一
+  `keyDispatchingTimedOut` 失败。新鲜 JUnit 为 1 test/1 failure/0 skip，限定日志
+  显示 instrumentation `UiAutomation` 持有 accessibility cache，debug App 主线程与
+  production `UserTouchMonitor` 的事件归因路径分别等待该 cache 约 5 秒，MotionEvent
+  最终耗时 4659ms；问题发生在 verifier 之前，因此继续增加 settle 无法修复根因。
+- API 30 不支持 API 31 才加入的 `UiAutomation.FLAG_DONT_USE_ACCESSIBILITY`。
+  runner 改为在每次 clean restore 后，仅对显式 owned emulator 安装固定 debug APK、
+  写入唯一固定 test accessibility component，并回读 component 与 enabled 状态；
+  instrumentation 不再创建 `UiAutomation` 或持有 shell identity。
+- host 预置不接受调用方 serial、APK、package、component 或任意 shell 参数，回读漂移
+  失败关闭。production planner、typed Accessibility router/backend、
+  `UserTouchMonitor` 和动作后 hierarchy 观察保持不变；失败轮仍由 finally 完成
+  restore/stop，确认设备、runtime、lease、lock 与 N45 临时目录为零。

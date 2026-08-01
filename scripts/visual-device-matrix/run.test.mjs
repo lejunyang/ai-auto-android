@@ -10,6 +10,7 @@ import {
   matrixEnvironment,
   parseArguments,
   parseJUnitResult,
+  prepareFixedAccessibilityService,
   runVisualDeviceMatrix,
   selectFreshJUnit,
 } from "./run.mjs";
@@ -162,6 +163,9 @@ const fixture = ({
     },
     readRuntime: async () => runtime,
     cleanResults: async () => calls.push(["clean-results"]),
+    prepareTestService: async (_emulator, prepared) => {
+      calls.push(["prepare-service", prepared.serial]);
+    },
     readFreshJUnit: async (startedAtMs) => {
       if (staleJUnitAt === matrixIndex) {
         const error = new Error("stale");
@@ -266,6 +270,64 @@ test("release APK 扫描解压条目并拒绝 N45 harness 与 marker", () => {
   );
 });
 
+test("测试服务预置只使用 owned serial、固定 debug APK 和固定 component", async () => {
+  const calls = [];
+  const emulator = {
+    tools: () => ({ adb: path.join(root, "android-sdk", "platform-tools", "adb") }),
+    environment: () => environment,
+    command: async (executable, args) => {
+      calls.push([executable, args]);
+      const setting = args.at(-1);
+      return {
+        code: 0,
+        stdout: setting === "enabled_accessibility_services"
+          ? "dev.aiauto.android/dev.aiauto.android.accessibility.ScreenshotTestAccessibilityService\n"
+          : setting === "accessibility_enabled"
+            ? "1\n"
+            : "",
+        stderr: "",
+      };
+    },
+  };
+
+  await prepareFixedAccessibilityService(emulator, { serial: "emulator-5554" });
+
+  assert.equal(calls.length, 5);
+  for (const [, args] of calls) {
+    assert.deepEqual(args.slice(0, 2), ["-s", "emulator-5554"]);
+  }
+  assert.equal(calls[0][1][2], "install");
+  assert.equal(calls[0][1].at(-1).endsWith(
+    `${path.sep}app${path.sep}build${path.sep}outputs${path.sep}`
+    + `apk${path.sep}debug${path.sep}app-debug.apk`,
+  ), true);
+  assert.equal(
+    calls[1][1].at(-1),
+    "dev.aiauto.android/dev.aiauto.android.accessibility.ScreenshotTestAccessibilityService",
+  );
+});
+
+test("测试服务预置回读漂移时失败关闭", async () => {
+  const emulator = {
+    tools: () => ({ adb: path.join(root, "android-sdk", "platform-tools", "adb") }),
+    environment: () => environment,
+    command: async (_executable, args) => ({
+      code: 0,
+      stdout: args.at(-1) === "enabled_accessibility_services"
+        ? "dev.example/.UnknownService\n"
+        : args.at(-1) === "accessibility_enabled"
+          ? "1\n"
+          : "",
+      stderr: "",
+    }),
+  };
+
+  await assert.rejects(
+    () => prepareFixedAccessibilityService(emulator, { serial: "emulator-5554" }),
+    { code: "TEST_SERVICE_PRESET_DRIFT" },
+  );
+});
+
 test("单 profile 串行运行六个环境并只把 owned emulator 传给 instrumentation", async () => {
   const { calls, value } = fixture();
   const report = await runVisualDeviceMatrix({
@@ -277,6 +339,7 @@ test("单 profile 串行运行六个环境并只把 owned emulator 传给 instru
   assert.equal(report.passed, 6);
   assert.equal(report.succeeded, true);
   assert.equal(calls.filter(([name]) => name === "configure").length, 6);
+  assert.equal(calls.filter(([name]) => name === "prepare-service").length, 6);
   assert.equal(calls.filter(([name]) => name === "clean-results").length, 6);
   assert.equal(calls.filter(([name]) => name === "stop").length, 1);
   assert.equal(calls.filter(([name]) => name === "zero-residue").length, 1);

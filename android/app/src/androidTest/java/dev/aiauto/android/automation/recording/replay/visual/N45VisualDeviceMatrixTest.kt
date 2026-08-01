@@ -14,11 +14,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 
 import dev.aiauto.android.accessibility.ScreenshotTestAccessibilityService
 import dev.aiauto.android.accessibility.ScreenshotTestActivity
-import dev.aiauto.android.testcontrol.DebugTestControlPlane
 import dev.aiauto.android.testcontrol.InstrumentationTestIdentityProvider
-import dev.aiauto.android.testcontrol.SecureAccessibilitySettings
 import dev.aiauto.testcontrol.core.TestIdentity
-import dev.aiauto.testcontrol.core.TestScope
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -38,10 +35,6 @@ class N45VisualDeviceMatrixTest {
             arguments = arguments,
         )
         val identity = identityProvider.current()
-        val control = DebugTestControlPlane(
-            context = targetContext,
-            identityProvider = identityProvider::current,
-        )
         val harness = N45VisualDeviceHarness(
             context = targetContext,
             expectedIdentity = identity,
@@ -50,95 +43,80 @@ class N45VisualDeviceMatrixTest {
         )
         var activity: Activity? = null
         try {
-            val enable = control.accessibilityIntent(
-                control.issueToken(TestScope.ACCESSIBILITY_CONTROL),
-                enabled = true,
-            )
-            val disable = control.accessibilityIntent(
-                control.issueToken(TestScope.ACCESSIBILITY_CONTROL),
-                enabled = false,
-            )
-            SecureAccessibilitySettings(
-                instrumentation = instrumentation,
-                context = targetContext,
-                identityProvider = identityProvider::current,
-            ).withServiceEnabled(enable, disable) {
-                val testActivity = instrumentation.startActivitySync(
-                    Intent(targetContext, ScreenshotTestActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                ) as ScreenshotTestActivity
-                activity = testActivity
-                instrumentation.waitForIdleSync()
-                ScreenshotTestAccessibilityService.awaitConnected(TIMEOUT_SECONDS)
+            val testActivity = instrumentation.startActivitySync(
+                Intent(targetContext, ScreenshotTestActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            ) as ScreenshotTestActivity
+            activity = testActivity
+            instrumentation.waitForIdleSync()
+            ScreenshotTestAccessibilityService.awaitConnected(TIMEOUT_SECONDS)
 
-                for (action in N45VisualTestAction.entries) {
-                    instrumentation.runOnMainSync {
-                        testActivity.resetVisualActionState()
-                    }
-                    val result = harness.execute(action)
-                    assertTrue(result.succeeded)
-                    assertEquals(1, result.actionCommitCount)
-                    assertEquals(1, result.actionAttempts)
-                    assertEquals(
-                        "${action.name}_PASS",
-                        awaitVisualStatus(testActivity, action),
-                    )
+            for (action in N45VisualTestAction.entries) {
+                instrumentation.runOnMainSync {
+                    testActivity.resetVisualActionState()
                 }
+                val result = harness.execute(action)
+                assertTrue(result.succeeded)
+                assertEquals(1, result.actionCommitCount)
+                assertEquals(1, result.actionAttempts)
+                assertEquals(
+                    "${action.name}_PASS",
+                    awaitVisualStatus(testActivity, action),
+                )
+            }
 
-                for (mutation in N45VisualEvidenceMutation.entries) {
-                    instrumentation.runOnMainSync {
-                        testActivity.resetVisualActionState()
-                    }
-                    val result = harness.execute(
-                        action = N45VisualTestAction.TAP,
-                        mutation = mutation,
-                    )
-                    assertEquals(mutation.expectedCode, result.errorCode)
-                    assertEquals(
-                        if (mutation == N45VisualEvidenceMutation.POST_FAIL) 1 else 0,
-                        result.actionCommitCount,
-                    )
-                    assertEquals(
-                        if (mutation == N45VisualEvidenceMutation.POST_FAIL) 1 else 0,
-                        result.actionAttempts,
-                    )
-                    SystemClock.sleep(STATUS_STABILITY_MS)
-                    assertEquals(
-                        if (mutation == N45VisualEvidenceMutation.POST_FAIL) {
-                            "TAP_PASS"
-                        } else {
-                            "VISUAL_READY"
-                        },
-                        testActivity.currentVisualActionStatus(),
-                    )
+            for (mutation in N45VisualEvidenceMutation.entries) {
+                instrumentation.runOnMainSync {
+                    testActivity.resetVisualActionState()
                 }
+                val result = harness.execute(
+                    action = N45VisualTestAction.TAP,
+                    mutation = mutation,
+                )
+                assertEquals(mutation.expectedCode, result.errorCode)
+                assertEquals(
+                    if (mutation == N45VisualEvidenceMutation.POST_FAIL) 1 else 0,
+                    result.actionCommitCount,
+                )
+                assertEquals(
+                    if (mutation == N45VisualEvidenceMutation.POST_FAIL) 1 else 0,
+                    result.actionAttempts,
+                )
+                SystemClock.sleep(STATUS_STABILITY_MS)
+                assertEquals(
+                    if (mutation == N45VisualEvidenceMutation.POST_FAIL) {
+                        "TAP_PASS"
+                    } else {
+                        "VISUAL_READY"
+                    },
+                    testActivity.currentVisualActionStatus(),
+                )
+            }
 
-                assertThrows(IllegalStateException::class.java) {
-                    harness.assertIdentityUnchanged(
-                        identity.copyWith(serial = "emulator-5556"),
-                    )
-                }
-                assertThrows(IllegalStateException::class.java) {
-                    harness.assertIdentityUnchanged(
-                        identity.copyWith(serial = "physical-device"),
-                    )
-                }
-                assertThrows(IllegalStateException::class.java) {
-                    harness.assertIdentityUnchanged(
-                        identity.copyWith(fingerprint = "f".repeat(64)),
-                    )
-                }
-                assertThrows(IllegalStateException::class.java) {
-                    harness.assertIdentityUnchanged(
-                        identity.copyWith(marker = "WRONG_TEST_MARKER"),
-                    )
-                }
+            assertThrows(IllegalStateException::class.java) {
+                harness.assertIdentityUnchanged(
+                    identity.copyWith(serial = "emulator-5556"),
+                )
+            }
+            assertThrows(IllegalStateException::class.java) {
+                harness.assertIdentityUnchanged(
+                    identity.copyWith(serial = "physical-device"),
+                )
+            }
+            assertThrows(IllegalStateException::class.java) {
+                harness.assertIdentityUnchanged(
+                    identity.copyWith(fingerprint = "f".repeat(64)),
+                )
+            }
+            assertThrows(IllegalStateException::class.java) {
+                harness.assertIdentityUnchanged(
+                    identity.copyWith(marker = "WRONG_TEST_MARKER"),
+                )
             }
         } finally {
             activity?.finish()
             instrumentation.waitForIdleSync()
             harness.close()
-            control.close()
         }
     }
 

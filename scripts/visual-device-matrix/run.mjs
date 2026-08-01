@@ -36,6 +36,16 @@ const releaseApk = path.join(
   "release",
   "app-release-unsigned.apk",
 );
+const debugApk = path.join(
+  repositoryRoot,
+  "android",
+  "app",
+  "build",
+  "outputs",
+  "apk",
+  "debug",
+  "app-debug.apk",
+);
 const resultDirectory = path.join(
   repositoryRoot,
   "android",
@@ -50,6 +60,8 @@ const testClass =
   "dev.aiauto.android.automation.recording.replay.visual.N45VisualDeviceMatrixTest";
 const testMethod = "runVisualActionMatrixCase";
 const fixedMarker = "AI_AUTO_TEST_ONLY_V1";
+const fixedAccessibilityService =
+  "dev.aiauto.android/dev.aiauto.android.accessibility.ScreenshotTestAccessibilityService";
 const profilePattern = /^api-(?:30|33|34)$/u;
 const emulatorSerialPattern = /^emulator-[0-9]{4,5}$/u;
 const sha256Pattern = /^[0-9a-f]{64}$/u;
@@ -440,6 +452,71 @@ const configureFixedVisualCase = async (
   });
 };
 
+export const prepareFixedAccessibilityService = async (emulator, booted) => {
+  const adb = emulator.tools().adb;
+  const environment = emulator.environment();
+  const commands = [
+    ["install", "-r", "-t", debugApk],
+    [
+      "shell",
+      "settings",
+      "put",
+      "secure",
+      "enabled_accessibility_services",
+      fixedAccessibilityService,
+    ],
+    ["shell", "settings", "put", "secure", "accessibility_enabled", "1"],
+  ];
+  // 仅为 disposable owned emulator 预置固定 debug 服务，不接受调用方 package 或 component。
+  for (const args of commands) {
+    assertSuccess(
+      await emulator.command(
+        adb,
+        ["-s", booted.serial, ...args],
+        { env: environment, timeoutMs: 30_000 },
+      ),
+      "TEST_SERVICE_PRESET_FAILED",
+    );
+  }
+  const [services, enabled] = await Promise.all([
+    emulator.command(
+      adb,
+      [
+        "-s",
+        booted.serial,
+        "shell",
+        "settings",
+        "get",
+        "secure",
+        "enabled_accessibility_services",
+      ],
+      { env: environment, timeoutMs: 10_000 },
+    ),
+    emulator.command(
+      adb,
+      [
+        "-s",
+        booted.serial,
+        "shell",
+        "settings",
+        "get",
+        "secure",
+        "accessibility_enabled",
+      ],
+      { env: environment, timeoutMs: 10_000 },
+    ),
+  ]);
+  for (const result of [services, enabled]) {
+    assertSuccess(result, "TEST_SERVICE_PRESET_FAILED");
+  }
+  if (
+    services.stdout.trim() !== fixedAccessibilityService
+    || enabled.stdout.trim() !== "1"
+  ) {
+    fail("TEST_SERVICE_PRESET_DRIFT");
+  }
+};
+
 const runInstrumentation = async ({
   command,
   environment,
@@ -511,6 +588,8 @@ export const runVisualDeviceMatrix = async ({
   const readFreshJUnit = dependencies.readFreshJUnit ?? findFreshJUnit;
   const readRuntime = dependencies.readRuntime ?? defaultReadRuntime;
   const assertNoResidue = dependencies.assertNoResidue ?? defaultAssertNoResidue;
+  const prepareTestService = dependencies.prepareTestService
+    ?? prepareFixedAccessibilityService;
   const persistReport = dependencies.persistReport ?? (async (report) => {
     const reportDirectory = path.join(roots.stateRoot, "reports");
     await mkdir(reportDirectory, { recursive: true });
@@ -624,6 +703,7 @@ export const runVisualDeviceMatrix = async ({
         fail("RUNNER_CONTEXT_DRIFT");
       }
       await assertEmulatorState(command, aactlPath, environment, booted.serial);
+      await prepareTestService(emulator, booted);
       await cleanResults();
       const startedAtMs = Date.now();
       const result = await runInstrumentation({
