@@ -434,6 +434,7 @@ export const createProductionFixturePorts = async (
   let emulator = null;
   let active = null;
   let runtime = null;
+  let activeBuildFingerprint = null;
   let temporaryRoot = null;
   let aactlPath = null;
   let finalRestoreSucceeded = false;
@@ -594,6 +595,7 @@ export const createProductionFixturePorts = async (
             "android",
             "--no-daemon",
             ":app:assembleDebug",
+            ":app:assembleDebugAndroidTest",
             ":device-fixture:assembleDebug",
             ":web-fixture:assembleDebug",
           ],
@@ -605,7 +607,20 @@ export const createProductionFixturePorts = async (
           },
           "PRODUCTION_FIXTURE_ANDROID_BUILD_FAILED",
         );
-        await dependencies.assertBuildOutputs(Object.values(apkFiles));
+        await dependencies.assertBuildOutputs([
+          ...Object.values(apkFiles),
+          path.join(
+            repositoryRoot,
+            "android",
+            "app",
+            "build",
+            "outputs",
+            "apk",
+            "androidTest",
+            "debug",
+            "app-debug-androidTest.apk",
+          ),
+        ]);
         emulator = dependencies.createEmulator({ roots, profiles: loadedProfiles });
         starting = await emulator.start(profile.id);
         booted = await emulator.waitForBoot(profile.id);
@@ -627,9 +642,12 @@ export const createProductionFixturePorts = async (
           || typeof runtime?.logFile !== "string"
           || typeof runtime?.lease?.avdLock !== "string"
           || typeof runtime?.lease?.portLock !== "string"
+          || typeof runtime?.metadata?.buildFingerprint !== "string"
+          || runtime.metadata.buildFingerprint.length < 1
         ) {
           fail("PRODUCTION_FIXTURE_RUNTIME_INVALID");
         }
+        activeBuildFingerprint = runtime.metadata.buildFingerprint;
       } catch (error) {
         await cleanupFailedStart(profile, booted ?? starting);
         if (error instanceof ProductionFixturePortsError) throw error;
@@ -774,15 +792,18 @@ export const createProductionFixturePorts = async (
             : apkFiles.webview,
         );
         authorizationResult = await authorization.setup(Object.freeze({
-        profileId: active.profileId,
-        apiLevel: active.apiLevel,
-        serial: active.serial,
-        deviceFingerprint: active.deviceFingerprint,
-        snapshot: active.snapshot,
-        scenarioId,
-        packages: scenarioId === "production-native-fixture"
-          ? Object.freeze([appPackage, nativePackage])
-          : Object.freeze([appPackage, webPackage]),
+          profileId: active.profileId,
+          apiLevel: active.apiLevel,
+          serial: active.serial,
+          deviceFingerprint: active.deviceFingerprint,
+          buildFingerprint: activeBuildFingerprint,
+          snapshot: active.snapshot,
+          scenarioId,
+          runId: cleanupContext.runId,
+          packages: scenarioId === "production-native-fixture"
+            ? Object.freeze([appPackage, nativePackage])
+            : Object.freeze([appPackage, webPackage]),
+          aactlPath,
         }));
         if (
           !exactKeys(

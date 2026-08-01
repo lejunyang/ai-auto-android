@@ -8,6 +8,9 @@ import {
   loadRunnerSchemas,
   validateRunnerDocument,
 } from "./schema-validator.mjs";
+import {
+  createProductionFixtureAuthorization,
+} from "./production-fixture-authorization.mjs";
 import { createProductionFixturePorts } from "./production-fixture-ports.mjs";
 
 const profiles = Object.freeze(new Map([
@@ -371,31 +374,16 @@ export const runProductionFixture = async ({
   });
 };
 
-const unavailableAuthorization = Object.freeze({
-  probe: async () => Object.freeze({
-    available: false,
-    bridgeAction: false,
-    disposableEmulator: false,
-    visualAction: false,
-  }),
-  setup: async () => fail("PRODUCTION_FIXTURE_AUTHORIZATION_UNAVAILABLE"),
-  stopScenario: async () =>
-    fail("PRODUCTION_FIXTURE_AUTHORIZATION_UNAVAILABLE"),
-  closeBridge: async () =>
-    fail("PRODUCTION_FIXTURE_AUTHORIZATION_UNAVAILABLE"),
-  inspect: async () => Object.freeze({
-    bridgeSessions: 0,
-    testServices: 0,
-  }),
-});
-
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const argv = process.argv.slice(2);
     parseProductionFixtureArguments(argv);
+    const authorization = createProductionFixtureAuthorization({
+      environment: process.env,
+    });
     const ports = await createProductionFixturePorts({
       environment: process.env,
-      authorization: unavailableAuthorization,
+      authorization,
     });
     const report = await runProductionFixture({
       argv,

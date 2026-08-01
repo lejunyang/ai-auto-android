@@ -23,6 +23,9 @@ class SecureAccessibilitySettings(
     instrumentation: Instrumentation,
     context: Context,
     private val identityProvider: () -> TestIdentity,
+    private val isServiceConnected: () -> Boolean = {
+        ScreenshotTestAccessibilityService.connectedService != null
+    },
 ) {
     private val automation = instrumentation.getUiAutomation(
         UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES,
@@ -221,8 +224,7 @@ class SecureAccessibilitySettings(
                     ) == accessibilityEnabled
             val managerMatch = isEnabled(componentName) == componentEnabled
             val connectionMatch =
-                (ScreenshotTestAccessibilityService.connectedService != null) ==
-                componentEnabled
+                isServiceConnected() == componentEnabled
             if (settingsMatch && managerMatch && connectionMatch) {
                 return
             }

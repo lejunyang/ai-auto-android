@@ -31,6 +31,8 @@ const profile = Object.freeze({
   webViewVersion: "109.0.5414.123",
 });
 const fingerprint = "a".repeat(64);
+const buildFingerprint =
+  "google/sdk_gphone64_arm64/emu64a:13/TE1A.240213.009/12342917:userdebug/dev-keys";
 
 const reportFor = (scenarioId) => ({
   schemaVersion: "1.0",
@@ -85,7 +87,14 @@ const fixture = ({
       };
     },
     setup: async (context) => {
-      calls.push(["authorization-setup", context.serial, context.scenarioId]);
+      calls.push([
+        "authorization-setup",
+        context.serial,
+        context.scenarioId,
+        context.runId,
+        context.aactlPath,
+        context.buildFingerprint,
+      ]);
       if (authorizationSetupFailure) {
         throw new Error("private authorization failure");
       }
@@ -169,6 +178,9 @@ const fixture = ({
         pid: 4711,
         logFile: `${root}/emulator-state/logs/n47.log`,
         runtimeFile: `${root}/emulator-state/runtime/ai-auto-api-33.json`,
+        metadata: {
+          buildFingerprint,
+        },
         lease: {
           avdLock: `${root}/emulator-state/locks/avd`,
           portLock: `${root}/emulator-state/locks/port`,
@@ -279,10 +291,22 @@ test("固定 build/install argv 组装 aactl visual 并执行四步清理", asyn
       "android",
       "--no-daemon",
       ":app:assembleDebug",
+      ":app:assembleDebugAndroidTest",
       ":device-fixture:assembleDebug",
       ":web-fixture:assembleDebug",
     ],
   ]);
+  assert.deepEqual(
+    current.calls.find(([name]) => name === "authorization-setup"),
+    [
+      "authorization-setup",
+      "emulator-5554",
+      "production-native-fixture",
+      "019fbdf0-0000-7000-8000-000000000047",
+      `${root}/emulator-state/n47-fixed/aactl`,
+      buildFingerprint,
+    ],
+  );
   const installArgv = commands
     .filter(([, argv]) => argv[2] === "install")
     .map(([, argv]) => argv);
