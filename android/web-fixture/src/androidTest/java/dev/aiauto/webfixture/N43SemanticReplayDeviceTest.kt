@@ -75,8 +75,9 @@ class N43SemanticReplayDeviceTest {
         }
         activity = instrumentation.startActivitySync(intent)
         instrumentation.waitForIdleSync()
-        awaitGenerationAfter(0, -1)
+        val generation = awaitGenerationAfter(0, -1)
         awaitNames(-1, "Full semantic fixture", "Fixture state ready")
+        awaitStableReady(generation, -1)
     }
 
     private fun verifyRuntime() {
@@ -92,9 +93,67 @@ class N43SemanticReplayDeviceTest {
     private fun resetAndAwaitReady(iteration: Int) {
         val previousGeneration = currentGeneration()
         performAction("Reset current fixture state", AccessibilityNodeInfo.ACTION_CLICK, null)
-        awaitGenerationAfter(previousGeneration, iteration)
+        val generation = awaitGenerationAfter(previousGeneration, iteration)
         awaitNames(iteration, "Full semantic fixture", "Fixture state ready")
+        awaitStableReady(generation, iteration)
         assertOffline(iteration)
+    }
+
+    private fun awaitStableReady(expectedGeneration: Int, iteration: Int) {
+        val deadline = SystemClock.uptimeMillis() + ACTION_TIMEOUT_MS
+        var previous: ReadyObservation? = null
+        var stableCount = 0
+        while (SystemClock.uptimeMillis() < deadline) {
+            val current = observeReady()
+            stableCount = if (current == previous) stableCount + 1 else 1
+            previous = current
+            if (
+                current.generation == expectedGeneration &&
+                current.ready &&
+                current.clickMatches == 1 &&
+                current.clickSupported &&
+                stableCount >= REQUIRED_STABLE_OBSERVATIONS
+            ) {
+                return
+            }
+            SystemClock.sleep(POLL_MS)
+        }
+        throw AssertionError(
+            "iteration $iteration did not expose a stable ready click surface: $previous",
+        )
+    }
+
+    private fun observeReady(): ReadyObservation {
+        val generation = currentGeneration()
+        return freshRoot().useTree { root ->
+            val state = MutableReadyObservation()
+            collectReadyObservation(root, state)
+            ReadyObservation(
+                generation = generation,
+                ready = state.ready,
+                clickMatches = state.clickMatches,
+                clickSupported = state.clickSupported,
+            )
+        }
+    }
+
+    private fun collectReadyObservation(
+        node: AccessibilityNodeInfo,
+        state: MutableReadyObservation,
+    ) {
+        val name = node.accessibleName()
+        if (name == "Fixture state ready") state.ready = true
+        if (name == "Fixture click button") {
+            state.clickMatches += 1
+            state.clickSupported = state.clickSupported || node.actionList.any {
+                it.id == AccessibilityNodeInfo.ACTION_CLICK
+            }
+        }
+        repeat(node.childCount) { index ->
+            node.getChild(index)?.useTree { child ->
+                collectReadyObservation(child, state)
+            }
+        }
     }
 
     private fun clickAndAwait(name: String, expected: String, iteration: Int) {
@@ -346,6 +405,19 @@ class N43SemanticReplayDeviceTest {
     private fun AccessibilityNodeInfo.accessibleName(): String? =
         contentDescription?.toString() ?: text?.toString()
 
+    private data class ReadyObservation(
+        val generation: Int,
+        val ready: Boolean,
+        val clickMatches: Int,
+        val clickSupported: Boolean,
+    )
+
+    private data class MutableReadyObservation(
+        var ready: Boolean = false,
+        var clickMatches: Int = 0,
+        var clickSupported: Boolean = false,
+    )
+
     @Suppress("DEPRECATION")
     private inline fun <T> AccessibilityNodeInfo.useTree(
         block: (AccessibilityNodeInfo) -> T,
@@ -364,6 +436,7 @@ class N43SemanticReplayDeviceTest {
         const val ACTION_TIMEOUT_MS = 15_000L
         const val POSTCONDITION_TIMEOUT_MS = 3_000L
         const val POLL_MS = 200L
+        const val REQUIRED_STABLE_OBSERVATIONS = 4
         val EXPECTED_WEBVIEW = mapOf(
             30 to "91.0.4472.114",
             33 to "109.0.5414.123",

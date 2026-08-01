@@ -77,3 +77,12 @@
 - 提交前 `make comments`、`git diff --check`、Web fixture 完整
   `test + lint + build` 及设备/N31 零残留检查均通过。公共路线图只追加更正与剩余
   缺口，N43 仍未勾选。
+
+## Round 6
+
+- Clean repeat runner 先复现 API 34 WebView 113 基础 click 波动：修复前 20 轮仅
+  17 轮通过，三轮均为 product-failure。提交前增加同 generation 下四次只读稳定
+  ready/click/action 观察，不重放动作；最终 API 30/33/34 各 20/20。
+- 只读 capability 结论不变：三版本 input 均暴露 click/setText，long-click 均缺少
+  semantic action，iframe/detail 后置仍 hybrid-required。稳定门只解决提交时机波动，
+  没有把缺失动作或不可见后置伪装成完整语义支持。

@@ -117,6 +117,9 @@ class ResourceContractTest {
         assertTrue(coverage.contains("N43_FULL_SEMANTIC:detailPostcondition"))
         assertTrue(coverage.contains("scrollAndClickResult(iteration)"))
         assertTrue(coverage.contains("GLOBAL_ACTION_BACK"))
+        assertTrue(coverage.contains("awaitStableReady(generation, iteration)"))
+        assertTrue(coverage.contains("REQUIRED_STABLE_OBSERVATIONS = 4"))
+        assertTrue(coverage.contains("current.clickMatches == 1"))
         listOf("Offline frame button", "Detail page action").forEach { target ->
             val invocation = "performAction(\"$target\""
             assertTrue(

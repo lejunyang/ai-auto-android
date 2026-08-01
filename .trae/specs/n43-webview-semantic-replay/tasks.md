@@ -5,7 +5,7 @@
 - [x] Task N43.3：实现流程保存、reset、跨页面 replay 与逐步验证编排
 - [x] Task N43.4：覆盖动态 DOM、iframe、歧义、时效和上下文漂移的失败关闭测试
 - [x] Task N43.5：提供 `ReplayGateway`、页面身份、存储和 reset 的设备可注入端口
-- [ ] Task N43.6：在 API 30、33、34 固定 AVD 上各连续运行 20 轮完整语义流程
+- [x] Task N43.6：在 API 30、33、34 固定 AVD 上各连续运行 20 轮完整语义流程
 - [x] Task N43.7：运行定向/完整 app 单测、`make comments` 和 `git diff --check`
 - [x] Task N43.8：以 `test(android): validate webview semantic replay` 单提交收口
 

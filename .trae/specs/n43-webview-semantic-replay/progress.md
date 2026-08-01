@@ -97,3 +97,24 @@
   后置的偶发波动，目前只能依赖每步新观察失败关闭，不能自动重复可能已提交的 click。
   后续必须完成每版本 20 轮并统计 flaky，达不到 95% 时应将对应 profile 降级而非
   勾选 N43。最终设备、runtime、lease 和 owned emulator 再次为零。
+
+## Round 7
+
+- 新增独立 host runner，每个 profile 固定 20 轮，每轮先 N31 restore `clean`，
+  再只运行一次 `N43SemanticReplayDeviceTest` 并解析新鲜唯一 JUnit XML；报告不保留
+  stack、Gradle 输出、页面文本、hierarchy 或截图。
+- 初始代码矩阵为 API 30 20/20、API 33 20/20、API 34 17/20。API 34 三次均为
+  product-failure、零 infrastructure-failure，失败保持“动作返回 true 但后置仍
+  ready”的既有模式，且每轮失败后先 clean restore，没有重放 click。修复前报告以
+  `n43-semantic-matrix-api-34-before-stability.json` 保留为 `0600` 外置证据。
+- 第一版稳定门错误地要求 native generation 与 WebView 虚拟节点同一树出现，API 34
+  单轮在 click 前以 generation 不可见失败，动作提交数为零。修正后，每次预检先只读
+  native `LOAD_GENERATION`，再只读 WebView ready/唯一 click/action；同一组合连续
+  四次一致后才提交唯一 click。未修改后置等待、动作类型或 hybrid 分类。
+- 最终代码在 API 30、33、34 均为 20/20（100%），总计 60/60；每轮独立 clean
+  snapshot，三份最终报告均 `cleaned:true` 且权限 `0600`。最终设备、runtime、
+  AVD/port lease 和 runner temp 为零。
+- 这关闭 N43 的重复语义矩阵门。long-click 仍无 semantic action，iframe/detail
+  后置仍明确分类为 hybrid-required；N43 只负责正确分类和禁止不安全降级，不要求
+  本任务交付 N45 视觉动作，因此公共路线图可勾选 N43，但不得把 hybrid-required
+  描述为完整视觉闭环已经交付。

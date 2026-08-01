@@ -11,10 +11,10 @@
 - [x] 默认在动作提交前重新观察，页面或运行时变化返回 `OBSERVATION_STALE`
 - [x] 纯单元测试覆盖完整、部分、Canvas、动态缺失、iframe 缺失和多页面回放
 - [x] 设备 instrumentation 可通过独立端口接入且无需修改 recording core
-- [ ] API 30 完整语义流程连续 20 轮成功率不低于 95%
-- [ ] API 33 完整语义流程连续 20 轮成功率不低于 95%
-- [ ] API 34 完整语义流程连续 20 轮成功率不低于 95%
-- [ ] 60 轮均从 clean snapshot 开始并完成 fixture 数据和产物清理
+- [x] API 30 完整语义流程连续 20 轮成功率不低于 95%
+- [x] API 33 完整语义流程连续 20 轮成功率不低于 95%
+- [x] API 34 完整语义流程连续 20 轮成功率不低于 95%
+- [x] 60 轮均从 clean snapshot 开始并完成 fixture 数据和产物清理
 - [x] 定向测试、完整 app 单测、`make comments` 和 `git diff --check` 通过
 
 ## 当前结论

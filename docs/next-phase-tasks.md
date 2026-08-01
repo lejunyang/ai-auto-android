@@ -461,7 +461,7 @@ dry-run 动作提交数为零，revision 冲突保留双方数据。
 
 **建议提交：** `feat(recording): add script editor domain`
 
-### [ ] Task N43：WebView 语义兼容与多页面回放
+### [x] Task N43：WebView 语义兼容与多页面回放
 
 **目标：** 验证 WebView 虚拟 Accessibility 节点，并在语义不足时明确降级。
 
@@ -510,6 +510,16 @@ Back；long-click 不暴露 `ACTION_LONG_CLICK=32`，iframe/详情 click 返回�
 迁移 dispatcher 后 API 30/33 各 1/1，通过；API 34 首轮基础 click 后置未更新，新
 clean snapshot 复跑通过，实际为 1/2。每版本 20 轮、95% 成功门和 N45 真实混合闭环
 仍未完成，因此任务继续保持未勾选。
+
+**追加重复矩阵（60/60 通过，混合闭环仍未完成）：** 独立 change
+`n43-clean-repeat-matrix` 固定每轮先恢复 N31 clean snapshot，再运行一次 N43
+instrumentation 并解析新鲜 JUnit。初始 API 34 为 17/20，复现 click 返回 true 但
+后置仍 ready 的波动；修复前报告保留。提交前增加同一 native generation 下四次
+只读 ready/唯一 click/action 稳定观察，不重放已提交动作。最终代码在 API
+30/33/34 各 20/20，总计 60/60，三份 `0600` 报告均 `cleaned:true`，最终
+设备/runtime/lease 为零。long-click 仍无语义 action，iframe/detail 后置仍为
+hybrid-required；N43 已按目标完成兼容分级、语义流程、失败关闭和多页面回放，因此
+本任务现勾选完成。该勾选不代表 N45 授权视觉动作或真实混合闭环已经交付。
 
 **失败清理：** 清除 WebView 数据、脚本和产物，恢复快照。
 
