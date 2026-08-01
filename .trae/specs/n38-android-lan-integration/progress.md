@@ -64,3 +64,17 @@
 - Android LAN 42 项、LAN UI/scanner 25 项和 App JVM 总计 369 项通过；App 134 个
   Gradle tasks、release 权限/DEX 静态审计及仓库全量门禁均通过。真实 scanner 安装、
   相机授权拒绝、OEM 相机行为和真机 Wi-Fi 会话仍待人工验收。
+
+## Round 6
+
+- signer follow-up 不再仅信任 ZXing package/class。生产只 allowlist 本回合从
+  F-Droid 官方 `com.google.zxing.client.android_108.apk` 实测得到的 certificate
+  SHA-256
+  `1f97ed3c5800111d4627d53512bb38102fda0385c45f763b4b92d6341d29f1ad`；
+  未知 Play/GitHub signer 明确不接受。
+- 证据固定为 F-Droid URL、版本 `4.7.8(108)`、APK SHA-256
+  `2ed4c2661ed0e2e56b2980d59291dacd58040d219cb7e83b3f6db1102d2ed483`。
+  多 current signer、缺失、错误、仅历史命中、轮换 history 或签名查询异常均不启动
+  scanner，并保持手工码路径。
+- 最终 App JVM 375/375 与 134 个 unit/lint/debug/androidTest/release tasks 通过；
+  APK 和证书临时材料不进入仓库。真机仍需人工安装该 F-Droid 签名版本并处理相机授权。

@@ -85,3 +85,32 @@
 - Author 与 Committer 均为 `lejunyang <lejunyang@qq.com>`；提交消息末尾恰好一次
   `Co-authored-by: TRAE CLI <noreply@bytedance.com>`。提交路径审计未发现越界文件，
   `git show --check` 通过，功能提交后 worktree 干净。
+
+## Round 7
+
+- 集成审查指出仅校验 package/class/exported/enabled 无法阻止恶意重签同包冒充；
+  signer RED 先因 `LanQrScannerSigningIdentity` 与 candidate signer 字段缺失而按预期
+  编译失败，随后才增加生产签名门。
+- 本回合从 F-Droid 官方仓库下载
+  `https://f-droid.org/repo/com.google.zxing.client.android_108.apk` 到
+  `/private/tmp`。`aapt` 确认 package `com.google.zxing.client.android`、版本
+  `4.7.8(108)`，以及 `.CaptureActivity` 暴露
+  `com.google.zxing.client.android.SCAN`；APK SHA-256 为
+  `2ed4c2661ed0e2e56b2980d59291dacd58040d219cb7e83b3f6db1102d2ed483`。
+- Android SDK 36 `apksigner verify --verbose --print-certs` 确认 APK `Verifies`、
+  signer 数量为 1、DN 为
+  `CN=FDroid, OU=FDroid, O=fdroid.org, L=ORG, ST=ORG, C=UK`，certificate
+  SHA-256 为
+  `1f97ed3c5800111d4627d53512bb38102fda0385c45f763b4b92d6341d29f1ad`，
+  public key SHA-256 为
+  `86c4cf4cd5b664612c3eb07f58a80966e0efca0d085f2437680794855d82170a`。
+- 生产 allowlist 只接受上述 F-Droid certificate SHA-256；未知 Play/GitHub signer
+  不接受。discovery 要求唯一 current signer 且 current/history 均恰好为该证书；
+  无 signer、错误 signer、多 current signer、仅历史命中、轮换 history、签名或
+  component query API 异常均失败关闭为 provider unavailable，手工码继续可用。
+- 使用从该 APK 提取的公开 DER certificate 驱动成功测试；同包错误签名、缺失签名、
+  多 current、历史 signer、证书 byte 读取异常及 PackageManager 异常均有负向测试。
+  signer/LAN UI 定向通过；最终 App JVM 375/375、`lintDebug`、debug、androidTest、
+  release 共 134 tasks 通过，`make comments` 与 `git diff --check` 通过。
+- APK、DER、PEM、PKCS#7 与 release API 临时文件只存在于 `/private/tmp`，提交前删除；
+  仓库不保存或重新分发 APK，`docs/next-phase-tasks.md` 未修改。

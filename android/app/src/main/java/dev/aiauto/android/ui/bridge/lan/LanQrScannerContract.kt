@@ -10,6 +10,13 @@ data class LanQrScannerCandidate(
     val className: String,
     val exported: Boolean,
     val enabled: Boolean,
+    val signingIdentity: LanQrScannerSigningIdentity?,
+)
+
+data class LanQrScannerSigningIdentity(
+    val currentSignerSha256: List<String>,
+    val signingCertificateHistorySha256: List<String>,
+    val hasMultipleCurrentSigners: Boolean,
 )
 
 data class LanQrScanLaunchSpec(
@@ -24,15 +31,32 @@ object TrustedLanQrScannerSelector {
         val trusted = candidates.filter { candidate ->
             candidate.packageName to candidate.className in TRUSTED_COMPONENTS &&
                 candidate.exported &&
-                candidate.enabled
+                candidate.enabled &&
+                candidate.signingIdentity.isTrusted()
         }
         return trusted.singleOrNull()
     }
+
+    private fun LanQrScannerSigningIdentity?.isTrusted(): Boolean =
+        this != null &&
+            !hasMultipleCurrentSigners &&
+            currentSignerSha256 == listOf(FDROID_SIGNER_SHA256) &&
+            signingCertificateHistorySha256 == listOf(FDROID_SIGNER_SHA256)
 
     private val TRUSTED_COMPONENTS = setOf(
         "com.google.zxing.client.android" to
             "com.google.zxing.client.android.CaptureActivity",
     )
+
+    /*
+     * 信任来源：F-Droid 官方仓库
+     * https://f-droid.org/repo/com.google.zxing.client.android_108.apk
+     * 版本 4.7.8(108)，APK SHA-256:
+     * 2ed4c2661ed0e2e56b2980d59291dacd58040d219cb7e83b3f6db1102d2ed483。
+     * 证书摘要由 Android SDK 36 apksigner verify --print-certs 实测；未知 Play 证书不接受。
+     */
+    private const val FDROID_SIGNER_SHA256 =
+        "1f97ed3c5800111d4627d53512bb38102fda0385c45f763b4b92d6341d29f1ad"
 }
 
 fun LanQrScannerCandidate.toLaunchSpec(): LanQrScanLaunchSpec =
