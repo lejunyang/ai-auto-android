@@ -235,6 +235,7 @@ test("只接受 dumpsys window 的唯一实际 mRotation", () => {
 
 test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", async () => {
   const calls = [];
+  let rotationReads = 0;
   const emulator = {
     readSnapshotMarker: async () => "clean",
     tools: () => ({ adb: "/external/android-sdk/platform-tools/adb" }),
@@ -249,9 +250,12 @@ test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", 
         return { code: 0, stdout: "Physical density: 420\nOverride density: 420\n" };
       }
       if (command.join(" ") === "shell dumpsys window displays") {
+        rotationReads += 1;
         return {
           code: 0,
-          stdout: "DisplayRotation\n  mRotation=1 mDeferredRotationPauseCount=0\n",
+          stdout: `DisplayRotation
+  mRotation=${rotationReads === 1 ? 0 : 1} mDeferredRotationPauseCount=0
+`,
         };
       }
       return { code: 0, stdout: "", stderr: "" };
@@ -267,6 +271,7 @@ test("rotation 配置调用 WindowManager lock 并验证实际 surface 方向", 
   );
 
   assert.equal(configured.rotation, 90);
+  assert.equal(rotationReads, 2);
   assert.equal(
     calls.some((args) =>
       args.join(" ") ===

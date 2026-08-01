@@ -125,3 +125,14 @@
 - runner 现先执行 AOSP `wm set-fix-to-user-rotation enabled`，再锁定 0/90；
   严格解析 `dumpsys window displays` 的唯一 `mRotation=<0|1>`，随后仍由 App
   metrics 做第二重收敛验证。命令退出成功但实际 rotation 未变时继续失败关闭。
+
+## Round 10
+
+- 第八轮仍在 instrumentation 前以 `DEVICE_CONFIG_DRIFT` 停止。第二次限定诊断连续
+  采样显示 fixed-to-user 已为 true，但 500ms 时 `mRotation=0`，
+  1000ms 才稳定为 1；runner 单次等待 500ms 过早。
+- host rotation 门改为最多 10 秒、每 250ms 读取一次唯一 `mRotation`；只有实际值
+  匹配才继续，命令失败、输出歧义或超时均在安装/动作前失败关闭。fake 明确覆盖首读
+  旧值、第二读收敛的 API 30 时序。
+- 诊断 finally 和第八轮 runner finally 均完成 restore/stop，设备、runtime 与 lock
+  为零。

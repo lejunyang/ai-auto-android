@@ -55,6 +55,8 @@ const emulatorSerialPattern = /^emulator-[0-9]{4,5}$/u;
 const sha256Pattern = /^[0-9a-f]{64}$/u;
 const resolutions = Object.freeze(["720x1600", "1080x2400", "1440x3200"]);
 const rotations = Object.freeze([0, 90]);
+const ROTATION_SETTLE_TIMEOUT_MS = 10_000;
+const ROTATION_SETTLE_POLL_MS = 250;
 const forbiddenReleaseText = Object.freeze([
   "N45VisualDeviceHarness",
   "N45VisualDeviceMatrixTest",
@@ -411,7 +413,7 @@ export const configureFixedVisualCase = async (
     );
   }
   await new Promise((resolve) => setTimeout(resolve, 500));
-  const [size, density, currentRotation] = await Promise.all([
+  const [size, density] = await Promise.all([
     emulator.command(
       adb,
       ["-s", booted.serial, "shell", "wm", "size"],
@@ -422,13 +424,8 @@ export const configureFixedVisualCase = async (
       ["-s", booted.serial, "shell", "wm", "density"],
       { env: environment, timeoutMs: 10_000 },
     ),
-    emulator.command(
-      adb,
-      ["-s", booted.serial, "shell", "dumpsys", "window", "displays"],
-      { env: environment, timeoutMs: 10_000 },
-    ),
   ]);
-  for (const result of [size, density, currentRotation]) {
+  for (const result of [size, density]) {
     assertSuccess(result, "DEVICE_CONFIG_FAILED");
   }
   const actualSize = [...size.stdout.matchAll(/[0-9]+x[0-9]+/gu)].at(-1)?.[0];
@@ -438,9 +435,22 @@ export const configureFixedVisualCase = async (
   if (
     actualSize !== resolution
     || actualDensity !== profile.densityDpi
-    || parseWindowRotation(currentRotation.stdout) !== Number(rotationValue)
   ) {
     fail("DEVICE_CONFIG_DRIFT");
+  }
+  const rotationDeadline = Date.now() + ROTATION_SETTLE_TIMEOUT_MS;
+  while (true) {
+    const currentRotation = await emulator.command(
+      adb,
+      ["-s", booted.serial, "shell", "dumpsys", "window", "displays"],
+      { env: environment, timeoutMs: 10_000 },
+    );
+    assertSuccess(currentRotation, "DEVICE_CONFIG_FAILED");
+    if (parseWindowRotation(currentRotation.stdout) === Number(rotationValue)) {
+      break;
+    }
+    if (Date.now() >= rotationDeadline) fail("DEVICE_CONFIG_DRIFT");
+    await new Promise((resolve) => setTimeout(resolve, ROTATION_SETTLE_POLL_MS));
   }
   return Object.freeze({
     ...booted,
