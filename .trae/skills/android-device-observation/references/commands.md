@@ -46,6 +46,11 @@ template 候选，`actionCommitCount` 固定为 `0`。包、设备、层级或 r
 黑屏/保护窗口、无候选或多候选都会失败关闭，不会执行点击或坐标动作。服务端在 MCP
 响应写出后清零图片；客户端收到的图像仍按敏感产物处理。
 
+该 observation 和候选只用于当前只读响应，响应写出后 lease 已关闭。后续自动化不得
+携带或复用其中的 observation ID、候选、hash 或 geometry；需要执行视觉动作时，转入
+自动化 Skill 的 `android_visual_action_execute` 原子路径，让服务在同一调用内重新
+采集、证明、执行和后置观察。
+
 ## UIAutomator 层级
 
 ```bash
@@ -101,4 +106,4 @@ MCP 不暴露 Bridge 的 open、info、action 或 close。必须在用户直接�
 CLI 仅支持 `observe screenshot` 和 `observe hierarchy`。语义观察使用
 `bridge snapshot`；MCP 通过 `android_observe` 统一基础数据源，并通过
 `android_visual_target_propose` 提供同轮脱敏视觉候选。原始 hierarchy 不具有视觉
-候选路径的脱敏和稳定保证。
+候选路径的脱敏和稳定保证；只读 proposal 也不构成后续动作授权。

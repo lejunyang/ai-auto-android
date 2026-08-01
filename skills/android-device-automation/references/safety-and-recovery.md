@@ -71,6 +71,17 @@
 
 重试前先观察。超时可能导致结果未知。如果动作可能更改外部数据，在核对结果之前不得重试。
 
+### 原子视觉动作结果
+
+- `commitStatus=committed` 只有在 `verified=true` 且 `actionCommits=1` 时才成功；否则
+  停止并按提交结果未知处理。
+- `commitStatus=not_committed` 且 `actionCommits=0` 表示动作前失败关闭。先重新观察
+  device、前台包和目标；只有新的唯一证据仍满足安全策略时才能重新决策。
+- `commitStatus=unknown`、`actionCommits=null`、transport/protocol 异常或后置验证
+  失败均不得重试。先观察 UI 和外部状态，避免重复点击、长按或 swipe。
+- 不得把先前 `android_visual_target_propose` 返回的候选、observation 或 hash
+  传入动作；原子端口必须自行获取 fresh evidence。
+
 ### `SCRIPT_NOT_FOUND`
 
 使用 `aactl recording list --device SERIAL --json` 列出脱敏摘要，然后要求用户在 Android App 中选择并审核已有录制。该列表不暴露步骤、变量或 secret。

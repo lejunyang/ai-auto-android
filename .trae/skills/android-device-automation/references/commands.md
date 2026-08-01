@@ -50,6 +50,42 @@ aactl action stop --device SERIAL --package com.example.app --json
 
 MCP 直接动作与对应 CLI 命令具有相同的校验和后端语义。MCP 不暴露任意 shell 或 Bridge 动作执行。
 
+## 原子视觉动作
+
+仅在已重新发现并明确选择的 debug disposable emulator 上使用。用户必须已在 App
+中人工启用 Accessibility 并建立新的 Bridge session；release、真机、未授权服务或
+无 Bridge session 会失败关闭。
+
+输入只描述明确目标和类型化动作意图，不提供、接收或复用坐标、candidate、
+observation、PNG hash 或 handle。`target` 至少提供 `role` 或 `label`；两者同时提供
+时必须命中同一唯一候选：
+
+```json
+{
+  "device": "SERIAL",
+  "expectedPackage": "com.example.app",
+  "target": {"role": "button", "label": "Continue"},
+  "action": {"type": "tap"}
+}
+```
+
+工具名为 `android_visual_action_execute`。支持：
+
+- `{"type":"tap"}`
+- `{"type":"long-click","durationMs":750}`
+- `{"type":"swipe","direction":"up","durationMs":450}`
+
+它在单次调用内重新采集 device/hierarchy/PNG，绑定 serial、设备 fingerprint、前台
+包、screen/rotation/density/insets、唯一候选、hash、confidence 和 expiry；随后通过
+Bridge `visual.action.execute` 调用 N45 planner 和 package-bound Accessibility
+executor，并在动作后重新观察。输出不含坐标、候选 geometry、图片或可复用 lease。
+
+只有 `succeeded:true`、`verified:true`、`commitStatus:"committed"` 且
+`actionCommits:1` 同时成立时才能报告成功。`not_committed` 表示零提交，可在重新观察
+后重新决策；`unknown` 或 `actionCommits:null` 表示提交结果未知，必须停止且不得
+重试。该工具具有 destructive 标记，涉及发送、提交、删除、离开页面或外部数据变更
+时仍需逐动作取得新的人工确认。
+
 ## App Bridge 动作
 
 用户必须启用 Android App 桌面桥，并打开短期 session：
