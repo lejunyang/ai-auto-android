@@ -18,6 +18,7 @@ import dev.aiauto.android.automation.recording.editor.DryRunReport
 import dev.aiauto.android.automation.recording.editor.DryRunStepStatus
 import dev.aiauto.android.automation.recording.editor.DuplicateStep
 import dev.aiauto.android.automation.recording.editor.EditResult
+import dev.aiauto.android.automation.recording.editor.EditStepAuthorizedVisualTarget
 import dev.aiauto.android.automation.recording.editor.EditStepCoordinate
 import dev.aiauto.android.automation.recording.editor.EditStepFailurePolicy
 import dev.aiauto.android.automation.recording.editor.EditStepNotes
@@ -175,7 +176,7 @@ class RecordingEditorViewModel(
         val form = state.stepForm ?: return false
         val baselineStep = session.script.steps.find { it.id == stepId } ?: return false
         val temporary = ScriptEditorSession(session.script)
-        val commands = runCatching { form.commands(stepId) }.getOrElse {
+        val commands = runCatching { form.commands(stepId, baselineStep) }.getOrElse {
             publish(formError = it.message ?: "表单值无效")
             return false
         }
@@ -270,15 +271,25 @@ class RecordingEditorViewModel(
     }
 
     fun applyObservationSelection(selection: ObservationSelection) {
-        if (selection !is ObservationSelection.Selected) {
-            return
-        }
-        updateStepForm {
-            it.copy(
-                coordinateX = selection.x.toString(),
-                coordinateY = selection.y.toString(),
+        val stepId = mutableUiState.value.selectedStepId ?: return
+        val command = when (selection) {
+            is ObservationSelection.Selected -> EditStepAuthorizedVisualTarget(
+                stepId = stepId,
+                normalizedPoint = NormalizedPoint(selection.x, selection.y),
+                observationId = selection.observationId,
+                imageSha256 = selection.imageSha256,
             )
+
+            is ObservationSelection.BoundsSelected -> EditStepAuthorizedVisualTarget(
+                stepId = stepId,
+                normalizedBounds = selection.bounds,
+                observationId = selection.observationId,
+                imageSha256 = selection.imageSha256,
+            )
+
+            ObservationSelection.Unavailable -> return
         }
+        apply(command)
     }
 
     private fun apply(command: dev.aiauto.android.automation.recording.editor.ScriptEditCommand) {
@@ -345,6 +356,7 @@ class RecordingEditorViewModel(
 
 private fun RecordingStepFormState.commands(
     stepId: String,
+    baselineStep: RecordedStep,
 ): List<dev.aiauto.android.automation.recording.editor.ScriptEditCommand> {
     val selectorWeightValue = selectorWeight.toDoubleOrNull()
         ?: error("selector weight 无效")
@@ -374,13 +386,18 @@ private fun RecordingStepFormState.commands(
             ),
         )
     }
-    if (coordinateX.isNotBlank() || coordinateY.isNotBlank()) {
+    val coordinate = if (coordinateX.isNotBlank() || coordinateY.isNotBlank()) {
+        NormalizedPoint(
+            coordinateX.toDoubleOrNull() ?: error("coordinate x 无效"),
+            coordinateY.toDoubleOrNull() ?: error("coordinate y 无效"),
+        )
+    } else {
+        null
+    }
+    if (coordinate != null && coordinate != baselineStep.visualTarget?.normalizedPoint) {
         commands += EditStepCoordinate(
             stepId,
-            NormalizedPoint(
-                coordinateX.toDoubleOrNull() ?: error("coordinate x 无效"),
-                coordinateY.toDoubleOrNull() ?: error("coordinate y 无效"),
-            ),
+            coordinate,
         )
     }
     commands += EditStepWait(stepId, waitBefore.toPredicate(), waitAfter.toPredicate())

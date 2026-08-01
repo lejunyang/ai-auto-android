@@ -20,7 +20,10 @@ data class DebugAuthorizedScreenshotMetadata(
 class DebugAuthorizedScreenshotAuthorization internal constructor(
     val metadata: DebugAuthorizedScreenshotMetadata,
     val holder: RecordingObservationHolder,
-) : AutoCloseable {
+) : AutoCloseable, RecordingEditorObservationProvider {
+    override fun acquire(): RecordingObservationHolder? =
+        holder.takeIf { it.currentObservationId == metadata.observationId }
+
     override fun close() {
         holder.close()
     }
@@ -61,6 +64,7 @@ class DebugAuthorizedScreenshotProvider(
         val holder = RecordingObservationHolder(clock)
         val lease = AuthorizedObservationLease(
             observationId = observationId,
+            imageSha256 = metadata.imageSha256,
             expiresAtMs = expiresAtMs,
             onRelease = {
                 if (!bitmap.isRecycled) {

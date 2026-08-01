@@ -6,7 +6,8 @@ package dev.aiauto.android.ui.recording
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,6 +45,7 @@ fun RecordingEditorScreen(
     onDuplicateStep: (String) -> Unit,
     onUpdateForm: ((RecordingStepFormState) -> RecordingStepFormState) -> Unit,
     onSubmitForm: () -> Unit,
+    onObservationSelection: (ObservationSelection) -> Unit,
     onUndo: () -> Unit,
     onRedo: () -> Unit,
     onSave: () -> Unit,
@@ -128,16 +130,7 @@ fun RecordingEditorScreen(
         observationHolder?.let { holder ->
             AuthorizedObservationSurface(
                 holder = holder,
-                onSelection = { selection ->
-                    if (selection is ObservationSelection.Selected) {
-                        onUpdateForm {
-                            it.copy(
-                                coordinateX = selection.x.toString(),
-                                coordinateY = selection.y.toString(),
-                            )
-                        }
-                    }
-                },
+                onSelection = onObservationSelection,
             )
         }
         state.dryRunReport?.let { report ->
@@ -328,13 +321,39 @@ private fun AuthorizedObservationSurface(
             .height(220.dp)
             .testTag(RecordingTestTags.EDITOR_OBSERVATION)
             .pointerInput(holder) {
-                detectTapGestures { offset ->
-                    onSelection(
+                val touchSlop = viewConfiguration.touchSlop
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var current = down.position
+                    var dragged = false
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        current = change.position
+                        if ((current - down.position).getDistance() >= touchSlop) {
+                            dragged = true
+                            change.consume()
+                        }
+                        if (!change.pressed) {
+                            break
+                        }
+                    }
+                    val width = size.width.toDouble()
+                    val height = size.height.toDouble()
+                    val selection = if (dragged) {
+                        holder.selectNormalizedBounds(
+                            startX = down.position.x / width,
+                            startY = down.position.y / height,
+                            endX = current.x / width,
+                            endY = current.y / height,
+                        )
+                    } else {
                         holder.selectNormalized(
-                            x = (offset.x / size.width).toDouble(),
-                            y = (offset.y / size.height).toDouble(),
-                        ),
-                    )
+                            x = down.position.x / width,
+                            y = down.position.y / height,
+                        )
+                    }
+                    onSelection(selection)
                 }
             },
     ) {

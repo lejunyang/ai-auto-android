@@ -5,6 +5,7 @@ package dev.aiauto.android.automation.recording.editor
  */
 
 import dev.aiauto.android.automation.recording.AutomationScript
+import dev.aiauto.android.automation.recording.NormalizedBounds
 import dev.aiauto.android.automation.recording.NormalizedPoint
 import dev.aiauto.android.automation.recording.RecordedAction
 import dev.aiauto.android.automation.recording.RecordedPredicate
@@ -49,6 +50,12 @@ class ScriptEditorSessionTest {
             UpdateStep(FIRST_STEP_ID, replacement),
             EditStepSelector(FIRST_STEP_ID, selector),
             EditStepCoordinate(FIRST_STEP_ID, NormalizedPoint(0.25, 0.75)),
+            EditStepAuthorizedVisualTarget(
+                stepId = FIRST_STEP_ID,
+                normalizedPoint = NormalizedPoint(0.4, 0.6),
+                observationId = OBSERVATION_ID,
+                imageSha256 = IMAGE_SHA256,
+            ),
             EditStepWait(
                 FIRST_STEP_ID,
                 waitBefore = predicate("package", "equals"),
@@ -170,6 +177,124 @@ class ScriptEditorSessionTest {
             assertEquals(0, editor.undoDepth)
             assertEquals(0, editor.redoDepth)
         }
+    }
+
+    @Test
+    fun `authorized visual point and bounds commit complete metadata as one undoable command`() {
+        val original = script()
+        val editor = ScriptEditorSession(original)
+
+        assertTrue(
+            editor.apply(
+                EditStepAuthorizedVisualTarget(
+                    stepId = FIRST_STEP_ID,
+                    normalizedPoint = NormalizedPoint(0.25, 0.75),
+                    observationId = OBSERVATION_ID,
+                    imageSha256 = IMAGE_SHA256,
+                ),
+            ) is EditResult.Applied,
+        )
+        val pointStep = editor.script.steps.first()
+        assertEquals(RecordingProvenance.VISUAL, pointStep.provenance)
+        assertEquals(NormalizedPoint(0.25, 0.75), pointStep.visualTarget?.normalizedPoint)
+        assertEquals(null, pointStep.visualTarget?.normalizedBounds)
+        assertEquals(OBSERVATION_ID, pointStep.visualTarget?.observationId)
+        assertEquals(IMAGE_SHA256, pointStep.visualTarget?.imageSha256)
+        assertEquals(1, editor.undoDepth)
+
+        assertTrue(editor.undo())
+        assertEquals(original, editor.script)
+        assertTrue(
+            editor.apply(
+                EditStepAuthorizedVisualTarget(
+                    stepId = FIRST_STEP_ID,
+                    normalizedBounds = NormalizedBounds(0.2, 0.25, 0.8, 0.75),
+                    observationId = OBSERVATION_ID,
+                    imageSha256 = IMAGE_SHA256,
+                ),
+            ) is EditResult.Applied,
+        )
+        val boundsStep = editor.script.steps.first()
+        assertEquals(null, boundsStep.visualTarget?.normalizedPoint)
+        assertEquals(
+            NormalizedBounds(0.2, 0.25, 0.8, 0.75),
+            boundsStep.visualTarget?.normalizedBounds,
+        )
+        assertEquals(OBSERVATION_ID, boundsStep.visualTarget?.observationId)
+        assertEquals(IMAGE_SHA256, boundsStep.visualTarget?.imageSha256)
+        assertEquals(1, editor.undoDepth)
+    }
+
+    @Test
+    fun `authorized visual metadata rejects partial or invalid values without history`() {
+        val original = script()
+        val invalidCommands = listOf(
+            EditStepAuthorizedVisualTarget(
+                stepId = FIRST_STEP_ID,
+                normalizedPoint = NormalizedPoint(0.5, 0.5),
+                normalizedBounds = NormalizedBounds(0.2, 0.2, 0.8, 0.8),
+                observationId = OBSERVATION_ID,
+                imageSha256 = IMAGE_SHA256,
+            ),
+            EditStepAuthorizedVisualTarget(
+                stepId = FIRST_STEP_ID,
+                normalizedBounds = NormalizedBounds(0.8, 0.2, 0.2, 0.8),
+                observationId = OBSERVATION_ID,
+                imageSha256 = IMAGE_SHA256,
+            ),
+            EditStepAuthorizedVisualTarget(
+                stepId = FIRST_STEP_ID,
+                normalizedPoint = NormalizedPoint(0.5, 0.5),
+                observationId = "invalid observation",
+                imageSha256 = IMAGE_SHA256,
+            ),
+            EditStepAuthorizedVisualTarget(
+                stepId = FIRST_STEP_ID,
+                normalizedPoint = NormalizedPoint(0.5, 0.5),
+                observationId = OBSERVATION_ID,
+                imageSha256 = "invalid",
+            ),
+        )
+
+        invalidCommands.forEach { command ->
+            val editor = ScriptEditorSession(original)
+            assertTrue(editor.apply(command) is EditResult.Rejected)
+            assertEquals(original, editor.script)
+            assertEquals(0, editor.undoDepth)
+        }
+    }
+
+    @Test
+    fun `manual coordinate edit clears stale authorized metadata atomically`() {
+        val authorized = script().copy(
+            steps = script().steps.mapIndexed { index, step ->
+                if (index == 0) {
+                    step.copy(
+                        visualTarget = dev.aiauto.android.automation.recording.VisualTarget(
+                            normalizedPoint = NormalizedPoint(0.25, 0.75),
+                            confidence = 1.0,
+                            source = RecordingProvenance.VISUAL,
+                            observationId = OBSERVATION_ID,
+                            imageSha256 = IMAGE_SHA256,
+                        ),
+                    )
+                } else {
+                    step
+                }
+            },
+        )
+        val editor = ScriptEditorSession(authorized)
+
+        assertTrue(
+            editor.apply(
+                EditStepCoordinate(FIRST_STEP_ID, NormalizedPoint(0.5, 0.5)),
+            ) is EditResult.Applied,
+        )
+
+        val target = requireNotNull(editor.script.steps.first().visualTarget)
+        assertEquals(NormalizedPoint(0.5, 0.5), target.normalizedPoint)
+        assertEquals(null, target.observationId)
+        assertEquals(null, target.imageSha256)
     }
 
     @Test
@@ -323,5 +448,7 @@ class ScriptEditorSessionTest {
         const val INSERTED_STEP_ID = "20000000-0000-4000-8000-000000000003"
         const val DUPLICATED_STEP_ID = "20000000-0000-4000-8000-000000000004"
         const val MISSING_STEP_ID = "20000000-0000-4000-8000-000000000099"
+        const val OBSERVATION_ID = "n41-authorized-observation"
+        const val IMAGE_SHA256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
 }

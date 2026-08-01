@@ -69,3 +69,12 @@
   `15c9da4744fb3ff1567d2d241ad7ab2b3a1b9741`。
 - 临时 worktree 在干净状态下非强制移除，随后执行 `git worktree prune` 并删除已
   等价集成的临时分支；没有覆盖主分支或并行 N43 worktree。
+
+## Round 6
+
+- 独立 production change 增加默认 `null` 的 Host observation provider、带
+  observation/hash 的短生命周期 selection，以及 point/bounds 原子 visual target
+  命令。图片字节仍由调用方租约持有，不进入 ViewModel、脚本或 repository。
+- 三项历史 RED 已删除 `@Ignore` 并保留原验收断言；普通入口另有无 screenshot
+  surface 断言。代码与离线构建门禁已通过，API 34 设备 instrumentation 等待主线程
+  在明确 serial 上统一执行，因此本轮不新增设备通过结论。

@@ -6,11 +6,13 @@
 - [x] dry-run UI 自动定位首个失败步骤且不提交动作
 - [x] test-only provider 不读取真实页面、文件、网络或权限数据
 - [x] test-only provider 短 TTL、单活跃授权、释放清零且旧租约失败关闭
-- [ ] 点选保存 normalized point、observation ID 与 image hash
-- [ ] 框选保存 normalized bounds、observation ID 与 image hash
-- [ ] 真实详情入口能消费显式授权且普通入口默认无 screenshot surface
+- [x] 点选保存 normalized point、observation ID 与 image hash
+- [x] 框选保存 normalized bounds、observation ID 与 image hash
+- [x] 真实详情入口能消费显式授权且普通入口默认无 screenshot surface
 - [x] 三类生产接线缺口已写为 RED 源码且未越界修改 `main`
 - [x] 三类预期 RED 使用带稳定 spec reason 的 `@Ignore` 保留，不污染全量 instrumentation
 - [x] provider 生命周期与真实详情入口非缺口场景保持可运行
 - [x] JVM、AndroidTest 编译、lint、comments 与 diff-check 通过
 - [x] instrumentation 设备执行由主线程集成后完成
+- [x] 后续 production change 已删除三项 `@Ignore` 并完成代码与离线门禁
+- [ ] 三项转绿契约仍待主线程在明确 serial 的 API 34 emulator 上复验

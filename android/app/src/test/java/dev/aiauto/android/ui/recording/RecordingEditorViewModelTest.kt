@@ -5,6 +5,7 @@ package dev.aiauto.android.ui.recording
  */
 
 import dev.aiauto.android.automation.recording.AutomationScript
+import dev.aiauto.android.automation.recording.NormalizedBounds
 import dev.aiauto.android.automation.recording.NormalizedPoint
 import dev.aiauto.android.automation.recording.RecordedAction
 import dev.aiauto.android.automation.recording.RecordedStep
@@ -161,6 +162,46 @@ class RecordingEditorViewModelTest {
     }
 
     @Test
+    fun `authorized point and bounds selections persist complete metadata atomically BitsUT`() {
+        val pointSavePort = CapturingSavePort()
+        val pointViewModel = viewModel(savePort = pointSavePort)
+        pointViewModel.selectStep(FIRST_STEP_ID)
+
+        pointViewModel.applyObservationSelection(
+            ObservationSelection.Selected(
+                x = 0.25,
+                y = 0.75,
+                observationId = OBSERVATION_ID,
+                imageSha256 = IMAGE_SHA256,
+            ),
+        )
+        assertTrue(pointViewModel.uiState.value.isDirty)
+        pointViewModel.save()
+        val point = requireNotNull(pointSavePort.saved?.steps?.first()?.visualTarget)
+        assertEquals(NormalizedPoint(0.25, 0.75), point.normalizedPoint)
+        assertEquals(null, point.normalizedBounds)
+        assertEquals(OBSERVATION_ID, point.observationId)
+        assertEquals(IMAGE_SHA256, point.imageSha256)
+
+        val boundsSavePort = CapturingSavePort()
+        val boundsViewModel = viewModel(savePort = boundsSavePort)
+        boundsViewModel.selectStep(FIRST_STEP_ID)
+        boundsViewModel.applyObservationSelection(
+            ObservationSelection.BoundsSelected(
+                bounds = NormalizedBounds(0.2, 0.25, 0.8, 0.75),
+                observationId = OBSERVATION_ID,
+                imageSha256 = IMAGE_SHA256,
+            ),
+        )
+        boundsViewModel.save()
+        val bounds = requireNotNull(boundsSavePort.saved?.steps?.first()?.visualTarget)
+        assertEquals(null, bounds.normalizedPoint)
+        assertEquals(NormalizedBounds(0.2, 0.25, 0.8, 0.75), bounds.normalizedBounds)
+        assertEquals(OBSERVATION_ID, bounds.observationId)
+        assertEquals(IMAGE_SHA256, bounds.imageSha256)
+    }
+
+    @Test
     fun `dry run report focuses the first failed step without replay capability BitsUT`() {
         val ports = FailingPreviewPorts()
         val viewModel = viewModel(
@@ -237,6 +278,19 @@ class RecordingEditorViewModelTest {
         ): ConditionPreviewResult = ConditionPreviewResult.Satisfied
     }
 
+    private class CapturingSavePort : EditorSavePort {
+        var saved: AutomationScript? = null
+
+        override fun save(
+            script: AutomationScript,
+            expectedRevision: Long,
+        ): EditorPersistenceResult {
+            val persisted = script.copy(revision = expectedRevision + 1)
+            saved = persisted
+            return EditorPersistenceResult.Saved(persisted)
+        }
+    }
+
     private fun script(): AutomationScript = AutomationScript(
         id = SCRIPT_ID,
         revision = 1,
@@ -280,5 +334,7 @@ class RecordingEditorViewModelTest {
         const val FIRST_STEP_ID = "20000000-0000-4000-8000-000000000001"
         const val SECOND_STEP_ID = "20000000-0000-4000-8000-000000000002"
         const val DUPLICATE_STEP_ID = "20000000-0000-4000-8000-000000000003"
+        const val OBSERVATION_ID = "n41-authorized-observation"
+        const val IMAGE_SHA256 = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
     }
 }

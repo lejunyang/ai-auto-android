@@ -71,6 +71,7 @@ class RecordingEditorScreenInstrumentedTest {
                         state = state.copy(stepForm = state.stepForm?.let(transform))
                     },
                     onSubmitForm = { submitCalls += 1 },
+                    onObservationSelection = {},
                     onUndo = {},
                     onRedo = {},
                     onSave = {},

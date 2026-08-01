@@ -31,6 +31,7 @@ import dev.aiauto.android.ui.components.ScreenScaffold
 fun RecordingHost(
     viewModel: RecordingViewModel,
     onBack: () -> Unit,
+    observationProvider: RecordingEditorObservationProvider? = null,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val recording = uiState.recording
@@ -99,6 +100,9 @@ fun RecordingHost(
             } else {
                 key(script.id) {
                     val context = LocalContext.current
+                    val observationHolder = remember(observationProvider, script.id) {
+                        observationProvider?.acquire()
+                    }
                     val editor: RecordingEditorViewModel = viewModel(
                         key = "recording-editor-${script.id}",
                         factory = RecordingEditorViewModel.factory(context, script),
@@ -106,7 +110,7 @@ fun RecordingHost(
                     val editorState by editor.uiState.collectAsStateWithLifecycle()
                     RecordingEditorScreen(
                         state = editorState,
-                        observationHolder = null,
+                        observationHolder = observationHolder,
                         onSelectStep = editor::selectStep,
                         onMoveStep = editor::moveStep,
                         onSetEnabled = editor::setStepEnabled,
@@ -114,6 +118,7 @@ fun RecordingHost(
                         onDuplicateStep = editor::duplicateStep,
                         onUpdateForm = editor::updateStepForm,
                         onSubmitForm = { editor.submitStepForm() },
+                        onObservationSelection = editor::applyObservationSelection,
                         onUndo = editor::undo,
                         onRedo = editor::redo,
                         onSave = {

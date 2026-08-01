@@ -1,7 +1,7 @@
 package dev.aiauto.android.ui.recording
 
 /**
- * 测试用途：锁定 N41 授权截图点选、框选、元数据保存和真实入口注入的预期 RED 契约。
+ * 测试用途：验证 N41 授权截图点选、框选、元数据保存和真实入口注入的生产契约。
  */
 
 import androidx.compose.material3.MaterialTheme
@@ -35,12 +35,11 @@ import kotlinx.serialization.json.JsonObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** 测试用途：验证授权截图租约安全，并锁定入口注入、框选和视觉元数据保存的设备 RED 契约。 */
+/** 测试用途：验证授权截图租约安全，以及入口注入、框选和视觉元数据保存的设备契约。 */
 @RunWith(AndroidJUnit4::class)
 class RecordingEditorAuthorizedScreenshotRedDeviceTest {
     @get:Rule
@@ -77,9 +76,8 @@ class RecordingEditorAuthorizedScreenshotRedDeviceTest {
         assertEquals(null, second.holder.currentObservationId)
     }
 
-    @Ignore("N41 spec gap: RecordingHost has no authorized observation injection")
     @Test
-    fun redRealDetailEntryConsumesExplicitDebugAuthorization() {
+    fun realDetailEntryConsumesExplicitDebugAuthorization() {
         val script = script()
         val coordinator = SelectedScriptCoordinator(script)
         val viewModel = RecordingViewModel(
@@ -91,22 +89,25 @@ class RecordingEditorAuthorizedScreenshotRedDeviceTest {
 
         composeRule.setContent {
             MaterialTheme {
-                RecordingHost(viewModel = viewModel, onBack = {})
+                RecordingHost(
+                    viewModel = viewModel,
+                    onBack = {},
+                    observationProvider = authorization,
+                )
             }
         }
         composeRule.runOnIdle { viewModel.openScript(script.id) }
         composeRule.onNodeWithText("编辑").performClick()
         composeRule.onNodeWithText(script.name).assertIsDisplayed()
 
-        // RED：生产 RecordingHost 当前固定传 null，debug 授权无法注入真实详情编辑入口。
+        // 生产入口只消费调用方显式授权，普通入口仍沿用默认 null。
         composeRule.onNodeWithTag(RecordingTestTags.EDITOR_OBSERVATION)
             .performScrollTo()
             .assertIsDisplayed()
     }
 
-    @Ignore("N41 spec gap: point save omits authorized observation metadata")
     @Test
-    fun redTapSavesPointWithAuthorizedObservationMetadata() {
+    fun tapSavesPointWithAuthorizedObservationMetadata() {
         val savePort = CapturingSavePort()
         val editor = RecordingEditorViewModel(
             initialScript = script(),
@@ -130,16 +131,14 @@ class RecordingEditorAuthorizedScreenshotRedDeviceTest {
 
         val target = requireNotNull(savePort.saved?.steps?.single()?.visualTarget)
         assertEquals(NormalizedPoint(0.5, 0.5), target.normalizedPoint)
-        // RED：现有 point 保存没有把授权 provenance 与 image hash 交给原子持久化路径。
         assertEquals(
             authorization.metadata.observationId to authorization.metadata.imageSha256,
             target.observationId to target.imageSha256,
         )
     }
 
-    @Ignore("N41 spec gap: bounds selection and save are not implemented")
     @Test
-    fun redDragSavesNormalizedBoundsWithAuthorizedObservationMetadata() {
+    fun dragSavesNormalizedBoundsWithAuthorizedObservationMetadata() {
         val savePort = CapturingSavePort()
         val editor = RecordingEditorViewModel(
             initialScript = script(),
@@ -159,7 +158,6 @@ class RecordingEditorAuthorizedScreenshotRedDeviceTest {
                     durationMillis = 500L,
                 )
             }
-        // RED：拖动应生成可保存的 bounds 编辑；当前 surface 只有 tap，保存仍不可用。
         composeRule.onNodeWithTag(RecordingTestTags.EDITOR_SAVE)
             .performScrollTo()
             .assertIsEnabled()
@@ -199,6 +197,7 @@ class RecordingEditorAuthorizedScreenshotRedDeviceTest {
                     onDuplicateStep = editor::duplicateStep,
                     onUpdateForm = editor::updateStepForm,
                     onSubmitForm = { editor.submitStepForm() },
+                    onObservationSelection = editor::applyObservationSelection,
                     onUndo = editor::undo,
                     onRedo = editor::redo,
                     onSave = { editor.save() },

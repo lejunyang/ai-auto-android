@@ -14,6 +14,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -69,6 +70,8 @@ class RecordingEditorRealEntryDeviceTest {
         openRealDetail(viewModel, script.id)
         composeRule.onNodeWithText("编辑").performClick()
         waitForText(script.name)
+        composeRule.onAllNodesWithTag(RecordingTestTags.EDITOR_OBSERVATION)
+            .assertCountEquals(0)
 
         stepAction(FIRST_STEP_ID, "下移").performScrollTo().performClick()
         composeRule.onNodeWithText("1. ui.back", substring = true)

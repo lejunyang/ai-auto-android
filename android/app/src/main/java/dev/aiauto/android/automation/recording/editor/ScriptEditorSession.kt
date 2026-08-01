@@ -5,6 +5,7 @@ package dev.aiauto.android.automation.recording.editor
  */
 
 import dev.aiauto.android.automation.recording.AutomationScript
+import dev.aiauto.android.automation.recording.NormalizedBounds
 import dev.aiauto.android.automation.recording.NormalizedPoint
 import dev.aiauto.android.automation.recording.RecordedPredicate
 import dev.aiauto.android.automation.recording.RecordedStep
@@ -225,7 +226,12 @@ data class EditStepCoordinate(
         }
         val visualTarget = step.visualTarget?.copy(
             normalizedPoint = point,
+            normalizedBounds = null,
             source = RecordingProvenance.MANUAL,
+            observationId = null,
+            imageSha256 = null,
+            screenshotBase64 = null,
+            deviceLocalPath = null,
         ) ?: VisualTarget(
             normalizedPoint = point,
             confidence = 1.0,
@@ -235,6 +241,64 @@ data class EditStepCoordinate(
             provenance = RecordingProvenance.COORDINATE,
             action = action,
             visualTarget = visualTarget,
+        )
+        return applied(
+            script,
+            script.steps.toMutableList().apply { this[index] = replacement },
+        )
+    }
+}
+
+/**
+ * 授权视觉命令在同一次领域校验中绑定 geometry 与图片来源，拒绝任何部分更新。
+ */
+data class EditStepAuthorizedVisualTarget(
+    val stepId: String,
+    val normalizedPoint: NormalizedPoint? = null,
+    val normalizedBounds: NormalizedBounds? = null,
+    val observationId: String,
+    val imageSha256: String,
+) : ScriptEditCommand {
+    override fun edit(script: AutomationScript): EditResult {
+        if ((normalizedPoint == null) == (normalizedBounds == null)) {
+            return rejected(
+                EditRejectionCode.INVALID_VALUE,
+                "Exactly one authorized visual geometry is required",
+            )
+        }
+        if (normalizedPoint != null && !normalizedPoint.isValid()) {
+            return rejected(EditRejectionCode.INVALID_VALUE, "The visual point is invalid")
+        }
+        if (normalizedBounds != null && !normalizedBounds.isValid()) {
+            return rejected(EditRejectionCode.INVALID_VALUE, "The visual bounds are invalid")
+        }
+        if (!OBSERVATION_ID_PATTERN.matches(observationId)) {
+            return rejected(EditRejectionCode.INVALID_VALUE, "The observation id is invalid")
+        }
+        if (!LOWERCASE_SHA256.matches(imageSha256)) {
+            return rejected(EditRejectionCode.INVALID_VALUE, "The image SHA-256 is invalid")
+        }
+        val index = script.indexOf(stepId)
+        if (index < 0) {
+            return rejected(EditRejectionCode.STEP_NOT_FOUND, "The step does not exist")
+        }
+        val step = script.steps[index]
+        val action = step.authorizedVisualAction(script, normalizedPoint)
+            ?: return rejected(
+                EditRejectionCode.UNSUPPORTED_TARGET,
+                "The action does not expose an editable visual target",
+            )
+        val replacement = step.copy(
+            provenance = RecordingProvenance.VISUAL,
+            action = action,
+            visualTarget = VisualTarget(
+                normalizedPoint = normalizedPoint,
+                normalizedBounds = normalizedBounds,
+                confidence = 1.0,
+                source = RecordingProvenance.VISUAL,
+                observationId = observationId,
+                imageSha256 = imageSha256,
+            ),
         )
         return applied(
             script,
@@ -490,6 +554,58 @@ private fun AutomationScript.updateTarget(
     return applied(this, steps.toMutableList().apply { this[index] = replacement })
 }
 
+private fun RecordedStep.authorizedVisualAction(
+    script: AutomationScript,
+    point: NormalizedPoint?,
+): dev.aiauto.android.automation.recording.RecordedAction? {
+    val target = action.params["target"] as? JsonObject
+    if (target != null) {
+        val updatedTarget = if (point == null) {
+            JsonObject(target - "normalizedScreenPoint")
+        } else {
+            JsonObject(target + ("normalizedScreenPoint" to point.toJson()))
+        }
+        return action.copy(
+            params = JsonObject(action.params + ("target" to updatedTarget)),
+        )
+    }
+    if (point == null || action.type != "ui.tap") {
+        return null
+    }
+    val width = script.environment?.logicalWidth ?: return null
+    val height = script.environment.logicalHeight ?: return null
+    return action.copy(
+        params = JsonObject(
+            mapOf(
+                "x" to JsonPrimitive((point.x * width).roundToInt()),
+                "y" to JsonPrimitive((point.y * height).roundToInt()),
+            ),
+        ),
+    )
+}
+
+private fun NormalizedPoint.toJson(): JsonObject = JsonObject(
+    mapOf(
+        "x" to JsonPrimitive(x),
+        "y" to JsonPrimitive(y),
+    ),
+)
+
+private fun NormalizedPoint.isValid(): Boolean =
+    x.isFinite() && y.isFinite() && x in 0.0..1.0 && y in 0.0..1.0
+
+private fun NormalizedBounds.isValid(): Boolean =
+    left.isFinite() &&
+        top.isFinite() &&
+        right.isFinite() &&
+        bottom.isFinite() &&
+        left in 0.0..1.0 &&
+        top in 0.0..1.0 &&
+        right in 0.0..1.0 &&
+        bottom in 0.0..1.0 &&
+        right > left &&
+        bottom > top
+
 private fun applied(
     script: AutomationScript,
     steps: List<RecordedStep>,
@@ -528,6 +644,8 @@ private fun RecordedPredicate?.isValidPredicate(): Boolean {
 }
 
 private const val MAX_NOTES_LENGTH = 4_096
+private val LOWERCASE_SHA256 = Regex("^[0-9a-f]{64}$")
+private val OBSERVATION_ID_PATTERN = Regex("^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 private val FAILURE_POLICIES = setOf("stop", "continue", "requestIntervention")
 private val SELECTOR_KEYS = setOf("strategy", "value", "weight", "required")
 private val SELECTOR_STRATEGIES =
