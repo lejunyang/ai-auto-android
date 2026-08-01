@@ -391,6 +391,14 @@ session 完成真实 TCP 互操作。每个 API 的同一 socket 连续三次 `d
 真实 socket 缺口，但不替代 Windows 同 LAN、Windows 防火墙、真实 Wi-Fi/热点/VPN
 与切网矩阵，N37 继续保持未勾选。
 
+**追加二维码输出（代码闭环完成，跨平台验收未完成）：** 独立 change
+`n37-n38-qr-integration` 为生产 CLI 默认注入纯 Go、无 CGO 的固定 QR Model 2
+Version 28-L provider；invitation 事件输出有界 `terminal-utf8-v1`，不调用外部
+命令、不打开 GUI、不创建文件。仓库 decoder 与仓库外 `gozxing` 均精确还原 N36
+payload；容量不足只降级 `payload-only` 并保留 `manualCode`，取消或内部错误仍
+失败关闭并清理 listener/密钥。该证据关闭 N37 二维码生成缺口，但不替代 Windows
+同 LAN、防火墙、热点/VPN/切网矩阵，因此 N37 保持未勾选。
+
 **失败清理：** 关闭 listener 和连接，清零临时私钥，撤销 invitation，删除二维码
 临时文件和防火墙测试规则。
 
@@ -443,6 +451,21 @@ generator/factory/agreement 缺失时使用 Tink 1.18 的 RFC 7748 字节 API；
 握手验证一致。API 30、33、34 各通过多轮 `device.info`、`session.close` 和独立
 `AUTH_INVALID` session。相机扫码、可信系统时钟、切网、真机/OEM、真实无线网络
 和 Windows 防火墙仍未验收，N38 继续保持未勾选。
+
+**追加扫码与手工码闭环（代码完成，真机相机待验收）：** App 现可发现并显式启动
+F-Droid 构建的 ZXing 4.7.8(108) scanner，且只接受本回合从
+`https://f-droid.org/repo/com.google.zxing.client.android_108.apk` 下载并由
+Android SDK `apksigner` 验证的唯一 certificate SHA-256
+`1f97ed3c5800111d4627d53512bb38102fda0385c45f763b4b92d6341d29f1ad`；
+APK SHA-256 为
+`2ed4c2661ed0e2e56b2980d59291dacd58040d219cb7e83b3f6db1102d2ed483`。
+未知 Play/GitHub signer、错签、缺签、多 current signer、仅历史命中、轮换 history
+和签名 API 异常全部失败关闭为 provider unavailable。App 本身不声明 `CAMERA`，
+相机权限由外部 scanner 人工处理；拒绝/取消/无相机后手工码仍可用。扫码 JSON 与
+N37 `AIAUTO1-` base32 手工码复用同一严格 parser/preflight，解析后只保留安全摘要，
+仍需用户选择地址、网卡并核对短指纹才连接。该证据关闭 N38 scanner/provider 与
+手工码解析代码缺口，但不替代真机安装、相机权限、OEM、真实无线/切网和 Windows
+防火墙验收，因此 N38 保持未勾选。
 
 **失败清理：** 关闭出站 socket，清零临时密钥和解析结果，撤销 session；不保留
 二维码图像。
