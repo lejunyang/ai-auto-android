@@ -412,41 +412,43 @@ export const configureFixedVisualCase = async (
       "DEVICE_CONFIG_FAILED",
     );
   }
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  const [size, density] = await Promise.all([
-    emulator.command(
-      adb,
-      ["-s", booted.serial, "shell", "wm", "size"],
-      { env: environment, timeoutMs: 10_000 },
-    ),
-    emulator.command(
-      adb,
-      ["-s", booted.serial, "shell", "wm", "density"],
-      { env: environment, timeoutMs: 10_000 },
-    ),
-  ]);
-  for (const result of [size, density]) {
-    assertSuccess(result, "DEVICE_CONFIG_FAILED");
-  }
-  const actualSize = [...size.stdout.matchAll(/[0-9]+x[0-9]+/gu)].at(-1)?.[0];
-  const actualDensity = Number(
-    [...density.stdout.matchAll(/[0-9]+/gu)].at(-1)?.[0],
-  );
-  if (
-    actualSize !== resolution
-    || actualDensity !== profile.densityDpi
-  ) {
-    fail("DEVICE_CONFIG_DRIFT");
-  }
   const rotationDeadline = Date.now() + ROTATION_SETTLE_TIMEOUT_MS;
   while (true) {
-    const currentRotation = await emulator.command(
-      adb,
-      ["-s", booted.serial, "shell", "dumpsys", "window", "displays"],
-      { env: environment, timeoutMs: 10_000 },
+    const [size, density, currentRotation] = await Promise.all([
+      emulator.command(
+        adb,
+        ["-s", booted.serial, "shell", "wm", "size"],
+        { env: environment, timeoutMs: 10_000 },
+      ),
+      emulator.command(
+        adb,
+        ["-s", booted.serial, "shell", "wm", "density"],
+        { env: environment, timeoutMs: 10_000 },
+      ),
+      emulator.command(
+        adb,
+        ["-s", booted.serial, "shell", "dumpsys", "window", "displays"],
+        { env: environment, timeoutMs: 10_000 },
+      ),
+    ]);
+    for (const result of [size, density, currentRotation]) {
+      assertSuccess(result, "DEVICE_CONFIG_FAILED");
+    }
+    const actualSize = [...size.stdout.matchAll(/[0-9]+x[0-9]+/gu)].at(-1)?.[0];
+    const actualDensity = Number(
+      [...density.stdout.matchAll(/[0-9]+/gu)].at(-1)?.[0],
     );
-    assertSuccess(currentRotation, "DEVICE_CONFIG_FAILED");
-    if (parseWindowRotation(currentRotation.stdout) === Number(rotationValue)) {
+    let actualRotation = null;
+    try {
+      actualRotation = parseWindowRotation(currentRotation.stdout);
+    } catch (error) {
+      if (error?.code !== "DEVICE_CONFIG_DRIFT") throw error;
+    }
+    if (
+      actualSize === resolution
+      && actualDensity === profile.densityDpi
+      && actualRotation === Number(rotationValue)
+    ) {
       break;
     }
     if (Date.now() >= rotationDeadline) fail("DEVICE_CONFIG_DRIFT");

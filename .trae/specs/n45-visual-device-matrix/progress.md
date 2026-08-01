@@ -136,3 +136,14 @@
   旧值、第二读收敛的 API 30 时序。
 - 诊断 finally 和第八轮 runner finally 均完成 restore/stop，设备、runtime 与 lock
   为零。
+
+## Round 11
+
+- 第九轮前五个环境全部通过；最新 `1440x3200@0` JUnit 为 1/1、0 failure、
+  0 skip。唯一剩余 `1440x3200@90` 在 instrumentation 前以
+  `DEVICE_CONFIG_DRIFT` 停止，runner finally 再次确认零残留。
+- 最后环境限定诊断显示 size/density 命令成功，500ms 时 rotation 仍为 0，1000ms
+  后稳定为 1，且 `1440x3200` override 与 420 dpi 在整个 10 秒窗口保持稳定。
+- host 配置门改为在同一个有界窗口内同时轮询 size、density 与唯一 `mRotation`；
+  只有三者同轮一致才继续。瞬时旧值或 WindowManager dump 切换期歧义会继续等待，
+  命令失败或最终超时仍失败关闭。
