@@ -8,7 +8,7 @@
 - [x] 删除三项 `@Ignore` 并补 JVM/Compose 契约
 - [x] 运行 JVM、AndroidTest 编译/组装、lint、debug/release build、comments 与 diff
 - [x] 创建单一职责 Conventional Commit
-- [ ] 由主线程在明确 serial 的 API 34 emulator 上运行 instrumentation
+- [x] 由主线程在明确 serial 的 API 34 emulator 上运行 instrumentation
 
 ## 建议提交
 

@@ -51,3 +51,16 @@
   `Bitmap`、`ByteArray` 或 Base64，手动坐标路径只显式清空旧图片引用。
 - 本 change 未运行 connected test、未启动或选择设备。API 34 三项转绿
   instrumentation 仍由主线程在明确 serial 上执行。
+
+## Round 4
+
+- 实现提交在最新 `main` 上重放为 `d6f85e2`，Author/Committer 均为
+  `lejunyang <lejunyang@qq.com>`，co-author trailer 恰好一次；rebase 后 N41
+  定向与 App lint/debug/androidTest/release 共 134 tasks 通过。
+- 主线程在 N31 API 34 clean `emulator-5554` 上运行完整
+  `RecordingEditorAuthorizedScreenshotRedDeviceTest`，最终 4 tests、0 skip、
+  0 failure/error。显式 Host 授权 surface、point + observation/hash、drag bounds +
+  observation/hash 和 provider 单租约/过期四项均通过。
+- 测试仅使用 debug 合成内存图像，不读取页面、文件、网络或权限数据。结束后恢复
+  clean、停止 emulator 并执行 Gradle clean；最终设备、runtime、AVD/port lease 和
+  构建 APK 均为零。

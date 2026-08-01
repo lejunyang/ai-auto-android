@@ -14,7 +14,7 @@
 - [x] Host 显式授权 provider 注入且普通入口默认无截图 surface
 - [x] point/bounds 与 observation/hash 通过原子领域命令保存
 - [x] 删除三项 `@Ignore` 并完成 JVM、AndroidTest 编译、lint 与构建门禁
-- [ ] 由主线程在明确 serial 的 API 34 emulator 上执行三项转绿 instrumentation
+- [x] 由主线程在明确 serial 的 API 34 emulator 上执行三项转绿 instrumentation
 
 ## 建议提交
 

@@ -15,4 +15,4 @@
 - [x] JVM、AndroidTest 编译、lint、comments 与 diff-check 通过
 - [x] instrumentation 设备执行由主线程集成后完成
 - [x] 后续 production change 已删除三项 `@Ignore` 并完成代码与离线门禁
-- [ ] 三项转绿契约仍待主线程在明确 serial 的 API 34 emulator 上复验
+- [x] 三项转绿契约已由主线程在明确 serial 的 API 34 emulator 上复验

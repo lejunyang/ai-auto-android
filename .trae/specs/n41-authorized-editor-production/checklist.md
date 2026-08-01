@@ -10,4 +10,4 @@
 - [x] 手动坐标编辑不会保留过期授权 observation/hash
 - [x] 三项 instrumentation 不再使用 `@Ignore`
 - [x] JVM/App 全量、AndroidTest、lint、build、comments 与 diff 验证通过
-- [ ] API 34 instrumentation 由主线程完成
+- [x] API 34 instrumentation 由主线程完成

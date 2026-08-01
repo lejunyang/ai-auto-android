@@ -624,7 +624,7 @@ doctor 健康，设备、runtime、lease 与构建 APK 均为零。N44 的 App �
 
 ## Wave 3：编辑器 UI、坐标回放与真实 App 实验室
 
-### [ ] Task N41：Compose 录制编辑器与截图点选
+### [x] Task N41：Compose 录制编辑器与截图点选
 
 **目标：** 让用户在 App 中安全调整脚本步骤和视觉坐标。
 
@@ -661,6 +661,18 @@ dirty 离开确认、脚本复制、revision conflict 和 dry-run 定位。三�
 分别锁定真实 Host 授权 provider 注入、point 保存 observation/hash 和 normalized
 bounds 框选缺口，不把未实现能力伪报为通过。最终设备/runtime/lease 为零；N41
 仍缺这三项生产接线与对应设备转绿，因此保持未勾选。
+
+**追加生产接线与设备验收（N41 已完成）：** 独立 change
+`n41-authorized-editor-production` 为 `RecordingHost` 增加调用方显式提供、默认
+`null` 的短生命周期 observation provider；普通入口保持无 screenshot surface。
+point 或 drag bounds 与 `observationId`、`imageSha256` 由单个领域命令原子校验和
+提交，非法 geometry/metadata 不创建 history，手工坐标编辑会清除旧授权 provenance。
+三项历史 `@Ignore` 已删除，离线 App JVM 364 tests 和 134 Android tasks 通过。
+主线程在 API 34 clean `emulator-5554` 执行完整授权截图 test class，4/4、0 skip，
+覆盖真实 Host 注入、point metadata、deterministic bounds metadata 和 provider
+生命周期；测试仅使用 debug 合成内存图像，不读取真实页面、文件或网络。最终恢复
+clean、停止 emulator 并清理 build，设备、runtime、lease 与 APK 均为零。因此 N41
+生产接线与设备验收均已关闭，现勾选完成。
 
 **失败清理：** 丢弃未保存事务和截图缓存，恢复已保存 revision。
 

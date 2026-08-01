@@ -78,3 +78,11 @@
 - 三项历史 RED 已删除 `@Ignore` 并保留原验收断言；普通入口另有无 screenshot
   surface 断言。代码与离线构建门禁已通过，API 34 设备 instrumentation 等待主线程
   在明确 serial 上统一执行，因此本轮不新增设备通过结论。
+
+## Round 7
+
+- 主线程在 N31 API 34 clean `emulator-5554` 上执行已转绿的授权截图 test class；
+  4 tests 全部通过且无 skip。真实 Host 显式 provider 注入、point 完整 metadata、
+  deterministic drag bounds 完整 metadata 与 provider 生命周期均取得设备证据。
+- 测试后恢复 clean、停止 owned emulator 并清理 Android build；最终设备、runtime、
+  AVD/port lease 和构建 APK 均为零。N41 三项生产接线与设备验收缺口已关闭。
