@@ -584,6 +584,15 @@ dirty/离开确认、revision conflict、dry-run 首失败定位和短生命周�
 Accessibility dry-run；无活跃授权时明确不显示截图 surface。真实授权 screenshot
 provider 与 Compose instrumentation 设备执行尚未验收，因此保持未勾选。
 
+**追加设备记录（真实详情入口通过，截图生产接线缺口已明确）：** `main` 已包含
+N41 设备 instrumentation `6084c8a` 与 ignored RED 修复 `86ffbe8`。API 34 clean
+`emulator-5568` 的 JUnit XML 为 6 tests、0 failure/error、3 skipped：真实详情入口
+两项与 debug-only 合成截图 provider 生命周期一项通过，覆盖步骤操作、Undo/Redo、
+dirty 离开确认、脚本复制、revision conflict 和 dry-run 定位。三项 skipped 合约
+分别锁定真实 Host 授权 provider 注入、point 保存 observation/hash 和 normalized
+bounds 框选缺口，不把未实现能力伪报为通过。最终设备/runtime/lease 为零；N41
+仍缺这三项生产接线与对应设备转绿，因此保持未勾选。
+
 **失败清理：** 丢弃未保存事务和截图缓存，恢复已保存 revision。
 
 **建议提交：** `feat(android): add recording step editor`

@@ -7,7 +7,7 @@
 - [x] 新增点选、框选和 visual metadata RED instrumentation
 - [x] 运行 JVM、AndroidTest 编译、lint、comments 与 diff-check
 - [x] 创建单一职责 Conventional Commit
-- [ ] 等待主线程集成后在明确 serial 的 disposable emulator 执行设备 RED
+- [x] 由主线程在明确 serial 的 disposable emulator 执行可运行设备场景与 ignored RED
 
 ## 建议提交
 

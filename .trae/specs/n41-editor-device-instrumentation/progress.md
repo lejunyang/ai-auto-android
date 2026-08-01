@@ -44,3 +44,28 @@
   bounds 选择/保存缺口。缺口修复时应删除对应 `@Ignore` 并使契约转绿。
 - provider 生命周期测试和 `RecordingEditorRealEntryDeviceTest` 保持可运行；因此
   全量 instrumentation 不再被故意失败污染，仍能报告真实回归。
+
+## Round 4
+
+- 实现提交 `64f06a6` 与 ignored RED 修复 `3c72ea6` 已分别以集成提交
+  `6084c8a`、`86ffbe8` 落入 `main`；四个提交 Author/Committer 均为
+  `lejunyang <lejunyang@qq.com>`，要求的 trailer 各恰好一次。
+- 主线程在唯一 N31 API 34 clean `emulator-5568` 上运行固定两个 test class。
+  JUnit XML 为 6 tests、0 failure、0 error、3 skipped：provider 生命周期 1 项和
+  真实详情入口 2 项通过；Host 授权注入、point 授权 metadata 保存、bounds 选择/保存
+  三项按稳定 reason 跳过，未伪报为通过。
+- 真实详情入口设备证据覆盖步骤下移、启停、复制、删除、Undo/Redo、dirty 返回确认、
+  脚本复制、真实 store revision conflict 与 dry-run 首失败定位。debug provider
+  只生成合成棋盘图，验证单活跃 lease、短 TTL、旧授权撤销与释放清零。
+- 结束后恢复 clean snapshot并由 N31 stop `emulator-5568`；最终设备、runtime 和
+  AVD/port lease 为零。N41 的真实入口授权 screenshot 注入、带 observation/hash
+  的 point 保存和 normalized bounds 框选仍是生产缺口，路线图主任务保持未完成。
+
+## Round 5
+
+- 原分支提交 `64f06a6` 与 `3c72ea6` 分别以等价集成提交 `6084c8a` 与
+  `86ffbe8` 落入 `main`，stable patch-id 分别为
+  `52d91c7778097d2b7c3dd82b210c3b6e6dfd3364` 与
+  `15c9da4744fb3ff1567d2d241ad7ab2b3a1b9741`。
+- 临时 worktree 在干净状态下非强制移除，随后执行 `git worktree prune` 并删除已
+  等价集成的临时分支；没有覆盖主分支或并行 N43 worktree。
