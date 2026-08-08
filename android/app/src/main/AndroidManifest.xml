@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 配置用途：声明主 App 的网络连接/状态读取、入口 Activity 与生产无障碍服务。 -->
+<!-- 配置用途：声明主 App 的网络、用户触发相机扫码、入口 Activity 与生产无障碍服务。 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!-- 配置用途：只发现受信 ZXing 扫码 Activity；本 App 不持有或绕过其相机权限。 -->
-    <queries>
-        <intent>
-            <action android:name="com.google.zxing.client.android.SCAN" />
-            <category android:name="android.intent.category.DEFAULT" />
-        </intent>
-    </queries>
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 配置用途：无相机设备仍可安装并使用手工邀请码。 -->
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false" />
 
     <application
         android:allowBackup="false"

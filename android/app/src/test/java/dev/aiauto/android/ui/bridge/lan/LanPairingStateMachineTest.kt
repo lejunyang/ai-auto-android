@@ -1,7 +1,7 @@
 package dev.aiauto.android.ui.bridge.lan
 
 /**
- * 测试用途：验证扫码权限拒绝、无相机和手工输入仍保持显式选择及指纹确认安全门。
+ * 测试用途：验证扫码权限拒绝、唯一网络自动选择和一次短指纹确认连接安全门。
  */
 
 import java.time.Instant
@@ -69,23 +69,51 @@ class LanPairingStateMachineTest {
     }
 
     @Test
-    fun `candidate interface and fingerprint confirmation are all required`() {
+    fun `unique candidate and interface auto select but explicit confirmation remains required`() {
         val machine = LanPairingStateMachine(
             invitationInput = LanInvitationInputPort { _, _ -> invitation() },
         )
         machine.onManualPayload("one-time-invitation")
+        machine.autoSelectLocalInterface(
+            listOf(LanLocalInterface(id = "android-wlan0", name = "wlan0", kind = "wifi")),
+        )
 
         assertFalse(machine.state.canRequestConnection)
-        machine.selectCandidate("192.168.50.12", "if-wifi-en0-7f2a")
-        assertFalse(machine.state.canRequestConnection)
-        machine.selectLocalInterface(
-            LanLocalInterface(id = "android-wlan0", name = "wlan0", kind = "wifi"),
-        )
-        assertFalse(machine.state.canRequestConnection)
-        machine.confirmFingerprint("WRONG-FINGERPRINT")
-        assertFalse(machine.state.canRequestConnection)
-        machine.confirmFingerprint("8975-0256-F8CF-C56A")
+        assertEquals("192.168.50.12", machine.state.selectedCandidate?.host)
+        assertEquals("wlan0", machine.state.selectedLocalInterface?.name)
+        machine.confirmDisplayedFingerprint()
         assertTrue(machine.state.canRequestConnection)
+    }
+
+    @Test
+    fun `multiple candidates and interfaces never auto select`() {
+        val first = invitation()
+        val machine = LanPairingStateMachine(
+            invitationInput = LanInvitationInputPort { _, _ ->
+                first.copy(
+                    candidates = first.candidates + LanAddressCandidate(
+                        host = "192.168.50.13",
+                        family = "ipv4",
+                        scope = "private",
+                        interfaceId = "if-wifi-en0-7f2a",
+                        zoneId = null,
+                        port = 47831,
+                    ),
+                )
+            },
+        )
+
+        machine.onScannedPayload("one-time-invitation")
+        machine.autoSelectLocalInterface(
+            listOf(
+                LanLocalInterface("android-network-42", "wlan0", "wifi"),
+                LanLocalInterface("android-network-43", "eth0", "ethernet"),
+            ),
+        )
+
+        assertNull(machine.state.selectedCandidate)
+        assertNull(machine.state.selectedLocalInterface)
+        assertFalse(machine.state.canRequestConnection)
     }
 
     @Test
@@ -116,7 +144,7 @@ class LanPairingStateMachineTest {
         machine.selectLocalInterface(
             LanLocalInterface(id = "android-wlan0", name = "wlan0", kind = "wifi"),
         )
-        machine.confirmFingerprint("8975-0256-F8CF-C56A")
+        machine.confirmDisplayedFingerprint()
         machine.onConnected(Instant.parse("2026-07-25T10:01:20Z"))
 
         assertEquals(LanPairingPhase.CONNECTED, machine.state.phase)
@@ -142,7 +170,7 @@ class LanPairingStateMachineTest {
         machine.selectLocalInterface(
             LanLocalInterface(id = "android-wlan0", name = "wlan0", kind = "wifi"),
         )
-        machine.confirmFingerprint("8975-0256-F8CF-C56A")
+        machine.confirmDisplayedFingerprint()
         machine.onConnected(Instant.parse("2026-07-25T10:01:20Z"))
         assertNotNull(machine.state.invitation)
 

@@ -19,7 +19,7 @@ const REQUIRED_CAPABILITIES = [
   "lan.bridge.rpc.v1",
 ];
 const MIN_TTL_SECONDS = 15;
-const MAX_TTL_SECONDS = 120;
+const MAX_TTL_SECONDS = 600;
 const X25519_SPKI_PREFIX = Buffer.from("302a300506032b656e032100", "hex");
 
 export const LAN_INVITATION_ERROR_CODES = [

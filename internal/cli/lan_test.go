@@ -135,6 +135,96 @@ func TestLANListenStreamsFixedInvitationThenTimeoutWithoutSecrets(t *testing.T) 
 	}
 }
 
+func TestLANListenDefaultsInvitationToFiveMinutes(t *testing.T) {
+	now := time.Date(2026, 7, 26, 2, 3, 4, 0, time.UTC)
+	pending := &fakeLANPending{
+		bundle: fixedLANBundle(now),
+		acceptErr: &lan.Error{
+			Code:    lan.CodeAcceptTimeout,
+			Message: "listener accept timed out",
+		},
+	}
+	starter := &fakeLANStarter{pending: pending}
+	var stdout bytes.Buffer
+	app := lanTestApp(
+		&stdout,
+		starter,
+		strings.NewReader("fixed-random"),
+		&fixedQRProvider{},
+		now,
+	)
+
+	exitCode := app.Run(context.Background(), []string{
+		"bridge", "lan", "listen",
+		"--interface", "if-7-en0",
+		"--address", "192.168.50.12",
+		"--accept-timeout", "20ms",
+		"--json",
+	})
+	if exitCode == 0 {
+		t.Fatalf("listen unexpectedly succeeded: %s", stdout.String())
+	}
+	if starter.options.TTL != 300*time.Second {
+		t.Fatalf("default TTL = %s, want 300s", starter.options.TTL)
+	}
+}
+
+func TestLANListenTerminalModeRendersQRCodeAndSafeSummary(t *testing.T) {
+	now := time.Date(2026, 7, 26, 2, 3, 4, 0, time.UTC)
+	pending := &fakeLANPending{
+		bundle: fixedLANBundle(now),
+		acceptErr: &lan.Error{
+			Code:    lan.CodeAcceptTimeout,
+			Message: "listener accept timed out",
+		},
+	}
+	starter := &fakeLANStarter{pending: pending}
+	var stdout bytes.Buffer
+	app := lanTestApp(
+		&stdout,
+		starter,
+		strings.NewReader("fixed-random"),
+		&fixedQRProvider{},
+		now,
+	)
+
+	exitCode := app.Run(context.Background(), []string{
+		"bridge", "lan", "listen",
+		"--interface", "if-7-en0",
+		"--address", "192.168.50.12",
+		"--accept-timeout", "20ms",
+		"--terminal",
+	})
+	if exitCode == 0 {
+		t.Fatalf("listen unexpectedly succeeded: %s", stdout.String())
+	}
+	output := stdout.String()
+	for _, required := range []string{
+		"fixed-terminal-qr",
+		pending.bundle.Invitation.Fingerprint,
+		pending.bundle.Invitation.ExpiresAt,
+		"LAN listener timed out before authentication completed.",
+	} {
+		if !strings.Contains(output, required) {
+			t.Fatalf("terminal output missing %q: %s", required, output)
+		}
+	}
+	for _, forbidden := range []string{
+		"manualCode",
+		"invitationJson",
+		pending.bundle.ManualCode,
+		`"nonce"`,
+		`"publicKey"`,
+	} {
+		if strings.Contains(output, forbidden) {
+			t.Fatalf("terminal output leaked %q: %s", forbidden, output)
+		}
+	}
+	if !pending.closed {
+		t.Fatal("terminal timeout did not close pending listener")
+	}
+}
+
 func TestDefaultAppInjectsBoundedTerminalQRProvider(t *testing.T) {
 	app := DefaultApp(strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{})
 	if app.LANQR == nil {

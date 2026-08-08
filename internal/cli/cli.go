@@ -86,12 +86,21 @@ func (a *App) Run(ctx context.Context, args []string) int {
 	}
 	cleanArgs, compact := extractJSONFlag(args)
 	if len(cleanArgs) >= 2 && cleanArgs[0] == "bridge" && cleanArgs[1] == "lan" {
+		lanArgs, terminal, terminalErr := extractLANTerminalFlag(cleanArgs[2:], compact)
+		if terminalErr != nil {
+			envelope := output.Failure(requestID, startedAt, terminalErr)
+			if writeErr := output.Write(a.Stdout, envelope, compact); writeErr != nil {
+				_, _ = fmt.Fprintf(a.Stderr, "write output: %v\n", writeErr)
+				return apperr.ExitInternal
+			}
+			return apperr.ExitCode(terminalErr)
+		}
 		return a.runLANCommand(
 			ctx,
 			requestID,
 			startedAt,
-			cleanArgs[2:],
-			compact,
+			lanArgs,
+			lanOutputMode{compactJSON: compact, terminal: terminal},
 		)
 	}
 
@@ -332,6 +341,25 @@ func extractJSONFlag(args []string) ([]string, bool) {
 		clean = append(clean, argument)
 	}
 	return clean, compact
+}
+
+func extractLANTerminalFlag(args []string, compactJSON bool) ([]string, bool, error) {
+	clean := make([]string, 0, len(args))
+	terminal := false
+	for _, argument := range args {
+		if argument == "--terminal" {
+			if terminal {
+				return nil, false, usageError("Option --terminal was provided more than once.")
+			}
+			terminal = true
+			continue
+		}
+		clean = append(clean, argument)
+	}
+	if terminal && compactJSON {
+		return nil, false, usageError("--terminal and --json are mutually exclusive.")
+	}
+	return clean, terminal, nil
 }
 
 func parseDeviceOption(args []string) (string, error) {

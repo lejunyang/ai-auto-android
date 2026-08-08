@@ -148,7 +148,10 @@ func CreateInvitation(
 	if options.TTL != time.Duration(ttlSeconds)*time.Second ||
 		ttlSeconds < minInvitationTTLSeconds ||
 		ttlSeconds > maxInvitationTTLSeconds {
-		return InvitationBundle{}, nil, fail(CodeInvitationTTLInvalid, "invitation TTL must be a whole number of seconds between 15 and 120")
+		return InvitationBundle{}, nil, fail(
+			CodeInvitationTTLInvalid,
+			"invitation TTL must be a whole number of seconds between 15 and 600",
+		)
 	}
 	if !validStringList(options.Capabilities, 2, 64, capabilityNamePattern) ||
 		!containsCapability(options.Capabilities, requiredRPC) ||

@@ -101,19 +101,24 @@ type lanRPCResult struct {
 	Result    json.RawMessage `json:"result"`
 }
 
+type lanOutputMode struct {
+	compactJSON bool
+	terminal    bool
+}
+
 func (a *App) runLANCommand(
 	ctx context.Context,
 	requestID string,
 	startedAt time.Time,
 	args []string,
-	compact bool,
+	mode lanOutputMode,
 ) int {
 	if len(args) == 0 {
 		return a.writeLANFailure(
 			requestID,
 			startedAt,
 			usageError("Usage: aactl bridge lan interfaces|listen [options]"),
-			compact,
+			mode,
 		)
 	}
 	switch args[0] {
@@ -123,29 +128,38 @@ func (a *App) runLANCommand(
 				requestID,
 				startedAt,
 				usageError("Usage: aactl bridge lan interfaces [--json]"),
-				compact,
+				mode,
 			)
 		}
 		interfaces, err := lan.DiscoverInterfaces(a.lanInterfaceSource())
 		if err != nil {
-			return a.writeLANFailure(requestID, startedAt, err, compact)
+			return a.writeLANFailure(requestID, startedAt, err, mode)
 		}
 		result := lanInterfacesResult{
 			Interfaces: interfaces,
 			Count:      len(interfaces),
 		}
-		if err := output.Write(a.Stdout, output.Success(requestID, startedAt, result), compact); err != nil {
+		if mode.terminal {
+			_, err = fmt.Fprintf(a.Stdout, "可用 LAN 网卡：%d\n", result.Count)
+		} else {
+			err = output.Write(
+				a.Stdout,
+				output.Success(requestID, startedAt, result),
+				mode.compactJSON,
+			)
+		}
+		if err != nil {
 			return apperr.ExitInternal
 		}
 		return apperr.ExitSuccess
 	case "listen":
-		return a.runLANListen(ctx, requestID, startedAt, args[1:], compact)
+		return a.runLANListen(ctx, requestID, startedAt, args[1:], mode)
 	default:
 		return a.writeLANFailure(
 			requestID,
 			startedAt,
 			usageError("Unknown bridge lan command. Supported commands: interfaces, listen."),
-			compact,
+			mode,
 		)
 	}
 }
@@ -155,7 +169,7 @@ func (a *App) runLANListen(
 	requestID string,
 	startedAt time.Time,
 	args []string,
-	compact bool,
+	mode lanOutputMode,
 ) int {
 	options, err := parseNamedOptions(args, optionSpec{
 		allowed: optionSet(
@@ -170,38 +184,38 @@ func (a *App) runLANListen(
 		required: []string{"interface", "address"},
 	})
 	if err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
 	ttl, err := parseLANDuration(options, "ttl", defaultLANInvitationTTL)
 	if err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
 	acceptTimeout, err := parseLANAcceptTimeout(options["accept-timeout"])
 	if err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
 	port, err := parseLANPort(options["port"])
 	if err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
 	rpcMethod, rpcCount, err := parseLANRPCProbe(
 		options["rpc-method"],
 		options["rpc-count"],
 	)
 	if err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
 	interfaces, err := lan.DiscoverInterfaces(a.lanInterfaceSource())
 	if err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
 	selected, err := lan.SelectInterface(interfaces, options["interface"])
 	if err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
 	candidate, err := selectLANCandidate(selected, options["address"])
 	if err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
 	pending, err := a.lanListenerStarter().Start(ctx, lan.ListenerOptions{
 		InterfaceSource: a.lanInterfaceSource(),
@@ -220,7 +234,7 @@ func (a *App) runLANListen(
 		Now:        a.LANNow,
 	})
 	if err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
 	defer pending.Close()
 
@@ -243,10 +257,11 @@ func (a *App) runLANListen(
 		QRFormat:    bundle.QR.Format,
 		QRText:      string(bundle.QR.Data),
 	}
-	writeErr := output.Write(
-		a.Stdout,
-		output.Success(requestID, startedAt, invitationEvent),
-		compact,
+	writeErr := a.writeLANInvitation(
+		requestID,
+		startedAt,
+		invitationEvent,
+		mode,
 	)
 	clear(invitationEvent.InvitationJSON)
 	invitationEvent.QRText = ""
@@ -261,7 +276,7 @@ func (a *App) runLANListen(
 		},
 	})
 	if err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
 	defer session.Close()
 	capabilities := session.Capabilities()
@@ -272,7 +287,7 @@ func (a *App) runLANListen(
 		var result json.RawMessage
 		if err := session.Call(ctx, rpcMethod, map[string]any{}, &result); err != nil {
 			clear(result)
-			return a.writeLANFailure(requestID, startedAt, err, compact)
+			return a.writeLANFailure(requestID, startedAt, err, mode)
 		}
 		event := lanRPCResult{
 			Phase:     "rpc",
@@ -281,11 +296,7 @@ func (a *App) runLANListen(
 			Result:    append(json.RawMessage(nil), result...),
 		}
 		clear(result)
-		if err := output.Write(
-			a.Stdout,
-			output.Success(requestID, startedAt, event),
-			compact,
-		); err != nil {
+		if err := a.writeLANRPC(requestID, startedAt, event, mode); err != nil {
 			clear(event.Result)
 			return apperr.ExitInternal
 		}
@@ -301,7 +312,7 @@ func (a *App) runLANListen(
 			map[string]any{},
 			&closeResult,
 		); err != nil {
-			return a.writeLANFailure(requestID, startedAt, err, compact)
+			return a.writeLANFailure(requestID, startedAt, err, mode)
 		}
 		if !closeResult.Closed {
 			return a.writeLANFailure(
@@ -311,7 +322,7 @@ func (a *App) runLANListen(
 					Code:    lan.CodeFrameInvalid,
 					Message: "LAN RPC peer did not confirm session close",
 				},
-				compact,
+				mode,
 			)
 		}
 	}
@@ -323,27 +334,105 @@ func (a *App) runLANListen(
 		ExpiresAt:     expiresAt.UTC().Format(time.RFC3339),
 	}
 	if err := session.Close(); err != nil {
-		return a.writeLANFailure(requestID, startedAt, err, compact)
+		return a.writeLANFailure(requestID, startedAt, err, mode)
 	}
-	if err := output.Write(a.Stdout, output.Success(requestID, startedAt, closed), compact); err != nil {
+	if err := a.writeLANClosed(requestID, startedAt, closed, mode); err != nil {
 		return apperr.ExitInternal
 	}
 	return apperr.ExitSuccess
+}
+
+func (a *App) writeLANInvitation(
+	requestID string,
+	startedAt time.Time,
+	event lanInvitationResult,
+	mode lanOutputMode,
+) error {
+	if !mode.terminal {
+		return output.Write(
+			a.Stdout,
+			output.Success(requestID, startedAt, event),
+			mode.compactJSON,
+		)
+	}
+	if !event.QRGenerated || event.QRFormat != lan.QRFormatTerminalUTF8 ||
+		event.QRText == "" {
+		return errors.New("terminal QR representation is unavailable")
+	}
+	_, err := fmt.Fprintf(
+		a.Stdout,
+		"\n%s\n桌面地址：%s:%d\n桌面短指纹：%s\n邀请过期：%s\n\n",
+		event.QRText,
+		event.Endpoint.Host,
+		event.Endpoint.Port,
+		event.Fingerprint,
+		event.ExpiresAt,
+	)
+	return err
+}
+
+func (a *App) writeLANRPC(
+	requestID string,
+	startedAt time.Time,
+	event lanRPCResult,
+	mode lanOutputMode,
+) error {
+	if !mode.terminal {
+		return output.Write(
+			a.Stdout,
+			output.Success(requestID, startedAt, event),
+			mode.compactJSON,
+		)
+	}
+	_, err := fmt.Fprintf(
+		a.Stdout,
+		"只读 RPC 已通过：%s，第 %d 次。\n",
+		event.Method,
+		event.Iteration,
+	)
+	return err
+}
+
+func (a *App) writeLANClosed(
+	requestID string,
+	startedAt time.Time,
+	event lanClosedResult,
+	mode lanOutputMode,
+) error {
+	if !mode.terminal {
+		return output.Write(
+			a.Stdout,
+			output.Success(requestID, startedAt, event),
+			mode.compactJSON,
+		)
+	}
+	_, err := fmt.Fprintf(
+		a.Stdout,
+		"LAN 会话已认证并关闭：authenticated=%t\n",
+		event.Authenticated,
+	)
+	return err
 }
 
 func (a *App) writeLANFailure(
 	requestID string,
 	startedAt time.Time,
 	err error,
-	compact bool,
+	mode lanOutputMode,
 ) int {
 	publicError := publicLANError(err)
 	exitCode := lanCLIExitCode(err)
-	if writeErr := output.Write(
-		a.Stdout,
-		output.Failure(requestID, startedAt, publicError),
-		compact,
-	); writeErr != nil {
+	var writeErr error
+	if mode.terminal {
+		_, writeErr = fmt.Fprintf(a.Stdout, "LAN 失败：%s\n", publicError.Error())
+	} else {
+		writeErr = output.Write(
+			a.Stdout,
+			output.Failure(requestID, startedAt, publicError),
+			mode.compactJSON,
+		)
+	}
+	if writeErr != nil {
 		return apperr.ExitInternal
 	}
 	if exitCode != apperr.ExitInternal {
@@ -390,10 +479,10 @@ func parseLANDuration(
 		return fallback, nil
 	}
 	value, err := time.ParseDuration(raw)
-	if err != nil || value < 15*time.Second || value > 120*time.Second ||
+	if err != nil || value < 15*time.Second || value > 600*time.Second ||
 		value%time.Second != 0 {
 		return 0, usageError(fmt.Sprintf(
-			"%s must be a whole number of seconds between 15s and 120s.",
+			"%s must be a whole number of seconds between 15s and 600s.",
 			name,
 		))
 	}
@@ -405,8 +494,8 @@ func parseLANAcceptTimeout(raw string) (time.Duration, error) {
 		return defaultLANAcceptTimeout, nil
 	}
 	value, err := time.ParseDuration(raw)
-	if err != nil || value <= 0 || value > 120*time.Second {
-		return 0, usageError("accept-timeout must be greater than zero and at most 120s.")
+	if err != nil || value <= 0 || value > 600*time.Second {
+		return 0, usageError("accept-timeout must be greater than zero and at most 600s.")
 	}
 	return value, nil
 }
@@ -528,6 +617,6 @@ func safeLANErrorMessage(code lan.Code) string {
 }
 
 const (
-	defaultLANInvitationTTL = 90 * time.Second
-	defaultLANAcceptTimeout = 30 * time.Second
+	defaultLANInvitationTTL = 300 * time.Second
+	defaultLANAcceptTimeout = 300 * time.Second
 )

@@ -64,6 +64,7 @@ class LanPairingViewModel(
     fun refreshInterfaces() {
         if (closed.get()) return
         val interfaces = runCatching(localInterfaces).getOrDefault(emptyList())
+        machine.autoSelectLocalInterface(interfaces)
         publish(interfaces)
     }
 
@@ -133,15 +134,13 @@ class LanPairingViewModel(
     }
 
     @Synchronized
-    fun confirmFingerprint(input: String) {
+    fun confirmFingerprintAndConnect() {
         if (closed.get() || machine.state.phase != LanPairingPhase.REVIEW) return
-        machine.confirmFingerprint(input)
-        publish()
-    }
-
-    @Synchronized
-    fun connect() {
-        if (closed.get() || !machine.state.canRequestConnection) return
+        machine.confirmDisplayedFingerprint()
+        if (!machine.state.canRequestConnection) {
+            publish()
+            return
+        }
         val selected = machine.state.selectedLocalInterface ?: return
         if (!networkSelector(selected)) {
             machine.onFailure("LAN_INTERFACE_MISMATCH")

@@ -37,13 +37,11 @@ fun LanPairingScreen(
     onManualInvitation: (String) -> Unit,
     onSelectCandidate: (String, String) -> Unit,
     onSelectLocalInterface: (LanLocalInterface) -> Unit,
-    onConfirmFingerprint: (String) -> Unit,
-    onConnect: () -> Unit,
+    onConfirmFingerprintAndConnect: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var manualInvitation by remember { mutableStateOf("") }
-    var fingerprintInput by remember { mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -53,9 +51,12 @@ fun LanPairingScreen(
     ) {
         Text("LAN 桌面连接", style = MaterialTheme.typography.headlineSmall)
         Text(scannerStatusText(state.scannerAvailability))
-        if (state.scannerAvailability == ScannerAvailability.READY) {
+        if (
+            state.scannerAvailability == ScannerAvailability.READY ||
+            state.scannerAvailability == ScannerAvailability.PERMISSION_DENIED
+        ) {
             OutlinedButton(onClick = onLaunchScanner) {
-                Text("打开受信扫码组件")
+                Text("打开内置扫码")
             }
         }
         OutlinedTextField(
@@ -105,34 +106,22 @@ fun LanPairingScreen(
                     onClick = { onSelectLocalInterface(localInterface) },
                 )
             }
-            OutlinedTextField(
-                value = fingerprintInput,
-                onValueChange = {
-                    fingerprintInput = it.uppercase().take(MAX_FINGERPRINT_INPUT_CHARS)
-                },
-                label = { Text("再次输入桌面短指纹") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedButton(
-                onClick = {
-                    val fingerprint = fingerprintInput
-                    fingerprintInput = ""
-                    onConfirmFingerprint(fingerprint)
-                },
-                modifier = Modifier.fillMaxWidth(),
+            if (
+                state.selectedCandidate != null &&
+                state.selectedLocalInterface != null
             ) {
-                Text("确认短指纹")
+                Button(
+                    onClick = onConfirmFingerprintAndConnect,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("我已核对短指纹并连接")
+                }
             }
         }
         state.localInterfaceName?.let { Text("当前手机网卡：$it") }
         state.sessionExpiresAt?.let { Text("会话过期：$it") }
         state.errorCode?.let {
             Text("连接已停止：$it", color = MaterialTheme.colorScheme.error)
-        }
-        if (state.canRequestConnection) {
-            Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) {
-                Text("建立加密连接")
-            }
         }
         if (state.stopAvailable) {
             Button(onClick = onStop, modifier = Modifier.fillMaxWidth()) {
@@ -158,12 +147,11 @@ private fun SelectionRow(
 }
 
 private fun scannerStatusText(availability: ScannerAvailability): String = when (availability) {
-    ScannerAvailability.READY -> "受信扫码组件可用；相机授权由该组件单独请求，也可手工输入。"
-    ScannerAvailability.PERMISSION_DENIED -> "扫码组件的相机权限已拒绝，请改用手工邀请码。"
+    ScannerAvailability.READY -> "内置扫码可用；相机只在本页由用户授权，也可使用手工邀请码。"
+    ScannerAvailability.PERMISSION_DENIED -> "相机权限已拒绝；可重试授权或使用手工邀请码。"
     ScannerAvailability.NO_CAMERA -> "设备无可用相机，请使用手工邀请码。"
-    ScannerAvailability.PROVIDER_UNAVAILABLE -> "未发现受信扫码组件，请使用手工邀请码。"
+    ScannerAvailability.PROVIDER_UNAVAILABLE -> "内置扫码暂不可用，请使用手工邀请码。"
 }
 
 private const val MAX_MANUAL_INVITATION_INPUT_CHARS =
     "AIAUTO1-".length + (64 * 1024 * 8 + 4) / 5
-private const val MAX_FINGERPRINT_INPUT_CHARS = 19

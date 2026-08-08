@@ -303,7 +303,7 @@ object LanInvitationParser {
     }
 
     private const val MIN_TTL_SECONDS = 15
-    private const val MAX_TTL_SECONDS = 120
+    private const val MAX_TTL_SECONDS = 600
     private const val SUITE = "X25519-HKDF-SHA256-AES-256-GCM"
     private const val TRANSCRIPT_DOMAIN = "AIAUTO-LAN-BRIDGE-TRANSCRIPT-V1"
     private val UUID_PATTERN = Regex(

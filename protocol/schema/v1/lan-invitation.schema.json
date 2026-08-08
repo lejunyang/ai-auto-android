@@ -36,7 +36,7 @@
     "ttlSeconds": {
       "type": "integer",
       "minimum": 15,
-      "maximum": 120
+      "maximum": 600
     },
     "nonce": {
       "$ref": "#/$defs/base64Url32"

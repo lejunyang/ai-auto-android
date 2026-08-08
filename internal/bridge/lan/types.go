@@ -16,7 +16,7 @@ const (
 	requiredRPC             = "lan.bridge.rpc.v1"
 	requiredConfirmation    = "lan.bridge.mutual-confirmation.v1"
 	minInvitationTTLSeconds = 15
-	maxInvitationTTLSeconds = 120
+	maxInvitationTTLSeconds = 600
 )
 
 const (

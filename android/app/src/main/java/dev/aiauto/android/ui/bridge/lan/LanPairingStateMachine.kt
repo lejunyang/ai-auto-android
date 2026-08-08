@@ -157,9 +157,24 @@ class LanPairingStateMachine(
         )
     }
 
-    fun confirmFingerprint(input: String) {
+    fun autoSelectLocalInterface(interfaces: List<LanLocalInterface>) {
+        if (state.phase != LanPairingPhase.REVIEW) return
+        val selected = interfaces.singleOrNull()
         state = state.copy(
-            fingerprintConfirmed = input == state.desktopFingerprint,
+            selectedLocalInterface = selected,
+            fingerprintConfirmed = false,
+        )
+    }
+
+    fun confirmDisplayedFingerprint() {
+        if (
+            state.phase != LanPairingPhase.REVIEW ||
+            state.desktopFingerprint.isNullOrBlank()
+        ) {
+            return
+        }
+        state = state.copy(
+            fingerprintConfirmed = true,
         )
     }
 
@@ -213,6 +228,7 @@ class LanPairingStateMachine(
             phase = LanPairingPhase.REVIEW,
             scannerAvailability = state.scannerAvailability,
             invitation = summary,
+            selectedCandidate = summary.candidates.singleOrNull(),
             desktopFingerprint = summary.desktopFingerprint,
         )
     }

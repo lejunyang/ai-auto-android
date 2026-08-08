@@ -74,6 +74,36 @@ func TestCreateInvitationProducesN36PayloadManualCodeAndProviderInput(t *testing
 	assertInvitationContainsNoSecretFields(t, bundle.Payload)
 }
 
+func TestCreateInvitationAcceptsTenMinuteUpperBound(t *testing.T) {
+	selected := NetworkInterface{
+		ID:         "if-7-en0",
+		Name:       "en0",
+		Kind:       "wifi",
+		Candidates: privateCandidates("if-7-en0", "en0", "192.168.50.12"),
+	}
+	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC)
+	bundle, privateKey, err := CreateInvitation(InvitationOptions{
+		Interface: selected,
+		Candidate: selected.Candidates[0],
+		Port:      47831,
+		TTL:       600 * time.Second,
+		Capabilities: []string{
+			requiredConfirmation,
+			requiredRPC,
+		},
+		Now:    func() time.Time { return now },
+		Random: bytes.NewReader(bytes.Repeat([]byte{0x35}, 128)),
+	})
+	if err != nil {
+		t.Fatalf("CreateInvitation() error = %v", err)
+	}
+	defer privateKey.Destroy()
+	if bundle.Invitation.TTLSeconds != 600 ||
+		bundle.Invitation.ExpiresAt != now.Add(600*time.Second).Format(time.RFC3339) {
+		t.Fatalf("ten-minute invitation = %#v", bundle.Invitation)
+	}
+}
+
 func TestCreateInvitationWithoutProviderReportsPayloadOnly(t *testing.T) {
 	selected := NetworkInterface{
 		ID:         "if-7-en0",

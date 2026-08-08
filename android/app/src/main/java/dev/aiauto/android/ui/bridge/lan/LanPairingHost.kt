@@ -7,11 +7,11 @@ package dev.aiauto.android.ui.bridge.lan
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import dev.aiauto.android.ui.components.ScreenScaffold
@@ -24,19 +24,27 @@ fun LanPairingHost(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val scanner = remember(context) { AndroidLanQrScanner.discover(context) }
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
-        viewModel.onQrScanResult(
-            scanner?.parseResult(result) ?: LanQrScanResult.ProviderFailed,
-        )
-    }
-    LaunchedEffect(context, scanner) {
+    var scanning by remember { mutableStateOf(false) }
+    LaunchedEffect(context) {
         viewModel.updateScannerCapability(
             hardware = AndroidLanQrScanner.cameraHardware(context),
-            providerAvailable = scanner != null,
+            providerAvailable = true,
         )
+    }
+
+    if (scanning) {
+        EmbeddedLanQrScannerScreen(
+            onResult = { result ->
+                scanning = false
+                viewModel.onQrScanResult(result)
+            },
+            onCancel = {
+                scanning = false
+                viewModel.onQrScanResult(LanQrScanResult.Cancelled)
+            },
+            modifier = modifier,
+        )
+        return
     }
 
     ScreenScaffold(
@@ -46,19 +54,11 @@ fun LanPairingHost(
         LanPairingScreen(
             state = state.pairing,
             localInterfaces = state.localInterfaces,
-            onLaunchScanner = {
-                val launchResult = runCatching {
-                    launcher.launch(requireNotNull(scanner).createIntent())
-                }
-                if (launchResult.isFailure) {
-                    viewModel.onQrScanResult(LanQrScanResult.ProviderFailed)
-                }
-            },
+            onLaunchScanner = { scanning = true },
             onManualInvitation = viewModel::submitManualInvitation,
             onSelectCandidate = viewModel::selectCandidate,
             onSelectLocalInterface = viewModel::selectLocalInterface,
-            onConfirmFingerprint = viewModel::confirmFingerprint,
-            onConnect = viewModel::connect,
+            onConfirmFingerprintAndConnect = viewModel::confirmFingerprintAndConnect,
             onStop = viewModel::stop,
             modifier = modifier,
         )

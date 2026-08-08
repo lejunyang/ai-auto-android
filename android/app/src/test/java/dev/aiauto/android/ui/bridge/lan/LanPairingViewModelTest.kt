@@ -1,7 +1,7 @@
 package dev.aiauto.android.ui.bridge.lan
 
 /**
- * 测试用途：验证生产配对编排只在完整人工确认后连接，并在失败、停止或销毁时清理会话。
+ * 测试用途：验证唯一网络自动选择后仍需一次人工确认，并在失败、停止或销毁时清理。
  */
 
 import java.io.File
@@ -13,8 +13,14 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 import dev.aiauto.android.bridge.lan.LanConnectRequest
+import dev.aiauto.android.bridge.lan.LanCrypto
 import dev.aiauto.android.bridge.lan.LanLocalInterface
 import dev.aiauto.android.bridge.lan.LanProtocolException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -31,31 +37,26 @@ class LanPairingViewModelTest {
     )
 
     @Test
-    fun `manual invitation requires candidate interface and fingerprint before connection`() {
+    fun `manual invitation auto selects unique routes and connects after one confirmation`() {
         val connector = FakeSessionLauncher()
         val viewModel = viewModel(connector)
 
-        viewModel.submitManualInvitation(validPayload)
+        viewModel.submitManualInvitation(singleCandidatePayload)
         assertEquals(LanPairingPhase.REVIEW, viewModel.uiState.value.pairing.phase)
         assertEquals(0, connector.attempts.get())
 
         val invitation = requireNotNull(viewModel.uiState.value.pairing.invitation)
-        val candidate = invitation.candidates.first()
-        viewModel.selectCandidate(candidate.host, candidate.interfaceId)
-        viewModel.selectLocalInterface(localInterface)
+        assertEquals(invitation.candidates.single(), viewModel.uiState.value.pairing.selectedCandidate)
+        assertEquals(localInterface, viewModel.uiState.value.pairing.selectedLocalInterface)
         assertEquals(0, connector.attempts.get())
+        assertFalse(viewModel.uiState.value.pairing.canRequestConnection)
 
-        viewModel.confirmFingerprint("WRONG-FINGERPRINT")
-        viewModel.connect()
-        assertEquals(0, connector.attempts.get())
-
-        viewModel.confirmFingerprint(invitation.desktopFingerprint)
-        viewModel.connect()
+        viewModel.confirmFingerprintAndConnect()
 
         assertEquals(1, connector.attempts.get())
         assertEquals(LanPairingPhase.CONNECTED, viewModel.uiState.value.pairing.phase)
         assertTrue(viewModel.uiState.value.pairing.stopAvailable)
-        assertFalse(viewModel.uiState.value.toString().contains(validPayload))
+        assertFalse(viewModel.uiState.value.toString().contains(singleCandidatePayload))
         viewModel.close()
     }
 
@@ -69,8 +70,6 @@ class LanPairingViewModelTest {
         )
         val viewModel = viewModel(connector)
         confirm(viewModel)
-
-        viewModel.connect()
 
         assertEquals(LanPairingPhase.FAILED, viewModel.uiState.value.pairing.phase)
         assertEquals("LAN_ADDRESS_UNREACHABLE", viewModel.uiState.value.pairing.errorCode)
@@ -93,12 +92,17 @@ class LanPairingViewModelTest {
             viewModel.uiState.value.pairing.scannerAvailability,
         )
 
-        viewModel.onQrScanResult(LanQrScanResult.Success(validPayload))
+        viewModel.onQrScanResult(LanQrScanResult.Success(singleCandidatePayload))
 
         assertEquals(LanPairingPhase.REVIEW, viewModel.uiState.value.pairing.phase)
         assertEquals(0, connector.attempts.get())
-        assertFalse(viewModel.uiState.value.toString().contains(validPayload))
+        assertFalse(viewModel.uiState.value.toString().contains(singleCandidatePayload))
         assertFalse(viewModel.uiState.value.pairing.canRequestConnection)
+        assertEquals(
+            requireNotNull(viewModel.uiState.value.pairing.invitation).candidates.single(),
+            viewModel.uiState.value.pairing.selectedCandidate,
+        )
+        assertEquals(localInterface, viewModel.uiState.value.pairing.selectedLocalInterface)
         viewModel.close()
     }
 
@@ -128,14 +132,13 @@ class LanPairingViewModelTest {
         val connector = FakeSessionLauncher()
         val viewModel = viewModel(connector)
         confirm(viewModel)
-        viewModel.connect()
         val session = requireNotNull(connector.session)
 
         viewModel.stop()
         assertTrue(session.closed)
         assertEquals(LanPairingPhase.STOPPED, viewModel.uiState.value.pairing.phase)
 
-        viewModel.submitManualInvitation(validPayload)
+        viewModel.submitManualInvitation(singleCandidatePayload)
         val pendingState = confirmedState(viewModel.uiState.value.pairing)
         viewModel.close()
         assertFailure("LAN_INVITATION_DESTROYED") {
@@ -160,7 +163,6 @@ class LanPairingViewModelTest {
         )
         try {
             confirm(viewModel)
-            viewModel.connect()
             assertTrue(launcher.entered.await(1, TimeUnit.SECONDS))
 
             viewModel.stop()
@@ -187,12 +189,8 @@ class LanPairingViewModelTest {
     )
 
     private fun confirm(viewModel: LanPairingViewModel) {
-        viewModel.submitManualInvitation(validPayload)
-        val invitation = requireNotNull(viewModel.uiState.value.pairing.invitation)
-        val candidate = invitation.candidates.first()
-        viewModel.selectCandidate(candidate.host, candidate.interfaceId)
-        viewModel.selectLocalInterface(localInterface)
-        viewModel.confirmFingerprint(invitation.desktopFingerprint)
+        viewModel.submitManualInvitation(singleCandidatePayload)
+        viewModel.confirmFingerprintAndConnect()
     }
 
     private fun confirmedState(state: LanPairingUiState): LanPairingUiState = state.copy(
@@ -279,6 +277,30 @@ class LanPairingViewModelTest {
                 }
                 .firstOrNull(File::isFile)
             requireNotNull(fixture) { "Unable to locate LAN invitation fixture" }.readText()
+        }
+
+        val singleCandidatePayload: String by lazy {
+            val original = Json.parseToJsonElement(validPayload).jsonObject
+            val listener = original.getValue("listener").jsonObject
+            val candidates = listener.getValue("addressCandidates") as JsonArray
+            val singleListener = JsonObject(
+                listener.toMutableMap().apply {
+                    put("addressCandidates", JsonArray(listOf(candidates.first())))
+                },
+            )
+            val withoutFingerprint = JsonObject(
+                original.toMutableMap().apply {
+                    put("listener", singleListener)
+                },
+            )
+            JsonObject(
+                withoutFingerprint.toMutableMap().apply {
+                    put(
+                        "fingerprint",
+                        JsonPrimitive(LanCrypto.invitationFingerprint(withoutFingerprint)),
+                    )
+                },
+            ).toString()
         }
     }
 }
