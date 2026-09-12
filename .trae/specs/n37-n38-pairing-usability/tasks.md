@@ -10,8 +10,8 @@
 - [x] 移除外部扫码 Activity 查询和 signer 运行依赖
 - [x] 增加无需网页或 GUI 的 CLI 终端二维码直显模式
 - [x] 运行协议、Go、Android 与 Make 全量验证
-- [ ] 在 API 34 真机完成内置扫码、连接、RPC 和清理
-- [ ] 更新路线图并提交单一职责 Conventional Commit
+- [x] 在 API 34 真机完成内置扫码、连接、RPC 和清理
+- [x] 更新路线图并提交单一职责 Conventional Commit
 
 ## 汇合顺序
 

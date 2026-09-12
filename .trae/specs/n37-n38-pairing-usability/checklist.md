@@ -14,4 +14,4 @@
 - [x] 外部 ZXing package/signature 不再是运行依赖
 - [x] CLI `--terminal` 直接渲染二维码且不输出协议内部字段
 - [x] protocol、Go race、Android unit/lint/build 全部通过
-- [ ] API 34 真机内置扫码、RPC、停止和零临时产物通过
+- [x] API 34 真机内置扫码、RPC、停止和零临时产物通过

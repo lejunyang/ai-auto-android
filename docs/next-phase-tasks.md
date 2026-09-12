@@ -399,12 +399,20 @@ payload；容量不足只降级 `payload-only` 并保留 `manualCode`，取消�
 失败关闭并清理 listener/密钥。该证据关闭 N37 二维码生成缺口，但不替代 Windows
 同 LAN、防火墙、热点/VPN/切网矩阵，因此 N37 保持未勾选。
 
+**追加 API 34 真机记录（内置扫码与完整 RPC 已通过，跨平台矩阵未完成）：**
+OPPO Android 14 / API 34 真机人工授予 App 相机权限后，内置 CameraX + ZXing Core
+扫描 N36 invitation，用户只点击一次短指纹确认；生产 Go listener 在同一认证加密
+socket 上完成三次 `device.info` 和 `session.close`，脱敏摘要为 `rpc=3`、
+`closed=1`。真机验收同时修复 CameraX 兼容预览、Compose 横向尺寸、暂态帧容错和
+扫码状态跨配置变化保持。该证据关闭 Android 真机扫码和持续 RPC 缺口，但 Windows
+同 LAN、防火墙、热点/VPN 与切网矩阵仍未完成，因此 N37 保持未勾选。
+
 **失败清理：** 关闭 listener 和连接，清零临时私钥，撤销 invitation，删除二维码
 临时文件和防火墙测试规则。
 
 **建议提交：** `feat(bridge): add desktop lan invitation listener`
 
-### [ ] Task N38：Android 扫码与出站加密连接
+### [x] Task N38：Android 扫码与出站加密连接
 
 **目标：** App 扫描桌面 invitation 后主动出站建立 LAN Bridge，并提供手工码备选。
 
@@ -466,6 +474,17 @@ N37 `AIAUTO1-` base32 手工码复用同一严格 parser/preflight，解析后�
 仍需用户选择地址、网卡并核对短指纹才连接。该证据关闭 N38 scanner/provider 与
 手工码解析代码缺口，但不替代真机安装、相机权限、OEM、真实无线/切网和 Windows
 防火墙验收，因此 N38 保持未勾选。
+
+**追加内置扫码与真机验收（2026-09-13）：** `main` 已包含
+`667c7b5`、`76b7423`、`88f7d6f`、`abb6fcd` 和 `67e424d`。外部扫码组件已从生产
+依赖移除，App 改用 CameraX 1.5.3 + ZXing Core 3.5.4；相机权限由用户点击扫码后
+人工批准，图像不保存、不上传，灰度帧在 analyzer 与 decoder 两层清零。OPPO
+Android 14 / API 34 真机发现并修复兼容预览、全宽布局、暂态异常帧和配置变化状态
+丢失后，成功扫描 N36 invitation，唯一候选自动选择，用户只执行一次短指纹确认，
+随后同一加密 socket 三次 `device.info` 和 `session.close` 通过。手工邀请码、
+无相机/权限拒绝、过期、切网和失败关闭由既有单测及设备矩阵覆盖。N38 现有验收范围
+已闭合并勾选；其他 OEM、热点/VPN 和 Windows 防火墙继续作为 N37/兼容矩阵工作，
+不阻塞 N38 完成。
 
 **失败清理：** 关闭出站 socket，清零临时密钥和解析结果，撤销 session；不保留
 二维码图像。

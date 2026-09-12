@@ -37,3 +37,22 @@
   `make test`、`make verify`、`make build`、中文注释门禁、Android 全量 unit、
   androidTest Kotlin 编译、lint、debug 和 release 构建。API 34 真机内置扫码与完整
   RPC/停止/清理复验尚未执行，因此不提前关闭真机验收项。
+
+## Round 3
+
+- API 34 OPPO 真机首次暴露三个 CameraX/Compose 集成问题：默认预览实现显示白屏、
+  `AndroidView` 缺少横向尺寸约束，以及相机暂态异常帧会提前结束 analyzer。生产实现
+  已分别强制 `PreviewView.ImplementationMode.COMPATIBLE`、补齐全宽约束，并把单帧
+  异常收敛为丢弃当前帧后继续扫描；对应 LAN 单测、AndroidTest Kotlin 编译和 debug
+  构建通过。
+- 真机进一步证明相机打开时的配置变化会让普通 `remember` 丢失 `scanning` 状态，
+  表现为扫码页无错误返回空白配对表单。状态改为 `rememberSaveable` 后，配置变化后
+  扫码预览持续存在。
+- 用户人工授予 App 相机权限并使用内置 CameraX + ZXing Core 扫描同一 N36
+  invitation；扫码后只需点击一次“我已核对短指纹并连接”，未输入短指纹或长确认码。
+  生产 Go listener 在同一认证加密 socket 上返回三次 `device.info` 成功和
+  `session.close` 成功，脱敏摘要为 `rpc=3`、`closed=1`。
+- 二维码展示适配了远程 TRAE 客户端限制：CLI 的 UTF-8 字符二维码会被界面折叠，
+  因此验收时将同一 invitation 临时渲染为固定 1200×1200、1-bit PNG；该 PNG 先经
+  ZXing Core 3.5.4 离线完整还原 804 字节 invitation，再由真机内置扫描器识别。
+  二维码、临时 CLI、解码工具和摘要均在连接完成后删除，未提交或保留协议内容。
