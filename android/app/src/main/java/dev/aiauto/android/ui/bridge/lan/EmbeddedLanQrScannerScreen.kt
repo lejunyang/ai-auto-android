@@ -110,6 +110,7 @@ fun EmbeddedLanQrScannerScreen(
             factory = { current ->
                 PreviewView(current).apply {
                     scaleType = PreviewView.ScaleType.FILL_CENTER
+                    implementationMode = embeddedLanQrPreviewMode()
                     this.controller = controller
                     contentDescription = "内置 LAN 二维码扫描预览"
                 }
@@ -124,3 +125,6 @@ fun EmbeddedLanQrScannerScreen(
         }
     }
 }
+
+internal fun embeddedLanQrPreviewMode(): PreviewView.ImplementationMode =
+    PreviewView.ImplementationMode.COMPATIBLE
