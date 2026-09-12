@@ -125,6 +125,58 @@ class EmbeddedLanQrDecoderTest {
         analyzer.close()
     }
 
+    @Test
+    fun `camera analyzer ignores transient frame failure and returns next valid qr once`() {
+        var attempts = 0
+        val decoderFrames = mutableListOf<ByteArray>()
+        val results = mutableListOf<LanQrScanResult>()
+        val analyzer = EmbeddedLanQrAnalyzer(
+            decoder = LanQrFrameDecoder { frame ->
+                decoderFrames += frame.luminance
+                attempts += 1
+                if (attempts == 1) error("transient frame")
+                "valid-invitation"
+            },
+            onResult = results::add,
+        )
+        val first = cameraImage(byteArrayOf(1, 2, 3, 4))
+        val second = cameraImage(byteArrayOf(5, 6, 7, 8))
+        val ignored = cameraImage(byteArrayOf(9, 10, 11, 12))
+
+        analyzer.analyze(first.image)
+        analyzer.analyze(second.image)
+        analyzer.analyze(ignored.image)
+
+        assertEquals(
+            listOf(LanQrScanResult.Success("valid-invitation")),
+            results,
+        )
+        assertTrue(decoderFrames.all { frame -> frame.all { it.toInt() == 0 } })
+        verify(exactly = 1) { first.image.close() }
+        verify(exactly = 1) { second.image.close() }
+        verify(exactly = 1) { ignored.image.close() }
+        analyzer.close()
+    }
+
+    private fun cameraImage(bytes: ByteArray): CameraImage {
+        val plane = mockk<ImageProxy.PlaneProxy>()
+        val imageInfo = mockk<ImageInfo>()
+        val image = mockk<ImageProxy>(relaxed = true)
+        every { plane.buffer } returns ByteBuffer.wrap(bytes)
+        every { plane.rowStride } returns 2
+        every { plane.pixelStride } returns 1
+        every { image.planes } returns arrayOf(plane)
+        every { image.width } returns 2
+        every { image.height } returns 2
+        every { image.imageInfo } returns imageInfo
+        every { imageInfo.rotationDegrees } returns 0
+        return CameraImage(image)
+    }
+
+    private data class CameraImage(
+        val image: ImageProxy,
+    )
+
     private fun qrFrame(payload: String): QrLuminanceFrame {
         val matrix = MultiFormatWriter().encode(
             payload,

@@ -39,9 +39,7 @@ class EmbeddedLanQrAnalyzer(
                 onResult(LanQrScanResult.Success(payload))
             }
         } catch (_: Exception) {
-            if (completed.compareAndSet(false, true)) {
-                onResult(LanQrScanResult.Invalid)
-            }
+            // 相机启动和切换方向时可能产生暂态无效帧；单帧失败不得终止整个扫码会话。
         } finally {
             luminance?.fill(0)
             image.close()
