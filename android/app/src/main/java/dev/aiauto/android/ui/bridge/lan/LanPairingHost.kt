@@ -8,8 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,7 +24,7 @@ fun LanPairingHost(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var scanning by remember { mutableStateOf(false) }
+    var scanning by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(context) {
         viewModel.updateScannerCapability(
             hardware = AndroidLanQrScanner.cameraHardware(context),
