@@ -25,6 +25,24 @@ jobs:
       - name: Verify pinned toolchains and layout
         run: ./scripts/verify-toolchains.sh --metadata-only
 
+      # The pins must also be installable, not merely well-formed. `.tool-versions`
+      # used to name a Java build the upstream index had stopped publishing, and
+      # nothing caught it because no check ever tried to resolve the pins.
+      - name: Install osdk
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/lejunyang/one-sdk/main/install.sh \
+            | sh -s -- --no-modify-shell --install-dir "$HOME/.local/bin"
+          printf '%s\n' "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # `outdated` resolves every pin against its upstream index and exits
+      # non-zero when one cannot be resolved, without downloading anything. A
+      # lock file would also catch this, but it is per-platform and would have to
+      # be regenerated on every host in the matrix to stay diff-clean.
+      - name: Resolve every pin against its upstream index
+        run: |
+          osdk --yes trust .
+          osdk outdated
+
   go:
     name: Go (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -152,20 +170,29 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
-        with:
-          distribution: temurin
-          java-version: "21"
+      # The JDK and the Android SDK packages come from osdk.toml, not from
+      # setup-java plus a hand-written sdkmanager line. Those two spellings of
+      # the same versions had already drifted apart from what local builds used,
+      # and the sdkmanager form additionally cannot express "the platform package
+      # whose ApiLevel is exactly 36": `platforms;android-36` is a manifest path
+      # here but a prefix elsewhere. One pinned file removes both problems.
+      - name: Install osdk
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/lejunyang/one-sdk/main/install.sh \
+            | sh -s -- --no-modify-shell --install-dir "$HOME/.local/bin"
+          printf '%s\n' "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+      - name: Trust the project toolchain pins
+        run: osdk --yes trust .
 
-      - name: Install Android SDK 36
-        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - name: Install the pinned toolchain
+        run: osdk --yes install
 
+      # Gradle is deliberately NOT pinned by osdk: android/gradle/wrapper pins
+      # 9.3.1 together with a distributionSha256Sum, and that checksum is the
+      # stronger guarantee. setup-gradle is kept for its dependency cache only.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@41ad77ca97e46ee2e825d5e6b9a95d8169fcc44c # v4.4.2
 
       - name: Test, assemble, and lint debug build
-        run: ./android/gradlew -p android --no-daemon testDebugUnitTest assembleDebug lintDebug
+        run: make android-verify

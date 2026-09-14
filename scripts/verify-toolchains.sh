@@ -10,22 +10,6 @@ if [ "${1:-}" = "--metadata-only" ]; then
   METADATA_ONLY=true
 fi
 
-assert_file_value() {
-  file=$1
-  expected=$2
-
-  if [ ! -f "$ROOT_DIR/$file" ]; then
-    printf 'missing required file: %s\n' "$file" >&2
-    exit 1
-  fi
-
-  actual=$(tr -d '\r\n' < "$ROOT_DIR/$file")
-  if [ "$actual" != "$expected" ]; then
-    printf '%s must contain %s, got %s\n' "$file" "$expected" "$actual" >&2
-    exit 1
-  fi
-}
-
 assert_contains() {
   file=$1
   expected=$2
@@ -36,11 +20,32 @@ assert_contains() {
   fi
 }
 
-assert_file_value ".go-version" "1.26.5"
-assert_file_value ".java-version" "21"
-assert_contains ".tool-versions" "golang 1.26.5"
-assert_contains ".tool-versions" "java temurin-21.0.7+6"
-assert_contains ".tool-versions" "gradle 9.3.1"
+# osdk.toml is the single source of truth for tool versions. Asserting the same
+# version in a second file only creates a way for the two to disagree, so this
+# checks that the pin exists and is what the Android build needs -- not that some
+# other file repeats it.
+#
+# `.tool-versions` used to be checked here as well. It was removed because it had
+# silently rotted: it named `java temurin-21.0.7+6`, a build the upstream index no
+# longer publishes, so anything that actually tried to install from it failed.
+# That is the failure mode of duplicated version facts, and the reason there is
+# now one file.
+assert_contains "osdk.toml" 'java = "21.0.12.1+1"'
+assert_contains "osdk.toml" 'go = "1.26.5"'
+# `.go-version` is the one remaining duplicate, and it is deliberate:
+# actions/setup-go reads it directly and cannot read osdk.toml, while the Go-only
+# CI jobs are not worth an osdk install. Keep the two in agreement here so the
+# duplication cannot drift the way `.tool-versions` did. `.java-version` was
+# removed outright because nothing consumed it any more.
+go_pin=$(sed -n 's/^go = "\([^"]*\)".*/\1/p' "$ROOT_DIR/osdk.toml" | head -n 1)
+go_version_file=$(tr -d ' \r\n' < "$ROOT_DIR/.go-version")
+if [ "$go_pin" != "$go_version_file" ]; then
+  printf '.go-version (%s) disagrees with the go pin in osdk.toml (%s)\n' \
+    "$go_version_file" "$go_pin" >&2
+  exit 1
+fi
+assert_contains "osdk.toml" 'android-platforms = "=android-36"'
+assert_contains "osdk.toml" 'android-build-tools = "36.0.0"'
 assert_contains "android/gradle/libs.versions.toml" 'agp = "9.1.1"'
 assert_contains "android/gradle/libs.versions.toml" 'compileSdk = "36"'
 assert_contains "android/gradle/libs.versions.toml" 'targetSdk = "36"'
@@ -75,10 +80,16 @@ check_command go
 check_command java
 check_command adb
 
-if command -v go >/dev/null 2>&1; then
+# The expected Go version is read from osdk.toml rather than repeated here, so
+# bumping the pin needs one edit instead of two that can drift apart.
+expected_go=$(sed -n 's/^go = "\([^"]*\)".*/\1/p' "$ROOT_DIR/osdk.toml" | head -n 1)
+if [ -z "$expected_go" ]; then
+  printf 'osdk.toml does not pin go\n' >&2
+  missing=1
+elif command -v go >/dev/null 2>&1; then
   go_version=$(go version | awk '{print $3}')
-  if [ "$go_version" != "go1.26.5" ]; then
-    printf 'Go 1.26.5 required, found %s\n' "$go_version" >&2
+  if [ "$go_version" != "go$expected_go" ]; then
+    printf 'Go %s required, found %s\n' "$expected_go" "$go_version" >&2
     missing=1
   fi
 fi
@@ -96,6 +107,9 @@ fi
 
 if [ -n "${ANDROID_HOME:-}" ] || [ -n "${ANDROID_SDK_ROOT:-}" ]; then
   android_sdk=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
+  # `platforms/android-36` is the base package whose AndroidVersion.ApiLevel is
+  # exactly 36. Neither `android-36.1` (ApiLevel 36.1) nor `android-36-ext19`
+  # (a side-by-side extension reporting `36x`) satisfies compileSdk = 36.
   if [ ! -d "$android_sdk/platforms/android-36" ]; then
     printf 'Android SDK platform 36 is not installed under %s\n' "$android_sdk" >&2
     missing=1
