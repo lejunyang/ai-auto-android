@@ -65,10 +65,13 @@ android-system-images = "android-35;google_apis;x86_64"
 #
 # 这里用 per-tool `expose` 只取回本项目 Makefile 与 scripts/*.sh 真正用到的命令，
 # 于是 make / sh / tr 等可以直接调用，不必套 `osdk exec`；未列出的 ls 仍然不生成。
+# 其中 sed / head 供 verify-toolchains.sh 解析 osdk.toml 里的 pin 值；漏掉它们会让
+# `make verify` 以 "sed: command not found" 失败（RC=127）。
 #
 # 不要改用全局 `shims.include`：它是**全体工具**的白名单，一旦设置，未列出的
 # cargo / go / node 会全部失去 shim（实测 646 个归零）。per-tool 的 expose 是增量的，
 # 只加不减。详见 one-sdk 的 docs/bugs/008。
 #
-# 改动请用 `osdk config set shims.conda:m2-base.expose "..."`，改完重新 trust。
-expose = ["make", "sh", "bash", "tr", "awk", "grep", "printf", "mkdir", "rm", "cp", "mv", "dirname", "test"]
+# 改动请用 `osdk config set shims.conda:m2-base.expose "..."`，改完重新 trust；
+# 注意该命令会重写整节并丢弃本段注释，改完需要把注释补回。
+expose = ["make", "sh", "bash", "tr", "awk", "grep", "printf", "mkdir", "rm", "cp", "mv", "dirname", "test", "sed", "head"]
