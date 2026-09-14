@@ -25,19 +25,18 @@ jobs:
       - name: Verify pinned toolchains and layout
         run: ./scripts/verify-toolchains.sh --metadata-only
 
-      # The pins must also be installable, not merely well-formed. `.tool-versions`
-      # used to name a Java build the upstream index had stopped publishing, and
-      # nothing caught it because no check ever tried to resolve the pins.
+      # pin 不仅要格式正确，还必须真的能装上。`.tool-versions` 里曾写着一个上游索引
+      # 已停止发布的 Java 版本，却长期无人发现 —— 因为当时没有任何检查真正去解析这些
+      # pin，只断言了文件包含对应字符串。
       - name: Install osdk
         run: |
           curl -fsSL https://raw.githubusercontent.com/lejunyang/one-sdk/main/install.sh \
             | sh -s -- --no-modify-shell --install-dir "$HOME/.local/bin"
           printf '%s\n' "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      # `outdated` resolves every pin against its upstream index and exits
-      # non-zero when one cannot be resolved, without downloading anything. A
-      # lock file would also catch this, but it is per-platform and would have to
-      # be regenerated on every host in the matrix to stay diff-clean.
+      # `outdated` 会把每个 pin 都对上游索引解析一遍，有任何一个解析不出就以非零码
+      # 退出，且全程不下载任何制品。锁文件同样能发现这类问题，但它是分平台的，要保持
+      # diff 干净就得在矩阵里每个 host 上各重新生成一份，代价不划算。
       - name: Resolve every pin against its upstream index
         run: |
           osdk --yes trust .
@@ -170,12 +169,11 @@ jobs:
         with:
           persist-credentials: false
 
-      # The JDK and the Android SDK packages come from osdk.toml, not from
-      # setup-java plus a hand-written sdkmanager line. Those two spellings of
-      # the same versions had already drifted apart from what local builds used,
-      # and the sdkmanager form additionally cannot express "the platform package
-      # whose ApiLevel is exactly 36": `platforms;android-36` is a manifest path
-      # here but a prefix elsewhere. One pinned file removes both problems.
+      # JDK 与 Android SDK 包一律来自 osdk.toml，不再用 setup-java 加一行手写的
+      # sdkmanager 声明。那种写法把同一批版本讲了第二遍，且已经和本地构建实际用的版本
+      # 漂移开了；此外它无法表达「ApiLevel 恰为 36 的那个平台包」—— `platforms;android-36`
+      # 在 sdkmanager 里是精确清单路径，在别处却是前缀。改由单一 pin 文件声明可同时
+      # 解决这两个问题。
       - name: Install osdk
         run: |
           curl -fsSL https://raw.githubusercontent.com/lejunyang/one-sdk/main/install.sh \
@@ -188,9 +186,9 @@ jobs:
       - name: Install the pinned toolchain
         run: osdk --yes install
 
-      # Gradle is deliberately NOT pinned by osdk: android/gradle/wrapper pins
-      # 9.3.1 together with a distributionSha256Sum, and that checksum is the
-      # stronger guarantee. setup-gradle is kept for its dependency cache only.
+      # gradle 刻意不交给 osdk pin：android/gradle/wrapper 用 distributionUrl 加
+      # distributionSha256Sum 锁定 9.3.1，该校验和是更强的保障。这里保留 setup-gradle
+      # 仅为使用它的依赖缓存。
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@41ad77ca97e46ee2e825d5e6b9a95d8169fcc44c # v4.4.2
 

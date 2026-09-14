@@ -63,9 +63,8 @@ jobs:
         with:
           node-version: "24"
 
-      # A release must be built from the versions the repository pins, so the JDK
-      # and the Android SDK come from osdk.toml rather than from a second set of
-      # versions spelled out here. See the same step in verify.yml.
+      # 发布产物必须由仓库 pin 的那批版本构建，所以 JDK 与 Android SDK 取自 osdk.toml，
+      # 而不是在这里再声明第二份版本。理由同 verify.yml 中的对应步骤。
       - name: Install osdk
         run: |
           curl -fsSL https://raw.githubusercontent.com/lejunyang/one-sdk/main/install.sh \
@@ -78,8 +77,8 @@ jobs:
       - name: Install the pinned toolchain
         run: osdk --yes install
 
-      # Gradle stays on the wrapper's own pin plus its distributionSha256Sum;
-      # setup-gradle is kept for its dependency cache only.
+      # gradle 仍由 wrapper 自身的 distributionUrl 加 distributionSha256Sum 锁定；
+      # 这里保留 setup-gradle 仅为使用它的依赖缓存。
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@41ad77ca97e46ee2e825d5e6b9a95d8169fcc44c # v4.4.2
 
@@ -89,9 +88,9 @@ jobs:
       - name: Run Android tests and lint
         run: make android-test android-lint
 
-      # scripts/release.sh builds the APK through ANDROID_GRADLEW, which needs the
-      # SDK environment osdk exec injects; without it Gradle reports
-      # "SDK location not found".
+      # scripts/release.sh 通过 ANDROID_GRADLEW 构建 APK，需要 osdk exec 注入的
+      # ANDROID_HOME / ANDROID_SDK_ROOT 等 SDK 环境变量；缺了它 Gradle 会报
+      # 「SDK location not found」。
       - name: Build release bundle
         env:
           VERSION: ${{ steps.release.outputs.version }}
