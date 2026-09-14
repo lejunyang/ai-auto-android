@@ -1,0 +1,74 @@
+# 配置用途：声明并固定本项目在 Windows 上的 osdk 工具链版本，统一提供 Go、Node 与
+# POSIX 构建环境，确保 Makefile 与 scripts/*.sh 可跨平台执行。
+
+[tools]
+# POSIX 构建环境（make + bash），供 Makefile 与 scripts/*.sh 使用。
+#
+# 这里刻意只 pin 一个 conda 包、其余用 `with` 装进同一个 prefix，而不是每个
+# msys 包各 pin 一行。原因不是少写几行：
+#
+# conda 的每个 tool 各占一个独立 prefix，而每个 m2-* 包都自带一份
+# msys-2.0.dll。Windows 按「路径」而非内容实例化 DLL，所以 8 个单包在同一进程
+# 树里就是 8 套互不相识的 msys 运行时 —— 每个 sh.exe 按自己 DLL 的位置推导
+# POSIX 根，于是 m2-bash 的 sh 眼中 /usr/bin 只有它自己的文件，recipe 里的
+# tr / head / awk 全部 command not found。
+#
+# `with` 让主包与附加包一次联合求解、装进同一个 prefix：共享依赖只出现一次，
+# msys-2.0.dll 只有一份，工具彼此可见（实测 8 份 -> 1 份）。
+# 参见 one-sdk 的 docs/bugs/005（根因 B）与 docs/conda-with-option-spec.zh-CN.md。
+#
+# m2-base 是元包，自带 sh/bash/coreutils/grep/sed/gawk/findutils；它唯独不含
+# make，所以 make 必须由 with 补上。diffutils 当前脚本未用到，保留是为了与迁移
+# 前的依赖集合保持一致。
+#
+# 本段由 `osdk use conda:m2-base@2022.6.1 --opt with=m2-make,m2-diffutils` 生成，
+# 改动请用 osdk 命令而非手工编辑（`with` 参与安装 identity，手改会指向另一个
+# prefix）。
+go = "1.26.5"
+node = "20.11.1"
+"conda:m2-base" = { version = "2022.6.1", with = "m2-make,m2-diffutils" }
+java = "21.0.12.1+1"
+
+# Android 工具链。这些原先挂在 osdk 全局配置上，现改为项目级固定，避免换机或
+# 全局升级后本项目静默换到另一套 SDK。
+#
+# android-platforms 用 `=` 精确锁定到 `android-36`，即 AndroidVersion.ApiLevel
+# 恰为 36 的基础平台包，与 libs.versions.toml 的 compileSdk/targetSdk = 36 对齐。
+#
+# 为什么不写 `android-36`（不带 `=`）：那是前缀匹配，语义上允许命中同前缀的更新
+# 包。虽然 osdk 现在会让精确标识符优先（故裸 `android-36` 也能命中 android-36），
+# 但 `=` 表达的是「就要这一个，不接受任何回退」，对固定 compileSdk 的项目更贴切。
+#
+# 为什么不写 `android-36.1`：它的 ApiLevel 是 36.1 而非 36。`osdk list-remote
+# android-platforms` 现在会标出每个候选的 API level，可直接核对。
+#
+# 为什么不再用 `android-36-ext19`：那是 ExtensionLevel 19 的 side-by-side 扩展包
+# （ApiLevel 报告为 `36x`）。它此前被用作绕过前缀误匹配的手段，现已不必要；项目
+# 需要的是基础 API 36。
+#
+# android-system-images 带完整坐标是这个家族的正常写法（版本本身就是三段坐标），
+# 不是绕过手段。
+#
+# gradle 刻意不在此处 pin：项目用 android/gradle/wrapper 的 distributionUrl +
+# distributionSha256Sum 锁定 9.3.1，wrapper 才是权威来源；而 osdk 的 JVM 工具
+# 目录当前只提供 gradle 9.7.0，pin 上去会与 wrapper 校验冲突。
+android-platforms = "=android-36"
+android-build-tools = "36.0.0"
+android-platform-tools = "37.0.1"
+android-cmdline-tools = "latest"
+android-emulator = "37.1.11"
+android-system-images = "android-35;google_apis;x86_64"
+
+[settings.shims.tools."conda:m2-base"]
+# m2-base 是元包，自身不「拥有」prefix 里那 257 个命令，所以默认一个 shim 都不生成
+# —— 这是刻意的，否则 msys 版的 ls / test / sort 会盖住 Windows 同名命令。
+#
+# 这里用 per-tool `expose` 只取回本项目 Makefile 与 scripts/*.sh 真正用到的命令，
+# 于是 make / sh / tr 等可以直接调用，不必套 `osdk exec`；未列出的 ls 仍然不生成。
+#
+# 不要改用全局 `shims.include`：它是**全体工具**的白名单，一旦设置，未列出的
+# cargo / go / node 会全部失去 shim（实测 646 个归零）。per-tool 的 expose 是增量的，
+# 只加不减。详见 one-sdk 的 docs/bugs/008。
+#
+# 改动请用 `osdk config set shims.conda:m2-base.expose "..."`，改完重新 trust。
+expose = ["make", "sh", "bash", "tr", "awk", "grep", "printf", "mkdir", "rm", "cp", "mv", "dirname", "test"]
