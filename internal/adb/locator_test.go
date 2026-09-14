@@ -6,15 +6,27 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
 )
 
+// hostADBExecutable 返回当前平台上 Locator 期望的 ADB 可执行文件名。
+// 正向发现用例必须使用真实 GOOS：Windows 的 os.WriteFile 无法写入 0o111
+// 执行位，若把 GOOS 固定成 darwin，validate 的执行位校验会在 Windows 上
+// 必然失败，这属于测试自身的平台假设错误，而非被测逻辑缺陷。
+func hostADBExecutable() string {
+	if runtime.GOOS == "windows" {
+		return "adb.exe"
+	}
+	return "adb"
+}
+
 func TestLocatorPrefersExplicitADBPath(t *testing.T) {
 	directory := t.TempDir()
-	adbPath := filepath.Join(directory, "adb")
+	adbPath := filepath.Join(directory, hostADBExecutable())
 	if err := os.WriteFile(adbPath, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +39,7 @@ func TestLocatorPrefersExplicitADBPath(t *testing.T) {
 			return ""
 		},
 		UserHome: func() (string, error) { return directory, nil },
-		GOOS:     "darwin",
+		GOOS:     runtime.GOOS,
 	}
 	resolved, err := locator.Resolve()
 	if err != nil {
@@ -40,7 +52,7 @@ func TestLocatorPrefersExplicitADBPath(t *testing.T) {
 
 func TestLocatorFindsAndroidHomePlatformTools(t *testing.T) {
 	directory := t.TempDir()
-	adbPath := filepath.Join(directory, "platform-tools", "adb")
+	adbPath := filepath.Join(directory, "platform-tools", hostADBExecutable())
 	if err := os.MkdirAll(filepath.Dir(adbPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +68,7 @@ func TestLocatorFindsAndroidHomePlatformTools(t *testing.T) {
 			return ""
 		},
 		UserHome: func() (string, error) { return "", os.ErrNotExist },
-		GOOS:     "darwin",
+		GOOS:     runtime.GOOS,
 	}
 	resolved, err := locator.Resolve()
 	if err != nil {
