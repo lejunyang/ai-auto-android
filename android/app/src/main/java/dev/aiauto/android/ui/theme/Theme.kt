@@ -5,7 +5,9 @@ package dev.aiauto.android.ui.theme
  */
 
 import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -44,16 +46,15 @@ fun AiAutoAndroidTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    val colorScheme = when {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && darkTheme ->
-            dynamicDarkColorScheme(context)
-
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            dynamicLightColorScheme(context)
-
-        darkTheme -> DarkColors
-        else -> LightColors
+    // 动态取色（Material You）自 API 31 起提供，而本模块 minSdk 为 30，
+    // 因此必须做版本分支。把 API 31 调用抽到带 @RequiresApi 注解的独立函数里，
+    // 而不是内联在 when/if 条件中：AGP 9.1.1 的 lint 流分析穿不过内联的
+    // SDK_INT 守卫（无论写成复合条件还是嵌套 if 都仍报 NewApi），
+    // 而注解声明是 lint 官方支持的表达方式，语义也更明确。
+    val colorScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        dynamicColorScheme(darkTheme)
+    } else {
+        if (darkTheme) DarkColors else LightColors
     }
 
     MaterialTheme(
@@ -61,4 +62,20 @@ fun AiAutoAndroidTheme(
         typography = AppTypography,
         content = content,
     )
+}
+
+/**
+ * 功能用途：读取系统动态取色方案，仅在 API 31 及以上调用。
+ *
+ * 调用方必须自行完成版本检查；注解让 lint 与阅读者都能看到该前提。
+ */
+@RequiresApi(Build.VERSION_CODES.S)
+@Composable
+private fun dynamicColorScheme(darkTheme: Boolean): ColorScheme {
+    val context = LocalContext.current
+    return if (darkTheme) {
+        dynamicDarkColorScheme(context)
+    } else {
+        dynamicLightColorScheme(context)
+    }
 }
