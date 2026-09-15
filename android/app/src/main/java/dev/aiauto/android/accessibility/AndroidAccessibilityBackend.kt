@@ -232,11 +232,23 @@ internal class AndroidAccessibilityBackend(
             x = start.x + (end.x - start.x) / 2,
             y = start.y + (end.y - start.y) / 2,
         )
-        // 复合手势取第一笔的起点作为归因锚点：那是用户手指最先落下的位置，
-        // 也是系统判定「这次交互作用在哪个 View 上」的依据。取几何中心会在
-        // pinch 这类对称手势上落到两指中间的空白处，找不到归因节点。
-        is Gesture.MultiStroke -> strokes.firstOrNull()?.path?.firstOrNull()
-            ?: ScreenPoint(0, 0)
+        // 复合手势取各指起点的质心作为归因锚点。
+        //
+        // 不取第一笔的起点：pinch 的两指对称分布在中心两侧，第一笔起点落在
+        // 中心左侧一段距离处，可能不在目标控件内；而质心正好是缩放中心，
+        // 也是用户认知里「这个手势作用在哪」的位置。drag 与路径手势只有一指时
+        // 质心等于其起点，语义不变。
+        is Gesture.MultiStroke -> {
+            val origins = strokes.mapNotNull { it.path.firstOrNull() }
+            if (origins.isEmpty()) {
+                ScreenPoint(0, 0)
+            } else {
+                ScreenPoint(
+                    x = origins.sumOf { it.x } / origins.size,
+                    y = origins.sumOf { it.y } / origins.size,
+                )
+            }
+        }
     }
 
     private fun Gesture.expectedEventBudgets(): Map<Int, Int> = when (this) {
