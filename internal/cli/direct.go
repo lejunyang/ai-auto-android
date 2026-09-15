@@ -26,7 +26,12 @@ func (a *App) executeObserve(
 	args []string,
 ) (any, error) {
 	if len(args) == 0 {
-		return nil, usageError("Usage: aactl observe screenshot|hierarchy [options]")
+		return nil, usageError(
+			"Usage: aactl observe screenshot|hierarchy|foreground|apps|recording [options]")
+	}
+	// 新增的三个观察子命令先行处理；未命中时落回下面的既有分支。
+	if result, handled, err := a.executeObserveExtra(ctx, automation, args); handled {
+		return result, err
 	}
 	switch args[0] {
 	case "screenshot":
@@ -78,7 +83,136 @@ func (a *App) executeObserve(
 			"sha256":    hierarchy.SHA256,
 		}, nil
 	default:
-		return nil, usageError("Unknown observe command. Supported commands: screenshot, hierarchy.")
+		return nil, usageError(
+			"Unknown observe command. Supported commands: screenshot, hierarchy, foreground, apps, recording.")
+	}
+}
+
+// executeObserveExtra 处理前台应用、应用清单与录屏三个观察子命令。
+//
+// 单独成函数而不并入 executeObserve 的 switch：这三者都需要各自的选项集，
+// 挤在一个函数里会让参数校验难以逐项核对。返回 handled=false 表示不是这三者，
+// 交回原分派继续处理，避免两处都要维护子命令名单。
+func (a *App) executeObserveExtra(
+	ctx context.Context,
+	automation service.Automation,
+	args []string,
+) (result any, handled bool, err error) {
+	switch args[0] {
+	case "foreground":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device"),
+			required: []string{"device"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		foreground, observeErr := automation.Foreground(ctx, service.ForegroundRequest{
+			Device: options["device"],
+		})
+		if observeErr != nil {
+			return nil, true, observeErr
+		}
+		return foreground, true, nil
+
+	case "apps":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "include-system", "with-details"),
+			required: []string{"device"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		includeSystem, flagErr := parseBooleanOption(options, "include-system")
+		if flagErr != nil {
+			return nil, true, flagErr
+		}
+		withDetails, flagErr := parseBooleanOption(options, "with-details")
+		if flagErr != nil {
+			return nil, true, flagErr
+		}
+		apps, observeErr := automation.Apps(ctx, service.AppsRequest{
+			Device:        options["device"],
+			IncludeSystem: includeSystem,
+			WithDetails:   withDetails,
+		})
+		if observeErr != nil {
+			return nil, true, observeErr
+		}
+		return apps, true, nil
+
+	case "recording":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed: optionSet(
+				"device", "output", "seconds", "width", "height", "bit-rate",
+			),
+			required: []string{"device", "output"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		request := service.RecordingRequest{Device: options["device"]}
+		for name, target := range map[string]*int{
+			"seconds":  &request.Seconds,
+			"width":    &request.Width,
+			"height":   &request.Height,
+			"bit-rate": &request.BitRate,
+		} {
+			if _, present := options[name]; !present {
+				continue
+			}
+			value, intErr := parseIntegerOption(options, name)
+			if intErr != nil {
+				return nil, true, intErr
+			}
+			*target = value
+		}
+		recording, observeErr := automation.Record(ctx, request)
+		if observeErr != nil {
+			return nil, true, observeErr
+		}
+		// 复用截图的写文件逻辑：同样要拒绝空字节、目录路径并使用 0600 权限。
+		path, writeErr := writeScreenshot(options["output"], recording.Video)
+		if writeErr != nil {
+			return nil, true, writeErr
+		}
+		return map[string]any{
+			"device":          recording.Device,
+			"path":            path,
+			"format":          recording.Format,
+			"sizeBytes":       recording.SizeBytes,
+			"sha256":          recording.SHA256,
+			"durationSeconds": recording.DurationSec,
+			"width":           recording.Width,
+			"height":          recording.Height,
+			"bitRate":         recording.BitRate,
+		}, true, nil
+	}
+	return nil, false, nil
+}
+
+// parseBooleanOption 把可选开关解析为布尔值。
+//
+// 必须显式写成 --with-details=true 或 --with-details true：
+// 既有的 parseNamedOptions 对所有选项一律要求非空值（见其 "requires a value" 分支），
+// 因此这里不支持裸开关写法，也不去改动那条既有约定——它同时约束了所有其他命令。
+func parseBooleanOption(options map[string]string, name string) (bool, error) {
+	value, present := options[name]
+	if !present {
+		return false, nil
+	}
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "true", "1", "yes":
+		return true, nil
+	case "false", "0", "no":
+		return false, nil
+	default:
+		return false, apperr.New(
+			apperr.CodeInvalidArgument,
+			fmt.Sprintf("%s must be true or false.", name),
+			false,
+			map[string]any{"field": name},
+		)
 	}
 }
 
@@ -88,7 +222,7 @@ func (a *App) executeAction(
 	args []string,
 ) (any, error) {
 	if len(args) == 0 {
-		return nil, usageError("Usage: aactl action tap|swipe|text|key|launch|stop [options]")
+		return nil, usageError("Usage: aactl action tap|swipe|long-press|scroll|text|key|launch|stop [options]")
 	}
 	switch args[0] {
 	case "tap":
@@ -144,6 +278,63 @@ func (a *App) executeAction(
 			EndX:       values["x2"],
 			EndY:       values["y2"],
 			DurationMS: duration,
+		})
+	case "long-press":
+		options, err := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "x", "y", "duration"),
+			required: []string{"device", "x", "y"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		x, err := parseIntegerOption(options, "x")
+		if err != nil {
+			return nil, err
+		}
+		y, err := parseIntegerOption(options, "y")
+		if err != nil {
+			return nil, err
+		}
+		duration := 0
+		if _, exists := options["duration"]; exists {
+			duration, err = parseIntegerOption(options, "duration")
+			if err != nil {
+				return nil, err
+			}
+		}
+		return automation.ExecuteAction(ctx, service.ActionRequest{
+			Device:     options["device"],
+			Action:     service.ActionLongClick,
+			X:          x,
+			Y:          y,
+			DurationMS: duration,
+		})
+	case "scroll":
+		options, err := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "direction", "amount"),
+			required: []string{"device", "direction"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		amount := 0.0
+		if raw, exists := options["amount"]; exists {
+			parsed, parseErr := strconv.ParseFloat(raw, 64)
+			if parseErr != nil {
+				return nil, apperr.New(
+					apperr.CodeInvalidArgument,
+					"amount must be a fraction of the screen between 0 and 1.",
+					false,
+					map[string]any{"field": "amount"},
+				)
+			}
+			amount = parsed
+		}
+		return automation.ExecuteAction(ctx, service.ActionRequest{
+			Device:    options["device"],
+			Action:    service.ActionScroll,
+			Direction: options["direction"],
+			Amount:    amount,
 		})
 	case "text":
 		options, err := parseNamedOptions(args[1:], optionSpec{

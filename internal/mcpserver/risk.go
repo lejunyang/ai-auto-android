@@ -27,9 +27,14 @@ func (e modelToolError) Error() string {
 
 func requireModelActionAllowed(action string) error {
 	// 模型只能触发显式低风险白名单；停止 App 等动作即使在 CLI 可用也不会透传。
+	//
+	// 长按与滚动纳入白名单：两者都由 input swipe 合成，只产生指针事件，
+	// 不改变应用生命周期也不写入任何数据，风险等级与既有的 tap/swipe 相同。
 	switch action {
 	case service.ActionTap,
 		service.ActionSwipe,
+		service.ActionLongClick,
+		service.ActionScroll,
 		service.ActionSetText,
 		service.ActionPressKey,
 		service.ActionLaunch:
