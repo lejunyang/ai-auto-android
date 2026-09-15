@@ -30,23 +30,23 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 
 | 编号 | 能力 | 状态 | 验证 API | 证据 |
 | --- | --- | --- | --- | --- |
-| A1 | 多窗口模型（`service.windows` 遍历） | 未开始 | — | — |
-| A2 | `drag`（按住—停顿—移动） | 未开始 | — | — |
-| A3 | `scrollIntoView` / `scrollUntil` | 未开始 | — | — |
-| A4 | Bridge 侧 `pressKey` | 未开始 | — | — |
+| A1 | 多窗口模型（`service.windows` 遍历） | 已交付 | 35 | E1 |
+| A2 | `drag`（按住—停顿—移动） | 已交付（桥侧+直连） | 35 | E2、E5 |
+| A3 | `scrollIntoView` / `scrollUntil` | 已实现未验证 | — | 仅三层实现与单测，无设备证据 |
+| A4 | Bridge 侧 `pressKey` | 部分实现 | — | 仅 MOVE_HOME/MOVE_END 可走无障碍，其余键需 ADB；无设备证据 |
 
 ### P1
 
 | 编号 | 能力 | 状态 | 验证 API | 证据 |
 | --- | --- | --- | --- | --- |
-| A5 | 文本选择（`ACTION_SET_SELECTION`） | 未开始 | — | — |
-| A6 | 复制 / 剪切 / 粘贴 | 未开始 | — | — |
-| A7 | 多指与复合手势（pinch / zoom / 旋转 / 双指滚动） | 未开始 | — | — |
-| A8 | 双击 / N 连击 | 未开始 | — | — |
-| A9 | 节点动作补齐（FOCUS / CLEAR_FOCUS / SELECT / EXPAND / COLLAPSE / DISMISS / SET_PROGRESS / SCROLL_TO_POSITION） | 未开始 | — | — |
-| A10 | 全局动作补齐（通知栏 / 快捷设置 / 锁屏 / 截屏 / 电源菜单） | 未开始 | — | — |
-| A11 | 设备状态动作（旋转 / 唤醒 / 解锁 / 亮屏检测） | 未开始 | — | — |
-| A12 | IME 控制（键盘显隐 / 切换测试输入法） | 未开始 | — | — |
+| A5 | 文本选择（`ACTION_SET_SELECTION`） | 已实现未验证 | — | 三层实现完成，缺可编辑控件的设备夹具 |
+| A6 | 复制 / 剪切 / 粘贴 | 已实现未验证 | — | 同上 |
+| A7 | 多指与复合手势 | pinch 已交付；zoom/旋转/双指滚动已实现未验证 | 35 | E4 |
+| A8 | 双击 / N 连击 | 已交付 | 35 | E3 |
+| A9 | 节点动作补齐（8 项） | 已实现未验证 | — | 快照映射与路由已补，缺设备夹具 |
+| A10 | 全局动作补齐（5 项） | 已实现未验证 | — | 通知栏/快捷设置/锁屏/截屏/电源菜单已按 API 分级接线；快捷键面板确认无法实现（见第 9 节 D1） |
+| A11 | 设备状态动作 | 未开始 | — | — |
+| A12 | IME 控制 | 未开始 | — | — |
 
 ### P2
 
@@ -56,7 +56,26 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 | A14 | deeplink 打开 | 未开始 | — | — |
 | A15 | 文件 push / pull | 未开始 | — | — |
 | A16 | Toast 捕获 | 未开始 | — | — |
-| A17 | 路径手势（图案解锁） | 未开始 | — | — |
+| A17 | 路径手势 | 已实现未验证 | — | 桥侧与直连实现完成，无设备证据 |
+
+### 设备证据编号
+
+统一环境：serial `emulator-5554`，AVD `osdk-test-35`，API 35（Android 15），
+320x640，x86_64，无障碍 `capabilities=161`，`Crashed services:{}`。
+执行方式：`ActionSurfaceDeviceTest`，走生产 `AccessibilityActionRouter`
+与 `AndroidAccessibilityBackend`，非测试专用简化通道。
+
+| 编号 | 内容 |
+| --- | --- |
+| E1 | `enumeratesMoreThanTheActiveWindowOnRealDevice` 通过。前置观察：`dumpsys window windows` 显示 9 个窗口；补 `flagRetrieveInteractiveWindows` 前 `enumerateWindows()` 返回 0，补后返回多个窗口，含被测 Activity 窗口且其根节点有子节点，layer 严格降序。 |
+| E2 | `dispatchesMultiStrokeDragThroughTheProductionRouter` 通过，证明多 stroke + `continueStroke` 续接被平台接受。 |
+| E3 | `dispatchesMultiTapThroughTheProductionRouter` 通过（双击）。 |
+| E4 | `dispatchesTwoFingerPinchThroughTheProductionRouter` 通过，证明同一 `GestureDescription` 内两笔并行可用——这是多指能力唯一的真实证据。 |
+| E5 | 直连通道 `input draganddrop` 与 `input motionevent` 在同一设备上实测可用；同时确认 `input motionevent` 只接受一个坐标对（传第三个参数被静默忽略且返回 exit 0），故直连**无法**合成多指。 |
+
+最近一次执行结果：`Tests run: 4, OK (4 tests)`。
+Android 单测 402 项、`lintDebug` 通过。
+
 
 ## 3. 实施步骤与依赖
 
@@ -165,4 +184,8 @@ release 变体不得引入任何 test-only 入口。
 
 | 编号 | 事项 | 备选 | 当前处理 |
 | --- | --- | --- | --- |
-| — | 暂无 | — | — |
+| D1 | 全局动作「快捷键帮助面板」无法实现。其常量 `GLOBAL_ACTION_KEYBOARD_SHORTCUTS` 是 `@hide`，仅对系统应用开放，编译 SDK 上不可见。 | ①保持不支持并如实上报 `ACTION_NOT_SUPPORTED`（当前做法）；②硬编码常量数值调通，但依赖未公开 API，后续 Android 版本可能静默失效 | 已选 ①。若需 ②，请确认可接受未公开 API 风险。 |
+| D2 | 多指手势只能走 App Bridge。实测确认 `input motionevent` 只接受单坐标对且静默忽略多余参数，直连 ADB 通道无法合成多指。 | ①多指仅在桥已连接时可用（当前做法）；②改用 root + `sendevent` 直接写 `/dev/input`，可在直连通道实现多指，但需要 root 且与设备输入驱动强耦合 | 已选 ①。②仅在一次性模拟器上可行，不适合真机交付；如需支持请确认。 |
+| D3 | API 30 / 33 / 34 镜像在本机未安装（`$ANDROID_HOME/system-images` 下只有 `android-35`），且 `profiles.json` 声明的是 arm64 镜像而本机为 x86_64。 | ①仅交付 API 35 证据，多版本矩阵标注未完成（当前做法）；②下载 x86_64 版 30/33/34 镜像并修正 profiles.json 后补齐矩阵（需数 GB 下载与较长时间） | 已选 ①。是否要补齐多版本矩阵请指示。 |
+| D4 | 文本编辑组（A5/A6）与节点动作组（A9）缺少设备夹具：现有 `ScreenshotTestActivity` 只有 Button 与 ScrollView，没有 EditText、SeekBar、可展开控件。 | ①扩充 debug 夹具 Activity 以覆盖这些控件（仅 debug 变体，不进 release）；②不做设备验证，这些能力长期标注为「已实现未验证」 | 倾向 ①，将在后续实施；如不希望扩充夹具请指示。 |
+
