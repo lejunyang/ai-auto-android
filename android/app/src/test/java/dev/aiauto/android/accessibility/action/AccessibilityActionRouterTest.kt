@@ -4,6 +4,7 @@ package dev.aiauto.android.accessibility.action
  * 测试用途：验证 AccessibilityActionRouter 的功能契约、失败语义及自动化安全边界。
  */
 
+import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
 
 import dev.aiauto.android.accessibility.model.AccessibilityCommand
@@ -262,6 +263,9 @@ class AccessibilityActionRouterTest {
         var nodeActionResult = false
         var globalActionResult = false
         var lastText: String? = null
+        // lastArguments 记录带参数动作（SET_SELECTION / SET_PROGRESS /
+        // SCROLL_TO_POSITION）实际收到的 Bundle，供断言参数是否正确构造。
+        var lastArguments: Bundle? = null
         var lastExpectedPackage: String? = null
         var lastExpectedEventBudgets: Map<Int, Int> = emptyMap()
         val gestureResults = ArrayDeque<Boolean>()
@@ -291,11 +295,13 @@ class AccessibilityActionRouterTest {
                         path: NodePath,
                         action: NodeAction,
                         text: String?,
+                        arguments: Bundle?,
                         expectedEventBudgets: Map<Int, Int>,
                         timeoutMs: Long,
                     ): Boolean {
                         performedNodeActions += action
                         lastText = text
+                        lastArguments = arguments
                         lastExpectedEventBudgets = expectedEventBudgets
                         return nodeActionResult
                     }
