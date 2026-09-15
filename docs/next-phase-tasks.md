@@ -1178,6 +1178,55 @@ scrcpy GUI 输入解析为 Agent 动作，不得自动选择 OTG 降级。
 
 **建议提交：** `feat(cli): add optional scrcpy operator handoff`
 
+### [ ] Task N55：Linux v4l2loopback 摄像头喂帧验证
+
+**目标：** 验证在 Linux 宿主上能否用 v4l2loopback 向模拟器持续喂入运行时生成的
+二维码帧，实现「模拟器长期待命、按需换码且无需重启」。
+
+**为什么需要这一项：** Windows 上的宿主虚拟摄像头方案已实测排除——DirectShow 类
+虚拟摄像头（OBS Virtual Camera、Unity Capture）没有 PnP 实例，emulator 的
+Media Foundation 后端不枚举它们，因此 `-camera-back webcamN` 接不上任何设备
+（相机数量为 0，相机应用崩溃）。判据与完整数据见 `docs/camera-virtual-stacks.md`。
+
+v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/dev/videoN` 设备节点，
+在 V4L2 视角里与物理摄像头没有区别，而 emulator 在 Linux 上正是通过 V4L2 枚举。
+这条路若成立，是唯一既不改 AVD、不需 root、也不破坏「固定官方镜像 + 校验和 +
+干净快照」可复现基线的换码方案。
+
+**具体步骤：**
+
+1. 在 Linux 宿主装 `v4l2loopback-dkms` 并 `modprobe` 出固定编号的设备节点；
+   记录发行版、内核版本、模块版本与 Secure Boot 状态（开启时需签名模块）。
+2. **前置判据（先做，1 分钟内可判）：** 运行 `emulator -webcam-list`，
+   确认该虚拟设备是否出现在列表中并拿到 `webcamN` 标签。未出现则本任务终止，
+   记录否定结论后转入 `imagefile` 重启方案，不继续后续步骤。
+3. 复用 `E:\tmp\qr\feed_qr.py` 的渲染逻辑（几何配方已实测：填满预览并裁剪、
+   可见区偏左，故码要偏小放左上），把输出后端从 pyvirtualcam 改为写 V4L2 设备。
+4. 以 `-camera-back webcamN` 启动 AVD，读 `dumpsys media.camera` 确认
+   `Number of camera devices >= 1`（Windows 上失败时该值为 0，是最灵敏的判据）。
+5. **核心判据：** 相机预览截图能解出第一个 payload；**不重启模拟器**改推第二个
+   payload 后，能解出新的。仅第一步成立不算通过——`imagefile` 与 `videofile`
+   都是在这一步失败的。
+6. 通过后再决定是否封装为 CLI/MCP 能力，并在 `scripts/emulator/` 的环境检查里
+   加入虚拟设备存在性检测。
+
+**依赖与并行：** 独立任务，不依赖其他 Wave；需要 Linux 宿主环境，
+与 N52 本地矩阵、N53 设备农场无耦合，可并行。
+
+**允许修改范围：** `docs/`、`scripts/emulator/`；仅在第 5 步判据通过后才允许
+触碰 `internal/adb/`、`internal/service/`、CLI 与 MCP 工具面。不得为此任务
+修改 AVD 配置、system image 或引入 root/Xposed 方案。
+
+**验收证据：** `emulator -webcam-list` 输出含该虚拟设备；`dumpsys media.camera`
+的设备数不为 0；两次不同 payload 的预览截图解码结果与推入内容一致，
+且第二次未重启模拟器。否定结论同样是有效验收，需记录在文档中。
+
+**失败清理：** `rmmod v4l2loopback` 卸载模块，终止帧生产者进程，`emu kill`
+关闭模拟器；不残留 `/dev/video*` 节点与后台推流进程。
+
+**建议提交：** `docs(camera): record linux v4l2loopback feed verdict`
+（若判据通过并落地能力，另起 `feat(camera): add virtual camera frame feed`）
+
 ## 并行执行波次
 
 1. **Wave 1A：** N31、N35、N39、N42 可并行，分别拥有测试控制、ADB、录制协议、

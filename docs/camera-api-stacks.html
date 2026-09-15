@@ -1,0 +1,127 @@
+<div style="max-width:1060px;margin:0 auto;padding:28px 24px;background:#0f1216;color:#e8eaed;font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;border-radius:12px;">
+
+  <div style="margin-bottom:24px;">
+    <div style="font-size:12px;letter-spacing:1.6px;color:#6b7785;text-transform:uppercase;margin-bottom:8px;">结论修正</div>
+    <div style="font-size:25px;font-weight:650;color:#fff;line-height:1.3;">两套摄像头 API，决定了谁能被模拟器看见</div>
+    <div style="font-size:13px;color:#8b95a3;margin-top:9px;line-height:1.65;">
+      我此前说「宿主虚拟摄像头整条路不成立」下得太早——只测了 DirectShow 一类，漏了 Media Foundation 原生虚拟摄像头
+    </div>
+  </div>
+
+  <!-- 核心机制 -->
+  <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:13px;padding-left:9px;border-left:3px solid #4a9eff;">机制：两条互不相通的采集栈</div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+    <div style="flex:1;min-width:250px;background:#1e2028;border:1px solid #3a3040;border-radius:9px;padding:15px 17px;">
+      <div style="font-size:12px;color:#6b7785;margin-bottom:6px;">旧栈</div>
+      <div style="font-size:15px;font-weight:600;color:#d4a0e0;margin-bottom:10px;">DirectShow 滤镜</div>
+      <div style="font-size:12px;color:#b4bdc7;line-height:1.75;">
+        运行时 <code style="background:#15181e;padding:1px 5px;border-radius:3px;font-size:11px;">regsvr32</code> 注册一个 COM 组件即可，<strong style="color:#e8eaed;">无驱动、无 PnP 实例</strong>
+      </div>
+      <div style="margin-top:11px;padding-top:10px;border-top:1px solid #2e2635;font-size:11.5px;color:#8b95a3;line-height:1.7;">
+        OBS Virtual Camera<br>Unity Capture<br>多数老牌虚拟摄像头
+      </div>
+    </div>
+    <div style="flex:1;min-width:250px;background:#1e2028;border:1px solid #2a4038;border-radius:9px;padding:15px 17px;">
+      <div style="font-size:12px;color:#6b7785;margin-bottom:6px;">新栈（Win11 22000+）</div>
+      <div style="font-size:15px;font-weight:600;color:#7fd4a0;margin-bottom:10px;">MF Frame Server 虚拟相机</div>
+      <div style="font-size:12px;color:#b4bdc7;line-height:1.75;">
+        经 <code style="background:#15181e;padding:1px 5px;border-radius:3px;font-size:11px;">MFCreateVirtualCamera</code> 注册进 Frame Server，<strong style="color:#7fd4a0;">在 KSCATEGORY_VIDEO_CAMERA 下登记，与硬件同列</strong>
+      </div>
+      <div style="margin-top:11px;padding-top:10px;border-top:1px solid #263830;font-size:11.5px;color:#8b95a3;line-height:1.7;">
+        VCamSample（smourier）<br>WindowsVirtualCamera（Qt）<br>virtualcam crate 的 MF 后端
+      </div>
+    </div>
+  </div>
+
+  <div style="background:linear-gradient(90deg,#1a2430 0%,#161d26 100%);border-left:3px solid #4a9eff;padding:14px 19px;border-radius:0 8px 8px 0;margin-bottom:26px;">
+    <div style="font-size:13px;color:#c8d0d9;line-height:1.8;">
+      <strong style="color:#9ecbff;">Android emulator 在 Windows 上用 Media Foundation 作为摄像头后端</strong>（官方 release notes 明载）。
+      所以它只看得见新栈的设备——这正是本机实测「ffmpeg 见 3 个、emulator 只见 1 个」的原因。
+    </div>
+  </div>
+
+  <!-- 实测对照 -->
+  <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:13px;padding-left:9px;border-left:3px solid #4a9eff;">本机实测对照</div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:12px;">
+    <thead>
+      <tr style="background:#1a1f27;">
+        <th style="text-align:left;padding:10px 12px;color:#8b95a3;font-weight:600;border-bottom:1px solid #2a323d;">设备</th>
+        <th style="text-align:left;padding:10px 12px;color:#8b95a3;font-weight:600;border-bottom:1px solid #2a323d;">栈</th>
+        <th style="text-align:center;padding:10px 12px;color:#8b95a3;font-weight:600;border-bottom:1px solid #2a323d;">ffmpeg</th>
+        <th style="text-align:center;padding:10px 12px;color:#8b95a3;font-weight:600;border-bottom:1px solid #2a323d;">PnP Camera 类</th>
+        <th style="text-align:center;padding:10px 12px;color:#8b95a3;font-weight:600;border-bottom:1px solid #2a323d;">emulator</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#131820;">
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#e8eaed;">HD Webcam</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#7fd4a0;">真实 UVC 硬件</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#7fd4a0;">✓</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#7fd4a0;">✓</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#7fd4a0;font-weight:600;">✓ webcam0</td>
+      </tr>
+      <tr style="background:#151a21;">
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#e8eaed;">OBS Virtual Camera</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#d4a0e0;">DirectShow</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#7fd4a0;">✓</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#e06c6c;">✗</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#e06c6c;font-weight:600;">✗</td>
+      </tr>
+      <tr style="background:#131820;">
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#e8eaed;">Unity Video Capture</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#d4a0e0;">DirectShow</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#7fd4a0;">✓</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#e06c6c;">✗</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#e06c6c;font-weight:600;">✗</td>
+      </tr>
+      <tr style="background:#16211c;">
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#7fd4a0;font-weight:600;">MF 虚拟相机</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#7fd4a0;">Frame Server</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#8b95a3;">—</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#f0c674;">应为 ✓</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;text-align:center;color:#f0c674;font-weight:600;">待验</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="font-size:11.5px;color:#6b7785;margin-bottom:24px;line-height:1.7;">
+    格式不是决定因素：OBS 输出 nv12/yuv420p/yuyv422，完全符合 emulator 要求，<strong style="color:#8b95a3;">依然接不上</strong>。
+  </div>
+
+  <!-- 网上说法的辨析 -->
+  <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:13px;padding-left:9px;border-left:3px solid #f0a868;">为什么网上「能用」的说法很多</div>
+
+  <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:24px;">
+    <div style="background:#151a21;border:1px solid #232a34;border-radius:7px;padding:13px 16px;">
+      <div style="font-size:13px;color:#f0a868;font-weight:600;margin-bottom:5px;">① 说的不是同一种模拟器</div>
+      <div style="font-size:12px;color:#b4bdc7;line-height:1.7;">
+        雷电 / 夜神 / MuMu / BlueStacks <strong style="color:#e8eaed;">自带虚拟摄像头功能</strong>，可直接选图片或视频文件当输入——那是它们自己实现的，与 AVD 无关。你要用的是官方 AVD。
+      </div>
+    </div>
+    <div style="background:#151a21;border:1px solid #232a34;border-radius:7px;padding:13px 16px;">
+      <div style="font-size:13px;color:#f0a868;font-weight:600;margin-bottom:5px;">② 那篇 CSDN 的标题本身就是「无法识别」</div>
+      <div style="font-size:12px;color:#b4bdc7;line-height:1.7;">
+        它给出的机制解释与我的实测一致：<em style="color:#c8d0d9;">「模拟器未加载对应 DirectShow 或 Media Foundation 视频采集源」</em>、<em style="color:#c8d0d9;">「OBS 虚拟摄像头不暴露为传统 WDM/WDDM 视频捕获设备」</em>。它是<strong style="color:#e8eaed;">佐证，不是反证</strong>。
+      </div>
+    </div>
+    <div style="background:#1f1a1a;border:1px solid #3a2828;border-radius:7px;padding:13px 16px;">
+      <div style="font-size:13px;color:#e06c6c;font-weight:600;margin-bottom:5px;">③ 但那篇有一处是编的</div>
+      <div style="font-size:12px;color:#b4bdc7;line-height:1.7;">
+        「Google 已在 Emulator 34.2.12+ 实验性支持 Virtual Camera via WebRTC Capture（通过 CDP 注入 MediaStream）」——我通读官方 release notes，<strong style="color:#e06c6c;">无任何此类记载</strong>。WebRTC 在 emulator 里只用于容器音频串流与远程交互，与摄像头注入无关。
+      </div>
+    </div>
+  </div>
+
+  <!-- 下一步 -->
+  <div style="background:linear-gradient(90deg,#1a2e1f 0%,#16201a 100%);border-left:3px solid #4ade80;padding:16px 20px;border-radius:0 8px 8px 0;">
+    <div style="font-size:14px;font-weight:600;color:#7fd4a0;margin-bottom:9px;">本机满足条件，值得再试一次</div>
+    <div style="font-size:12.5px;color:#c8d0d9;line-height:1.85;">
+      本机 <strong style="color:#fff;">Windows 11 Build 26200</strong>，远超 <code style="background:#15181e;padding:1px 5px;border-radius:3px;font-size:11px;">MFCreateVirtualCamera</code> 所需的 22000。
+      现成实现有 smourier/VCamSample（C++）与 Qt 的 WindowsVirtualCamera（含 VCamManager 控制台工具）。
+      <br><span style="color:#8b95a3;">代价：需用 MSVC 自行编译，比装个 OBS 重得多。</span>
+    </div>
+  </div>
+
+</div>

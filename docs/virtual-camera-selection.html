@@ -1,0 +1,152 @@
+<div style="max-width:1080px;margin:0 auto;padding:28px 24px;background:#0f1216;color:#e8eaed;font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;border-radius:12px;">
+
+  <div style="margin-bottom:26px;">
+    <div style="font-size:12px;letter-spacing:1.6px;color:#6b7785;text-transform:uppercase;margin-bottom:8px;">模拟器扫码 · 宿主侧虚拟摄像头选型</div>
+    <div style="font-size:25px;font-weight:650;color:#fff;line-height:1.3;">三大系统方案对比</div>
+    <div style="font-size:13px;color:#8b95a3;margin-top:9px;line-height:1.65;">
+      目标：宿主侧提供可编程虚拟摄像头，模拟器以 <code style="background:#1c2128;padding:1px 6px;border-radius:3px;color:#7fd4a0;font-size:12px;">-camera-back webcam0</code> 接入，实现<strong style="color:#e8eaed;">不重启换码</strong>
+    </div>
+  </div>
+
+  <!-- 核心结论 -->
+  <div style="background:linear-gradient(90deg,#1a2e1f 0%,#16201a 100%);border-left:3px solid #4ade80;padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:26px;">
+    <div style="font-size:14px;font-weight:600;color:#7fd4a0;margin-bottom:7px;">结论：没有单一方案通吃三系统，但有统一的上层 API</div>
+    <div style="font-size:13px;color:#c8d0d9;line-height:1.75;">
+      驱动层三系统各不相同且无法统一；<strong style="color:#fff;">pyvirtualcam</strong> 在其上提供一致的 Python 接口，是唯一能让业务代码不分平台的一层。
+      Webcamoid 曾是跨平台候选，但 <strong style="color:#f0a868;">9.4.0（2026-07）已移除 macOS 虚拟摄像头</strong>，不再适合。
+    </div>
+  </div>
+
+  <!-- 分层架构 -->
+  <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:14px;padding-left:9px;border-left:3px solid #4a9eff;">推荐架构：一层 API + 三套驱动</div>
+
+  <div style="background:#151a21;border:1px solid #232a34;border-radius:9px;padding:18px 20px;margin-bottom:26px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:190px;background:#1b2530;border:1px solid #2d3a4a;border-radius:6px;padding:11px 14px;">
+        <div style="font-size:11px;color:#6b7785;margin-bottom:3px;">业务层（跨平台，写一次）</div>
+        <div style="font-size:13px;color:#9ecbff;font-weight:600;">生成二维码 → 渲染为帧</div>
+      </div>
+    </div>
+    <div style="text-align:center;color:#3d4753;font-size:15px;margin:2px 0 10px;">↓</div>
+    <div style="background:#1a2429;border:1px solid #2a4038;border-radius:6px;padding:11px 14px;margin-bottom:14px;">
+      <div style="font-size:11px;color:#6b7785;margin-bottom:3px;">统一 API 层</div>
+      <div style="font-size:13px;color:#7fd4a0;font-weight:600;">pyvirtualcam — 同一份代码，自动选择后端</div>
+    </div>
+    <div style="text-align:center;color:#3d4753;font-size:15px;margin:2px 0 10px;">↓</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:150px;background:#1e2028;border:1px solid #333a46;border-radius:6px;padding:11px 13px;">
+        <div style="font-size:11px;color:#6b7785;margin-bottom:4px;">Windows</div>
+        <div style="font-size:13px;color:#e8eaed;font-weight:600;">OBS 虚拟摄像头</div>
+        <div style="font-size:11px;color:#8b95a3;margin-top:4px;">或 Unity Capture（更轻）</div>
+      </div>
+      <div style="flex:1;min-width:150px;background:#1e2028;border:1px solid #333a46;border-radius:6px;padding:11px 13px;">
+        <div style="font-size:11px;color:#6b7785;margin-bottom:4px;">macOS</div>
+        <div style="font-size:13px;color:#e8eaed;font-weight:600;">OBS 虚拟摄像头</div>
+        <div style="font-size:11px;color:#f0a868;margin-top:4px;">需 OBS 30+（系统限制）</div>
+      </div>
+      <div style="flex:1;min-width:150px;background:#1e2028;border:1px solid #333a46;border-radius:6px;padding:11px 13px;">
+        <div style="font-size:11px;color:#6b7785;margin-bottom:4px;">Linux</div>
+        <div style="font-size:13px;color:#7fd4a0;font-weight:600;">v4l2loopback</div>
+        <div style="font-size:11px;color:#8b95a3;margin-top:4px;">最轻，无需 GUI</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 详细对比表 -->
+  <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:13px;padding-left:9px;border-left:3px solid #4a9eff;">各平台方案细节</div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:12px;">
+    <thead>
+      <tr style="background:#1a1f27;">
+        <th style="text-align:left;padding:10px 12px;color:#8b95a3;font-weight:600;border-bottom:1px solid #2a323d;width:14%;">平台</th>
+        <th style="text-align:left;padding:10px 12px;color:#8b95a3;font-weight:600;border-bottom:1px solid #2a323d;width:21%;">推荐驱动</th>
+        <th style="text-align:left;padding:10px 12px;color:#8b95a3;font-weight:600;border-bottom:1px solid #2a323d;width:12%;">体量</th>
+        <th style="text-align:left;padding:10px 12px;color:#8b95a3;font-weight:600;border-bottom:1px solid #2a323d;width:14%;">需 GUI 常驻</th>
+        <th style="text-align:left;padding:10px 12px;color:#8b95a3;font-weight:600;border-bottom:1px solid #2a323d;">注意事项</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#131820;">
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#e8eaed;font-weight:600;">Linux</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#7fd4a0;font-weight:600;">v4l2loopback</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#7fd4a0;">内核模块<br><span style="color:#6b7785;font-size:11px;">~200KB</span></td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#7fd4a0;font-weight:600;">否</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#b4bdc7;line-height:1.6;">
+          最干净。<code style="background:#1c2128;padding:1px 5px;border-radius:3px;font-size:11px;">apt install v4l2loopback-dkms</code> 后 <code style="background:#1c2128;padding:1px 5px;border-radius:3px;font-size:11px;">modprobe</code> 即得 <code style="background:#1c2128;padding:1px 5px;border-radius:3px;font-size:11px;">/dev/videoN</code>。<span style="color:#f0a868;">Secure Boot 需签名模块</span>
+        </td>
+      </tr>
+      <tr style="background:#151a21;">
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#e8eaed;font-weight:600;">Windows</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#9ecbff;font-weight:600;">OBS Studio</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#f0a868;">~140MB</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#7fd4a0;font-weight:600;">否<span style="color:#6b7785;font-size:11px;">（装完即可）</span></td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#b4bdc7;line-height:1.6;">
+          装完注册 DirectShow 源，pyvirtualcam 可直接写入，<strong style="color:#e8eaed;">无需打开 OBS</strong>
+        </td>
+      </tr>
+      <tr style="background:#131820;">
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#e8eaed;font-weight:600;">Windows<br><span style="font-size:11px;color:#6b7785;font-weight:400;">轻量替代</span></td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#9ecbff;font-weight:600;">Unity Capture</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#7fd4a0;">~1MB</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#7fd4a0;font-weight:600;">否</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#b4bdc7;line-height:1.6;">
+          仅一个 DirectShow 滤镜，跑 <code style="background:#1c2128;padding:1px 5px;border-radius:3px;font-size:11px;">.bat</code> 注册。体量小两个数量级，<span style="color:#f0a868;">但需手动注册、社区维护</span>
+        </td>
+      </tr>
+      <tr style="background:#151a21;">
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#e8eaed;font-weight:600;">macOS</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#9ecbff;font-weight:600;">OBS Studio 30+</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#f0a868;">~200MB</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#f0a868;font-weight:600;">首次需</td>
+        <td style="padding:11px 12px;border-bottom:1px solid #1f262f;color:#b4bdc7;line-height:1.6;">
+          <strong style="color:#f0a868;">几乎是唯一选择</strong>。首次须手动点一次"Start/Stop Virtual Camera"完成系统扩展注册
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- macOS 特别说明 -->
+  <div style="background:#241c14;border-left:3px solid #f0a868;padding:15px 19px;border-radius:0 8px 8px 0;margin-bottom:24px;">
+    <div style="font-size:13.5px;font-weight:600;color:#f0a868;margin-bottom:8px;">为什么 macOS 选择面这么窄</div>
+    <div style="font-size:12.5px;color:#c8d0d9;line-height:1.8;">
+      Apple 从 <strong style="color:#fff;">macOS 12.3</strong> 起用 CoreMediaIO Camera Extension 取代 DAL 插件，
+      <strong style="color:#fff;">Sonoma 14.1</strong> 起非系统扩展的摄像头设备<strong style="color:#f0a868;">直接不可用</strong>。
+      系统扩展必须经 Apple 签名并公证 —— 这道门槛淘汰了几乎所有小型开源方案。
+      Webcamoid 9.4.0 移除 macOS 虚拟摄像头的官方理由正是"维护不善、在新系统上已无法正常工作"。
+    </div>
+  </div>
+
+  <!-- 落地成本 -->
+  <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:13px;padding-left:9px;border-left:3px solid #4a9eff;">与现方案的成本对比</div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;">
+    <div style="flex:1;min-width:220px;background:#151a21;border:1px solid #232a34;border-radius:9px;padding:16px 18px;">
+      <div style="font-size:12px;color:#6b7785;margin-bottom:9px;">当前方案：重启换文件</div>
+      <div style="display:flex;align-items:baseline;gap:7px;margin-bottom:9px;">
+        <span style="font-size:30px;font-weight:650;color:#f0a868;">90</span>
+        <span style="font-size:13px;color:#8b95a3;">秒 / 每次换码</span>
+      </div>
+      <div style="font-size:11.5px;color:#8b95a3;line-height:1.65;">冷启动 50s + 预置配对 40s，<strong style="color:#f0a868;">每次都付</strong></div>
+    </div>
+    <div style="flex:1;min-width:220px;background:#151a21;border:1px solid #2a4038;border-radius:9px;padding:16px 18px;">
+      <div style="font-size:12px;color:#6b7785;margin-bottom:9px;">虚拟摄像头方案</div>
+      <div style="display:flex;align-items:baseline;gap:7px;margin-bottom:9px;">
+        <span style="font-size:30px;font-weight:650;color:#7fd4a0;">&lt;1</span>
+        <span style="font-size:13px;color:#8b95a3;">秒 / 每次换码</span>
+      </div>
+      <div style="font-size:11.5px;color:#8b95a3;line-height:1.65;">仅一次性宿主配置，<strong style="color:#7fd4a0;">之后接近零开销</strong></div>
+    </div>
+  </div>
+
+  <!-- 本机现状 -->
+  <div style="background:#151a21;border:1px solid #232a34;border-radius:9px;padding:15px 19px;">
+    <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:10px;">本机（Windows）现状</div>
+    <div style="display:flex;gap:22px;flex-wrap:wrap;font-size:12.5px;">
+      <div><span style="color:#6b7785;">OBS：</span><span style="color:#f0a868;">未安装</span></div>
+      <div><span style="color:#6b7785;">OBS 虚拟摄像头：</span><span style="color:#f0a868;">未注册</span></div>
+      <div><span style="color:#6b7785;">Python：</span><span style="color:#7fd4a0;">3.14.7 ✓</span></div>
+      <div><span style="color:#6b7785;">实体摄像头：</span><span style="color:#7fd4a0;">HD Webcam ✓</span></div>
+    </div>
+  </div>
+
+</div>
