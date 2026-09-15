@@ -47,10 +47,257 @@ class ProviderActionParser(
             "ui.back", "ui.home", "ui.recents" -> requireExactKeys(params, emptySet())
             "ui.wait", "ui.assert" -> validatePredicate(params)
             "task.finish" -> validateTaskFinish(params)
+            // 以下为动作面扩展新增。每一项都必须在这里显式校验：
+            // 缺失校验时 provider 返回的畸形参数会一路带到无障碍层，
+            // 在那里报出来的错误无法定位到是哪个字段不合法。
+            "ui.drag" -> validateDrag(params)
+            "ui.multiTap" -> validateMultiTap(params)
+            "ui.pinch" -> validatePinch(params)
+            "ui.rotate" -> validateRotate(params)
+            "ui.twoFingerScroll" -> validateTwoFingerScroll(params)
+            "ui.pathGesture" -> validatePathGesture(params)
+            "ui.scrollIntoView" -> validateScrollIntoView(params)
+            "ui.selectText" -> validateSelectText(params)
+            "ui.copy", "ui.cut", "ui.paste" -> validateTargetOnly(params)
+            "ui.nodeAction" -> validateNodeAction(params)
+            "ui.setProgress" -> validateSetProgress(params)
+            "ui.scrollToPosition" -> validateScrollToPosition(params)
+            "ui.pressKey" -> validatePressKey(params)
+            "ui.notifications",
+            "ui.quickSettings",
+            "ui.lockScreen",
+            "ui.powerDialog",
+            "ui.dismissNotificationShade",
+            "device.wake",
+            "device.unlock",
+            "ime.show",
+            "ime.hide",
+            "clipboard.get",
+            -> requireExactKeys(params, emptySet())
+
+            "device.rotate" -> validateDeviceRotate(params)
+            "ime.select" -> validateImeSelect(params)
+            "clipboard.set" -> validateClipboardSet(params)
+            "app.deeplink" -> validateDeeplink(params)
+            "file.push" -> validateFilePush(params)
+            "file.pull" -> validateFilePull(params)
             else -> throw ProviderActionParseException("Unsupported action type: $type")
         }
 
         return action
+    }
+
+    private fun validateDrag(params: JsonObject) {
+        requireExactKeys(params, setOf("start", "end"), setOf("holdMs", "moveMs"))
+        validateDragAnchor(params.objectValue("start"), "start")
+        validateDragAnchor(params.objectValue("end"), "end")
+        params.optionalInt("holdMs")?.requireRange("holdMs", 400, 10_000)
+        params.optionalInt("moveMs")?.requireRange("moveMs", 1, 10_000)
+    }
+
+    private fun validateDragAnchor(anchor: JsonObject, name: String) {
+        requireExactKeys(anchor, emptySet(), setOf("target", "point"))
+        val target = anchor["target"]
+        val point = anchor["point"]
+        if ((target == null) == (point == null)) {
+            throw ProviderActionParseException(
+                "$name requires exactly one of target or point",
+            )
+        }
+        target?.let { validateTarget(it.asObject("$name.target")) }
+        point?.let { validateScreenPoint(it.asObject("$name.point"), "$name.point") }
+    }
+
+    private fun validateMultiTap(params: JsonObject) {
+        requireExactKeys(params, setOf("taps"), setOf("target", "point"))
+        requireTargetOrPoint(params, "ui.multiTap")
+        params.int("taps").requireRange("taps", 2, 5)
+    }
+
+    private fun validatePinch(params: JsonObject) {
+        requireExactKeys(params, setOf("scale"), setOf("target", "center", "durationMs"))
+        params["target"]?.let { validateTarget(it.asObject("target")) }
+        params["center"]?.let { validateScreenPoint(it.asObject("center"), "center") }
+        val scale = params.double("scale")
+        scale.requireRange("scale", 0.2, 5.0)
+        if (scale == 1.0) {
+            throw ProviderActionParseException("scale must not equal 1")
+        }
+        params.optionalInt("durationMs")?.requireRange("durationMs", 100, 10_000)
+    }
+
+    private fun validateRotate(params: JsonObject) {
+        requireExactKeys(params, setOf("degrees"), setOf("target", "center", "durationMs"))
+        params["target"]?.let { validateTarget(it.asObject("target")) }
+        params["center"]?.let { validateScreenPoint(it.asObject("center"), "center") }
+        val degrees = params.double("degrees")
+        degrees.requireRange("degrees", -360.0, 360.0)
+        if (degrees == 0.0) {
+            throw ProviderActionParseException("degrees must not be zero")
+        }
+        params.optionalInt("durationMs")?.requireRange("durationMs", 100, 10_000)
+    }
+
+    private fun validateTwoFingerScroll(params: JsonObject) {
+        requireExactKeys(
+            params,
+            setOf("deltaX", "deltaY"),
+            setOf("target", "center", "durationMs"),
+        )
+        params["target"]?.let { validateTarget(it.asObject("target")) }
+        params["center"]?.let { validateScreenPoint(it.asObject("center"), "center") }
+        val deltaX = params.int("deltaX")
+        val deltaY = params.int("deltaY")
+        deltaX.requireRange("deltaX", -100_000, 100_000)
+        deltaY.requireRange("deltaY", -100_000, 100_000)
+        if (deltaX == 0 && deltaY == 0) {
+            throw ProviderActionParseException("Two-finger scroll requires a non-zero delta")
+        }
+        params.optionalInt("durationMs")?.requireRange("durationMs", 100, 10_000)
+    }
+
+    private fun validatePathGesture(params: JsonObject) {
+        requireExactKeys(params, setOf("points"), setOf("durationMs"))
+        val points = params["points"] as? JsonArray
+            ?: throw ProviderActionParseException("points must be an array")
+        if (points.size !in 2..32) {
+            throw ProviderActionParseException("points must contain between 2 and 32 items")
+        }
+        points.forEachIndexed { index, element ->
+            validateScreenPoint(element.asObject("points[$index]"), "points[$index]")
+        }
+        params.optionalInt("durationMs")?.requireRange("durationMs", 1, 10_000)
+    }
+
+    private fun validateScrollIntoView(params: JsonObject) {
+        requireExactKeys(
+            params,
+            setOf("target"),
+            setOf("container", "direction", "maxScrolls", "amount"),
+        )
+        validateTarget(params.objectValue("target"))
+        params["container"]?.let { validateTarget(it.asObject("container")) }
+        params.optionalString("direction")?.let { direction ->
+            if (direction !in SCROLL_DIRECTIONS) {
+                throw ProviderActionParseException("Unsupported scroll direction: $direction")
+            }
+        }
+        params.optionalInt("maxScrolls")?.requireRange("maxScrolls", 1, 50)
+        params.optionalDouble("amount")?.let {
+            if (it <= 0 || it > 1) {
+                throw ProviderActionParseException("amount must be greater than 0 and at most 1")
+            }
+        }
+    }
+
+    private fun validateSelectText(params: JsonObject) {
+        requireExactKeys(params, setOf("target", "startIndex"), setOf("endIndex"))
+        validateTarget(params.objectValue("target"))
+        val start = params.int("startIndex")
+        start.requireRange("startIndex", 0, 10_000)
+        params.optionalInt("endIndex")?.let { end ->
+            end.requireRange("endIndex", 0, 10_000)
+            if (end < start) {
+                throw ProviderActionParseException("endIndex must not be smaller than startIndex")
+            }
+        }
+    }
+
+    private fun validateNodeAction(params: JsonObject) {
+        requireExactKeys(params, setOf("target", "action"))
+        validateTarget(params.objectValue("target"))
+        val action = params.string("action")
+        if (action !in SIMPLE_NODE_ACTIONS) {
+            throw ProviderActionParseException("Unsupported node action: $action")
+        }
+    }
+
+    private fun validateSetProgress(params: JsonObject) {
+        requireExactKeys(params, setOf("target", "value"))
+        validateTarget(params.objectValue("target"))
+        val value = params.double("value")
+        if (!value.isFinite()) {
+            throw ProviderActionParseException("value must be a finite number")
+        }
+    }
+
+    private fun validateScrollToPosition(params: JsonObject) {
+        requireExactKeys(params, setOf("target", "row"), setOf("column"))
+        validateTarget(params.objectValue("target"))
+        params.int("row").requireRange("row", 0, 100_000)
+        params.optionalInt("column")?.requireRange("column", 0, 100_000)
+    }
+
+    private fun validatePressKey(params: JsonObject) {
+        requireExactKeys(params, setOf("key"), setOf("repeatCount"))
+        val key = params.string("key")
+        if (key !in DEVICE_KEYS) {
+            throw ProviderActionParseException("Unsupported key: $key")
+        }
+        params.optionalInt("repeatCount")?.requireRange("repeatCount", 1, 64)
+    }
+
+    private fun validateDeviceRotate(params: JsonObject) {
+        requireExactKeys(params, setOf("orientation"))
+        val orientation = params.string("orientation")
+        if (orientation !in ORIENTATIONS) {
+            throw ProviderActionParseException("Unsupported orientation: $orientation")
+        }
+    }
+
+    private fun validateImeSelect(params: JsonObject) {
+        requireExactKeys(params, setOf("id"))
+        val id = params.string("id")
+        if (id.length !in 3..512 || !IME_ID.matches(id)) {
+            throw ProviderActionParseException("id must be a package/component input method id")
+        }
+    }
+
+    private fun validateClipboardSet(params: JsonObject) {
+        requireExactKeys(params, setOf("text"))
+        if (params.string("text").length > 10_000) {
+            throw ProviderActionParseException("text exceeds 10000 characters")
+        }
+    }
+
+    private fun validateDeeplink(params: JsonObject) {
+        requireExactKeys(params, setOf("uri"), setOf("packageName"))
+        params.string("uri").requireLength("uri", 3, 2_048)
+        params.optionalString("packageName")?.let(::requirePackageName)
+    }
+
+    private fun validateFilePush(params: JsonObject) {
+        requireExactKeys(params, setOf("localPath", "remotePath"))
+        params.string("localPath").requireLength("localPath", 1, 4_096)
+        params.string("remotePath").requireLength("remotePath", 1, 4_096)
+    }
+
+    private fun validateFilePull(params: JsonObject) {
+        requireExactKeys(params, setOf("remotePath", "localPath"))
+        params.string("remotePath").requireLength("remotePath", 1, 4_096)
+        params.string("localPath").requireLength("localPath", 1, 4_096)
+    }
+
+    private fun requireTargetOrPoint(params: JsonObject, actionType: String) {
+        val target = params["target"]
+        val point = params["point"]
+        if (target == null && point == null) {
+            throw ProviderActionParseException("$actionType requires a target or a point")
+        }
+        target?.let { validateTarget(it.asObject("target")) }
+        point?.let { validateScreenPoint(it.asObject("point"), "point") }
+    }
+
+    /**
+     * 校验屏幕像素坐标点。
+     *
+     * 与 validatePoint 的归一化坐标不同：手势的 point 是设备像素，
+     * 上限沿用协议 common.schema.json 的 coordinate 定义（0..100000）。
+     */
+    private fun validateScreenPoint(point: JsonObject, name: String) {
+        requireExactKeys(point, setOf("x", "y"))
+        point.int("x").requireRange("$name.x", 0, 100_000)
+        point.int("y").requireRange("$name.y", 0, 100_000)
     }
 
     private fun validateAppLaunch(params: JsonObject) {
@@ -422,5 +669,47 @@ class ProviderActionParser(
         val SCROLL_DIRECTIONS = setOf("up", "down", "left", "right", "forward", "backward")
         val PREDICATE_KINDS = setOf("node", "text", "package", "window", "uiStable")
         val PREDICATE_OPERATORS = setOf("exists", "notExists", "equals", "contains", "matches", "stable")
+
+        /** ui.nodeAction 允许的无参数节点动作。带参数的动作各有专用 type。 */
+        val SIMPLE_NODE_ACTIONS = setOf(
+            "focus",
+            "clearFocus",
+            "select",
+            "clearSelection",
+            "expand",
+            "collapse",
+            "dismiss",
+        )
+
+        val DEVICE_KEYS = setOf(
+            "BACK",
+            "HOME",
+            "RECENTS",
+            "ENTER",
+            "TAB",
+            "ESCAPE",
+            "SPACE",
+            "DELETE",
+            "FORWARD_DEL",
+            "DPAD_UP",
+            "DPAD_DOWN",
+            "DPAD_LEFT",
+            "DPAD_RIGHT",
+            "DPAD_CENTER",
+            "MOVE_HOME",
+            "MOVE_END",
+            "PAGE_UP",
+            "PAGE_DOWN",
+            "VOLUME_UP",
+            "VOLUME_DOWN",
+            "VOLUME_MUTE",
+        )
+
+        val ORIENTATIONS = setOf("portrait", "landscape", "auto")
+
+        /** 输入法 id 形如 `包名/组件名`，与 `ime_list` 输出格式一致。 */
+        val IME_ID = Regex(
+            "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+/[A-Za-z0-9_.$]+$",
+        )
     }
 }

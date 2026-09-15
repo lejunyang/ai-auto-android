@@ -90,6 +90,15 @@ class RecordingStateMachine(
             GlobalAction.BACK -> "ui.back"
             GlobalAction.HOME -> "ui.home"
             GlobalAction.RECENTS -> "ui.recents"
+            GlobalAction.NOTIFICATIONS -> "ui.notifications"
+            GlobalAction.QUICK_SETTINGS -> "ui.quickSettings"
+            GlobalAction.LOCK_SCREEN -> "ui.lockScreen"
+            GlobalAction.TAKE_SCREENSHOT -> "ui.takeScreenshot"
+            GlobalAction.POWER_DIALOG -> "ui.powerDialog"
+            GlobalAction.DISMISS_NOTIFICATION_SHADE -> "ui.dismissNotificationShade"
+            // 快捷键帮助面板目前无法执行（见 AndroidAccessibilityBackend 的说明），
+            // 因此不会被录制到；给它一个类型名只是为了让 when 保持穷尽。
+            GlobalAction.KEYBOARD_SHORTCUTS -> "ui.keyboardShortcuts"
         }
         val now = clockMs()
         return append(

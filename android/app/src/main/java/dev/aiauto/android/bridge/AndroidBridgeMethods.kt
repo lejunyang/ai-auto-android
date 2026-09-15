@@ -134,6 +134,57 @@ class AndroidBridgeMethods(
                 permission = if (accessibilityAvailable) "granted" else "denied",
                 reason = accessibilityReason,
             ),
+            // 动作面扩展后的能力必须单独声明，而不是塞进 action.execute。
+            // 调用方需要在发命令前知道「这台设备能不能做多指手势」——
+            // 多指依赖 canPerformGestures 与平台的多 stroke 支持，
+            // 而节点级扩展动作只依赖无障碍服务本身，两者可用性并不总是一致。
+            BridgeCapability(
+                name = "action.gesture.composite",
+                available = accessibilityAvailable,
+                permission = if (accessibilityAvailable) "granted" else "denied",
+                reason = accessibilityReason,
+                limits = mapOf(
+                    "maxPointers" to 2L,
+                    "maxStrokeRounds" to 16L,
+                    "maxPathPoints" to 32L,
+                ),
+            ),
+            BridgeCapability(
+                name = "action.node.extended",
+                available = accessibilityAvailable,
+                permission = if (accessibilityAvailable) "granted" else "denied",
+                reason = accessibilityReason,
+            ),
+            BridgeCapability(
+                name = "action.text.editing",
+                available = accessibilityAvailable,
+                permission = if (accessibilityAvailable) "granted" else "denied",
+                reason = accessibilityReason,
+            ),
+            // 按键只覆盖光标移动：其余键在无障碍通道上无法可靠发出，
+            // 见 AndroidAccessibilityBackend.pressKey 的说明。
+            // 如实声明覆盖范围，让调用方知道何时该走 ADB 通道。
+            BridgeCapability(
+                name = "action.pressKey",
+                available = accessibilityAvailable,
+                permission = if (accessibilityAvailable) "granted" else "denied",
+                reason = if (accessibilityAvailable) {
+                    "Only MOVE_HOME and MOVE_END are delivered over accessibility; " +
+                        "other keys require the ADB direct channel."
+                } else {
+                    accessibilityReason
+                },
+            ),
+            // 通知栏与快捷设置在所有支持的 API 上可用；锁屏与截屏要求 API 28+，
+            // 收起通知栏要求 API 34+。这里按运行时版本如实上报，
+            // 不支持的项让调用方提前知道而不是发出去再失败。
+            BridgeCapability(
+                name = "action.global.extended",
+                available = accessibilityAvailable,
+                permission = if (accessibilityAvailable) "granted" else "denied",
+                reason = accessibilityReason,
+                limits = mapOf("apiLevel" to Build.VERSION.SDK_INT.toLong()),
+            ),
             BridgeCapability(
                 name = "visual.action.execute",
                 available = attestedVisual.isAvailable(),
@@ -500,6 +551,19 @@ class AndroidBridgeMethods(
         NodeAction.SCROLL_DOWN -> "scrollDown"
         NodeAction.SCROLL_LEFT -> "scrollLeft"
         NodeAction.SCROLL_RIGHT -> "scrollRight"
+        NodeAction.FOCUS -> "focus"
+        NodeAction.CLEAR_FOCUS -> "clearFocus"
+        NodeAction.SELECT -> "select"
+        NodeAction.CLEAR_SELECTION -> "clearSelection"
+        NodeAction.EXPAND -> "expand"
+        NodeAction.COLLAPSE -> "collapse"
+        NodeAction.DISMISS -> "dismiss"
+        NodeAction.COPY -> "copy"
+        NodeAction.CUT -> "cut"
+        NodeAction.PASTE -> "paste"
+        NodeAction.SET_SELECTION -> "setSelection"
+        NodeAction.SET_PROGRESS -> "setProgress"
+        NodeAction.SCROLL_TO_POSITION -> "scrollToPosition"
     }
 
     private fun requireKeys(

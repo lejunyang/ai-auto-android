@@ -5,7 +5,11 @@ package dev.aiauto.android.bridge
  */
 
 import dev.aiauto.android.accessibility.model.AccessibilityCommand
+import dev.aiauto.android.accessibility.model.ClipboardOperation
+import dev.aiauto.android.accessibility.model.DeviceKey
+import dev.aiauto.android.accessibility.model.DragAnchor
 import dev.aiauto.android.accessibility.model.GlobalAction
+import dev.aiauto.android.accessibility.model.NodeAction
 import dev.aiauto.android.accessibility.model.NodeTarget
 import dev.aiauto.android.accessibility.model.NormalizedPoint
 import dev.aiauto.android.accessibility.model.ScreenPoint
@@ -79,11 +83,159 @@ class AccessibilityCommandJsonParser(
             "ui.back" -> AccessibilityCommand.Navigate(GlobalAction.BACK)
             "ui.home" -> AccessibilityCommand.Navigate(GlobalAction.HOME)
             "ui.recents" -> AccessibilityCommand.Navigate(GlobalAction.RECENTS)
+            "ui.notifications" -> AccessibilityCommand.Navigate(GlobalAction.NOTIFICATIONS)
+            "ui.quickSettings" -> AccessibilityCommand.Navigate(GlobalAction.QUICK_SETTINGS)
+            "ui.lockScreen" -> AccessibilityCommand.Navigate(GlobalAction.LOCK_SCREEN)
+            "ui.powerDialog" -> AccessibilityCommand.Navigate(GlobalAction.POWER_DIALOG)
+            "ui.dismissNotificationShade" ->
+                AccessibilityCommand.Navigate(GlobalAction.DISMISS_NOTIFICATION_SHADE)
+
+            "ui.drag" -> AccessibilityCommand.Drag(
+                start = params.getValue("start").jsonObject.toDragAnchor(),
+                end = params.getValue("end").jsonObject.toDragAnchor(),
+                holdMs = params["holdMs"]?.jsonPrimitive?.int?.toLong() ?: 600L,
+                moveMs = params["moveMs"]?.jsonPrimitive?.int?.toLong() ?: 500L,
+            )
+
+            "ui.multiTap" -> AccessibilityCommand.MultiTap(
+                target = params["target"]?.jsonObject?.toNodeTarget(),
+                point = params["point"]?.jsonObject?.toScreenPoint(),
+                taps = params.getValue("taps").jsonPrimitive.int,
+            )
+
+            "ui.pinch" -> AccessibilityCommand.Pinch(
+                target = params["target"]?.jsonObject?.toNodeTarget(),
+                center = params["center"]?.jsonObject?.toScreenPoint(),
+                scale = params.getValue("scale").jsonPrimitive.double,
+                durationMs = params["durationMs"]?.jsonPrimitive?.int?.toLong() ?: 500L,
+            )
+
+            "ui.rotate" -> AccessibilityCommand.Rotate(
+                target = params["target"]?.jsonObject?.toNodeTarget(),
+                center = params["center"]?.jsonObject?.toScreenPoint(),
+                degrees = params.getValue("degrees").jsonPrimitive.double,
+                durationMs = params["durationMs"]?.jsonPrimitive?.int?.toLong() ?: 600L,
+            )
+
+            "ui.twoFingerScroll" -> AccessibilityCommand.TwoFingerScroll(
+                target = params["target"]?.jsonObject?.toNodeTarget(),
+                center = params["center"]?.jsonObject?.toScreenPoint(),
+                deltaX = params.getValue("deltaX").jsonPrimitive.int,
+                deltaY = params.getValue("deltaY").jsonPrimitive.int,
+                durationMs = params["durationMs"]?.jsonPrimitive?.int?.toLong() ?: 400L,
+            )
+
+            "ui.pathGesture" -> AccessibilityCommand.PathGesture(
+                points = (params.getValue("points") as JsonArray)
+                    .map { it.jsonObject.toScreenPoint() },
+                durationMs = params["durationMs"]?.jsonPrimitive?.int?.toLong() ?: 800L,
+            )
+
+            "ui.scrollIntoView" -> AccessibilityCommand.ScrollIntoView(
+                target = params.target(),
+                container = params["container"]?.jsonObject?.toNodeTarget(),
+                direction = params["direction"]?.jsonPrimitive?.content
+                    ?.uppercase()
+                    ?.let(ScrollDirection::valueOf)
+                    ?: ScrollDirection.FORWARD,
+                maxScrolls = params["maxScrolls"]?.jsonPrimitive?.int ?: 12,
+                amount = params["amount"]?.jsonPrimitive?.double ?: 0.6,
+            )
+
+            "ui.selectText" -> AccessibilityCommand.SelectText(
+                target = params.target(),
+                startIndex = params.getValue("startIndex").jsonPrimitive.int,
+                endIndex = params["endIndex"]?.jsonPrimitive?.int,
+            )
+
+            "ui.copy" -> AccessibilityCommand.Clipboard(
+                target = params.target(),
+                operation = ClipboardOperation.COPY,
+            )
+
+            "ui.cut" -> AccessibilityCommand.Clipboard(
+                target = params.target(),
+                operation = ClipboardOperation.CUT,
+            )
+
+            "ui.paste" -> AccessibilityCommand.Clipboard(
+                target = params.target(),
+                operation = ClipboardOperation.PASTE,
+            )
+
+            "ui.nodeAction" -> AccessibilityCommand.PerformNodeAction(
+                target = params.target(),
+                action = params.getValue("action").jsonPrimitive.content.toNodeAction(),
+            )
+
+            "ui.setProgress" -> AccessibilityCommand.SetProgress(
+                target = params.target(),
+                value = params.getValue("value").jsonPrimitive.double.toFloat(),
+            )
+
+            "ui.scrollToPosition" -> AccessibilityCommand.ScrollToPosition(
+                target = params.target(),
+                row = params.getValue("row").jsonPrimitive.int,
+                column = params["column"]?.jsonPrimitive?.int ?: 0,
+            )
+
+            "ui.pressKey" -> AccessibilityCommand.PressKey(
+                key = params.getValue("key").jsonPrimitive.content.toDeviceKey(),
+                repeatCount = params["repeatCount"]?.jsonPrimitive?.int ?: 1,
+            )
+
             else -> throw BridgeException(
                 code = BridgeErrorCode.CAPABILITY_UNAVAILABLE,
                 message = "The action is valid but is not implemented by the accessibility bridge.",
             )
         }
+
+    private fun JsonObject.toDragAnchor(): DragAnchor = DragAnchor(
+        target = this["target"]?.jsonObject?.toNodeTarget(),
+        point = this["point"]?.jsonObject?.toScreenPoint(),
+    )
+
+    private fun String.toNodeAction(): NodeAction = when (this) {
+        "focus" -> NodeAction.FOCUS
+        "clearFocus" -> NodeAction.CLEAR_FOCUS
+        "select" -> NodeAction.SELECT
+        "clearSelection" -> NodeAction.CLEAR_SELECTION
+        "expand" -> NodeAction.EXPAND
+        "collapse" -> NodeAction.COLLAPSE
+        "dismiss" -> NodeAction.DISMISS
+        else -> throw BridgeException(
+            code = BridgeErrorCode.INVALID_ARGUMENT,
+            message = "The node action is not supported.",
+        )
+    }
+
+    private fun String.toDeviceKey(): DeviceKey = when (this) {
+        "BACK" -> DeviceKey.BACK
+        "HOME" -> DeviceKey.HOME
+        "RECENTS" -> DeviceKey.RECENTS
+        "ENTER" -> DeviceKey.ENTER
+        "TAB" -> DeviceKey.TAB
+        "ESCAPE" -> DeviceKey.ESCAPE
+        "SPACE" -> DeviceKey.SPACE
+        "DELETE" -> DeviceKey.DELETE
+        "FORWARD_DEL" -> DeviceKey.FORWARD_DELETE
+        "DPAD_UP" -> DeviceKey.DPAD_UP
+        "DPAD_DOWN" -> DeviceKey.DPAD_DOWN
+        "DPAD_LEFT" -> DeviceKey.DPAD_LEFT
+        "DPAD_RIGHT" -> DeviceKey.DPAD_RIGHT
+        "DPAD_CENTER" -> DeviceKey.DPAD_CENTER
+        "MOVE_HOME" -> DeviceKey.MOVE_HOME
+        "MOVE_END" -> DeviceKey.MOVE_END
+        "PAGE_UP" -> DeviceKey.PAGE_UP
+        "PAGE_DOWN" -> DeviceKey.PAGE_DOWN
+        "VOLUME_UP" -> DeviceKey.VOLUME_UP
+        "VOLUME_DOWN" -> DeviceKey.VOLUME_DOWN
+        "VOLUME_MUTE" -> DeviceKey.VOLUME_MUTE
+        else -> throw BridgeException(
+            code = BridgeErrorCode.INVALID_ARGUMENT,
+            message = "The key is not supported.",
+        )
+    }
 
     private fun JsonObject.target(): NodeTarget =
         getValue("target").jsonObject.toNodeTarget()
