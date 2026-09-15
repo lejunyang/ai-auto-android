@@ -221,5 +221,66 @@ Round 2 末尾用「事件预算非空」决定走不走归因路径，这个判
 （cleanup 最终一定执行）。修复属 N44/N45 视觉模块范围，不在本批职责内，
 已记入状态源第 10 节。验证用的 worktree 已非强制移除并 prune。
 
+## Round 5 — B1 修复与剩余能力验收
+
+### B1：原假设被实测推翻
+
+上一轮怀疑「320x640 小屏起止点落入系统手势区」。本轮先用 `dumpsys window`
+量出真实手势区：顶部 mandatory [0,0][320,24]、底部 mandatory [0,608][320,640]、
+左右 systemGestures 各 30px。而 `GesturePlanner.scroll` 在 amount=0.6 时算出的
+起点 y=474、终点 y=166 都不在任何手势区内——**坐标不是原因，原假设不成立**。
+
+改用可观测的排查方式：新增三层对照（平台原生 `dispatchGesture` / router 的
+`ui.scroll` / `scrollIntoView`）并在每步前后采集可见节点指纹。指纹直接给出了
+关键证据：`container@0` → `Filler row 4@0` → `Filler row 12@0`，
+说明滚动确实生效、签名确实会变。据此查出三个叠加原因：
+
+1. 滚到尽头后容器不再提供 `ACTION_SCROLL_FORWARD`，`executeScroll` 降级到手势
+   路径；手势路径带着 match 去 arm 归因，等一个「已经到底、不会再发生」的
+   `TYPE_VIEW_SCROLLED`，必然超时并报 `GESTURE_FAILED`。这是「滚不动了」被
+   误报成「手势被系统拒绝」。
+2. 无进展签名只取节点标识不取坐标。ScrollView 把全部子节点保留在树里，
+   滚动只改坐标，标识集合始终不变，于是首轮就被判为已到尽头。
+3. 单轮签名相同不足以判定到底。滚动动画与快照采集是两条独立时序，
+   快照恰好落在动画未推进的窗口内就会与上一轮相同。
+
+修复分别是：`dispatchSwipe` 新增 `requireScrollEvent` 开关（逐轮滚动传 false，
+并把 `GESTURE_FAILED` 当成一次无进展）、签名纳入 `bounds` 的 top/left、
+要求连续 3 轮无变化才判定到底。三者缺一都不足以修好。
+
+B1 在独立分支 `fix/scroll-into-view-gesture-insets` 完成，非快进合并回主分支
+以保留提交边界。定位用的三层对照探针在完成后删除——它以 AssertionError 输出
+观测值，是排查工具而非回归断言，留下会成为一个永远失败的测试。调试服务保留
+`visibleNodeFingerprint` 与 `dispatchRawSwipe` 两个只读探针供后续复用。
+
+### 剩余能力验收：两项新的平台限制
+
+补齐 zoom（scale<1）、旋转、双指滚动、路径手势、三连击、剪切与
+FOCUS / SELECT / CLEAR_SELECTION 的设备验收，全部通过。另发现两项限制：
+
+- **B3 `SCROLL_TO_POSITION` 在 ScrollView 上不可用**：该动作要求容器提供
+  `CollectionInfo`，ScrollView 不是集合容器。在 RecyclerView 上的可用性
+  **未验证**，夹具没有该控件。
+- **B4 `CLEAR_FOCUS` 被平台拒绝**：拒绝方式是 `ACTION_FAILED` 而非
+  `ACTION_NOT_SUPPORTED`，即节点声明了该动作但 View 的
+  `performAccessibilityAction` 返回 false。先怀疑「无焦点可清」，
+  用 `uiautomator dump` 确认 `focused=false` 后补上 FOCUS 前置，行为不变。
+
+两者都在设备测试中**断言其明确失败**而非跳过：把平台真实行为写进断言，
+将来版本行为变化时能被测试发现；跳过则会静默掩盖能力缺口。
+
+### 断言强度的取舍
+
+多指与路径手势只断言「平台接受了派发」，不断言视觉结果——夹具没有响应缩放
+旋转的控件，强行断言会写出一个假测试。而剪切断言剩余文本，因为剪切与复制的
+区别正是「原文被移除」，只断言动作成功无法区分二者。
+
+### 收口
+
+设备用例合计 15 项全部通过（4 + 5 + 2 + 4）。Android 单测 408 项、
+`lintDebug`、`assembleDebug` 通过；`make comments` / `make test` /
+`make verify` / `make build` 全部通过。
+
+
 
 

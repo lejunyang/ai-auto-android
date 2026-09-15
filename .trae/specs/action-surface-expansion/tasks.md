@@ -18,16 +18,16 @@
 - [x] A1 多窗口模型（`service.windows` 遍历）
 - [x] A7-核心 `dispatchGesture` 多 stroke 与 `willContinue` 续接改造
 - [x] A2 `drag`（按住—停顿—移动分段时序）
-- [ ] A3 `scrollIntoView` / `scrollUntil`（设备验证失败，见状态源 B1）
+- [x] A3 `scrollIntoView` / `scrollUntil`
 - [ ] A4 Bridge 侧 `pressKey`（仅 MOVE_HOME/MOVE_END 可走无障碍，缺设备证据）
 
 ## P1
 
 - [x] A5 文本选择（`ACTION_SET_SELECTION`）
-- [x] A6 复制 / 粘贴（剪切未单独验证）
+- [x] A6 复制 / 剪切 / 粘贴
 - [x] A8 双击 / N 连击
-- [ ] A9 节点动作补齐（EXPAND/COLLAPSE/SET_PROGRESS 已验证，其余未验证）
-- [x] A7-手势 pinch（zoom / 旋转 / 双指滚动已实现，缺设备证据）
+- [ ] A9 节点动作补齐（CLEAR_FOCUS 与 SCROLL_TO_POSITION 被平台拒绝，见 B3/B4）
+- [x] A7-手势 pinch / zoom / 旋转 / 双指滚动
 - [ ] A10 全局动作补齐（5 项）（缺设备证据；快捷键面板确认无法实现）
 - [x] A11 设备状态动作（旋转 / 唤醒 / 解锁 / 亮屏检测）
 - [ ] A12 IME 控制（枚举/切换/收起已验证；显示键盘确认无法实现）
@@ -38,16 +38,16 @@
 - [x] A14 deeplink 打开
 - [x] A15 文件 push / pull
 - [x] A16 Toast 捕获
-- [ ] A17 路径手势（三层实现完成，缺设备证据）
+- [x] A17 路径手势
 
 ## 收口
 
 - [x] `make comments`
-- [ ] `make test`
-- [ ] `make verify`
-- [ ] `make build`
-- [x] Android `testDebugUnitTest`（402 项通过） / `lintDebug` / `assembleDebug`
-- [x] 模拟器动作面回归（`ActionSurfaceDeviceTest` 4/4）并回写证据
+- [x] `make test`
+- [x] `make verify`
+- [x] `make build`
+- [x] Android `testDebugUnitTest`（408 项通过） / `lintDebug` / `assembleDebug`
+- [x] 模拟器动作面回归（4 个设备测试类共 15 项全通过）并回写证据
 - [ ] API 30 / 33 / 34 多版本矩阵验收（本机仅有 API 35 镜像，见状态源 D3）
 
 ## 建议提交边界
