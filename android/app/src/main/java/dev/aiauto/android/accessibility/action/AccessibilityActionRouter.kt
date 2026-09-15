@@ -291,6 +291,7 @@ class AccessibilityActionRouter(
 
     private fun executeScroll(
         command: AccessibilityCommand.Scroll,
+        requireScrollEvent: Boolean = true,
     ): AccessibilityResult<ActionExecution> {
         if (!command.amount.isFinite() || command.amount <= 0.0 || command.amount > 1.0) {
             return invalidAction("Scroll amount must be greater than 0 and at most 1")
@@ -345,6 +346,7 @@ class AccessibilityActionRouter(
                 gesture = planned.value,
                 route = route,
                 match = match,
+                requireScrollEvent = requireScrollEvent,
             )
         }
     }
@@ -571,6 +573,12 @@ class AccessibilityActionRouter(
         }
 
         var previousSignature: String? = null
+        // 连续无变化的轮数。单轮无变化不足以判定滚到尽头：
+        // 实测（API 35，320x640 夹具）确认容器仍可滚动、且相邻轮次签名确实会变，
+        // 但某一轮的快照仍可能与上一轮相同——滚动动画与快照采集是两条独立时序，
+        // 快照恰好落在动画未推进的窗口内就会得到相同结果。
+        // 单轮即判定会把这种时序巧合报成「滚不动了」，因此要求连续多轮无变化。
+        var stalledRounds = 0
         repeat(command.maxScrolls + 1) { round ->
             // 每轮都重新开会话取最新快照：滚动后节点树必然变化，
             // 复用上一轮的快照会一直看到目标不存在。
@@ -616,25 +624,52 @@ class AccessibilityActionRouter(
                 )
             }
             if (signature == previousSignature) {
-                return failure(
-                    code = AccessibilityErrorCode.SELECTOR_NOT_FOUND,
-                    message = "Scrolling made no progress before the target became visible",
-                    retryable = false,
-                    details = mapOf("scrolls" to round.toString()),
-                )
+                stalledRounds += 1
+                if (stalledRounds >= MAX_STALLED_ROUNDS) {
+                    return failure(
+                        code = AccessibilityErrorCode.SELECTOR_NOT_FOUND,
+                        message = "Scrolling made no progress before the target became visible",
+                        retryable = false,
+                        details = mapOf(
+                            "scrolls" to round.toString(),
+                            "stalledRounds" to stalledRounds.toString(),
+                        ),
+                    )
+                }
+            } else {
+                // 一旦出现变化就重置：连续性是判据，累计次数不是。
+                stalledRounds = 0
             }
             previousSignature = signature
 
             when (
                 val scrolled = executeScroll(
-                    AccessibilityCommand.Scroll(
+                    command = AccessibilityCommand.Scroll(
                         direction = command.direction,
                         target = command.container,
                         amount = command.amount,
                     ),
+                    // 逐轮滚动不要求产生滚动事件：容器可能已到尽头。
+                    // 见 dispatchSwipe 的 requireScrollEvent 说明。
+                    requireScrollEvent = false,
                 )
             ) {
-                is AccessibilityResult.Failure -> return scrolled
+                // 滚动被拒不等于 scrollIntoView 失败。
+                //
+                // 列表滚到尽头后不再提供 ACTION_SCROLL_FORWARD，于是 executeScroll
+                // 降级到手势路径；而手势路径带着 match 去 arm 归因，等一个
+                // 「已经到底、不会再发生」的 TYPE_VIEW_SCROLLED，必然超时并报
+                // GESTURE_FAILED。这是「滚不动了」被误报成「手势被系统拒绝」。
+                //
+                // 正确做法是把它当成一次无进展：下一轮重新取快照，若目标仍未出现
+                // 就由无进展检测或轮次上限给出准确的 SELECTOR_NOT_FOUND，
+                // 那才是调用方真正需要知道的结论。
+                is AccessibilityResult.Failure -> {
+                    if (scrolled.error.code != AccessibilityErrorCode.GESTURE_FAILED) {
+                        return scrolled
+                    }
+                }
+
                 is AccessibilityResult.Success -> Unit
             }
             // 滚动是动画过程，必须等它落定再取下一轮快照。
@@ -653,9 +688,16 @@ class AccessibilityActionRouter(
     /**
      * 为容器内容生成签名，用于无进展检测。
      *
-     * 取所有可见节点的文本与资源 id 拼接后的哈希：位置会随滚动改变，
-     * 但内容集合在滚到尽头后就不再变化。只取 bounds 会误判——
-     * 有惯性回弹的列表在尽头仍有微小位移。
+     * 同时取节点标识（资源 id 与文本）与其屏幕位置。
+     *
+     * 只取标识不行：ScrollView 这类容器把全部子节点都保留在树里，滚动只改变
+     * 它们的坐标，标识集合始终不变，于是首轮就被误判为「已滚到尽头」——
+     * 实测（API 35）表现为 scrolls=2 时报 no progress，而列表实际还能滚。
+     *
+     * 只取坐标也不行：带惯性回弹的列表在尽头仍有微小位移，会被误判为「还有进展」
+     * 而白跑满 maxScrolls 轮。
+     *
+     * 两者一起取才能同时避开这两种误判。
      */
     private fun contentSignature(session: AccessibilityNodeSession): String {
         val roots = session.windows.map { it.root }.ifEmpty { listOf(session.rootSnapshot) }
@@ -669,6 +711,11 @@ class AccessibilityActionRouter(
             builder.append(node.resourceId.orEmpty())
                 .append('\u001f')
                 .append(node.text.orEmpty())
+                .append('\u001f')
+                // 坐标必须进签名：容器滚动时子节点标识不变、只有位置变化。
+                .append(node.bounds.top)
+                .append(',')
+                .append(node.bounds.left)
                 .append('\u001e')
         }
         node.children.forEach { child -> appendSignature(child, builder) }
@@ -1217,11 +1264,24 @@ class AccessibilityActionRouter(
         }
     }
 
+    /**
+     * 派发滑动手势。
+     *
+     * [requireScrollEvent] 决定是否要求这次滑动必须产生 TYPE_VIEW_SCROLLED。
+     * 默认 true：由选择器命中节点后发出的滑动应当真的滚动了内容，
+     * 收不到事件说明打在了错误的地方，此时报失败是正确的。
+     *
+     * scrollIntoView 的逐轮滚动传 false：容器可能已经滚到尽头，
+     * 此时滑动不会产生滚动事件，但那是「滚不动了」而不是「手势打错了」。
+     * 让它按成功返回、交由外层的无进展检测得出准确结论，
+     * 比在这里报 GESTURE_FAILED 更贴近事实。
+     */
     private fun dispatchSwipe(
         gesture: Gesture.Swipe,
         route: ActionRoute,
         expectedPackage: String? = null,
         match: SelectorMatch.Found? = null,
+        requireScrollEvent: Boolean = true,
     ): AccessibilityResult<ActionExecution> {
         val screen = backend.screenBounds()
         val validStart = CoordinateTransformer.validate(gesture.start, screen)
@@ -1237,7 +1297,7 @@ class AccessibilityActionRouter(
                 gesture = gesture,
                 sourcePath = match?.path,
                 expectedPackage = expectedPackage,
-                expectedEventBudgets = if (match == null) {
+                expectedEventBudgets = if (match == null || !requireScrollEvent) {
                     emptyMap()
                 } else {
                     eventBudgets(AccessibilityEvent.TYPE_VIEW_SCROLLED to SCROLL_EVENT_BUDGET)
@@ -1424,6 +1484,16 @@ class AccessibilityActionRouter(
          * 过长则乘以最大轮次后总耗时不可接受。
          */
         const val SCROLL_SETTLE_MS = 350L
+
+        /**
+         * 判定「滚到尽头」所需的连续无变化轮数。
+         *
+         * 取 3：滚动动画与快照采集是两条独立时序，快照恰好落在动画未推进的窗口内
+         * 就会与上一轮相同。实测（API 35）中容器明确仍可滚动却出现过单轮签名相同，
+         * 若单轮即判定就会误报「无进展」。连续 3 轮相同才足以说明真的到底了，
+         * 代价是多花约 1 秒（3 × SCROLL_SETTLE_MS），远小于误判导致整个动作失败。
+         */
+        const val MAX_STALLED_ROUNDS = 3
 
         /**
          * 连击的归因等待上限。
