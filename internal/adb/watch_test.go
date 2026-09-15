@@ -63,8 +63,19 @@ func TestWatchDevicesReportsInitialAndChangedMDNSEvents(t *testing.T) {
 	if !foundChanged {
 		t.Fatalf("events = %#v, missing mdns.changed", result.Events)
 	}
-	if len(fake.calls) > 8 {
-		t.Fatalf("ADB calls = %d, watch must remain bounded", len(fake.calls))
+	// 上界按 select 语义留一轮余量，而不是取 Duration/Interval 的理论商。
+	//
+	// 每轮固定 2 次 ADB 调用（Devices + MDNSServices）。Duration=4ms、Interval=1ms
+	// 的理论值是 4 轮 8 次，恰好等于旧断言的上界，没有任何余量。而循环退出靠
+	// select 在 deadline 与 ticker 之间竞争：两者同时就绪时 Go 随机选一个，
+	// 选中 ticker 就会多跑一轮 —— 这是 select 的语义，不是轮次失控。
+	//
+	// 实测（12 次）：8 次报 10 calls、4 次通过；仅把上界放宽后 8/8 全过，
+	// 参数一字未改。因此按"理论轮次 + 1 轮余量"取 10，超过它才说明真的失控。
+	const maxCalls = 10
+	if len(fake.calls) > maxCalls {
+		t.Fatalf("ADB calls = %d, want at most %d; watch must remain bounded",
+			len(fake.calls), maxCalls)
 	}
 }
 
