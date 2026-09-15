@@ -28,6 +28,7 @@ import android.widget.TextView
 
 class ActionSurfaceFixtureActivity : Activity() {
     private lateinit var editable: EditText
+    private lateinit var pasteTarget: EditText
     private lateinit var seekBar: SeekBar
     private lateinit var collapsible: LinearLayout
     private lateinit var statusView: TextView
@@ -71,6 +72,7 @@ class ActionSurfaceFixtureActivity : Activity() {
             EditText(context).apply {
                 setText("")
                 contentDescription = PASTE_TARGET_DESCRIPTION
+                pasteTarget = this
             },
         )
 
@@ -155,12 +157,18 @@ class ActionSurfaceFixtureActivity : Activity() {
     /** 供设备测试读取输入框当前文本，断言复制粘贴是否真的生效。 */
     fun editableText(): String = editable.text?.toString().orEmpty()
 
+    /** 供设备测试读取粘贴目标框文本，断言粘贴结果。 */
+    fun pasteTargetText(): String = pasteTarget.text?.toString().orEmpty()
+
     /** 供设备测试读取当前选区，断言 SET_SELECTION 是否生效。 */
     fun selection(): Pair<Int, Int> =
         editable.selectionStart to editable.selectionEnd
 
     /** 供设备测试读取进度值，断言 SET_PROGRESS 是否生效。 */
     fun progress(): Int = seekBar.progress
+
+    /** 供设备测试读取状态文本，断言展开折叠等无返回值动作的实际效果。 */
+    fun status(): String = statusView.text?.toString().orEmpty()
 
     private fun dpToPixels(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
@@ -232,16 +240,31 @@ private class ExpandableSectionView(
             expandId -> {
                 expanded = true
                 onToggle(true)
+                announceStateChange()
                 true
             }
 
             collapseId -> {
                 expanded = false
                 onToggle(false)
+                announceStateChange()
                 true
             }
 
             else -> super.performAccessibilityAction(action, arguments)
         }
+    }
+
+    /**
+     * 通知无障碍框架本节点的可用动作已变化。
+     *
+     * 缺这一步时框架会继续沿用缓存的节点信息，展开之后再查仍然只看到
+     * ACTION_EXPAND，于是后续 COLLAPSE 会被判为「节点不支持」（已实测）。
+     * 状态变化必须显式广播，框架不会自己重新读 onInitializeAccessibilityNodeInfo。
+     */
+    private fun announceStateChange() {
+        sendAccessibilityEvent(
+            android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+        )
     }
 }

@@ -84,6 +84,11 @@ interface AccessibilityActionBackend {
 class AccessibilityActionRouter(
     private val backend: AccessibilityActionBackend,
     private val selectorMatcher: SelectorMatcher,
+    // 可注入的等待函数。滚动到可见需要在两轮之间等动画落定，
+    // 但单测不应真的睡——多轮累加会让测试耗时到秒级。
+    private val sleeper: (Long) -> Unit = { millis ->
+        runCatching { Thread.sleep(millis) }
+    },
 ) {
     fun execute(command: AccessibilityCommand): AccessibilityResult<ActionExecution> {
         val expectedPackage = when (command) {
@@ -632,6 +637,11 @@ class AccessibilityActionRouter(
                 is AccessibilityResult.Failure -> return scrolled
                 is AccessibilityResult.Success -> Unit
             }
+            // 滚动是动画过程，必须等它落定再取下一轮快照。
+            // 不等待时下一轮看到的仍是滚动前的内容，签名不变，
+            // 于是被无进展检测误判为「已滚到尽头」——实测（API 35）
+            // 表现为第 1 轮就返回「Scrolling made no progress」。
+            settleAfterScroll()
         }
         return failure(
             code = AccessibilityErrorCode.SELECTOR_NOT_FOUND,
@@ -669,6 +679,12 @@ class AccessibilityActionRouter(
      *
      * endIndex 为 null 时选到文本末尾——调用方通常不知道当前文本长度，
      * 让它先查一次快照再算长度既啰嗦又有竞态。这里从匹配到的节点快照取长度。
+     *
+     * 会先对目标节点做一次 FOCUS。这不是多余步骤：实测（API 35）确认
+     * ACTION_SET_SELECTION 在节点未获得输入焦点时被拒绝并返回 false，
+     * 报 ACTION_FAILED。平台把选区视为输入状态的一部分，没有焦点就没有插入点。
+     * 由调用方自己记得先聚焦是不合理的负担，且漏掉时的错误信息
+     * （「节点拒绝了 SET_SELECTION」）完全指不出真实原因。
      */
     private fun executeSelectText(
         command: AccessibilityCommand.SelectText,
@@ -679,6 +695,9 @@ class AccessibilityActionRouter(
         if (command.endIndex != null && command.endIndex < command.startIndex) {
             return invalidAction("endIndex must not be smaller than startIndex")
         }
+        // 聚焦失败不直接终止：部分实现即使没有 ACTION_FOCUS 也允许设置选区，
+        // 此时应让 SET_SELECTION 自己去判断，而不是提前拒绝一个可能成功的操作。
+        ensureFocused(command.target)
         return performArgumentNodeAction(
             target = command.target,
             action = NodeAction.SET_SELECTION,
@@ -702,6 +721,20 @@ class AccessibilityActionRouter(
         }
     }
 
+    /**
+     * 尽力让目标节点获得输入焦点，供依赖焦点的动作使用。
+     *
+     * 返回值故意忽略：这是前置准备而非动作本身，失败时应让真正的动作去报错，
+     * 那样错误信息才指向调用方实际请求的操作。
+     */
+    private fun ensureFocused(target: NodeTarget) {
+        performNodeAction(
+            target = target,
+            actions = listOf(NodeAction.FOCUS),
+            eventBudgets = emptyMap(),
+        )
+    }
+
     private fun executeClipboard(
         command: AccessibilityCommand.Clipboard,
     ): AccessibilityResult<ActionExecution> {
@@ -710,8 +743,12 @@ class AccessibilityActionRouter(
             ClipboardOperation.CUT -> NodeAction.CUT
             ClipboardOperation.PASTE -> NodeAction.PASTE
         }
-        // 复制与剪切要求已有选区，粘贴要求有焦点。这些前提由调用方通过
-        // SelectText / FOCUS 建立，这里只负责执行并如实上报失败。
+        // 粘贴要求目标已获得输入焦点：平台把插入点视为输入状态的一部分，
+        // 没有焦点就没有插入点可写。复制与剪切依赖已有选区，而选区本身
+        // 由 SelectText 建立（那里也会先聚焦），故不必在此重复聚焦。
+        if (command.operation == ClipboardOperation.PASTE) {
+            ensureFocused(command.target)
+        }
         return executeNodeOnlyAction(
             target = command.target,
             action = action,
@@ -934,7 +971,17 @@ class AccessibilityActionRouter(
         }
     }
 
-    /** 把拖拽端点解析成屏幕坐标。 */
+    /**
+     * 等待滚动动画落定。
+     *
+     * 通过可注入的 sleeper 而不是直接 Thread.sleep：单测不应真的等待，
+     * 否则 scrollIntoView 的多轮测试会把耗时累加到秒级。
+     */
+    private fun settleAfterScroll() {
+        sleeper(SCROLL_SETTLE_MS)
+    }
+
+    /** 把选择器目标解析成屏幕坐标。 */
     private fun resolveAnchor(
         anchor: DragAnchor,
         screen: ScreenBounds,
@@ -1368,6 +1415,15 @@ class AccessibilityActionRouter(
          * 上限存在的意义是防止在无限流列表上永久滚动。
          */
         const val MAX_SCROLL_ROUNDS = 50
+
+        /**
+         * 两轮滚动之间的等待时长。
+         *
+         * 取 350ms：滚动手势本身 400ms，加上 ListView / RecyclerView 的
+         * 惯性收敛，实测 350ms 足以让内容稳定。过短会让无进展检测误判，
+         * 过长则乘以最大轮次后总耗时不可接受。
+         */
+        const val SCROLL_SETTLE_MS = 350L
 
         /**
          * 连击的归因等待上限。

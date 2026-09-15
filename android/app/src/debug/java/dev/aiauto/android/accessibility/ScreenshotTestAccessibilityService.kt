@@ -213,6 +213,48 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
             android.accessibilityservice.AccessibilityServiceInfo
                 .CAPABILITY_CAN_PERFORM_GESTURES != 0
 
+    /**
+     * 判断指定 contentDescription 的节点当前是否在视口内可见。
+     *
+     * 用于 scrollIntoView 的前置与后置验证：仅断言动作返回成功不够——
+     * 实现完全可能在没有真正滚动的情况下返回成功。这里读的是节点的
+     * isVisibleToUser，即平台对「用户此刻能否看到它」的判断。
+     *
+     * 跨窗口查找，与生产的多窗口模型保持一致。
+     */
+    fun isTargetVisible(contentDescription: String): Boolean {
+        val windows = dev.aiauto.android.accessibility.snapshot.WindowSnapshotter()
+            .snapshotWindows(this)
+        val roots = if (windows.isEmpty()) {
+            listOfNotNull(
+                rootInActiveWindow?.let { root ->
+                    try {
+                        AccessibilitySnapshotter().snapshot(root)
+                    } finally {
+                        root.recycleSafely()
+                    }
+                },
+            ).filterIsInstance<AccessibilityResult.Success<UiNodeSnapshot>>()
+                .map { it.value }
+        } else {
+            windows.map { it.root }
+        }
+        return roots.any { root -> containsVisible(root, contentDescription) }
+    }
+
+    private fun containsVisible(
+        node: UiNodeSnapshot,
+        contentDescription: String,
+    ): Boolean {
+        if (
+            node.contentDescription == contentDescription &&
+            node.state.visibleToUser
+        ) {
+            return true
+        }
+        return node.children.any { child -> containsVisible(child, contentDescription) }
+    }
+
     private fun withNode(
         contentDescription: String,
         action: (AccessibilityNodeInfo) -> Boolean,
