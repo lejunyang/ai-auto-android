@@ -11,24 +11,24 @@
 - [x] 检查主工作区与并行 worktree，创建独立分支与 worktree
 - [x] 审计动作面三层现状，确认 17 项缺口的落点
 - [x] 创建独立 change spec，固定能力清单、优先级与实施顺序
-- [ ] 创建 `docs/action-surface-tasks.md` 作为本批唯一状态源
+- [x] 创建 `docs/action-surface-tasks.md` 作为本批唯一状态源
 
 ## P0
 
-- [ ] A1 多窗口模型（`service.windows` 遍历）
-- [ ] A7-核心 `dispatchGesture` 多 stroke 与 `willContinue` 续接改造
-- [ ] A2 `drag`（按住—停顿—移动分段时序）
-- [ ] A3 `scrollIntoView` / `scrollUntil`
-- [ ] A4 Bridge 侧 `pressKey` 与按键白名单扩展
+- [x] A1 多窗口模型（`service.windows` 遍历）
+- [x] A7-核心 `dispatchGesture` 多 stroke 与 `willContinue` 续接改造
+- [x] A2 `drag`（按住—停顿—移动分段时序）
+- [ ] A3 `scrollIntoView` / `scrollUntil`（三层实现完成，缺设备证据）
+- [ ] A4 Bridge 侧 `pressKey`（仅 MOVE_HOME/MOVE_END 可走无障碍，缺设备证据）
 
 ## P1
 
-- [ ] A5 文本选择（`ACTION_SET_SELECTION`）
-- [ ] A6 复制 / 剪切 / 粘贴
-- [ ] A8 双击 / N 连击
-- [ ] A9 节点动作补齐（8 项）
-- [ ] A7-手势 pinch / zoom / 旋转 / 双指滚动
-- [ ] A10 全局动作补齐（5 项）
+- [ ] A5 文本选择（`ACTION_SET_SELECTION`）（缺可编辑控件设备夹具）
+- [ ] A6 复制 / 剪切 / 粘贴（缺设备夹具）
+- [x] A8 双击 / N 连击
+- [ ] A9 节点动作补齐（8 项）（缺设备夹具）
+- [x] A7-手势 pinch（zoom / 旋转 / 双指滚动已实现，缺设备证据）
+- [ ] A10 全局动作补齐（5 项）（缺设备证据；快捷键面板确认无法实现）
 - [ ] A11 设备状态动作（旋转 / 唤醒 / 解锁 / 亮屏检测）
 - [ ] A12 IME 控制
 
@@ -38,17 +38,17 @@
 - [ ] A14 deeplink 打开
 - [ ] A15 文件 push / pull
 - [ ] A16 Toast 捕获
-- [ ] A17 路径手势
+- [ ] A17 路径手势（三层实现完成，缺设备证据）
 
 ## 收口
 
-- [ ] `make comments`
+- [x] `make comments`
 - [ ] `make test`
 - [ ] `make verify`
 - [ ] `make build`
-- [ ] Android `testDebugUnitTest` / `lintDebug` / `assembleDebug`
-- [ ] 模拟器端到端动作面回归并回写证据
-- [ ] API 30 / 33 / 34 多版本矩阵验收
+- [x] Android `testDebugUnitTest`（402 项通过） / `lintDebug` / `assembleDebug`
+- [x] 模拟器动作面回归（`ActionSurfaceDeviceTest` 4/4）并回写证据
+- [ ] API 30 / 33 / 34 多版本矩阵验收（本机仅有 API 35 镜像，见状态源 D3）
 
 ## 建议提交边界
 

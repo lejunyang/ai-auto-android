@@ -44,3 +44,70 @@
 - `scripts/emulator/profiles.json` 声明的 API 30 / 33 / 34 arm64 镜像在本机
   **未安装**（`$ANDROID_HOME/system-images` 下只有 `android-35`），
   故本批只能给出 API 35 证据，30 / 33 / 34 矩阵验收保持未完成。
+
+## Round 2 — 三层实现与首轮设备验收
+
+### 实现落地
+
+按串行顺序完成 A1（多窗口）、A7-核心（多 stroke 内核）、A2（drag）、
+A8（连击）、A7-手势（pinch/rotate/双指滚动）、A3（scrollIntoView）、
+A5/A6（文本编辑）、A9（节点动作）、A10（全局动作）、A17（路径手势）的
+三层接线，共 14 个提交。
+
+### 三条实测结论（推翻了实现前的假设，必须记录）
+
+1. **`input motionevent` 不支持多指。** 它只接受一个坐标对，传入第三个参数时
+   **静默忽略**并返回 exit 0——`input motionevent DOWN 100 300 NOTANUMBER`
+   都「成功」，而参数不足时才抛 IllegalArgumentException。
+   因此直连 ADB 通道**无法**合成多指手势，任何这样写的代码都会退化成单指
+   且不报错。多指只能走无障碍的多 stroke `dispatchGesture`。
+   原计划中「drag 与多指手势用 `input motionevent` 逐段合成」的判断是错的，
+   已在 `internal/service/service.go` 与 `composite_gesture.go` 中改正。
+
+2. **缺 `flagRetrieveInteractiveWindows` 时 `service.windows` 恒为空。**
+   两份 accessibility-service 配置原本都没声明它。首轮设备测试
+   `enumerateWindows()` 返回 0 个窗口，而同一时刻 `dumpsys window windows`
+   显示存在 9 个窗口（含 InputMethod、StatusBar、Taskbar）。
+   这说明多窗口定位在代码完全正确的情况下也一定失效。补上后测试通过。
+
+3. **无事件手势会被归因机制误杀。** 缩放与旋转由 View 内部处理，不产生可监听的
+   View 语义事件，事件预算必然为空；而 `runAttributedAction` 在预算为空时无法
+   arm，直接返回 false，手势根本不会派发。表现为 `ui.pinch` 稳定
+   GESTURE_FAILED。这不是安全检查生效，而是「无事件可归因」被误当成
+   「归因失败」。补上预算判空后通过。
+
+### 设备验收
+
+serial `emulator-5554`，AVD `osdk-test-35`，API 35（Android 15），320x640，
+x86_64，`capabilities=161`，`Crashed services:{}`。
+`ActionSurfaceDeviceTest` 走生产 router 与 backend，结果 `OK (4 tests)`：
+多窗口枚举、多 stroke 拖拽、双击、双指缩放。
+
+设备测试的两个前置条件也记录在案：instrumentation 默认挂起第三方无障碍服务，
+必须用 `FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES`；且它会重建目标进程，
+旧进程的 `onServiceConnected` 不会重放，因此还要在测试内部重新写一次
+secure 设置触发绑定。自动写设置前校验 `Build.FINGERPRINT` 拒绝真机。
+
+### 仓库门禁
+
+`make comments`、`make test`、`make verify`、`make build` 全部通过；
+Android `testDebugUnitTest` 402 项通过，`lintDebug`、`assembleDebug` 通过。
+
+### 未完成边界（不得描述为已交付）
+
+- A3、A5、A6、A9、A10、A17 与 zoom/旋转/双指滚动：三层实现完成但**无设备证据**。
+  A5/A6/A9 缺可编辑控件与可调节控件的 debug 夹具（现有 `ScreenshotTestActivity`
+  只有 Button 与 ScrollView）。
+- A4 只有 MOVE_HOME/MOVE_END 能走无障碍通道，其余键仍需 ADB direct，属部分实现。
+- A11、A12、A13、A14、A15、A16 未开始。
+- 全局动作「快捷键帮助面板」确认无法实现：常量为 `@hide`，仅系统应用可用。
+- API 30 / 33 / 34 矩阵未验收。
+
+### 一次排查记录（避免重复踩）
+
+首轮设备测试曾出现 `Crashed services` 包含生产服务，一度怀疑是 backend 改动
+导致崩溃。实际原因是重装 APK 会把包置为 `enabled=0` 并重置
+`accessibility_enabled`，服务在半禁用状态下绑定失败。`pm enable` 后重新写
+secure 设置即恢复，`Crashed services:{}`。logcat 与 crash buffer 均无应用异常
+堆栈，可据此排除代码崩溃。
+
