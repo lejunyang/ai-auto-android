@@ -445,6 +445,10 @@ type fakeAutomation struct {
 	recordings service.RecordingListResult
 	action     adb.ActionResult
 	replay     service.ReplayRecordingResult
+	foreground service.ForegroundResult
+	apps       service.AppsResult
+	recording  service.RecordingResult
+	predicate  service.PredicateOutcome
 	calls      int
 }
 
@@ -487,4 +491,56 @@ func (f *fakeAutomation) ReplayRecording(
 ) (service.ReplayRecordingResult, error) {
 	f.calls++
 	return f.replay, nil
+}
+
+// Foreground、Apps 与 Record 补齐 service.Automation 的观察扩展。
+// 与其它 fake 方法一致，只回固定值并计数，用于验证工具面装配而非后端行为。
+func (f *fakeAutomation) Foreground(
+	context.Context,
+	service.ForegroundRequest,
+) (service.ForegroundResult, error) {
+	f.calls++
+	return f.foreground, nil
+}
+
+func (f *fakeAutomation) Apps(
+	context.Context,
+	service.AppsRequest,
+) (service.AppsResult, error) {
+	f.calls++
+	return f.apps, nil
+}
+
+func (f *fakeAutomation) Record(
+	context.Context,
+	service.RecordingRequest,
+) (service.RecordingResult, error) {
+	f.calls++
+	return f.recording, nil
+}
+
+// Wait 与 Assert 补齐判据执行。fake 只回固定结果，用于验证工具面装配。
+// BridgeSetText 补齐桥侧文本输入。fake 只回固定应答，用于验证工具面装配。
+func (f *fakeAutomation) BridgeSetText(
+	context.Context,
+	service.BridgeTextRequest,
+) (json.RawMessage, error) {
+	f.calls++
+	return json.RawMessage(`{"route":"nodeAction","matchScore":1}`), nil
+}
+
+func (f *fakeAutomation) Wait(
+	context.Context,
+	service.PredicateRequest,
+) (service.PredicateOutcome, error) {
+	f.calls++
+	return f.predicate, nil
+}
+
+func (f *fakeAutomation) Assert(
+	context.Context,
+	service.PredicateRequest,
+) (service.PredicateOutcome, error) {
+	f.calls++
+	return f.predicate, nil
 }

@@ -22,7 +22,7 @@ func (a *App) executeBridge(
 ) (any, error) {
 	if len(args) == 0 {
 		return nil, usageError(
-			"Usage: aactl bridge open|info|snapshot|action|close [options]",
+			"Usage: aactl bridge open|info|foreground|snapshot|set-text|action|close [options]",
 		)
 	}
 	service, err := a.bridgeService(client)
@@ -59,6 +59,52 @@ func (a *App) executeBridge(
 			return nil, err
 		}
 		return service.Info(ctx, options["device"])
+	case "foreground":
+		// 只读活动界面的包名与类名，不拉取节点树。
+		// 自愈判断只需要"现在在哪"，而完整快照在深层界面上可能有数千节点。
+		options, err := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "package"),
+			required: []string{"device"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		targetPackage := options["package"]
+		if targetPackage != "" {
+			if err := adb.ValidatePackageName(targetPackage); err != nil {
+				return nil, err
+			}
+		}
+		return service.Foreground(ctx, options["device"], targetPackage)
+	case "set-text":
+		// 桥侧文本输入：走无障碍 ACTION_SET_TEXT，不经 ADB input text 的转义，
+		// 因此支持中文与其它非 ASCII 文本。
+		options, err := parseNamedOptions(args[1:], optionSpec{
+			allowed: optionSet(
+				"device", "text", "package", "resource-id", "description", "match-text",
+			),
+			required: []string{"device", "text"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		targetPackage := options["package"]
+		if targetPackage != "" {
+			if err := adb.ValidatePackageName(targetPackage); err != nil {
+				return nil, err
+			}
+		}
+		return service.SetText(
+			ctx,
+			options["device"],
+			bridge.TextTarget{
+				Package:            targetPackage,
+				ResourceID:         options["resource-id"],
+				ContentDescription: options["description"],
+				Text:               options["match-text"],
+			},
+			options["text"],
+		)
 	case "snapshot":
 		options, err := parseNamedOptions(args[1:], optionSpec{
 			allowed:  optionSet("device", "package", "max-depth"),
@@ -127,7 +173,7 @@ func (a *App) executeBridge(
 		return service.Close(ctx, options["device"])
 	default:
 		return nil, usageError(
-			"Unknown bridge command. Supported commands: open, info, snapshot, action, close.",
+			"Unknown bridge command. Supported commands: open, info, foreground, snapshot, set-text, action, close.",
 		)
 	}
 }

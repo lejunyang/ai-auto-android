@@ -5,6 +5,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -97,8 +98,25 @@ func TestMCPServeReservesCLIStdoutForProtocolTransport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(listed.Tools) != 7 {
-		t.Fatalf("tools = %d, want 7", len(listed.Tools))
+	// 断言暴露的工具集与 mcpserver.ToolNames 逐项一致，而不是写死数量。
+	// 原先硬编码 7 会在每次新增工具时失败，却无法说明是"多暴露了不该暴露的"
+	// 还是"正常新增"——按名单比对能区分这两种情况。
+	if len(listed.Tools) != len(mcpserver.ToolNames) {
+		names := make([]string, 0, len(listed.Tools))
+		for _, tool := range listed.Tools {
+			names = append(names, tool.Name)
+		}
+		t.Fatalf("tools = %d %v, want %d %v",
+			len(listed.Tools), names, len(mcpserver.ToolNames), mcpserver.ToolNames)
+	}
+	exposed := make(map[string]bool, len(listed.Tools))
+	for _, tool := range listed.Tools {
+		exposed[tool.Name] = true
+	}
+	for _, expected := range mcpserver.ToolNames {
+		if !exposed[expected] {
+			t.Fatalf("tool %q is declared in ToolNames but not exposed", expected)
+		}
 	}
 	if err := session.Close(); err != nil {
 		t.Fatalf("session.Close() error = %v", err)
@@ -168,9 +186,14 @@ func TestRecordingListCLIUsesSharedServiceWithExplicitDevice(t *testing.T) {
 }
 
 type actionCapturingAutomation struct {
-	actions        []service.ActionRequest
-	recordingLists []string
-	replays        []service.ReplayRecordingRequest
+	actions           []service.ActionRequest
+	recordingLists    []string
+	replays           []service.ReplayRecordingRequest
+	foregrounds       []service.ForegroundRequest
+	appQueries        []service.AppsRequest
+	recordRequests    []service.RecordingRequest
+	predicateRequests []service.PredicateRequest
+	bridgeTexts       []service.BridgeTextRequest
 }
 
 func (a *actionCapturingAutomation) ListDevices(context.Context) (service.DeviceListResult, error) {
@@ -226,5 +249,94 @@ func (a *actionCapturingAutomation) ReplayRecording(
 		ScriptID:  request.ScriptID,
 		Succeeded: true,
 		Steps:     []service.ReplayStepResult{},
+	}, nil
+}
+
+// Foreground、Apps 与 Record 补齐 service.Automation 的观察扩展。
+// 与本 fake 的其它方法一致：记录入参供断言，并回可预期的最小结果。
+func (a *actionCapturingAutomation) Foreground(
+	_ context.Context,
+	request service.ForegroundRequest,
+) (service.ForegroundResult, error) {
+	a.foregrounds = append(a.foregrounds, request)
+	return service.ForegroundResult{
+		Device:   request.Device,
+		Package:  "com.example.app",
+		Activity: "com.example.app.MainActivity",
+		Source:   "resumedActivity",
+	}, nil
+}
+
+func (a *actionCapturingAutomation) Apps(
+	_ context.Context,
+	request service.AppsRequest,
+) (service.AppsResult, error) {
+	a.appQueries = append(a.appQueries, request)
+	return service.AppsResult{
+		Device:          request.Device,
+		Apps:            []adb.InstalledApp{},
+		Count:           0,
+		IncludesSystem:  request.IncludeSystem,
+		DetailsIncluded: request.WithDetails,
+	}, nil
+}
+
+// Wait 与 Assert 补齐判据执行。记录入参供断言，并回可预期的结果。
+// Assert 在 fake 里不制造失败：失败语义由 service 层负责，这里只验 CLI 路由。
+// BridgeSetText 补齐桥侧文本输入。记录入参供断言。
+func (a *actionCapturingAutomation) BridgeSetText(
+	_ context.Context,
+	request service.BridgeTextRequest,
+) (json.RawMessage, error) {
+	a.bridgeTexts = append(a.bridgeTexts, request)
+	return json.RawMessage(`{"route":"nodeAction","matchScore":1}`), nil
+}
+
+func (a *actionCapturingAutomation) Wait(
+	_ context.Context,
+	request service.PredicateRequest,
+) (service.PredicateOutcome, error) {
+	a.predicateRequests = append(a.predicateRequests, request)
+	return service.PredicateOutcome{
+		Device:    request.Device,
+		Kind:      request.Kind,
+		Operator:  request.Operator,
+		Satisfied: true,
+		Polls:     1,
+	}, nil
+}
+
+func (a *actionCapturingAutomation) Assert(
+	_ context.Context,
+	request service.PredicateRequest,
+) (service.PredicateOutcome, error) {
+	a.predicateRequests = append(a.predicateRequests, request)
+	return service.PredicateOutcome{
+		Device:    request.Device,
+		Kind:      request.Kind,
+		Operator:  request.Operator,
+		Satisfied: true,
+		Polls:     1,
+	}, nil
+}
+
+func (a *actionCapturingAutomation) Record(
+	_ context.Context,
+	request service.RecordingRequest,
+) (service.RecordingResult, error) {
+	a.recordRequests = append(a.recordRequests, request)
+	seconds := request.Seconds
+	if seconds == 0 {
+		seconds = 10
+	}
+	// 返回带 ftyp box 的最小 MP4 头：CLI 会把 Video 写文件，
+	// 用真实容器头可以让写文件路径与生产行为一致。
+	return service.RecordingResult{
+		Device:      request.Device,
+		Format:      "mp4",
+		SizeBytes:   12,
+		SHA256:      strings.Repeat("a", 64),
+		DurationSec: seconds,
+		Video:       []byte{0, 0, 0, 12, 'f', 't', 'y', 'p', 'm', 'p', '4', '2'},
 	}, nil
 }

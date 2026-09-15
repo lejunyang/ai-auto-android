@@ -10,6 +10,7 @@ import (
 
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
+	"github.com/lejunyang/ai-auto-android/internal/bridge"
 	"github.com/lejunyang/ai-auto-android/internal/protocol"
 )
 
@@ -25,9 +26,18 @@ const (
 	ActionPressKey = "ui.pressKey"
 	ActionLaunch   = "app.launch"
 	ActionStop     = "app.stop"
+	// ActionLongClick 与 ActionScroll 由 ADB input swipe 合成，
+	// 因为 `adb shell input` 没有独立的长按或滚动命令。
+	ActionLongClick = "ui.longClick"
+	ActionScroll    = "ui.scroll"
 
 	defaultSwipeDurationMS = 300
 	defaultSnapshotDepth   = 64
+	// defaultLongPressMS 取 600ms：高于 Android 默认长按阈值 500ms 并留出余量，
+	// 各 ROM 的阈值有差异，贴着 500 会在部分设备上退化成普通点击。
+	defaultLongPressMS = 600
+	// defaultScrollFraction 取 0.5：滚动半屏，既有明显位移又不至于跨过整页内容。
+	defaultScrollFraction = 0.5
 )
 
 var scriptIDPattern = regexp.MustCompile(
@@ -46,11 +56,18 @@ type DirectBackend interface {
 	Key(context.Context, string, string) (adb.ActionResult, error)
 	Launch(context.Context, string, string, string) (adb.ActionResult, error)
 	Stop(context.Context, string, string) (adb.ActionResult, error)
+	// LongPress 与 Scroll 由 input swipe 合成，见 internal/adb/gesture.go。
+	LongPress(context.Context, string, int, int, int) (adb.ActionResult, error)
+	Scroll(context.Context, string, adb.ScrollDirection, float64) (adb.ActionResult, error)
 }
 
 // BridgeBackend 只包含已建立会话后的操作；配对和信任管理有意留在接口之外。
 type BridgeBackend interface {
 	Snapshot(context.Context, string, string, int) (json.RawMessage, error)
+	// Foreground 读活动界面的包名与类名，不返回节点树。
+	Foreground(context.Context, string, string) (json.RawMessage, error)
+	// SetText 走无障碍写入任意 Unicode，绕开 ADB input text 的 ASCII 限制。
+	SetText(context.Context, string, bridge.TextTarget, string) (json.RawMessage, error)
 	Action(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	ListRecordings(context.Context, string) (json.RawMessage, error)
 	Replay(context.Context, string, string) (json.RawMessage, error)
@@ -65,6 +82,17 @@ type Automation interface {
 	ExecuteBridgeAction(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	ListRecordings(context.Context, string) (RecordingListResult, error)
 	ReplayRecording(context.Context, ReplayRecordingRequest) (ReplayRecordingResult, error)
+	// Foreground、Apps 与 Record 是 UI 自动化自愈与取证所需的观察能力。
+	// 与上面几个方法一样由 CLI、MCP 共同使用，保持三侧能力面一致。
+	Foreground(context.Context, ForegroundRequest) (ForegroundResult, error)
+	Apps(context.Context, AppsRequest) (AppsResult, error)
+	Record(context.Context, RecordingRequest) (RecordingResult, error)
+	// Wait 与 Assert 是自愈回路的判据执行：Wait 把未成立当正常结果，
+	// Assert 视为错误。两者共用同一个求值器，只在失败语义上不同。
+	Wait(context.Context, PredicateRequest) (PredicateOutcome, error)
+	Assert(context.Context, PredicateRequest) (PredicateOutcome, error)
+	// BridgeSetText 是唯一能写入中文等非 ASCII 文本的通道。
+	BridgeSetText(context.Context, BridgeTextRequest) (json.RawMessage, error)
 }
 
 // Service 在调用后端前集中执行设备、动作和 Bridge 响应校验。
@@ -158,6 +186,11 @@ type ActionRequest struct {
 	Key        string `json:"key,omitempty"`
 	Package    string `json:"package,omitempty"`
 	Activity   string `json:"activity,omitempty"`
+	// Direction 与 Amount 仅 ui.scroll 使用。
+	// Amount 是屏幕占比而非像素：调用方不必先查分辨率，
+	// 同一份脚本在不同尺寸设备上也能得到相当的滚动幅度。
+	Direction string  `json:"direction,omitempty"`
+	Amount    float64 `json:"amount,omitempty"`
 }
 
 // RecordingListResult 返回经协议校验和脱敏的录制摘要。
@@ -353,6 +386,22 @@ func (s *Service) ExecuteAction(
 		)
 	case ActionSetText:
 		return s.direct.Text(ctx, request.Device, request.Text)
+	case ActionLongClick:
+		// 长按未指定时长时用默认值：低于系统长按阈值会被识别成普通点击，
+		// 让动作看似成功却没有长按效果，因此不允许落到 0。
+		duration := request.DurationMS
+		if duration == 0 {
+			duration = defaultLongPressMS
+		}
+		return s.direct.LongPress(ctx, request.Device, request.X, request.Y, duration)
+	case ActionScroll:
+		amount := request.Amount
+		if amount == 0 {
+			amount = defaultScrollFraction
+		}
+		return s.direct.Scroll(
+			ctx, request.Device, adb.ScrollDirection(request.Direction), amount,
+		)
 	case ActionPressKey:
 		return s.direct.Key(ctx, request.Device, request.Key)
 	case ActionLaunch:

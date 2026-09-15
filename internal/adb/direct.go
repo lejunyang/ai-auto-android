@@ -183,9 +183,19 @@ func (c *Client) Text(ctx context.Context, serial, text string) (ActionResult, e
 		return ActionResult{}, invalidField("text", fmt.Sprintf("must be at most %d bytes", maxTextLength))
 	}
 	if !directText.MatchString(text) {
+		// 这条限制来自 `adb shell input text` 本身：该命令把空格编码为 %s，
+		// 整套转义只对 ASCII 可靠，非 ASCII 会被静默写错而不是报错。
+		// 因此正则是对实现缺陷的诚实兜底——放宽它只会把明确拒绝变成静默错误。
+		//
+		// 错误信息必须指出可用路径，否则调用方只知道此路不通却不知道该走哪。
+		// 桥侧 ui.setText 走无障碍 ACTION_SET_TEXT，参数为 CharSequence，
+		// 不经 Shell 转义，任意 Unicode 都安全。
 		return ActionResult{}, invalidField(
 			"text",
-			"contains unsupported characters; direct ADB text accepts ASCII letters, numbers, spaces, and @._+-,:/",
+			"contains characters that ADB input text cannot encode reliably; "+
+				"direct ADB text accepts ASCII letters, numbers, spaces, and @._+-,:/. "+
+				"For Chinese or any other non-ASCII text use the App Bridge instead: "+
+				"aactl bridge set-text --device <serial> --text <value> --resource-id <id>",
 		)
 	}
 	encoded := strings.ReplaceAll(text, " ", "%s")

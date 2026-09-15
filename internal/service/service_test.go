@@ -12,6 +12,7 @@ import (
 
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
+	"github.com/lejunyang/ai-auto-android/internal/bridge"
 	"github.com/lejunyang/ai-auto-android/internal/protocol"
 )
 
@@ -249,11 +250,14 @@ func TestServiceReturnsOnlySanitizedRecordingSummaryFields(t *testing.T) {
 }
 
 type fakeDirect struct {
-	devices      []protocol.Device
-	actionResult adb.ActionResult
-	callCount    int
-	tapX         int
-	tapY         int
+	devices           []protocol.Device
+	actionResult      adb.ActionResult
+	callCount         int
+	tapX              int
+	tapY              int
+	longPressDuration int
+	scrollDirection   adb.ScrollDirection
+	scrollFraction    float64
 }
 
 func (f *fakeDirect) Devices(context.Context) ([]protocol.Device, error) {
@@ -288,6 +292,33 @@ func (f *fakeDirect) Swipe(context.Context, string, int, int, int, int, int) (ad
 	return f.actionResult, nil
 }
 
+// LongPress 与 Scroll 补齐 DirectBackend 的合成手势。
+// 记录入参供断言：scroll 的方向与占比是 service 层做默认值填充的地方，
+// 不记就无法验证"未指定时用默认值"这条行为。
+func (f *fakeDirect) LongPress(
+	_ context.Context,
+	_ string,
+	_ int,
+	_ int,
+	durationMS int,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.longPressDuration = durationMS
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) Scroll(
+	_ context.Context,
+	_ string,
+	direction adb.ScrollDirection,
+	fraction float64,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.scrollDirection = direction
+	f.scrollFraction = fraction
+	return f.actionResult, nil
+}
+
 func (f *fakeDirect) Text(context.Context, string, string) (adb.ActionResult, error) {
 	f.callCount++
 	return f.actionResult, nil
@@ -309,15 +340,50 @@ func (f *fakeDirect) Stop(context.Context, string, string) (adb.ActionResult, er
 }
 
 type fakeBridge struct {
-	snapshot        json.RawMessage
-	recordings      json.RawMessage
-	replay          json.RawMessage
-	callCount       int
-	snapshotDevice  string
-	snapshotPackage string
-	snapshotDepth   int
-	listDevice      string
-	replayScript    string
+	snapshot          json.RawMessage
+	recordings        json.RawMessage
+	replay            json.RawMessage
+	callCount         int
+	snapshotDevice    string
+	snapshotPackage   string
+	snapshotDepth     int
+	foregroundDevice  string
+	foregroundPackage string
+	textDevice        string
+	textTarget        bridge.TextTarget
+	textValue         string
+	listDevice        string
+	replayScript      string
+}
+
+// Foreground 补齐 BridgeBackend 的活动界面查询。
+// 与 Snapshot 一样记录入参供断言，回固定 JSON。
+func (f *fakeBridge) Foreground(
+	_ context.Context,
+	device string,
+	targetPackage string,
+) (json.RawMessage, error) {
+	f.callCount++
+	f.foregroundDevice = device
+	f.foregroundPackage = targetPackage
+	return json.RawMessage(
+		`{"package":"com.example.app","className":"android.widget.FrameLayout","source":"activeWindow"}`,
+	), nil
+}
+
+// SetText 补齐 BridgeBackend 的文本输入。
+// 记录入参供断言：定位字段与文本是服务层转换的产物，不记就无法验证转换正确。
+func (f *fakeBridge) SetText(
+	_ context.Context,
+	device string,
+	target bridge.TextTarget,
+	text string,
+) (json.RawMessage, error) {
+	f.callCount++
+	f.textDevice = device
+	f.textTarget = target
+	f.textValue = text
+	return json.RawMessage(`{"route":"nodeAction","matchScore":1}`), nil
 }
 
 func (f *fakeBridge) Snapshot(

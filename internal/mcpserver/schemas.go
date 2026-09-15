@@ -60,8 +60,181 @@ func observeSchema() json.RawMessage {
 					"kind":{"const":"recordings"}
 				},
 				"additionalProperties":false
+			},
+			{
+				"type":"object",
+				"required":["device","kind"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"kind":{"const":"foreground"}
+				},
+				"additionalProperties":false
+			},
+			{
+				"type":"object",
+				"required":["device","kind"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"kind":{"const":"apps"},
+					"includeSystem":{"type":"boolean"},
+					"withDetails":{"type":"boolean"}
+				},
+				"additionalProperties":false
 			}
 		]
+	}`)
+}
+
+// predicateSchema 描述界面等待与断言的入参。
+//
+// 刻意不接受任何坐标字段：协议层的 target 含 recordedBounds、relativePoint 与
+// normalizedScreenPoint，但坐标判据在页面重排后会静默命中错误元素，
+// 而断言的价值恰在于捕获这种偏离。这里只按可描述属性匹配。
+//
+// 用 oneOf 按 kind 分支而非一个平铺对象：node 类需要选择器、package 类需要 expected、
+// uiStable 只接受 stable 运算符，平铺后这些约束只能靠运行时校验，
+// 模型拿不到结构化提示。
+func predicateSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"oneOf":[
+			{
+				"type":"object",
+				"required":["device","kind","operator"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"kind":{"enum":["node","text"]},
+					"operator":{"enum":["exists","notExists","equals","contains","matches"]},
+					"resourceId":{"type":"string","minLength":1,"maxLength":512},
+					"text":{"type":"string","minLength":1,"maxLength":1024},
+					"description":{"type":"string","minLength":1,"maxLength":1024},
+					"className":{"type":"string","minLength":1,"maxLength":512},
+					"package":` + packageSchema() + `,
+					"expected":{"type":"string","maxLength":1024},
+					"timeoutMs":{"type":"integer","minimum":1,"maximum":60000}
+				},
+				"anyOf":[
+					{"required":["resourceId"]},
+					{"required":["text"]},
+					{"required":["description"]},
+					{"required":["className"]},
+					{"required":["package"]}
+				],
+				"additionalProperties":false
+			},
+			{
+				"type":"object",
+				"required":["device","kind","operator","expected"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"kind":{"enum":["package","window"]},
+					"operator":{"enum":["equals","contains","matches"]},
+					"expected":{"type":"string","minLength":1,"maxLength":1024},
+					"timeoutMs":{"type":"integer","minimum":1,"maximum":60000}
+				},
+				"additionalProperties":false
+			},
+			{
+				"type":"object",
+				"required":["device","kind","operator"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"kind":{"const":"uiStable"},
+					"operator":{"const":"stable"},
+					"stableDurationMs":{"type":"integer","minimum":100,"maximum":30000},
+					"timeoutMs":{"type":"integer","minimum":1,"maximum":60000}
+				},
+				"additionalProperties":false
+			}
+		]
+	}`)
+}
+
+// predicateOutputSchema 描述等待与断言的返回值。
+//
+// 除 satisfied 外还返回 waitedMs、polls、matchCount 与观察到的实际值：
+// 只回一个布尔值时，调用方无法区分"立刻不成立"与"等到超时才放弃"，
+// 也无法据此纠正——而纠正正是这两个工具存在的理由。
+func predicateOutputSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"required":["device","kind","operator","satisfied","waitedMs","polls"],
+		"properties":{
+			"device":` + deviceSchema() + `,
+			"kind":{"enum":["node","text","package","window","uiStable"]},
+			"operator":{"enum":["exists","notExists","equals","contains","matches","stable"]},
+			"satisfied":{"type":"boolean"},
+			"waitedMs":{"type":"integer","minimum":0},
+			"polls":{"type":"integer","minimum":0},
+			"matchCount":{"type":"integer","minimum":0},
+			"actualText":{"type":"string"},
+			"actualPackage":{"type":"string"}
+		},
+		"additionalProperties":false
+	}`)
+}
+
+// bridgeSetTextSchema 描述桥侧文本输入的入参。
+//
+// 与 actionSchema 的 ui.setText 分支刻意不同：那里有 ASCII 正则，
+// 因为它落到 adb shell input text；这里没有字符集限制，
+// 因为无障碍 ACTION_SET_TEXT 接受任意 CharSequence。
+//
+// 三个定位字段用 anyOf 约束"至少填一个"：全空会匹配到任意可编辑节点，
+// 写入位置将不可预期。
+func bridgeSetTextSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"required":["device","text"],
+		"properties":{
+			"device":` + deviceSchema() + `,
+			"text":{"type":"string","minLength":1,"maxLength":10000},
+			"package":` + packageSchema() + `,
+			"resourceId":{"type":"string","minLength":1,"maxLength":512},
+			"description":{"type":"string","minLength":1,"maxLength":1024},
+			"matchText":{"type":"string","minLength":1,"maxLength":1024}
+		},
+		"anyOf":[
+			{"required":["resourceId"]},
+			{"required":["description"]},
+			{"required":["matchText"]}
+		],
+		"additionalProperties":false
+	}`)
+}
+
+// bridgeSetTextOutputSchema 描述桥侧文本写入的返回值。
+//
+// 三个字段都可选：App 侧按执行路径决定回哪些证据，
+// 例如直接命中唯一节点时不必回完整路径。
+func bridgeSetTextOutputSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"properties":{
+			"route":{"type":"string","maxLength":128},
+			"matchedPath":{"type":"array","maxItems":128,"items":{"type":"integer"}},
+			"matchScore":{"type":"number","minimum":0,"maximum":1}
+		},
+		"additionalProperties":false
+	}`)
+}
+
+// screenRecordSchema 描述屏幕录制工具的入参。
+//
+// 单独成工具而不作为 observe 的一个 kind：录制会阻塞数秒到数分钟，
+// 与其余观察的即时返回语义差别太大，混在一起会让调用方难以设置超时。
+func screenRecordSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"required":["device","seconds"],
+		"properties":{
+			"device":` + deviceSchema() + `,
+			"seconds":{"type":"integer","minimum":1,"maximum":180},
+			"width":{"type":"integer","minimum":1,"maximum":100000},
+			"height":{"type":"integer","minimum":1,"maximum":100000},
+			"bitRate":{"type":"integer","minimum":1}
+		},
+		"additionalProperties":false
 	}`)
 }
 
@@ -91,6 +264,29 @@ func actionSchema() json.RawMessage {
 					"endX":` + coordinateSchema() + `,
 					"endY":` + coordinateSchema() + `,
 					"durationMs":{"type":"integer","minimum":1,"maximum":60000}
+				},
+				"additionalProperties":false
+			},
+			{
+				"type":"object",
+				"required":["device","action","x","y"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"action":{"const":"ui.longClick"},
+					"x":` + coordinateSchema() + `,
+					"y":` + coordinateSchema() + `,
+					"durationMs":{"type":"integer","minimum":300,"maximum":10000}
+				},
+				"additionalProperties":false
+			},
+			{
+				"type":"object",
+				"required":["device","action","direction"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"action":{"const":"ui.scroll"},
+					"direction":{"enum":["up","down","left","right"]},
+					"amount":{"type":"number","minimum":0.05,"maximum":0.9}
 				},
 				"additionalProperties":false
 			},
@@ -145,14 +341,18 @@ func observeOutputSchema() json.RawMessage {
 		"required":["device","kind","format"],
 		"properties":{
 			"device":` + deviceSchema() + `,
-			"kind":{"enum":["screenshot","hierarchy","semantic","recordings"]},
-			"format":{"enum":["png","uiautomator-xml","accessibility-tree","recording-list"]},
+			"kind":{"enum":["screenshot","hierarchy","semantic","recordings","foreground","apps"]},
+			"format":{"enum":["png","uiautomator-xml","accessibility-tree","recording-list","foreground","app-list"]},
 			"sizeBytes":{"type":"integer","minimum":1},
 			"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},
 			"xml":{"type":"string"},
 			"snapshot":{"$ref":"#/$defs/snapshot"},
 			"recordings":{"type":"array","items":{"$ref":"#/$defs/recording"}},
-			"count":{"type":"integer","minimum":0}
+			"count":{"type":"integer","minimum":0},
+			"foreground":{"$ref":"#/$defs/foreground"},
+			"apps":{"type":"array","items":{"$ref":"#/$defs/app"}},
+			"includesSystem":{"type":"boolean"},
+			"detailsIncluded":{"type":"boolean"}
 		},
 		"additionalProperties":false,
 		"$defs":{
@@ -241,8 +441,52 @@ func observeOutputSchema() json.RawMessage {
 					}
 				},
 				"additionalProperties":false
+			},
+			"foreground":{
+				"type":"object",
+				"required":["package","source"],
+				"properties":{
+					"package":` + packageSchema() + `,
+					"activity":{"type":"string","maxLength":512},
+					"source":{"enum":["resumedActivity","currentFocus"]}
+				},
+				"additionalProperties":false
+			},
+			"app":{
+				"type":"object",
+				"required":["package","system"],
+				"properties":{
+					"package":` + packageSchema() + `,
+					"apkPath":{"type":"string","maxLength":1024},
+					"versionName":{"type":"string","maxLength":256},
+					"versionCode":{"type":"integer","minimum":0},
+					"system":{"type":"boolean"}
+				},
+				"additionalProperties":false
 			}
 		}
+	}`)
+}
+
+// screenRecordOutputSchema 描述录屏工具的返回值。
+//
+// 刻意不返回视频字节：单次录制可达数十 MB，塞进 MCP 响应会超出多数客户端的
+// 消息上限。模型拿到摘要即可判断录制是否成功，视频本体由 CLI 侧写文件获取。
+func screenRecordOutputSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"required":["device","format","sizeBytes","sha256","durationSeconds"],
+		"properties":{
+			"device":` + deviceSchema() + `,
+			"format":{"const":"mp4"},
+			"sizeBytes":{"type":"integer","minimum":1},
+			"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+			"durationSeconds":{"type":"integer","minimum":1,"maximum":180},
+			"width":{"type":"integer","minimum":0},
+			"height":{"type":"integer","minimum":0},
+			"bitRate":{"type":"integer","minimum":0}
+		},
+		"additionalProperties":false
 	}`)
 }
 

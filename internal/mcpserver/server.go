@@ -1,9 +1,11 @@
 package mcpserver
 
-// 功能用途：本文件注册七个类型化 MCP 工具，并映射共享自动化、只读视觉和原子视觉动作。
+// 功能用途：本文件注册类型化 MCP 工具，并映射共享自动化、只读视觉和原子视觉动作。
+// 工具集合以 ToolNames 为准，新增工具须同时登记到该列表。
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/protocol"
@@ -19,8 +21,23 @@ const (
 	ToolObserve         = "android_observe"
 	ToolActionExecute   = "android_action_execute"
 	ToolRecordingReplay = "android_recording_replay"
+	// ToolScreenRecord 单独成工具而非 observe 的一个 kind：录制会阻塞数秒到数分钟，
+	// 与其余观察的即时返回语义差别过大，混在一起会让调用方无法合理设置超时。
+	ToolScreenRecord = "android_screen_record"
+	// ToolWait 与 ToolAssert 是自愈回路的判据执行。分成两个工具而非一个带 mode 参数：
+	// 二者失败语义相反（wait 返回 satisfied=false，assert 报错），
+	// 合成一个会让模型难以预判调用失败与否。
+	ToolWait   = "android_wait"
+	ToolAssert = "android_assert"
+	// ToolBridgeSetText 是唯一能写入中文等非 ASCII 文本的工具。
+	// 与 android_action_execute 的 ui.setText 并存而非替代：后者走 adb input text，
+	// 只接受 ASCII；本工具走 App Bridge 的无障碍 setText，接受任意 Unicode，
+	// 但要求桥已连接。模型应按文本内容与桥状态选择。
+	ToolBridgeSetText = "android_bridge_set_text"
 
 	observeKindRecordings = "recordings"
+	observeKindForeground = "foreground"
+	observeKindApps       = "apps"
 )
 
 // ToolNames 列出服务器允许暴露的完整工具集合。
@@ -32,6 +49,10 @@ var ToolNames = []string{
 	ToolVisualActionExecute,
 	ToolActionExecute,
 	ToolRecordingReplay,
+	ToolScreenRecord,
+	ToolWait,
+	ToolAssert,
+	ToolBridgeSetText,
 }
 
 type devicesListInput struct{}
@@ -45,6 +66,8 @@ type observeInput struct {
 	Kind          string `json:"kind"`
 	TargetPackage string `json:"targetPackage,omitempty"`
 	MaxDepth      int    `json:"maxDepth,omitempty"`
+	IncludeSystem bool   `json:"includeSystem,omitempty"`
+	WithDetails   bool   `json:"withDetails,omitempty"`
 }
 
 type observeOutput struct {
@@ -57,6 +80,97 @@ type observeOutput struct {
 	Snapshot   *service.SemanticSnapshot   `json:"snapshot,omitempty"`
 	Recordings *[]service.RecordingSummary `json:"recordings,omitempty"`
 	Count      *int                        `json:"count,omitempty"`
+	// Foreground 与 Apps 只在对应 kind 下出现，用指针以便省略而非返回空值，
+	// 避免调用方把"字段存在但为空"误读成"查到了但结果为空"。
+	Foreground      *foregroundPayload  `json:"foreground,omitempty"`
+	Apps            *[]adb.InstalledApp `json:"apps,omitempty"`
+	IncludesSystem  *bool               `json:"includesSystem,omitempty"`
+	DetailsIncluded *bool               `json:"detailsIncluded,omitempty"`
+}
+
+// foregroundPayload 是前台观察的返回体。
+// 不直接复用 service.ForegroundResult：那里带 Device 字段，
+// 而 observeOutput 顶层已有 Device，重复会让 schema 出现两个同义字段。
+type foregroundPayload struct {
+	Package  string `json:"package"`
+	Activity string `json:"activity,omitempty"`
+	Source   string `json:"source"`
+}
+
+type screenRecordInput struct {
+	Device  string `json:"device"`
+	Seconds int    `json:"seconds"`
+	Width   int    `json:"width,omitempty"`
+	Height  int    `json:"height,omitempty"`
+	BitRate int    `json:"bitRate,omitempty"`
+}
+
+// screenRecordOutput 只回摘要，不含视频字节，理由见 screenRecordOutputSchema。
+type screenRecordOutput struct {
+	Device      string `json:"device"`
+	Format      string `json:"format"`
+	SizeBytes   int    `json:"sizeBytes"`
+	SHA256      string `json:"sha256"`
+	DurationSec int    `json:"durationSeconds"`
+	Width       int    `json:"width,omitempty"`
+	Height      int    `json:"height,omitempty"`
+	BitRate     int    `json:"bitRate,omitempty"`
+}
+
+// bridgeSetTextInput 是桥侧文本输入的入参。
+// 没有字符集限制，理由见 bridgeSetTextSchema。
+type bridgeSetTextInput struct {
+	Device      string `json:"device"`
+	Text        string `json:"text"`
+	Package     string `json:"package,omitempty"`
+	ResourceID  string `json:"resourceId,omitempty"`
+	Description string `json:"description,omitempty"`
+	MatchText   string `json:"matchText,omitempty"`
+}
+
+// bridgeSetTextOutput 是桥侧文本写入的结果。
+//
+// 显式声明 App 侧的匹配证据而不是回不透明的 JSON：route 说明走了哪条执行路径，
+// matchedPath 是命中节点在树中的位置，matchScore 是匹配确定度。
+// 调用方据此判断文本是否落到了预期元素上——只回一个成功标志无法区分
+// "写对了" 与 "写进了另一个同类输入框"。
+type bridgeSetTextOutput struct {
+	Route       string  `json:"route,omitempty"`
+	MatchedPath []int   `json:"matchedPath,omitempty"`
+	MatchScore  float64 `json:"matchScore,omitempty"`
+}
+
+// predicateInput 是等待与断言共用的入参。
+// 不含任何坐标字段，理由见 predicateSchema 注释。
+type predicateInput struct {
+	Device           string `json:"device"`
+	Kind             string `json:"kind"`
+	Operator         string `json:"operator"`
+	ResourceID       string `json:"resourceId,omitempty"`
+	Text             string `json:"text,omitempty"`
+	Description      string `json:"description,omitempty"`
+	ClassName        string `json:"className,omitempty"`
+	Package          string `json:"package,omitempty"`
+	Expected         string `json:"expected,omitempty"`
+	TimeoutMS        int    `json:"timeoutMs,omitempty"`
+	StableDurationMS int    `json:"stableDurationMs,omitempty"`
+}
+
+// toRequest 把 MCP 入参转换为服务层请求。
+func (input predicateInput) toRequest() service.PredicateRequest {
+	return service.PredicateRequest{
+		Device:           input.Device,
+		Kind:             input.Kind,
+		Operator:         input.Operator,
+		ResourceID:       input.ResourceID,
+		Text:             input.Text,
+		Description:      input.Description,
+		ClassName:        input.ClassName,
+		Package:          input.Package,
+		Expected:         input.Expected,
+		TimeoutMS:        input.TimeoutMS,
+		StableDurationMS: input.StableDurationMS,
+	}
 }
 
 type actionInput struct {
@@ -73,6 +187,9 @@ type actionInput struct {
 	Key        string `json:"key,omitempty"`
 	Package    string `json:"package,omitempty"`
 	Activity   string `json:"activity,omitempty"`
+	// Direction 与 Amount 仅 ui.scroll 使用；Amount 是屏幕占比而非像素。
+	Direction string  `json:"direction,omitempty"`
+	Amount    float64 `json:"amount,omitempty"`
 }
 
 type recordingReplayInput struct {
@@ -160,6 +277,47 @@ func newServer(
 				Count:      &count,
 			}, nil
 		}
+		if input.Kind == observeKindForeground {
+			result, err := automation.Foreground(ctx, service.ForegroundRequest{
+				Device: input.Device,
+			})
+			if err != nil {
+				return nil, observeOutput{}, err
+			}
+			return nil, observeOutput{
+				Device: result.Device,
+				Kind:   observeKindForeground,
+				Format: "foreground",
+				Foreground: &foregroundPayload{
+					Package:  result.Package,
+					Activity: result.Activity,
+					Source:   result.Source,
+				},
+			}, nil
+		}
+		if input.Kind == observeKindApps {
+			result, err := automation.Apps(ctx, service.AppsRequest{
+				Device:        input.Device,
+				IncludeSystem: input.IncludeSystem,
+				WithDetails:   input.WithDetails,
+			})
+			if err != nil {
+				return nil, observeOutput{}, err
+			}
+			apps := result.Apps
+			count := result.Count
+			includesSystem := result.IncludesSystem
+			detailsIncluded := result.DetailsIncluded
+			return nil, observeOutput{
+				Device:          result.Device,
+				Kind:            observeKindApps,
+				Format:          "app-list",
+				Apps:            &apps,
+				Count:           &count,
+				IncludesSystem:  &includesSystem,
+				DetailsIncluded: &detailsIncluded,
+			}, nil
+		}
 		result, err := automation.Observe(ctx, service.ObserveRequest{
 			Device:        input.Device,
 			Kind:          input.Kind,
@@ -215,6 +373,8 @@ func newServer(
 			Key:        input.Key,
 			Package:    input.Package,
 			Activity:   input.Activity,
+			Direction:  input.Direction,
+			Amount:     input.Amount,
 		})
 		return nil, result, err
 	})
@@ -230,6 +390,114 @@ func newServer(
 		_ recordingReplayInput,
 	) (*mcp.CallToolResult, service.ReplayRecordingResult, error) {
 		return nil, service.ReplayRecordingResult{}, requireReplayConfirmation()
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: ToolScreenRecord,
+		Description: "Record the screen of one explicitly selected Android device for a bounded duration " +
+			"and return only a digest. The video itself is not returned over MCP because a single " +
+			"recording can exceed client message limits.",
+		InputSchema:  screenRecordSchema(),
+		OutputSchema: screenRecordOutputSchema(),
+		Annotations:  readOnlyAnnotations(),
+	}, func(
+		ctx context.Context,
+		_ *mcp.CallToolRequest,
+		input screenRecordInput,
+	) (*mcp.CallToolResult, screenRecordOutput, error) {
+		result, err := automation.Record(ctx, service.RecordingRequest{
+			Device:  input.Device,
+			Seconds: input.Seconds,
+			Width:   input.Width,
+			Height:  input.Height,
+			BitRate: input.BitRate,
+		})
+		if err != nil {
+			return nil, screenRecordOutput{}, err
+		}
+		return nil, screenRecordOutput{
+			Device:      result.Device,
+			Format:      result.Format,
+			SizeBytes:   result.SizeBytes,
+			SHA256:      result.SHA256,
+			DurationSec: result.DurationSec,
+			Width:       result.Width,
+			Height:      result.Height,
+			BitRate:     result.BitRate,
+		}, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: ToolWait,
+		Description: "Wait until an interface predicate holds on one explicitly selected Android device. " +
+			"Returns satisfied=false on timeout instead of failing, so the caller can try another path. " +
+			"Predicates match by describable attributes only; no coordinates are accepted.",
+		InputSchema:  predicateSchema(),
+		OutputSchema: predicateOutputSchema(),
+		Annotations:  readOnlyAnnotations(),
+	}, func(
+		ctx context.Context,
+		_ *mcp.CallToolRequest,
+		input predicateInput,
+	) (*mcp.CallToolResult, service.PredicateOutcome, error) {
+		result, err := automation.Wait(ctx, input.toRequest())
+		if err != nil {
+			return nil, service.PredicateOutcome{}, err
+		}
+		return nil, result, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: ToolAssert,
+		Description: "Assert that an interface predicate holds on one explicitly selected Android device. " +
+			"Fails with the observed state attached when the predicate does not hold before the timeout, " +
+			"so the caller can correct course. Predicates match by describable attributes only.",
+		InputSchema:  predicateSchema(),
+		OutputSchema: predicateOutputSchema(),
+		Annotations:  readOnlyAnnotations(),
+	}, func(
+		ctx context.Context,
+		_ *mcp.CallToolRequest,
+		input predicateInput,
+	) (*mcp.CallToolResult, service.PredicateOutcome, error) {
+		result, err := automation.Assert(ctx, input.toRequest())
+		if err != nil {
+			return nil, service.PredicateOutcome{}, err
+		}
+		return nil, result, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: ToolBridgeSetText,
+		Description: "Write text into one element through the App Bridge accessibility service. " +
+			"Unlike android_action_execute with ui.setText, this accepts any Unicode including " +
+			"Chinese, because it does not go through the ADB input text shell escaping. " +
+			"Requires an established bridge session. Locate the element by resourceId " +
+			"(most reliable), description, or matchText.",
+		InputSchema:  bridgeSetTextSchema(),
+		Annotations:  actionAnnotations(),
+		OutputSchema: bridgeSetTextOutputSchema(),
+	}, func(
+		ctx context.Context,
+		_ *mcp.CallToolRequest,
+		input bridgeSetTextInput,
+	) (*mcp.CallToolResult, bridgeSetTextOutput, error) {
+		raw, err := automation.BridgeSetText(ctx, service.BridgeTextRequest{
+			Device:      input.Device,
+			Text:        input.Text,
+			Package:     input.Package,
+			ResourceID:  input.ResourceID,
+			Description: input.Description,
+			MatchText:   input.MatchText,
+		})
+		if err != nil {
+			return nil, bridgeSetTextOutput{}, err
+		}
+		var output bridgeSetTextOutput
+		// App 侧应答的字段集合由桥协议决定，可能多于这里声明的三个；
+		// 解析失败不应让已经成功的写入变成错误，因此忽略解析错误只丢证据。
+		_ = json.Unmarshal(raw, &output)
+		return nil, output, nil
 	})
 
 	return server

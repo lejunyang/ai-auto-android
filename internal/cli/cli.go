@@ -153,6 +153,8 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 		return a.executeObserve(ctx, a.directAutomation(client), args[1:])
 	case "action":
 		return a.executeAction(ctx, a.directAutomation(client), args[1:])
+	case "check":
+		return a.executeCheck(ctx, a.directAutomation(client), args[1:])
 	case "recording":
 		automation, err := a.automationService(client)
 		if err != nil {
@@ -168,7 +170,7 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 	case "mcp":
 		return nil, usageError("Usage: aactl mcp serve")
 	default:
-		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, recording, bridge, mcp.")
+		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, check, recording, bridge, mcp.")
 	}
 }
 
