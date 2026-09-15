@@ -32,18 +32,18 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 | --- | --- | --- | --- | --- |
 | A1 | 多窗口模型（`service.windows` 遍历） | 已交付 | 35 | E1 |
 | A2 | `drag`（按住—停顿—移动） | 已交付（桥侧+直连） | 35 | E2、E5 |
-| A3 | `scrollIntoView` / `scrollUntil` | 已实现未验证 | — | 仅三层实现与单测，无设备证据 |
+| A3 | `scrollIntoView` / `scrollUntil` | 未完成 | 35 | E10：实现完成但设备验证失败，原因见第 10 节 B1 |
 | A4 | Bridge 侧 `pressKey` | 部分实现 | — | 仅 MOVE_HOME/MOVE_END 可走无障碍，其余键需 ADB；无设备证据 |
 
 ### P1
 
 | 编号 | 能力 | 状态 | 验证 API | 证据 |
 | --- | --- | --- | --- | --- |
-| A5 | 文本选择（`ACTION_SET_SELECTION`） | 已实现未验证 | — | 三层实现完成，缺可编辑控件的设备夹具 |
-| A6 | 复制 / 剪切 / 粘贴 | 已实现未验证 | — | 同上 |
+| A5 | 文本选择（`ACTION_SET_SELECTION`） | 已交付 | 35 | E6 |
+| A6 | 复制 / 剪切 / 粘贴 | 已交付（复制+粘贴）；剪切未验证 | 35 | E7 |
 | A7 | 多指与复合手势 | pinch 已交付；zoom/旋转/双指滚动已实现未验证 | 35 | E4 |
-| A8 | 双击 / N 连击 | 已交付 | 35 | E3 |
-| A9 | 节点动作补齐（8 项） | 已实现未验证 | — | 快照映射与路由已补，缺设备夹具 |
+| A8 | 双击 / N 连击 | 已交付（双击）；三连及以上未验证 | 35 | E3 |
+| A9 | 节点动作补齐（8 项） | 部分已交付：EXPAND/COLLAPSE/SET_PROGRESS 已验证；FOCUS 间接验证；SELECT/CLEAR_*/DISMISS/SCROLL_TO_POSITION 未验证 | 35 | E8、E9 |
 | A10 | 全局动作补齐（5 项） | 已实现未验证 | — | 通知栏/快捷设置/锁屏/截屏/电源菜单已按 API 分级接线；快捷键面板确认无法实现（见第 9 节 D1） |
 | A11 | 设备状态动作 | 未开始 | — | — |
 | A12 | IME 控制 | 未开始 | — | — |
@@ -72,9 +72,29 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 | E3 | `dispatchesMultiTapThroughTheProductionRouter` 通过（双击）。 |
 | E4 | `dispatchesTwoFingerPinchThroughTheProductionRouter` 通过，证明同一 `GestureDescription` 内两笔并行可用——这是多指能力唯一的真实证据。 |
 | E5 | 直连通道 `input draganddrop` 与 `input motionevent` 在同一设备上实测可用；同时确认 `input motionevent` 只接受一个坐标对（传第三个参数被静默忽略且返回 exit 0），故直连**无法**合成多指。 |
+| E6 | `setsTextSelectionOnTheEditableField` 通过。断言的是控件真实 `selectionStart/End` 等于请求区间（2,6），而非只看动作返回值——`ACTION_SET_SELECTION` 在参数越界时也可能返回 true。 |
+| E7 | `copiesTheSelectedTextAndPastesItIntoAnotherField` 通过。选区→复制→粘贴到**另一个**输入框，断言目标框文本等于被选片段 `cdef`。粘贴到源框无法区分「粘贴成功」与「内容本来就在那」。剪切未单独验证。 |
+| E8 | `setsSeekBarProgress` 通过，断言 `SeekBar.progress` 实际等于 42。 |
+| E9 | `expandsAndCollapsesTheSection` 通过。展开后必须能再折叠——夹具按当前状态只暴露一个动作，若展开未真正改变状态，折叠会因 `ACTION_COLLAPSE` 不存在而失败，故这条同时验证了状态变化被正确广播。 |
+| E10 | `scrollsAnOffscreenTargetIntoView` **失败**：`GESTURE_FAILED`（swipe 被系统拒绝）。前置观察已确认目标初始不可见，滚动轮次进入且到达派发环节，但 `dispatchGesture` 被拒。原因分析见第 10 节 B1。 |
 
-最近一次执行结果：`Tests run: 4, OK (4 tests)`。
-Android 单测 402 项、`lintDebug` 通过。
+最近一次执行结果：
+- `ActionSurfaceDeviceTest`：`OK (4 tests)`。
+- `ActionSurfaceNodeActionDeviceTest`：`Tests run: 5, Failures: 1`（仅 E10 失败）。
+
+Android 单测 402 项、`lintDebug`、`assembleDebug` 通过；
+`make comments` / `make test` / `make verify` / `make build` 通过。
+
+## 10. 已知未完成项与原因
+
+| 编号 | 项 | 现象 | 已排除 | 影响 |
+| --- | --- | --- | --- | --- |
+| B1 | `scrollIntoView` 的滚动手势在 API 35 模拟器上被拒 | 稳定 `GESTURE_FAILED`，`dispatchGesture` 返回 false | 已排除：目标不可见前置成立、轮次逻辑进入派发、归因判据已修正（同一修正让 pinch 与文本选区通过）、坐标校验通过。剩余可疑点是 `GesturePlanner.scroll` 在 320x640 这一较小屏上算出的起止点落入系统手势区（底部导航区约 48dp），被系统在派发前截走 | `ui.scrollIntoView` 在小屏设备上不可用；`ui.scroll` 的既有节点动作路径不受影响（它优先走 `ACTION_SCROLL_*`，只有节点不支持时才降级到手势） |
+
+B1 的下一步是把滚动手势的起止点从「视口中心 ± 位移」改为「避开上下各一个
+系统手势内边距的可用区」，并在同一设备上复测。该改动会影响既有 `ui.scroll`
+的坐标降级路径，属于行为变更，因此单独作为一项处理而不混在本批修复里。
+
 
 
 ## 3. 实施步骤与依赖

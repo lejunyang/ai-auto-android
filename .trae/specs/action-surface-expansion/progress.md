@@ -111,3 +111,53 @@ Android `testDebugUnitTest` 402 项通过，`lintDebug`、`assembleDebug` 通过
 secure 设置即恢复，`Crashed services:{}`。logcat 与 crash buffer 均无应用异常
 堆栈，可据此排除代码崩溃。
 
+## Round 3 — 节点级能力的设备验收
+
+新增 debug 夹具 `ActionSurfaceFixtureActivity`（EditText × 2、SeekBar、
+CheckBox、可展开容器、24 行填充、屏外滚动目标）与
+`ActionSurfaceNodeActionDeviceTest`。单独成一个 Activity 而非扩充
+`ScreenshotTestActivity`：后者已被四组既有测试共用，加控件会改变其节点树
+与坐标，可能让既有断言失效。
+
+### 又一条实测结论：归因判据本身是错的
+
+Round 2 末尾用「事件预算非空」决定走不走归因路径，这个判据不成立。
+`UserTouchMonitor` 只观察 CLICKED / LONG_CLICKED / SCROLLED / TEXT_CHANGED
+四类，`armAutomationAction` 会把预算过滤到这四类，过滤后为空则返回 null，
+`runAttributedAction` 随即返回 false——动作根本不执行。
+
+因此「预算非空但无一项可监听」与「预算为空」是同一种失效。SET_SELECTION
+恰好落在这个缺口：它只产生 TYPE_VIEW_TEXT_SELECTION_CHANGED，不在监视范围，
+于是稳定报 ACTION_FAILED。修正为新增 `hasMonitorableBudget`，把判据收敛到
+监视器内部，手势与节点动作两处共用，避免两边各自维护事件清单而逐渐不一致。
+
+### 另两条平台行为
+
+- **SET_SELECTION 需要输入焦点。** 节点未获焦点时平台拒绝该动作——选区是
+  输入状态的一部分，没有焦点就没有插入点。已在 selectText 与 paste 前
+  各加一次 FOCUS；聚焦失败不提前终止，让真正的动作去报错，
+  否则错误信息会指向一个调用方没有请求的操作。
+- **状态变化必须显式广播。** 夹具的可展开控件切换状态后未发
+  TYPE_WINDOW_CONTENT_CHANGED，框架继续沿用缓存节点信息，展开后再查仍只有
+  ACTION_EXPAND，于是 COLLAPSE 被判为「节点不支持」。
+
+### 设备验收
+
+`ActionSurfaceNodeActionDeviceTest`：`Tests run: 5, Failures: 1`。
+通过：文本选区（断言真实 selectionStart/End）、复制+粘贴到另一个输入框
+（断言目标框文本等于被选片段）、SeekBar 进度（断言 progress==42）、
+展开折叠（连续两步，同时验证状态广播）。
+`ActionSurfaceDeviceTest` 仍为 `OK (4 tests)`。
+
+### 未完成：B1
+
+`scrollIntoView` 的滚动手势在本设备上稳定 `GESTURE_FAILED`。已排除目标可见性、
+轮次逻辑、归因判据（同一修正让 pinch 与文本选区通过）与坐标校验。
+剩余可疑点是 `GesturePlanner.scroll` 在 320x640 这一较小屏上算出的起止点
+落入系统手势区，被系统在派发前截走。
+
+下一步是把起止点改为避开上下系统手势内边距的可用区并复测。该改动会影响既有
+`ui.scroll` 的坐标降级路径，属行为变更，因此单独一项处理而不混入本批修复。
+`ui.scroll` 本身不受影响——它优先走 `ACTION_SCROLL_*` 节点动作。
+
+

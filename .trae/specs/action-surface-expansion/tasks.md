@@ -18,15 +18,15 @@
 - [x] A1 多窗口模型（`service.windows` 遍历）
 - [x] A7-核心 `dispatchGesture` 多 stroke 与 `willContinue` 续接改造
 - [x] A2 `drag`（按住—停顿—移动分段时序）
-- [ ] A3 `scrollIntoView` / `scrollUntil`（三层实现完成，缺设备证据）
+- [ ] A3 `scrollIntoView` / `scrollUntil`（设备验证失败，见状态源 B1）
 - [ ] A4 Bridge 侧 `pressKey`（仅 MOVE_HOME/MOVE_END 可走无障碍，缺设备证据）
 
 ## P1
 
-- [ ] A5 文本选择（`ACTION_SET_SELECTION`）（缺可编辑控件设备夹具）
-- [ ] A6 复制 / 剪切 / 粘贴（缺设备夹具）
+- [x] A5 文本选择（`ACTION_SET_SELECTION`）
+- [x] A6 复制 / 粘贴（剪切未单独验证）
 - [x] A8 双击 / N 连击
-- [ ] A9 节点动作补齐（8 项）（缺设备夹具）
+- [ ] A9 节点动作补齐（EXPAND/COLLAPSE/SET_PROGRESS 已验证，其余未验证）
 - [x] A7-手势 pinch（zoom / 旋转 / 双指滚动已实现，缺设备证据）
 - [ ] A10 全局动作补齐（5 项）（缺设备证据；快捷键面板确认无法实现）
 - [ ] A11 设备状态动作（旋转 / 唤醒 / 解锁 / 亮屏检测）
