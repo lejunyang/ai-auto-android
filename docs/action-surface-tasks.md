@@ -139,6 +139,30 @@ A11 → A12 → A13 → A14 → A15 → A16 → A17。
 
 `protocol/` 清单、根 Gradle 配置与本文件由单一集成负责人串行修改。
 
+## 4.1 平台事实沉淀（后续实现必须先看这一节）
+
+以下六条都是设备实测结论，不是文档推断。每一条都曾导致一次"代码看起来正确
+但行为不对"的排查，写在这里避免同类坑重复踩。
+
+| 编号 | 结论 | 影响范围 |
+| --- | --- | --- |
+| F1 | `input motionevent` 只接受**一个**坐标对，传第三个参数被**静默忽略**并返回 exit 0（`DOWN 100 300 NOTANUMBER` 也"成功"），参数不足才抛异常 | 直连 ADB 通道**无法**合成多指手势。任何这样写的代码会退化成单指且不报错 |
+| F2 | 不声明 `flagRetrieveInteractiveWindows` 时 `AccessibilityService.windows` 恒为空列表 | 多窗口定位在代码完全正确时也一定失效。新增无障碍服务配置必须带此 flag |
+| F3 | `UserTouchMonitor` 只观察 CLICKED / LONG_CLICKED / SCROLLED / TEXT_CHANGED 四类事件；预算过滤后为空则 arm 失败、`runAttributedAction` 返回 false，动作**根本不执行** | 任何新增动作若其事件不在这四类内（或不发事件），必须经 `hasMonitorableBudget` 判断后直接派发，否则稳定报"系统拒绝" |
+| F4 | `ACTION_SET_SELECTION` 要求节点已获输入焦点——平台把选区视为输入状态的一部分 | 依赖插入点的动作（选区、粘贴）须先 FOCUS |
+| F5 | View 状态变化后必须显式发 `TYPE_WINDOW_CONTENT_CHANGED`，否则框架沿用缓存节点信息 | 自定义控件的动态动作集（如 EXPAND↔COLLAPSE 互换）不广播就查不到新动作 |
+| F6 | 设备上**不存在** `cmd clipboard` shell 命令（`No shell command implementation`），但 `service list` 里有 `clipboard: [android.content.IClipboard]` | 剪贴板读写无法走 ADB 通道，只能经 App Bridge 的 `ClipboardManager`；且 API 29+ 起读取剪贴板要求应用处于前台 |
+
+## 4.2 已拍板的取舍（D1–D3）
+
+| 编号 | 决定 | 理由 |
+| --- | --- | --- |
+| D1 | 快捷键帮助面板**如实上报不支持**，不硬编码 `@hide` 常量 | `GLOBAL_ACTION_KEYBOARD_SHORTCUTS` 仅对系统应用开放。硬编码数值虽能调通，但依赖未公开 API，后续 Android 版本会静默失效——那比明确的"不支持"更难排查 |
+| D2 | 接受**多指手势仅在 App Bridge 连接时可用**，不做 root + `sendevent` 直写 `/dev/input` | 见 F1，直连通道物理上做不到。`sendevent` 方案与设备输入驱动强耦合且需 root，不适合真机交付 |
+| D3 | 只交付 **API 35** 证据，30/33/34 如实标注未验证 | 本机 `system-images` 下只有 `android-35`，且 `profiles.json` 声明的是 arm64 而本机为 x86_64。补齐需数 GB 下载，收益不足以阻塞当前交付 |
+
+D4（B1 的修复是否作为独立行为变更处理）保持待用户确认，倾向独立处理。
+
 ## 5. 允许修改范围
 
 - `.trae/specs/action-surface-expansion/`
