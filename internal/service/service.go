@@ -36,8 +36,9 @@ const (
 	// 通道归属不是任意选择，而是由平台能力决定的：
 	//
 	// 直连（ADB）可完成：drag 走 `input draganddrop`，连击与路径手势用
-	// `input motionevent` 逐点合成，屏幕状态用 `wm`/`input keyevent`，
-	// 剪贴板与 IME 用对应的 shell 服务，deeplink 用 `am start`，
+	// `input motionevent` 逐点合成，屏幕方向用 `settings put system`，
+	// 唤醒解锁用 `input keyevent`，亮屏检测读 `dumpsys display`，
+	// IME 切换用 `ime set`，deeplink 用 `am start`，
 	// 文件传输用 `adb push`/`pull`。
 	//
 	// 只能走 App Bridge（无障碍）：
@@ -46,13 +47,25 @@ const (
 	//   直连通道无法合成多指，只有无障碍的多 stroke dispatchGesture 可以。
 	// - 需要语义节点定位的能力（scrollIntoView、文本选区、复制粘贴、
 	//   扩展节点动作、进度设值、按位置滚动）。直连通道拿不到稳定的元素引用。
+	// - 剪贴板读写。设备上不存在 `cmd clipboard` shell 命令（实测返回
+	//   "No shell command implementation"），只能经 ClipboardManager。
 	//
-	// 这里只声明已经接线到 ExecuteAction 的直连动作名。桥侧动作与尚未接线的
-	// 设备状态、IME、剪贴板、deeplink、文件传输动作待其实现落地时再加常量——
-	// 提前声明一批没有分派的常量会让「白名单」失去意义。
+	// 这里只声明已经接线到 ExecuteAction 的动作名：提前声明一批没有分派的
+	// 常量会让「白名单」失去意义，也会让调用方以为动作已可用。
 	ActionDrag        = "ui.drag"
 	ActionMultiTap    = "ui.multiTap"
 	ActionPathGesture = "ui.pathGesture"
+
+	ActionDeviceRotate = "device.rotate"
+	ActionDeviceWake   = "device.wake"
+	ActionDeviceUnlock = "device.unlock"
+
+	ActionImeHide   = "ime.hide"
+	ActionImeSelect = "ime.select"
+
+	ActionDeeplink = "app.deeplink"
+	ActionFilePush = "file.push"
+	ActionFilePull = "file.pull"
 
 	defaultSwipeDurationMS = 300
 	defaultSnapshotDepth   = 64
@@ -96,6 +109,18 @@ type DirectBackend interface {
 	Drag(context.Context, string, adb.Point, adb.Point, int) (adb.ActionResult, error)
 	MultiTap(context.Context, string, adb.Point, int) (adb.ActionResult, error)
 	PathGesture(context.Context, string, []adb.Point, int) (adb.ActionResult, error)
+	// 设备状态、IME、deeplink 与文件传输见 internal/adb/device_state.go。
+	// 剪贴板不在这里：设备上没有对应的 shell 命令，只能走 BridgeBackend。
+	Rotate(context.Context, string, adb.Orientation) (adb.ActionResult, error)
+	Wake(context.Context, string) (adb.ActionResult, error)
+	Unlock(context.Context, string) (adb.ActionResult, error)
+	ScreenState(context.Context, string) (adb.ScreenState, error)
+	ListInputMethods(context.Context, string) ([]string, error)
+	SelectInputMethod(context.Context, string, string) (adb.ActionResult, error)
+	HideKeyboard(context.Context, string) (adb.ActionResult, error)
+	OpenDeeplink(context.Context, string, string, string) (adb.ActionResult, error)
+	PushFile(context.Context, string, string, string) (adb.FileTransfer, error)
+	PullFile(context.Context, string, string, string) (adb.FileTransfer, error)
 }
 
 // BridgeBackend 只包含已建立会话后的操作；配对和信任管理有意留在接口之外。
@@ -130,6 +155,27 @@ type Automation interface {
 	Assert(context.Context, PredicateRequest) (PredicateOutcome, error)
 	// BridgeSetText 是唯一能写入中文等非 ASCII 文本的通道。
 	BridgeSetText(context.Context, BridgeTextRequest) (json.RawMessage, error)
+	// ScreenState、InputMethods 与文件传输是动作面扩展的观察与传输能力。
+	// 它们不走 ExecuteAction：返回值不是 adb.ActionResult，
+	// 硬塞进那个签名会让调用方拿不到实际结果（亮屏状态、输入法列表、传输字节数）。
+	ScreenState(context.Context, string) (adb.ScreenState, error)
+	InputMethods(context.Context, string) (InputMethodListResult, error)
+	PushFile(context.Context, FileTransferRequest) (adb.FileTransfer, error)
+	PullFile(context.Context, FileTransferRequest) (adb.FileTransfer, error)
+}
+
+// InputMethodListResult 返回设备上已启用的输入法与当前默认项。
+type InputMethodListResult struct {
+	Device string   `json:"device"`
+	IDs    []string `json:"ids"`
+	Count  int      `json:"count"`
+}
+
+// FileTransferRequest 描述一次文件推送或拉取。
+type FileTransferRequest struct {
+	Device     string `json:"device"`
+	LocalPath  string `json:"localPath"`
+	RemotePath string `json:"remotePath"`
 }
 
 // Service 在调用后端前集中执行设备、动作和 Bridge 响应校验。
@@ -232,6 +278,12 @@ type ActionRequest struct {
 	Taps int `json:"taps,omitempty"`
 	// Points 仅 ui.pathGesture 使用，是折线的完整点列。
 	Points []adb.Point `json:"points,omitempty"`
+	// Orientation 仅 device.rotate 使用，取 portrait / landscape / auto。
+	Orientation string `json:"orientation,omitempty"`
+	// InputMethod 仅 ime.select 使用，是 `包名/组件名` 形式的输入法标识。
+	InputMethod string `json:"inputMethod,omitempty"`
+	// URI 仅 app.deeplink 使用。
+	URI string `json:"uri,omitempty"`
 }
 
 // RecordingListResult 返回经协议校验和脱敏的录制摘要。
@@ -476,6 +528,18 @@ func (s *Service) ExecuteAction(
 			duration = defaultPathGestureMS
 		}
 		return s.direct.PathGesture(ctx, request.Device, request.Points, duration)
+	case ActionDeviceRotate:
+		return s.direct.Rotate(ctx, request.Device, adb.Orientation(request.Orientation))
+	case ActionDeviceWake:
+		return s.direct.Wake(ctx, request.Device)
+	case ActionDeviceUnlock:
+		return s.direct.Unlock(ctx, request.Device)
+	case ActionImeHide:
+		return s.direct.HideKeyboard(ctx, request.Device)
+	case ActionImeSelect:
+		return s.direct.SelectInputMethod(ctx, request.Device, request.InputMethod)
+	case ActionDeeplink:
+		return s.direct.OpenDeeplink(ctx, request.Device, request.URI, request.Package)
 	case ActionLaunch:
 		return s.direct.Launch(ctx, request.Device, request.Package, request.Activity)
 	case ActionStop:
