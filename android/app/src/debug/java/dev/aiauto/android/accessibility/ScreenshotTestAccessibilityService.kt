@@ -178,6 +178,41 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
         return n45ActionRouter.execute(action.toAccessibilityCommand(expectedPackage))
     }
 
+    /**
+     * 仅供 debug 动作面 harness 执行任意生产命令。
+     *
+     * 直接走与生产完全相同的 router 与 backend：动作面扩展的验收要证明
+     * 「生产路径可用」，若这里另建一条简化通道，测过的就不是被交付的代码。
+     */
+    fun executeActionSurfaceCommand(
+        command: dev.aiauto.android.accessibility.model.AccessibilityCommand,
+        expectedPackage: String,
+    ): AccessibilityResult<ActionExecution> {
+        if (!::n45ActionRouter.isInitialized || expectedPackage != packageName) {
+            return AccessibilityResult.Failure(
+                code = AccessibilityErrorCode.PACKAGE_NOT_ALLOWED,
+                message = "The action surface debug fixture only accepts its own package",
+            )
+        }
+        return n45ActionRouter.execute(command)
+    }
+
+    /**
+     * 用生产 WindowSnapshotter 枚举当前可见窗口。
+     *
+     * 这是多窗口模型唯一可验证的出口：它必须在真实设备上返回多于一个窗口
+     * （状态栏、导航栏、输入法都是独立窗口），否则说明 service.windows
+     * 没有真正被读到，而这一点无法用单测证明——单测里窗口列表是伪造的。
+     */
+    fun enumerateWindows(): List<dev.aiauto.android.accessibility.model.UiWindowSnapshot> =
+        dev.aiauto.android.accessibility.snapshot.WindowSnapshotter().snapshotWindows(this)
+
+    /** 供 harness 断言平台是否声明了手势派发能力。 */
+    fun canPerformGestures(): Boolean =
+        serviceInfo.capabilities and
+            android.accessibilityservice.AccessibilityServiceInfo
+                .CAPABILITY_CAN_PERFORM_GESTURES != 0
+
     private fun withNode(
         contentDescription: String,
         action: (AccessibilityNodeInfo) -> Boolean,
