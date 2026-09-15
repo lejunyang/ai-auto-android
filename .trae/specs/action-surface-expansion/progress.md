@@ -160,4 +160,66 @@ Round 2 末尾用「事件预算非空」决定走不走归因路径，这个判
 `ui.scroll` 的坐标降级路径，属行为变更，因此单独一项处理而不混入本批修复。
 `ui.scroll` 本身不受影响——它优先走 `ACTION_SCROLL_*` 节点动作。
 
+## Round 4 — A11 至 A16
+
+按 Organizer 排期先做这六项：它们彼此独立、也不依赖 B1，是当前最大的未交付面。
+
+### 先探测再实现
+
+本轮开工先对六项能力逐一做设备探测，而不是照文档写代码。这个顺序直接避免了
+一次返工：探测发现设备上**不存在** `cmd clipboard` shell 命令
+（返回 "No shell command implementation"），而 `service list` 里确有
+`clipboard: [android.content.IClipboard]`。若按「剪贴板走 ADB」的原计划实现，
+会得到一份编译通过、运行报错的代码。该结论记为 F6。
+
+### 通道归属的最终结论
+
+- 直连（ADB）：旋转（`settings put system user_rotation`）、唤醒
+  （`KEYCODE_WAKEUP`）、解锁、亮屏检测（`dumpsys display` 的 mScreenState）、
+  IME 枚举与切换（`ime list -s` / `ime set`）、收起键盘（BACK）、
+  deeplink（`am start -a VIEW -d`）、文件传输（`adb push`/`pull`）。
+- App Bridge：剪贴板（`ClipboardManager`）、Toast 捕获
+  （`TYPE_NOTIFICATION_STATE_CHANGED`）。
+
+### 三条本轮新增的平台事实
+
+1. **旋转必须先关 accelerometer_rotation。** 该值为 1 时系统按传感器覆盖
+   `user_rotation`，于是「设置成功但方向没变」。实测写入后
+   `mDisplayRotation=ROTATION_90`、bounds 变为 640x320，确认方向真的生效。
+2. **Toast 必须由前台应用发出。** 自 Android 11 起后台应用的 Toast 被平台抑制，
+   不显示也就不产生无障碍事件。设备测试最初恒失败正因如此，
+   把夹具推到前台后立即通过——这与捕获逻辑无关。
+3. **两份 accessibility-service 配置的订阅集合必须一致。** debug 测试服务
+   原本缺 `typeNotificationStateChanged`，导致设备测试里 Toast 捕获恒为空，
+   而生产服务其实能收到该事件。这是「测试测到的能力与生产不同」的典型。
+
+### 设备验收
+
+- `TestDeviceStateAgainstRealDevice` PASS：旋转三态并复位、亮屏检测、
+  IME 枚举与非法切换拒绝、文件往返比对。
+- `TransientMessageDeviceTest` OK (2 tests)：Toast 捕获（断言文本、toast
+  标志位与来源包名）、剪贴板前台读写往返。
+- deeplink 限包实测生效（intent 含 `pkg=`），避免弹应用选择器卡住自动化。
+
+### 未实现且已确认无法实现
+
+- IME「显示键盘」：无障碍与 ADB 都没有公开的弹出输入法入口，
+  只能靠聚焦可编辑节点间接触发。A12 因此只交付枚举/切换/收起，保持未勾选。
+- 有凭据锁屏的解锁：刻意不实现，属用户必须亲自完成的操作。
+
+### B2：把一个偶发失败查到根因
+
+`internal/mcpserver` 的
+`TestSharedServerVisualCallReturnsSameObservationAndCleansAfterWrite`
+在一次 `make test` 中报 `pending visual cleanups = 1`。没有简单归为环境抖动，
+而是查到根因：`visualCleanupConnection.Write` 先把响应写出去、之后才调
+`runtime.cleanup`，而测试在拿到响应后立即断言 `pendingCount()==0`，
+两者构成竞态。
+
+用 `main` 基线 worktree 交叉验证：基线单包 5/5、`make test` 4/4 通过；
+本分支单包 8/8、`make test` 4/4 通过。确认与本批改动无关，且不影响生产
+（cleanup 最终一定执行）。修复属 N44/N45 视觉模块范围，不在本批职责内，
+已记入状态源第 10 节。验证用的 worktree 已非强制移除并 prune。
+
+
 

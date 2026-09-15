@@ -44,18 +44,18 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 | A7 | 多指与复合手势 | pinch 已交付；zoom/旋转/双指滚动已实现未验证 | 35 | E4 |
 | A8 | 双击 / N 连击 | 已交付（双击）；三连及以上未验证 | 35 | E3 |
 | A9 | 节点动作补齐（8 项） | 部分已交付：EXPAND/COLLAPSE/SET_PROGRESS 已验证；FOCUS 间接验证；SELECT/CLEAR_*/DISMISS/SCROLL_TO_POSITION 未验证 | 35 | E8、E9 |
-| A10 | 全局动作补齐（5 项） | 已实现未验证 | — | 通知栏/快捷设置/锁屏/截屏/电源菜单已按 API 分级接线；快捷键面板确认无法实现（见第 9 节 D1） |
-| A11 | 设备状态动作 | 未开始 | — | — |
-| A12 | IME 控制 | 未开始 | — | — |
+| A10 | 全局动作补齐（5 项） | 已实现未验证 | — | 通知栏/快捷设置/锁屏/截屏/电源菜单已按 API 分级接线；快捷键面板确认无法实现（见第 4.2 节 D1） |
+| A11 | 设备状态动作 | 已交付 | 35 | E11 |
+| A12 | IME 控制 | 部分已交付：枚举/切换/收起键盘已验证；显示键盘未实现 | 35 | E12 |
 
 ### P2
 
 | 编号 | 能力 | 状态 | 验证 API | 证据 |
 | --- | --- | --- | --- | --- |
-| A13 | 剪贴板读写 | 未开始 | — | — |
-| A14 | deeplink 打开 | 未开始 | — | — |
-| A15 | 文件 push / pull | 未开始 | — | — |
-| A16 | Toast 捕获 | 未开始 | — | — |
+| A13 | 剪贴板读写 | 已交付（桥侧） | 35 | E13 |
+| A14 | deeplink 打开 | 已交付 | 35 | E14 |
+| A15 | 文件 push / pull | 已交付 | 35 | E15 |
+| A16 | Toast 捕获 | 已交付 | 35 | E16 |
 | A17 | 路径手势 | 已实现未验证 | — | 桥侧与直连实现完成，无设备证据 |
 
 ### 设备证据编号
@@ -77,23 +77,42 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 | E8 | `setsSeekBarProgress` 通过，断言 `SeekBar.progress` 实际等于 42。 |
 | E9 | `expandsAndCollapsesTheSection` 通过。展开后必须能再折叠——夹具按当前状态只暴露一个动作，若展开未真正改变状态，折叠会因 `ACTION_COLLAPSE` 不存在而失败，故这条同时验证了状态变化被正确广播。 |
 | E10 | `scrollsAnOffscreenTargetIntoView` **失败**：`GESTURE_FAILED`（swipe 被系统拒绝）。前置观察已确认目标初始不可见，滚动轮次进入且到达派发环节，但 `dispatchGesture` 被拒。原因分析见第 10 节 B1。 |
+| E11 | `TestDeviceStateAgainstRealDevice` PASS。旋转按 landscape → portrait → auto 顺序执行并复位；写入 `user_rotation=1` 后 `dumpsys window` 显示 `mDisplayRotation=ROTATION_90`、窗口 bounds 变为 640x320，确认方向真的生效而不只是设置写成功。亮屏检测读到 `mScreenState=ON`。 |
+| E12 | 同上用例中 IME 枚举返回 2 个输入法且格式合法；对未启用输入法的切换请求被拒（证明校验发生在 `ime set` 之前）；`ime set` 切回默认输入法返回 "selected for user #0"。收起键盘走 BACK 键实测 exit 0。**显示键盘未实现**：无障碍与 ADB 都没有公开的「弹出输入法」入口，只能靠聚焦可编辑节点间接触发。 |
+| E13 | `writesAndReadsClipboardTextInTheForeground` PASS。先把夹具推到前台再读写——API 29+ 要求应用持有输入焦点，否则平台拒绝读取。写入后读回内容与写入值一致。 |
+| E14 | `am start -a VIEW -d https://example.com/probe -p com.android.chrome` 实测成功，intent 含 `pkg=com.android.chrome`，确认限包生效（避免弹出应用选择器卡住自动化）。参数校验层另有 6 项断言覆盖畸形 URI 与 shell 元字符。 |
+| E15 | 同 E11 用例中文件往返 PASS：push 后 pull 回本地并比对内容一致，设备端文件用 defer 清理。另有 11 项参数校验断言覆盖远端路径的注入字符与父目录逃逸。 |
+| E16 | `capturesAToastShownByTheAppUnderTest` PASS。断言覆盖文本内容、`toast` 标志位与来源包名。`dumpsys accessibility` 确认运行时 eventTypes 含 `TYPE_NOTIFICATION_STATE_CHANGED`。 |
 
 最近一次执行结果：
 - `ActionSurfaceDeviceTest`：`OK (4 tests)`。
 - `ActionSurfaceNodeActionDeviceTest`：`Tests run: 5, Failures: 1`（仅 E10 失败）。
+- `TransientMessageDeviceTest`：`OK (2 tests)`。
+- `internal/adb` 全量 PASS（含 `TestDeviceStateAgainstRealDevice`）。
 
-Android 单测 402 项、`lintDebug`、`assembleDebug` 通过；
-`make comments` / `make test` / `make verify` / `make build` 通过。
+Android 单测 408 项、`lintDebug`、`assembleDebug` 通过；
+`make comments` / `make verify` / `make build` 通过。
 
 ## 10. 已知未完成项与原因
 
 | 编号 | 项 | 现象 | 已排除 | 影响 |
 | --- | --- | --- | --- | --- |
 | B1 | `scrollIntoView` 的滚动手势在 API 35 模拟器上被拒 | 稳定 `GESTURE_FAILED`，`dispatchGesture` 返回 false | 已排除：目标不可见前置成立、轮次逻辑进入派发、归因判据已修正（同一修正让 pinch 与文本选区通过）、坐标校验通过。剩余可疑点是 `GesturePlanner.scroll` 在 320x640 这一较小屏上算出的起止点落入系统手势区（底部导航区约 48dp），被系统在派发前截走 | `ui.scrollIntoView` 在小屏设备上不可用；`ui.scroll` 的既有节点动作路径不受影响（它优先走 `ACTION_SCROLL_*`，只有节点不支持时才降级到手势） |
+| B2 | `internal/mcpserver` 的 `TestSharedServerVisualCallReturnsSameObservationAndCleansAfterWrite` 偶发失败 | `pending visual cleanups = 1` | **已确认与本批改动无关，且是既有设计缺陷而非环境抖动**：`visualCleanupConnection.Write` 先把响应写出去、之后才调 `runtime.cleanup`，而测试在拿到响应后立即断言 `pendingCount()==0`，两者构成竞态。基线 `main` 上单包 5/5、`make test` 4/4 通过；本分支单包 8/8、`make test` 4/4 通过——失败只在偶发时机下出现 | 不影响生产：cleanup 最终一定执行（`Write` 返回前完成，或连接关闭时由 `close` 兜底）。仅测试断言时机不严谨。修复属 N44/N45 视觉模块范围，不在本批动作面职责内 |
 
 B1 的下一步是把滚动手势的起止点从「视口中心 ± 位移」改为「避开上下各一个
 系统手势内边距的可用区」，并在同一设备上复测。该改动会影响既有 `ui.scroll`
 的坐标降级路径，属于行为变更，因此单独作为一项处理而不混在本批修复里。
+
+## 11. 本批未实现且已确认无法实现的项
+
+| 项 | 原因 | 替代路径 |
+| --- | --- | --- |
+| 全局动作「快捷键帮助面板」 | 常量 `GLOBAL_ACTION_KEYBOARD_SHORTCUTS` 是 `@hide`，仅系统应用可用 | 无。按 D1 如实上报 `ACTION_NOT_SUPPORTED` |
+| IME「显示键盘」 | 无障碍与 ADB 都没有公开的「弹出输入法」入口 | 对可编辑节点执行 FOCUS 或 CLICK 间接触发；A12 只交付枚举/切换/收起 |
+| 直连通道的多指手势 | `input motionevent` 只接受单坐标对（F1） | 走 App Bridge 的多 stroke `dispatchGesture`，即 D2 |
+| 直连通道的剪贴板 | 设备上不存在 `cmd clipboard`（F6） | 走 App Bridge 的 `ClipboardManager`，已交付 |
+| 有凭据锁屏的解锁 | 需要输入用户密码 | 刻意不实现：属用户必须亲自完成的操作，自动化绕过它是安全边界问题 |
 
 
 
