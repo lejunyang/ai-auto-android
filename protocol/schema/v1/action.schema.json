@@ -43,6 +43,99 @@
       "$ref": "#/$defs/uiAssert"
     },
     {
+      "$ref": "#/$defs/uiDrag"
+    },
+    {
+      "$ref": "#/$defs/uiMultiTap"
+    },
+    {
+      "$ref": "#/$defs/uiPinch"
+    },
+    {
+      "$ref": "#/$defs/uiRotate"
+    },
+    {
+      "$ref": "#/$defs/uiTwoFingerScroll"
+    },
+    {
+      "$ref": "#/$defs/uiPathGesture"
+    },
+    {
+      "$ref": "#/$defs/uiScrollIntoView"
+    },
+    {
+      "$ref": "#/$defs/uiSelectText"
+    },
+    {
+      "$ref": "#/$defs/uiCopy"
+    },
+    {
+      "$ref": "#/$defs/uiCut"
+    },
+    {
+      "$ref": "#/$defs/uiPaste"
+    },
+    {
+      "$ref": "#/$defs/uiNodeAction"
+    },
+    {
+      "$ref": "#/$defs/uiSetProgress"
+    },
+    {
+      "$ref": "#/$defs/uiScrollToPosition"
+    },
+    {
+      "$ref": "#/$defs/uiPressKey"
+    },
+    {
+      "$ref": "#/$defs/uiNotifications"
+    },
+    {
+      "$ref": "#/$defs/uiQuickSettings"
+    },
+    {
+      "$ref": "#/$defs/uiLockScreen"
+    },
+    {
+      "$ref": "#/$defs/uiPowerDialog"
+    },
+    {
+      "$ref": "#/$defs/uiDismissNotificationShade"
+    },
+    {
+      "$ref": "#/$defs/deviceRotate"
+    },
+    {
+      "$ref": "#/$defs/deviceWake"
+    },
+    {
+      "$ref": "#/$defs/deviceUnlock"
+    },
+    {
+      "$ref": "#/$defs/imeShow"
+    },
+    {
+      "$ref": "#/$defs/imeHide"
+    },
+    {
+      "$ref": "#/$defs/imeSelect"
+    },
+    {
+      "$ref": "#/$defs/clipboardSet"
+    },
+    {
+      "$ref": "#/$defs/clipboardGet"
+    },
+    {
+      "$ref": "#/$defs/appDeeplink"
+    },
+    {
+      "$ref": "#/$defs/filePush"
+    },
+    {
+      "$ref": "#/$defs/filePull"
+    },
+    {
       "$ref": "#/$defs/taskFinish"
     }
   ],
@@ -421,6 +514,748 @@
           "properties": {
             "summary": {
               "type": "string",
+              "maxLength": 4096
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "dragAnchor": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "point": {
+          "$ref": "common.schema.json#/$defs/point"
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["target"]
+        },
+        {
+          "required": ["point"]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "uiDrag": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.drag"
+        },
+        "params": {
+          "type": "object",
+          "required": ["start", "end"],
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/dragAnchor"
+            },
+            "end": {
+              "$ref": "#/$defs/dragAnchor"
+            },
+            "holdMs": {
+              "type": "integer",
+              "minimum": 400,
+              "maximum": 10000
+            },
+            "moveMs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiMultiTap": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.multiTap"
+        },
+        "params": {
+          "type": "object",
+          "required": ["taps"],
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "point": {
+              "$ref": "common.schema.json#/$defs/point"
+            },
+            "taps": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 5
+            }
+          },
+          "anyOf": [
+            {
+              "required": ["target"]
+            },
+            {
+              "required": ["point"]
+            }
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiPinch": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.pinch"
+        },
+        "params": {
+          "type": "object",
+          "required": ["scale"],
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "center": {
+              "$ref": "common.schema.json#/$defs/point"
+            },
+            "scale": {
+              "type": "number",
+              "minimum": 0.2,
+              "maximum": 5
+            },
+            "durationMs": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 10000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiRotate": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.rotate"
+        },
+        "params": {
+          "type": "object",
+          "required": ["degrees"],
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "center": {
+              "$ref": "common.schema.json#/$defs/point"
+            },
+            "degrees": {
+              "type": "number",
+              "minimum": -360,
+              "maximum": 360
+            },
+            "durationMs": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 10000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiTwoFingerScroll": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.twoFingerScroll"
+        },
+        "params": {
+          "type": "object",
+          "required": ["deltaX", "deltaY"],
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "center": {
+              "$ref": "common.schema.json#/$defs/point"
+            },
+            "deltaX": {
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
+            },
+            "deltaY": {
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
+            },
+            "durationMs": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 10000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiPathGesture": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.pathGesture"
+        },
+        "params": {
+          "type": "object",
+          "required": ["points"],
+          "properties": {
+            "points": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 32,
+              "items": {
+                "$ref": "common.schema.json#/$defs/point"
+              }
+            },
+            "durationMs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiScrollIntoView": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.scrollIntoView"
+        },
+        "params": {
+          "type": "object",
+          "required": ["target"],
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "container": {
+              "$ref": "#/$defs/target"
+            },
+            "direction": {
+              "enum": ["up", "down", "left", "right", "forward", "backward"]
+            },
+            "maxScrolls": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "amount": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiSelectText": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.selectText"
+        },
+        "params": {
+          "type": "object",
+          "required": ["target", "startIndex"],
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "startIndex": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "endIndex": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "targetOnlyParams": {
+      "type": "object",
+      "required": ["target"],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiCopy": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.copy"
+        },
+        "params": {
+          "$ref": "#/$defs/targetOnlyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiCut": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.cut"
+        },
+        "params": {
+          "$ref": "#/$defs/targetOnlyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiPaste": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.paste"
+        },
+        "params": {
+          "$ref": "#/$defs/targetOnlyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiNodeAction": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.nodeAction"
+        },
+        "params": {
+          "type": "object",
+          "required": ["target", "action"],
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "action": {
+              "enum": [
+                "focus",
+                "clearFocus",
+                "select",
+                "clearSelection",
+                "expand",
+                "collapse",
+                "dismiss"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiSetProgress": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.setProgress"
+        },
+        "params": {
+          "type": "object",
+          "required": ["target", "value"],
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiScrollToPosition": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.scrollToPosition"
+        },
+        "params": {
+          "type": "object",
+          "required": ["target", "row"],
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "row": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "column": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiPressKey": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.pressKey"
+        },
+        "params": {
+          "type": "object",
+          "required": ["key"],
+          "properties": {
+            "key": {
+              "enum": [
+                "BACK",
+                "HOME",
+                "RECENTS",
+                "ENTER",
+                "TAB",
+                "ESCAPE",
+                "SPACE",
+                "DELETE",
+                "FORWARD_DEL",
+                "DPAD_UP",
+                "DPAD_DOWN",
+                "DPAD_LEFT",
+                "DPAD_RIGHT",
+                "DPAD_CENTER",
+                "MOVE_HOME",
+                "MOVE_END",
+                "PAGE_UP",
+                "PAGE_DOWN",
+                "VOLUME_UP",
+                "VOLUME_DOWN",
+                "VOLUME_MUTE"
+              ]
+            },
+            "repeatCount": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiNotifications": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.notifications"
+        },
+        "params": {
+          "$ref": "#/$defs/emptyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiQuickSettings": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.quickSettings"
+        },
+        "params": {
+          "$ref": "#/$defs/emptyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiLockScreen": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.lockScreen"
+        },
+        "params": {
+          "$ref": "#/$defs/emptyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiPowerDialog": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.powerDialog"
+        },
+        "params": {
+          "$ref": "#/$defs/emptyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiDismissNotificationShade": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ui.dismissNotificationShade"
+        },
+        "params": {
+          "$ref": "#/$defs/emptyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "deviceRotate": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "device.rotate"
+        },
+        "params": {
+          "type": "object",
+          "required": ["orientation"],
+          "properties": {
+            "orientation": {
+              "enum": ["portrait", "landscape", "auto"]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "deviceWake": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "device.wake"
+        },
+        "params": {
+          "$ref": "#/$defs/emptyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "deviceUnlock": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "device.unlock"
+        },
+        "params": {
+          "$ref": "#/$defs/emptyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "imeShow": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ime.show"
+        },
+        "params": {
+          "$ref": "#/$defs/emptyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "imeHide": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ime.hide"
+        },
+        "params": {
+          "$ref": "#/$defs/emptyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "imeSelect": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "ime.select"
+        },
+        "params": {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 512,
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+/[A-Za-z0-9_.$]+$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "clipboardSet": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "clipboard.set"
+        },
+        "params": {
+          "type": "object",
+          "required": ["text"],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 10000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "clipboardGet": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "clipboard.get"
+        },
+        "params": {
+          "$ref": "#/$defs/emptyParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    "appDeeplink": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "app.deeplink"
+        },
+        "params": {
+          "type": "object",
+          "required": ["uri"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 2048
+            },
+            "packageName": {
+              "$ref": "common.schema.json#/$defs/packageName"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "filePush": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "file.push"
+        },
+        "params": {
+          "type": "object",
+          "required": ["localPath", "remotePath"],
+          "properties": {
+            "localPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "remotePath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "filePull": {
+      "type": "object",
+      "required": ["type", "params"],
+      "properties": {
+        "type": {
+          "const": "file.pull"
+        },
+        "params": {
+          "type": "object",
+          "required": ["remotePath", "localPath"],
+          "properties": {
+            "remotePath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "localPath": {
+              "type": "string",
+              "minLength": 1,
               "maxLength": 4096
             }
           },
