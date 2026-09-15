@@ -281,6 +281,66 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
         transientMessages.clear()
     }
 
+    /**
+     * 返回当前快照里可见节点的 contentDescription 与顶边坐标。
+     *
+     * 用于 B1 的根因定位：scrollIntoView 的无进展检测比较的是同一份快照数据，
+     * 若这里两轮返回相同内容，说明快照没反映滚动；若不同而检测仍报无进展，
+     * 说明签名算法有问题。没有这个观测点只能反复猜。
+     */
+    fun visibleNodeFingerprint(): List<String> {
+        val windows = dev.aiauto.android.accessibility.snapshot.WindowSnapshotter()
+            .snapshotWindows(this)
+        val roots = if (windows.isEmpty()) {
+            emptyList()
+        } else {
+            windows.filter { it.root.packageName == packageName }.map { it.root }
+        }
+        val collected = mutableListOf<String>()
+        roots.forEach { root -> collectFingerprint(root, collected) }
+        return collected
+    }
+
+    private fun collectFingerprint(node: UiNodeSnapshot, into: MutableList<String>) {
+        if (node.state.visibleToUser) {
+            val label = node.contentDescription ?: node.text
+            if (!label.isNullOrBlank()) {
+                into += "$label@${node.bounds.top}"
+            }
+        }
+        node.children.forEach { child -> collectFingerprint(child, into) }
+    }
+
+    /**
+     * 直接向平台派发一次滚动 swipe，绕过 router 与归因层。
+     *
+     * 用于 B1 的根因定位：若同一组坐标经此方法能派发成功、而经 router 失败，
+     * 说明问题在 router/归因链而非坐标或平台；反之说明坐标本身被系统拒绝。
+     * 没有这个对照，只能反复猜测哪一层出了问题。
+     */
+    fun dispatchRawSwipe(
+        startX: Int,
+        startY: Int,
+        endX: Int,
+        endY: Int,
+        durationMs: Long,
+    ): Boolean {
+        val path = android.graphics.Path().apply {
+            moveTo(startX.toFloat(), startY.toFloat())
+            lineTo(endX.toFloat(), endY.toFloat())
+        }
+        val description = android.accessibilityservice.GestureDescription.Builder()
+            .addStroke(
+                android.accessibilityservice.GestureDescription.StrokeDescription(
+                    path,
+                    0,
+                    durationMs,
+                ),
+            )
+            .build()
+        return dispatchGesture(description, null, null)
+    }
+
     private fun withNode(
         contentDescription: String,
         action: (AccessibilityNodeInfo) -> Boolean,
