@@ -43,8 +43,8 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 | A6 | 复制 / 剪切 / 粘贴 | 已交付 | 35 | E7、E17 |
 | A7 | 多指与复合手势（pinch / zoom / 旋转 / 双指滚动） | 已交付 | 35 | E4、E18 |
 | A8 | 双击 / N 连击 | 已交付 | 35 | E3、E19 |
-| A9 | 节点动作补齐（8 项） | 部分已交付：EXPAND / COLLAPSE / SET_PROGRESS / FOCUS / SELECT / CLEAR_SELECTION / DISMISS 可用；CLEAR_FOCUS 与 SCROLL_TO_POSITION 被平台拒绝 | 35 | E8、E9、E20 |
-| A10 | 全局动作补齐（5 项） | 已实现未验证 | — | 通知栏/快捷设置/锁屏/截屏/电源菜单已按 API 分级接线；快捷键面板确认无法实现（见第 4.2 节 D1） |
+| A9 | 节点动作补齐（8 项） | 部分已交付：EXPAND / COLLAPSE / SET_PROGRESS / FOCUS / SELECT / CLEAR_SELECTION / DISMISS / SCROLL_TO_POSITION 可用；仅 CLEAR_FOCUS 被平台拒绝 | 35 | E8、E9、E20、E22 |
+| A10 | 全局动作补齐（5 项） | 已交付 | 35 | E23 |
 | A11 | 设备状态动作 | 已交付 | 35 | E11 |
 | A12 | IME 控制 | 部分已交付：枚举/切换/收起键盘已验证；显示键盘未实现 | 35 | E12 |
 
@@ -88,17 +88,20 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 | E19 | `dispatchesAPathGestureAndTripleTap` PASS 中的三连击部分，覆盖 `taps > 2` 分支。 |
 | E20 | `performsFocusSelectionAndScrollToPositionNodeActions` PASS。FOCUS、SELECT、CLEAR_SELECTION 通过；`SCROLL_TO_POSITION` 与 `CLEAR_FOCUS` 被断言为**明确失败**（原因见第 10 节 B3、B4），断言其失败而非跳过，以便平台行为变化时能被测试发现。 |
 | E21 | 同 E19 用例中的三点折线路径手势 PASS，模拟图案解锁那类需精确经过中间点的轨迹。 |
+| E22 | `scrollsACollectionContainerToAGivenPosition` PASS。夹具新增平台自带 `ListView`（40 行 / 视口约 3 行）作为 `CollectionInfo` 容器。断言首行下标离开顶部且请求行在可视范围内——平台语义是「把该行滚到可见」而非「置顶」，实测请求第 20 行后 `firstVisiblePosition=18`，断言 `== 20` 会把正确行为判成失败。与 E20 的 ScrollView 失败断言合起来才完整刻画该能力边界。 |
+| E23 | `GlobalActionDeviceTest` `OK (5 tests)`。按可中断性分档：通知栏 / 快捷设置 / 电源菜单断言窗口集合变化后用 BACK 复位并**断言回到夹具**；截屏断言夹具窗口仍在（不破坏会话）；锁屏独立用例，动作后主动 WAKEUP + MENU 解锁并断言服务仍能观察窗口——若锁屏后服务不可用，该动作在实际自动化里就无法安全使用。测试后复查 `mScreenState=ON`、焦点回到 launcher，无残留状态。 |
 
 最近一次执行结果：
 - `ActionSurfaceDeviceTest`：`OK (4 tests)`。
 - `ActionSurfaceNodeActionDeviceTest`：`OK (5 tests)`。
 - `TransientMessageDeviceTest`：`OK (2 tests)`。
-- `ActionSurfaceRemainingDeviceTest`：`OK (4 tests)`。
+- `ActionSurfaceRemainingDeviceTest`：`OK (5 tests)`。
+- `GlobalActionDeviceTest`：`OK (5 tests)`。
 - `internal/adb` 全量 PASS（含 `TestDeviceStateAgainstRealDevice`）。
 
-设备用例合计 15 项全部通过。
+设备用例合计 21 项全部通过。
 Android 单测 408 项、`lintDebug`、`assembleDebug` 通过；
-`make comments` / `make verify` / `make build` 通过。
+`make comments` / `make test` / `make verify` / `make build` 通过。
 
 ## 10. 已修复与已知未完成项
 
@@ -106,7 +109,7 @@ Android 单测 408 项、`lintDebug`、`assembleDebug` 通过；
 | --- | --- | --- |
 | B1 | `scrollIntoView` 报 `GESTURE_FAILED` | **已修复**。原假设（小屏起止点落入系统手势区）经实测被推翻：`dumpsys` 量出 320x640 的手势区为顶 24px、底 32px、左右各 30px，而 planner 算出的起点 y=474、终点 y=166 均不在其中。改用三层对照（平台原生派发 / router 的 ui.scroll / scrollIntoView）+ 可见节点指纹定位，查出三个叠加原因：①滚到尽头后节点动作不可用，降级到手势路径时带 match 去 arm 归因、等一个不会发生的 SCROLL 事件而超时，把「滚不动了」误报成「手势被拒」；②无进展签名只取节点标识不取坐标，而 ScrollView 滚动只改坐标，导致首轮即判定到底；③单轮签名相同不足以判定到底——滚动动画与快照采集是独立时序，快照可能落在动画未推进的窗口内。修复分别为 `requireScrollEvent` 开关、签名纳入 bounds、连续 3 轮无变化才判定。见 E10 |
 | B2 | `internal/mcpserver` 视觉清理测试偶发失败 | **与本批无关，保留记录**。`visualCleanupConnection.Write` 先发响应、后做 cleanup，测试拿到响应即断言 `pendingCount()==0`，构成竞态。基线 `main` 单包 5/5、`make test` 4/4 通过；本分支单包 8/8、`make test` 4/4 通过。不影响生产（cleanup 最终一定执行）。修复属 N44/N45 视觉模块范围，按 Organizer 指示本批不改 |
-| B3 | `SCROLL_TO_POSITION` 在 ScrollView 上不可用 | **平台限制，非缺陷**。该动作要求容器提供 `CollectionInfo`（RecyclerView / ListView 等），ScrollView 不是集合容器。已在设备测试中断言其明确失败而非跳过，避免静默掩盖。在 RecyclerView 上的可用性**未验证**——夹具没有该控件 |
+| B3 | `SCROLL_TO_POSITION` 在 ScrollView 上不可用 | **平台限制，已完整刻画**。该动作要求容器提供 `CollectionInfo`（ListView / RecyclerView 等），ScrollView 不是集合容器。补入 `ListView` 夹具后确认该能力**在集合容器上可用**（E22），ScrollView 上的失败断言保留（E20）。两条合起来定义边界，不再有「未验证」的空白 |
 | B4 | `CLEAR_FOCUS` 被平台拒绝 | **未完成**。拒绝方式是 `ACTION_FAILED` 而非 `ACTION_NOT_SUPPORTED`，即节点声明了该动作但 View 的 `performAccessibilityAction` 返回 false。已排除「无焦点可清」：用 `uiautomator dump` 确认 `focused=false` 后补上 FOCUS 前置，行为不变。影响：无法主动清除输入焦点；变通做法是聚焦另一个节点。已在设备测试中断言其失败，若将来平台行为变化会被测试发现 |
 
 ## 11. 本批未实现且已确认无法实现的项
@@ -116,7 +119,7 @@ Android 单测 408 项、`lintDebug`、`assembleDebug` 通过；
 | 全局动作「快捷键帮助面板」 | 常量 `GLOBAL_ACTION_KEYBOARD_SHORTCUTS` 是 `@hide`，仅系统应用可用 | 无。按 D1 如实上报 `ACTION_NOT_SUPPORTED` |
 | IME「显示键盘」 | 无障碍与 ADB 都没有公开的「弹出输入法」入口 | 对可编辑节点执行 FOCUS 或 CLICK 间接触发；A12 只交付枚举/切换/收起 |
 | 节点动作 `CLEAR_FOCUS` | 见 B4，平台拒绝执行 | 聚焦另一个节点以转移焦点 |
-| 节点动作 `SCROLL_TO_POSITION`（在 ScrollView 上） | 见 B3，需要 `CollectionInfo` 容器 | 用 `scrollIntoView` 按目标元素滚动 |
+| 节点动作 `SCROLL_TO_POSITION`（在**非集合**容器上） | 见 B3，需要 `CollectionInfo` 容器。在 ListView 等集合容器上**可用**（E22） | 非集合容器用 `scrollIntoView` 按目标元素滚动 |
 | 直连通道的多指手势 | `input motionevent` 只接受单坐标对（F1） | 走 App Bridge 的多 stroke `dispatchGesture`，即 D2 |
 | 直连通道的剪贴板 | 设备上不存在 `cmd clipboard`（F6） | 走 App Bridge 的 `ClipboardManager`，已交付 |
 | 有凭据锁屏的解锁 | 需要输入用户密码 | 刻意不实现：属用户必须亲自完成的操作，自动化绕过它是安全边界问题 |
@@ -186,8 +189,9 @@ A11 → A12 → A13 → A14 → A15 → A16 → A17。
 | D1 | 快捷键帮助面板**如实上报不支持**，不硬编码 `@hide` 常量 | `GLOBAL_ACTION_KEYBOARD_SHORTCUTS` 仅对系统应用开放。硬编码数值虽能调通，但依赖未公开 API，后续 Android 版本会静默失效——那比明确的"不支持"更难排查 |
 | D2 | 接受**多指手势仅在 App Bridge 连接时可用**，不做 root + `sendevent` 直写 `/dev/input` | 见 F1，直连通道物理上做不到。`sendevent` 方案与设备输入驱动强耦合且需 root，不适合真机交付 |
 | D3 | 只交付 **API 35** 证据，30/33/34 如实标注未验证 | 本机 `system-images` 下只有 `android-35`，且 `profiles.json` 声明的是 arm64 而本机为 x86_64。补齐需数 GB 下载，收益不足以阻塞当前交付 |
+| D4 | 行为变更采用「独立分支 + 非快进合并保留边界 + 定位探针用完即删」 | B1 的实践验证了这套流程的价值：独立分支让行为变更不与功能提交混杂；非快进合并保留了排查过程的提交边界，便于回溯「为什么改成这样」；定位探针（三层对照 + 可见节点指纹）以 AssertionError 输出观测值，是排查工具而非回归断言，留在仓库里会成为永久失败的测试，因此完成即删，只保留可复用的只读探针。作为后续行为变更的范式 |
 
-D4（B1 的修复是否作为独立行为变更处理）保持待用户确认，倾向独立处理。
+D1–D4 全部已决，无待用户拍板事项。
 
 ## 5. 允许修改范围
 
