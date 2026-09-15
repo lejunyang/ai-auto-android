@@ -35,6 +35,13 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
         android.content.SharedPreferences
     private val userTouchCount = AtomicInteger()
     private val runtimeStopHandled = AtomicBoolean()
+
+    /**
+     * Toast 与通知捕获缓冲。
+     *
+     * 在字段声明处初始化：事件可能在 onServiceConnected 完成之前就到达。
+     */
+    private val transientMessages = TransientMessageCapture()
     @Volatile
     private var userTouchLatch = CountDownLatch(1)
 
@@ -104,6 +111,11 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event != null && ::userTouchMonitor.isInitialized) {
             userTouchMonitor.onAccessibilityEvent(event)
+        }
+        // 与生产服务一致地捕获 Toast 与通知，供设备测试断言平台确实投递了
+        // TYPE_NOTIFICATION_STATE_CHANGED——这一点单测无法验证。
+        if (event != null) {
+            transientMessages.onAccessibilityEvent(event)
         }
     }
 
@@ -221,8 +233,7 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
      * isVisibleToUser，即平台对「用户此刻能否看到它」的判断。
      *
      * 跨窗口查找，与生产的多窗口模型保持一致。
-     */
-    fun isTargetVisible(contentDescription: String): Boolean {
+     */    fun isTargetVisible(contentDescription: String): Boolean {
         val windows = dev.aiauto.android.accessibility.snapshot.WindowSnapshotter()
             .snapshotWindows(this)
         val roots = if (windows.isEmpty()) {
@@ -253,6 +264,21 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
             return true
         }
         return node.children.any { child -> containsVisible(child, contentDescription) }
+    }
+
+    /**
+     * 读取本服务捕获到的 Toast 与通知。
+     *
+     * 走本服务自己的缓冲而非生产服务的：两个服务各自独立接收事件，
+     * 读生产服务的缓冲需要跨服务引用，而那条路径在测试里不可靠
+     * （生产服务可能尚未绑定）。此处验证的是「平台确实投递了该事件类型」
+     * 与「捕获逻辑正确分类」，这两点与哪个服务实例接收无关。
+     */
+    fun capturedTransientMessages(): List<TransientMessage> = transientMessages.messages()
+
+    /** 清空提示缓冲，让断言只覆盖本次触发的提示。 */
+    fun clearTransientMessageBuffer() {
+        transientMessages.clear()
     }
 
     private fun withNode(
