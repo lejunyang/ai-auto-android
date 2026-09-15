@@ -31,6 +31,14 @@ import dev.aiauto.android.automation.session.toAccessibilityCommand
 class ScreenshotTestAccessibilityService : AccessibilityService() {
     private lateinit var userTouchMonitor: UserTouchMonitor
     private lateinit var n45ActionRouter: AccessibilityActionRouter
+
+    /**
+     * 生产 backend 实例，供全局动作验收直接调用 performGlobal。
+     *
+     * 复用 router 内部那一个而非另建：全局动作的 API 分级判定写在 backend 里，
+     * 另建实例可能与生产走不同代码路径，那样测过的就不是被交付的实现。
+     */
+    private lateinit var globalActionBackend: AndroidAccessibilityBackend
     private lateinit var n45Preferences:
         android.content.SharedPreferences
     private val userTouchCount = AtomicInteger()
@@ -91,7 +99,7 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
                 settingsRepository = n45Settings,
                 snapshotter = AccessibilitySnapshotter(),
                 userTouchMonitor = userTouchMonitor,
-            ),
+            ).also { globalActionBackend = it },
             selectorMatcher = SelectorMatcher(),
         )
         connectedService = this
@@ -310,6 +318,24 @@ class ScreenshotTestAccessibilityService : AccessibilityService() {
         }
         node.children.forEach { child -> collectFingerprint(child, into) }
     }
+
+    /**
+     * 返回当前可见窗口的类别集合。
+     *
+     * 用于全局动作验收：通知栏与快捷设置展开时会新增 SYSTEM 类窗口并夺取焦点，
+     * 这是「动作真的生效了」在无障碍侧唯一可观测的信号——
+     * performGlobalAction 只返回布尔值，不看窗口无法区分「系统接受了」
+     * 与「界面真的变了」。
+     */
+    fun visibleWindowKinds(): List<String> =
+        dev.aiauto.android.accessibility.snapshot.WindowSnapshotter()
+            .snapshotWindows(this)
+            .map { "${it.kind}:${it.root.packageName}" }
+
+    /** 供全局动作验收执行生产 performGlobalAction 并回报结果。 */
+    fun performGlobalActionForTest(
+        action: dev.aiauto.android.accessibility.model.GlobalAction,
+    ): Boolean = globalActionBackend.performGlobal(action)
 
     /**
      * 直接向平台派发一次滚动 swipe，绕过 router 与归因层。
