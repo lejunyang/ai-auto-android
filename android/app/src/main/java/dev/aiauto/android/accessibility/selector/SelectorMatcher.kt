@@ -13,6 +13,7 @@ import dev.aiauto.android.accessibility.model.NodeTarget
 import dev.aiauto.android.accessibility.model.SelectorCandidate
 import dev.aiauto.android.accessibility.model.SelectorStrategy
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
+import dev.aiauto.android.accessibility.model.UiWindowSnapshot
 
 sealed interface SelectorMatch {
     data class Found(
@@ -38,22 +39,57 @@ class SelectorMatcher(
         require(uniquenessMargin in 0.0..1.0)
     }
 
-    fun match(root: UiNodeSnapshot, target: NodeTarget): SelectorMatch {
+    fun match(root: UiNodeSnapshot, target: NodeTarget): SelectorMatch =
+        matchCandidateRoots(
+            candidateRoots = listOf(CandidateRoot(windowId = null, layer = 0, root = root)),
+            target = target,
+        )
+
+    /**
+     * 在多个窗口内匹配同一个目标。
+     *
+     * 跨窗口而非逐窗口匹配是必要的：对话框弹出时宿主 Activity 仍在窗口列表里，
+     * 若逐窗口取第一个命中，就可能点到被对话框盖住的按钮。这里把所有窗口的节点
+     * 汇入同一个候选集合统一排序，再由 layer 在同分时决定胜者——
+     * 最上层的可见节点才是用户真正能点到的那个。
+     */
+    fun match(windows: List<UiWindowSnapshot>, target: NodeTarget): SelectorMatch =
+        matchCandidateRoots(
+            candidateRoots = windows.map { window ->
+                CandidateRoot(
+                    windowId = window.windowId,
+                    layer = window.layer,
+                    root = window.root,
+                )
+            },
+            target = target,
+        )
+
+    // 名字不能也叫 match：两个入参都是 List，泛型擦除后 JVM 签名相同会冲突。
+    private fun matchCandidateRoots(
+        candidateRoots: List<CandidateRoot>,
+        target: NodeTarget,
+    ): SelectorMatch {
         if (!validCandidates(target.selectorCandidates)) {
             return SelectorMatch.NotFound()
         }
 
         val scoredNodes = buildList {
-            visit(
-                node = root,
-                path = emptyList(),
-                ancestors = emptyList(),
-                target = target,
-                destination = this,
-            )
+            candidateRoots.forEach { candidateRoot ->
+                visit(
+                    node = candidateRoot.root,
+                    path = emptyList(),
+                    windowId = candidateRoot.windowId,
+                    layer = candidateRoot.layer,
+                    ancestors = emptyList(),
+                    target = target,
+                    destination = this,
+                )
+            }
         }.sortedWith(
             compareByDescending<ScoredNode> { it.score }
-                .thenByDescending { it.fingerprintScore },
+                .thenByDescending { it.fingerprintScore }
+                .thenByDescending { it.layer },
         )
 
         val best = scoredNodes.firstOrNull() ?: return SelectorMatch.NotFound()
@@ -64,7 +100,11 @@ class SelectorMatcher(
         val competing = scoredNodes.drop(1)
             .takeWhile { best.score - it.score < uniquenessMargin }
             .filter { it.score >= minimumScore }
-        if (competing.isNotEmpty() && !fingerprintUniquelySeparates(best, competing)) {
+        if (
+            competing.isNotEmpty() &&
+            !fingerprintUniquelySeparates(best, competing) &&
+            !layerUniquelySeparates(best, competing)
+        ) {
             return SelectorMatch.Ambiguous(
                 score = best.score,
                 candidateCount = competing.size + 1,
@@ -72,7 +112,7 @@ class SelectorMatcher(
         }
 
         return SelectorMatch.Found(
-            path = NodePath(best.path),
+            path = NodePath(indices = best.path, windowId = best.windowId),
             node = best.node,
             score = best.score,
         )
@@ -81,6 +121,8 @@ class SelectorMatcher(
     private fun visit(
         node: UiNodeSnapshot,
         path: List<Int>,
+        windowId: Int?,
+        layer: Int,
         ancestors: List<UiNodeSnapshot>,
         target: NodeTarget,
         destination: MutableList<ScoredNode>,
@@ -92,6 +134,8 @@ class SelectorMatcher(
             score(node, ancestors, target)?.let { score ->
                 destination += ScoredNode(
                     path = path,
+                    windowId = windowId,
+                    layer = layer,
                     node = node,
                     score = score,
                     fingerprintScore = fingerprintScore(node, target.fingerprint),
@@ -104,6 +148,8 @@ class SelectorMatcher(
             visit(
                 node = child,
                 path = path + index,
+                windowId = windowId,
+                layer = layer,
                 ancestors = childAncestors,
                 target = target,
                 destination = destination,
@@ -195,6 +241,21 @@ class SelectorMatcher(
         best.fingerprintScore > 0.0 &&
             competing.all { best.fingerprintScore - it.fingerprintScore >= 0.25 }
 
+    /**
+     * 当同分候选来自不同窗口且最上层唯一时，按 z 序判定胜者。
+     *
+     * 这条规则只在跨窗口场景生效：对话框弹出时宿主 Activity 里的同名按钮
+     * 仍会命中，但它被盖住了，用户点不到。若不用 layer 分离，这类界面会
+     * 一律报 SELECTOR_AMBIGUOUS——那是把「有唯一正确答案」误判成「无法决定」。
+     * 同一窗口内的同分候选仍然保持歧义，因为 z 序无法区分它们。
+     */
+    private fun layerUniquelySeparates(
+        best: ScoredNode,
+        competing: List<ScoredNode>,
+    ): Boolean =
+        best.windowId != null &&
+            competing.all { it.windowId != null && it.layer < best.layer }
+
     private fun validCandidates(candidates: List<SelectorCandidate>): Boolean =
         candidates.isNotEmpty() &&
             candidates.all {
@@ -226,9 +287,23 @@ class SelectorMatcher(
 
     private data class ScoredNode(
         val path: List<Int>,
+        val windowId: Int?,
+        val layer: Int,
         val node: UiNodeSnapshot,
         val score: Double,
         val fingerprintScore: Double,
+    )
+
+    /**
+     * 一个待搜索的根。
+     *
+     * 单窗口调用时 windowId 为 null、layer 为 0，与多窗口模型引入前完全一致，
+     * 因此既有单根调用方（回放引擎、编辑器预演）无需改动。
+     */
+    private data class CandidateRoot(
+        val windowId: Int?,
+        val layer: Int,
+        val root: UiNodeSnapshot,
     )
 
     private companion object {
