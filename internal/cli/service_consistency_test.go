@@ -5,6 +5,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -70,7 +71,9 @@ func TestCLIAndMCPMapActionsToIdenticalServiceSemantics(t *testing.T) {
 	if len(automation.actions) != 2 {
 		t.Fatalf("service action calls = %#v", automation.actions)
 	}
-	if automation.actions[0] != automation.actions[1] {
+	// 用 reflect.DeepEqual 而非 !=：ActionRequest 自 ui.pathGesture 起带
+	// []adb.Point 字段，含切片的结构体不可用 == 比较。
+	if !reflect.DeepEqual(automation.actions[0], automation.actions[1]) {
 		t.Fatalf("CLI action = %#v, MCP action = %#v", automation.actions[0], automation.actions[1])
 	}
 }

@@ -258,6 +258,13 @@ type fakeDirect struct {
 	longPressDuration int
 	scrollDirection   adb.ScrollDirection
 	scrollFraction    float64
+	dragStart         adb.Point
+	dragEnd           adb.Point
+	dragDuration      int
+	multiTapPoint     adb.Point
+	multiTaps         int
+	pathPoints        []adb.Point
+	pathDuration      int
 }
 
 func (f *fakeDirect) Devices(context.Context) ([]protocol.Device, error) {
@@ -316,6 +323,46 @@ func (f *fakeDirect) Scroll(
 	f.callCount++
 	f.scrollDirection = direction
 	f.scrollFraction = fraction
+	return f.actionResult, nil
+}
+
+// Drag、MultiTap 与 PathGesture 记录入参供断言：这三者的时长与次数
+// 都由 service 层做默认值填充，不记就无法验证"未指定时用默认值"。
+func (f *fakeDirect) Drag(
+	_ context.Context,
+	_ string,
+	start adb.Point,
+	end adb.Point,
+	durationMS int,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.dragStart = start
+	f.dragEnd = end
+	f.dragDuration = durationMS
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) MultiTap(
+	_ context.Context,
+	_ string,
+	point adb.Point,
+	taps int,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.multiTapPoint = point
+	f.multiTaps = taps
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) PathGesture(
+	_ context.Context,
+	_ string,
+	points []adb.Point,
+	durationMS int,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.pathPoints = points
+	f.pathDuration = durationMS
 	return f.actionResult, nil
 }
 
