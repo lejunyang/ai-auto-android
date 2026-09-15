@@ -210,17 +210,20 @@ internal class AndroidAccessibilityBackend(
                 dispatchGesture(gesture)
             }
             val budgets = expectedEventBudgets.ifEmpty { gesture.expectedEventBudgets() }
-            // 只有存在可归因事件预算时才走归因路径。
+            // 只有预算里存在本监视器真正会观察的事件类型时才走归因路径。
             //
-            // 缩放、旋转这类手势由 View 内部处理，不产生任何可监听的 View 语义
-            // 事件，因此预算必然为空。而 runAttributedAction 在预算为空时
-            // 无法 arm，会直接返回 false——手势根本不会被派发出去。
-            // 这不是安全检查生效，而是「无事件可归因」被误当成「归因失败」。
+            // 判据是 hasMonitorableBudget 而不是「预算非空」：监视器只观察
+            // CLICKED / LONG_CLICKED / SCROLLED / TEXT_CHANGED 四类，
+            // 其余类型会在 arm 阶段被过滤掉，过滤后为空则 arm 失败、
+            // runAttributedAction 返回 false，手势根本不会派发。
             //
-            // 归因机制的目的是区分自动化动作与真实用户触摸。对无事件手势而言
-            // 它本就无从判断，此时应直接派发：源节点已经过 expectedPackage
-            // 校验，越界坐标也已在编排阶段被拒绝，安全边界仍然成立。
-            if (source != null && requiresAttribution && budgets.isNotEmpty()) {
+            // 缩放与旋转由 View 内部处理，本就不发语义事件，预算为空；
+            // 而「预算非空但无一项可监听」同样存在。两种情况都不该被当成
+            // 归因失败——归因机制对无事件动作本就无从判断。此时直接派发：
+            // 源节点已过 expectedPackage 校验，越界坐标已在编排阶段拒绝，
+            // 安全边界仍然成立。
+            val attributable = userTouchMonitor?.hasMonitorableBudget(budgets) == true
+            if (source != null && requiresAttribution && attributable) {
                 userTouchMonitor?.runAttributedAction(
                     source = source,
                     eventBudgets = budgets,
@@ -706,13 +709,17 @@ internal class AndroidAccessibilityBackend(
                 val performAction = {
                     performNodeAction(node, action, text, arguments)
                 }
-                if (expectedEventBudgets.isNotEmpty()) {
-                    userTouchMonitor?.runAttributedAction(
+                // 与手势派发同一判据：预算里必须有监视器真正会观察的事件类型。
+                // SET_SELECTION 只产生 TYPE_VIEW_TEXT_SELECTION_CHANGED，
+                // 它不在监视范围内，按「预算非空」判断会让 arm 失败，
+                // 于是动作根本不执行并报 ACTION_FAILED——已实测踩到。
+                if (userTouchMonitor?.hasMonitorableBudget(expectedEventBudgets) == true) {
+                    userTouchMonitor.runAttributedAction(
                         source = node,
                         eventBudgets = expectedEventBudgets,
                         timeoutMs = timeoutMs,
                         action = performAction,
-                    ) ?: false
+                    )
                 } else {
                     performAction()
                 }

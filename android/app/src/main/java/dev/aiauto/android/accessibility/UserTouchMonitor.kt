@@ -139,6 +139,22 @@ internal class UserTouchMonitor(
 
     fun requiresStrictAttribution(): Boolean = true
 
+    /**
+     * 判断给定事件预算里是否有本监视器真正会观察的事件类型。
+     *
+     * 调用方必须先问这一句再决定走不走归因路径。原因是 armAutomationAction
+     * 会把预算过滤到 LEGACY_INTERACTION_EVENT_TYPES，过滤后为空时返回 null，
+     * 于是 runAttributedAction 返回 false——动作根本不会被执行。
+     *
+     * 而「预算非空但无一项可监听」是常见情况：例如 SET_SELECTION 只产生
+     * TYPE_VIEW_TEXT_SELECTION_CHANGED，缩放只在 View 内部生效不发语义事件。
+     * 这类动作应直接执行，而不是被误判成归因失败。
+     */
+    fun hasMonitorableBudget(eventBudgets: Map<Int, Int>): Boolean =
+        eventBudgets.any { (type, budget) ->
+            type in LEGACY_INTERACTION_EVENT_TYPES && budget > 0
+        }
+
     @Synchronized
     fun commitAutomationAction(token: AutomationActionToken): Boolean {
         val expected = expectedAction?.takeIf { it.token == token } ?: return false
