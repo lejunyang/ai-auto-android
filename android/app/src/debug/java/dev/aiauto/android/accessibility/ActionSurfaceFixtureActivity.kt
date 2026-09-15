@@ -18,10 +18,12 @@ package dev.aiauto.android.accessibility
 import android.app.Activity
 import android.os.Bundle
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ListView
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
@@ -31,6 +33,7 @@ class ActionSurfaceFixtureActivity : Activity() {
     private lateinit var pasteTarget: EditText
     private lateinit var seekBar: SeekBar
     private lateinit var collapsible: LinearLayout
+    private lateinit var collectionView: ListView
     private lateinit var statusView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -119,6 +122,34 @@ class ActionSurfaceFixtureActivity : Activity() {
             },
         )
 
+        // ListView 承载 A9 的 SCROLL_TO_POSITION。
+        //
+        // 位置必须在填充行**之前**：填充行共 24 行 × 48dp 远超一屏，
+        // 放在它们之后时 ListView 落在视口外，节点不进入无障碍树，
+        // 选择器会以 SELECTOR_NOT_FOUND 失败（已实测踩到）。
+        //
+        // 用平台自带的 ListView 而非 RecyclerView：后者需要新增 androidx 依赖，
+        // 而依赖会进入所有变体，仅为测试夹具引入生产依赖不划算。
+        // ListView 继承 AbsListView，平台已为其提供 CollectionInfo，
+        // 这正是 ACTION_SCROLL_TO_POSITION 生效的前提。
+        addView(
+            ListView(context).apply {
+                contentDescription = COLLECTION_DESCRIPTION
+                adapter = ArrayAdapter(
+                    context,
+                    android.R.layout.simple_list_item_1,
+                    (0 until COLLECTION_ROWS).map { "Collection row $it" },
+                )
+                // 固定高度：ListView 在 LinearLayout 里若用 wrap_content
+                // 只会量出一行，那样滚动与按位置定位都无从发生。
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    dpToPixels(COLLECTION_HEIGHT_DP),
+                )
+                collectionView = this
+            },
+        )
+
         // 长列表承载 A3（scrollIntoView）。项数必须多到首屏放不下，
         // 否则目标一开始就可见，测不出滚动逻辑。
         repeat(FILLER_ROWS) { index ->
@@ -170,6 +201,14 @@ class ActionSurfaceFixtureActivity : Activity() {
     /** 供设备测试读取状态文本，断言展开折叠等无返回值动作的实际效果。 */
     fun status(): String = statusView.text?.toString().orEmpty()
 
+    /**
+     * 供设备测试读取 ListView 当前可见的首行下标。
+     *
+     * SCROLL_TO_POSITION 只返回布尔值，不读回首行下标就无法区分
+     * 「动作被接受」与「真的滚到了那一行」。
+     */
+    fun collectionFirstVisiblePosition(): Int = collectionView.firstVisiblePosition
+
     private fun dpToPixels(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
 
@@ -179,6 +218,7 @@ class ActionSurfaceFixtureActivity : Activity() {
         const val SEEK_BAR_DESCRIPTION = "Action surface seek bar"
         const val CHECKBOX_DESCRIPTION = "Action surface checkbox"
         const val EXPANDABLE_DESCRIPTION = "Action surface expandable"
+        const val COLLECTION_DESCRIPTION = "Action surface collection"
         const val SCROLL_TARGET_DESCRIPTION = "Action surface scroll target"
         const val SCROLL_CONTAINER_DESCRIPTION = "Action surface scroll container"
         const val READY_STATUS = "ACTION_SURFACE_READY"
@@ -193,6 +233,15 @@ class ActionSurfaceFixtureActivity : Activity() {
          */
         private const val FILLER_ROWS = 24
         private const val FILLER_ROW_HEIGHT_DP = 48
+
+        /**
+         * ListView 的行数与可视高度。
+         *
+         * 40 行 × 120dp 视口：视口只容纳约 3 行，因此 SCROLL_TO_POSITION 到
+         * 第 20 行必然改变 firstVisiblePosition，断言才有区分度。
+         */
+        private const val COLLECTION_ROWS = 40
+        private const val COLLECTION_HEIGHT_DP = 120
     }
 }
 

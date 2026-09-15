@@ -241,10 +241,10 @@ class ActionSurfaceRemainingDeviceTest {
                 SystemClock.sleep(SHORT_SETTLE_MS)
             }
 
-            // SCROLL_TO_POSITION 要求容器支持按行定位。ScrollView 不是
-            // CollectionInfo 容器，因此这里预期它被明确拒绝为不支持——
-            // 断言「明确失败」而不是跳过：静默通过会掩盖能力缺口。
-            val scrollToPosition = service.executeActionSurfaceCommand(
+            // SCROLL_TO_POSITION 在 ScrollView 上必须明确失败：它不是
+            // CollectionInfo 容器。断言「明确失败」而不是跳过——
+            // 静默通过会掩盖能力缺口。
+            val onScrollView = service.executeActionSurfaceCommand(
                 command = AccessibilityCommand.ScrollToPosition(
                     target = target(
                         ActionSurfaceFixtureActivity.SCROLL_CONTAINER_DESCRIPTION,
@@ -255,8 +255,57 @@ class ActionSurfaceRemainingDeviceTest {
             )
             assertTrue(
                 "ScrollView is not a collection container, so SCROLL_TO_POSITION " +
-                    "must fail explicitly rather than silently succeed: $scrollToPosition",
-                scrollToPosition is AccessibilityResult.Failure,
+                    "must fail explicitly rather than silently succeed: $onScrollView",
+                onScrollView is AccessibilityResult.Failure,
+            )
+        } finally {
+            activity.finish()
+            instrumentation.waitForIdleSync()
+        }
+    }
+
+    @Test
+    fun scrollsACollectionContainerToAGivenPosition() {
+        val instrumentation = requireManualAccessibility()
+        val service = awaitService(instrumentation)
+        val activity = launchFixture(instrumentation)
+        try {
+            val expectedPackage = instrumentation.targetContext.packageName
+
+            // 前置：ListView 必须从顶部开始，否则「滚到第 20 行」可能本来就成立。
+            assertEquals(0, activity.collectionFirstVisiblePosition())
+
+            val result = service.executeActionSurfaceCommand(
+                command = AccessibilityCommand.ScrollToPosition(
+                    target = target(ActionSurfaceFixtureActivity.COLLECTION_DESCRIPTION),
+                    row = TARGET_ROW,
+                ),
+                expectedPackage = expectedPackage,
+            )
+
+            assertTrue(
+                "SCROLL_TO_POSITION on a ListView was rejected: $result",
+                result is AccessibilityResult.Success,
+            )
+            instrumentation.waitForIdleSync()
+            SystemClock.sleep(SETTLE_MS)
+            // 后置：断言目标行进入了可视范围，而不是断言它恰好成为首行。
+            //
+            // 平台语义是「把该行滚到可见」，不是「把该行置顶」：实测（API 35）
+            // 请求第 20 行后 firstVisiblePosition=18，即 ListView 把目标行放在
+            // 视口内但保留了上文。断言 == 20 会因为这个正确行为而失败。
+            //
+            // 仍必须断言位置确实变了（> 0）：只断言动作被接受无法区分
+            // 「真的滚动了」与「平台接受了但没动」。
+            val firstVisible = activity.collectionFirstVisiblePosition()
+            assertTrue(
+                "the collection should have scrolled away from the top, " +
+                    "firstVisiblePosition=$firstVisible",
+                firstVisible > 0,
+            )
+            assertTrue(
+                "the requested row should be visible, firstVisiblePosition=$firstVisible",
+                firstVisible <= TARGET_ROW,
             )
         } finally {
             activity.finish()
@@ -370,5 +419,14 @@ class ActionSurfaceRemainingDeviceTest {
         const val PATH_SPAN = 40
         const val TRIPLE_TAP = 3
         const val CUT_LENGTH = 4
+
+        /**
+         * SCROLL_TO_POSITION 的目标行。
+         *
+         * 取 20：夹具 ListView 有 40 行、视口约容纳 3 行，滚到第 20 行必然改变
+         * firstVisiblePosition，断言才有区分度。取 1 或 2 可能落在初始视口内，
+         * 那样即使动作没生效断言也会通过。
+         */
+        const val TARGET_ROW = 20
     }
 }
