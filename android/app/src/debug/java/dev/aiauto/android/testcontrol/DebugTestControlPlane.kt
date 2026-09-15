@@ -345,6 +345,9 @@ class DebugTestControlPlane(
         val TOKEN_TTL: Duration = Duration.ofMinutes(2)
         const val PRESET_NAME = "n32-read-only-snapshot"
         const val SNAPSHOT_CAPABILITY = "accessibility.snapshot"
-        val READ_ONLY_BRIDGE_METHODS = setOf("bridge.rpc", "ui.snapshot")
+        // ui.foreground 与 ui.snapshot 同属只读观察：它只取活动窗口根节点的包名与
+        // 类名，不返回任何子节点内容，也不改变设备状态，因此纳入只读白名单。
+        // 不纳入会让 debug 测试桥拒绝这个方法，无法在自动化测试里验证自愈判断。
+        val READ_ONLY_BRIDGE_METHODS = setOf("bridge.rpc", "ui.snapshot", "ui.foreground")
     }
 }

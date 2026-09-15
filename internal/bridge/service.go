@@ -208,6 +208,23 @@ func (s *Service) Snapshot(
 	return s.call(ctx, device, "ui.snapshot", params)
 }
 
+// Foreground 读取当前活动界面的包名与窗口类名。
+//
+// 与 Snapshot 分开而不是让调用方自行裁剪快照：自愈判断只需要"现在在哪"这一个事实，
+// 而完整快照在深层界面上可能有数千节点。App 侧对该方法只返回根节点的两个字段，
+// 不会把可能含密码或验证码的子节点文本传回。
+func (s *Service) Foreground(
+	ctx context.Context,
+	device string,
+	targetPackage string,
+) (json.RawMessage, error) {
+	params := make(map[string]any)
+	if targetPackage != "" {
+		params["targetPackage"] = targetPackage
+	}
+	return s.call(ctx, device, "ui.foreground", params)
+}
+
 // Action 为语义动作加入幂等键后发送到当前 Bridge 会话。
 func (s *Service) Action(
 	ctx context.Context,

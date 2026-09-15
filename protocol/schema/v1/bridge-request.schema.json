@@ -16,6 +16,9 @@
       "$ref": "#/$defs/uiSnapshot"
     },
     {
+      "$ref": "#/$defs/uiForeground"
+    },
+    {
       "$ref": "#/$defs/actionExecute"
     },
     {
@@ -51,6 +54,7 @@
             "session.open",
             "device.info",
             "ui.snapshot",
+            "ui.foreground",
             "action.execute",
             "recording.list",
             "recording.replay",
@@ -198,6 +202,33 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 100
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "uiForeground": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "$ref": "#/$defs/authorized"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "ui.foreground"
+            },
+            "params": {
+              "type": "object",
+              "properties": {
+                "targetPackage": {
+                  "$ref": "common.schema.json#/$defs/packageName"
                 }
               },
               "additionalProperties": false

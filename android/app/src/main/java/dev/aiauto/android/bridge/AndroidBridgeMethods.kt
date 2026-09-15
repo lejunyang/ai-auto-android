@@ -118,6 +118,16 @@ class AndroidBridgeMethods(
                 permission = if (accessibilityAvailable) "granted" else "denied",
                 reason = accessibilityReason,
             ),
+            // ui.foreground 与 ui.snapshot 共用同一条无障碍通道和同一份目标包白名单，
+            // 因此可用性判据完全一致。它存在的意义是让调用方在不拉取整棵节点树的前提下
+            // 就能确认"当前在哪个界面"——自愈判断只需要这一个事实，
+            // 而完整快照在深层界面上可能有数千节点。
+            BridgeCapability(
+                name = "ui.foreground",
+                available = accessibilityAvailable,
+                permission = if (accessibilityAvailable) "granted" else "denied",
+                reason = accessibilityReason,
+            ),
             BridgeCapability(
                 name = "action.execute",
                 available = accessibilityAvailable,
@@ -146,6 +156,7 @@ class AndroidBridgeMethods(
     override fun handle(method: String, params: JsonObject): JsonObject = when (method) {
         "device.info" -> deviceInfo(params)
         "ui.snapshot" -> snapshot(params)
+        "ui.foreground" -> foreground(params)
         "action.execute" -> execute(params)
         "visual.action.execute" -> attestedVisual.execute(params)
         "recording.replay" -> replay(params)
@@ -205,6 +216,39 @@ class AndroidBridgeMethods(
             is AccessibilityResult.Success -> buildJsonObject {
                 put("root", result.value.toJson(depth = 1, maxDepth = maxDepth))
                 put("maxDepth", maxDepth)
+            }
+        }
+    }
+
+    /**
+     * 返回当前活动界面的包名与窗口类名，不返回任何节点树。
+     *
+     * 与 ui.snapshot 的区别是刻意的：自愈判断只需要"现在在哪"这一个事实，
+     * 而完整快照在深层界面上可能有数千节点。这里取快照根节点的 packageName 与
+     * className 后立即丢弃其余内容，因此仍受同一份目标包白名单约束，
+     * 不会因为"只读一点点"而绕开权限边界。
+     *
+     * maxDepth 固定为 1：底层 snapshot 会构造整棵树，但序列化时只取根节点一层，
+     * 避免把子节点文本带出——那些可能包含密码或验证码。
+     */
+    private fun foreground(params: JsonObject): JsonObject {
+        requireKeys(params, required = emptySet(), optional = setOf("targetPackage"))
+        requireAccessibility()
+        val targetPackage = params.optionalString("targetPackage")
+        if (
+            targetPackage != null &&
+            (targetPackage.length !in 3..255 || !PACKAGE_NAME.matches(targetPackage))
+        ) {
+            throw invalidArgument("targetPackage has an invalid Android package name.")
+        }
+        return when (val result = accessibility.snapshot(targetPackage)) {
+            is AccessibilityResult.Failure -> throw result.error.toBridgeException()
+            is AccessibilityResult.Success -> buildJsonObject {
+                put("package", result.value.packageName.orEmpty())
+                put("className", result.value.className.orEmpty())
+                // source 与 Go 侧 adb 通道的字段同名同义：调用方据此判断可信度。
+                // 桥侧来自无障碍活动窗口，比 dumpsys 文本解析更直接。
+                put("source", "activeWindow")
             }
         }
     }
