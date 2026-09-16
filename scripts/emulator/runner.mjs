@@ -85,11 +85,21 @@ const validateProfileDocument = (document) => {
     if (!AVD_NAME.test(profile.avdName) || avdNames.has(profile.avdName)) {
       fail("CONFIG_INVALID", `AVD name is invalid or duplicated: ${profile.avdName}`);
     }
-    if (![30, 33, 34].includes(profile.apiLevel)) {
+    // API 35 与 x86_64 是为跨架构矩阵放开的：原先只允许 [30,33,34] + arm64-v8a，
+    // 那是 N31 在 Apple Silicon 上落地时的环境假设。Windows / Linux x86_64 主机上
+    // arm64 镜像无法启动，锁死 ABI 会让这些主机根本跑不了固定矩阵。
+    //
+    // 放开的是**白名单成员**而非校验本身：ABI 仍限这两种、tag 仍限 google_apis、
+    // systemImage 仍须与 API/tag/ABI 三者拼接一致，packageSha256 与 receipt 的
+    // 逐字比对也完全保留——即镜像来源可信这条底线没有降低。
+    if (![30, 33, 34, 35].includes(profile.apiLevel)) {
       fail("CONFIG_INVALID", `unsupported API level: ${profile.apiLevel}`);
     }
-    if (profile.abi !== "arm64-v8a" || profile.tag !== "google_apis") {
-      fail("CONFIG_INVALID", `${profile.id} must use google_apis arm64-v8a`);
+    if (
+      !["arm64-v8a", "x86_64"].includes(profile.abi)
+      || profile.tag !== "google_apis"
+    ) {
+      fail("CONFIG_INVALID", `${profile.id} must use google_apis arm64-v8a or x86_64`);
     }
     const expectedImage =
       `system-images;android-${profile.apiLevel};${profile.tag};${profile.abi}`;

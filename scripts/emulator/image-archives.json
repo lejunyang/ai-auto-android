@@ -18,6 +18,30 @@
       "archive": "arm64-v8a-34_r14.zip",
       "size": 1610393229,
       "sha1": "2fe8b46d419a3400e30f31b0152b241b50c8b99f"
+    },
+    "system-images;android-30;google_apis;x86_64": {
+      "revision": "16",
+      "archive": "x86_64-30_r16.zip",
+      "size": 1438186618,
+      "sha1": "6ae21030eaadc041078444d3798e4b399f3e787d"
+    },
+    "system-images;android-33;google_apis;x86_64": {
+      "revision": "17",
+      "archive": "x86_64-33_r17.zip",
+      "size": 1707857511,
+      "sha1": "2b96f5bd5c79bfe1cc645e70b3e630b5755d9711"
+    },
+    "system-images;android-34;google_apis;x86_64": {
+      "revision": "14",
+      "archive": "x86_64-34_r14.zip",
+      "size": 1563721130,
+      "sha1": "e0f6c9a0691aa27bd597d0deb1bcfdc943ac8ca7"
+    },
+    "system-images;android-35;google_apis;x86_64": {
+      "revision": "9",
+      "archive": "x86_64-35_r09.zip",
+      "size": 1738815903,
+      "sha1": "0103e6dab21290c4b9d16550a3ce99476f884eef"
     }
   }
 }
