@@ -114,6 +114,7 @@ Android 单测 408 项、`lintDebug`、`assembleDebug` 通过；
 | B4 | `CLEAR_FOCUS` 被平台拒绝 | **未完成**。拒绝方式是 `ACTION_FAILED` 而非 `ACTION_NOT_SUPPORTED`，即节点声明了该动作但 View 的 `performAccessibilityAction` 返回 false。已排除「无焦点可清」：用 `uiautomator dump` 确认 `focused=false` 后补上 FOCUS 前置，行为不变。影响：无法主动清除输入焦点；变通做法是聚焦另一个节点。已在设备测试中断言其失败，若将来平台行为变化会被测试发现 |
 | B5 | `MainActivityLaunchModeInstrumentedTest` 在 API 35 失败 | **已修复**（`03a49cc`）。报错写作 `Failed to inject touch input`，看起来像触摸注入与 API 35 不兼容——**这个表述把人带偏了**。完整堆栈的 `Reason` 是「找不到满足 `Text contains '录制操作'` 的节点」：注入从未发生，失败在查找阶段。真因是首页为 `LazyColumn`，「录制操作」在第 6 个 item，320x640 上落在首屏之外，而 Lazy 列表**不组合**屏外内容，节点因此根本不存在。API 30/33/34 通过不是因为注入能力更好，而是可用高度不同、该 item 恰好进了首屏。修法用 `performScrollToNode` 而非固定坐标或放宽断言，使用例与屏幕高度、字体缩放、edge-to-edge 压缩解耦。四个 API 全部通过（E24） |
 | B6 | `RecordingEditorScreenInstrumentedTest` 四个 API 一致失败 | **已修复**（`47ea099`）。有两个叠加的失败点，原因不同、修法也不同：①**步骤卡片**——`performClick` 默认点节点中心，而卡片中心 `(160,393)` 正好落在内部「停用」按钮 `(156,384,214,424)` 内，点击被子按钮消费，`onSelectStep` 收不到；这不是坐标算错，是 `EditorStepCard` 把「整卡可点选中」与按钮行叠放、按钮行又横跨垂直中线的结构使然，改点标题行解决。②**表单提交按钮**——确实在视口外，用 `performScrollToNode` 解决。四个 API 全部通过（E24） |
+| B7 | `:web-fixture:lintVitalRelease` 失败 | **既有问题，非本批引入，未修**。`AndroidManifest.xml:15: Error: MainActivity must extend android.app.Activity [Instantiatable]`。已用基线 worktree 在本批之前的提交 `2df8c62` 上复现同一错误，确认非本轮改动导致（`git diff 2df8c62..HEAD -- android/web-fixture/` 为空）。影响：`assembleRelease` 全工程聚合任务会被它拦下；`:app:assembleRelease` 单独执行通过，故 app 的 release 产物与「零 test-only 入口」结论不受影响。属 web-fixture 模块自身问题，修它应单独立项 |
 
 ## 10.1 B5 / B6 的定位过程（两次假设被推翻）
 
