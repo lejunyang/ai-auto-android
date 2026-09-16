@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 配置用途：注册无网络权限的离线 WebView/Canvas fixture，并禁止备份和明文网络。 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -11,9 +12,22 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WebFixture"
         android:usesCleartextTraffic="false">
+        <!--
+            压制 Instantiatable 的原因：这是 lint 误报，不是代码问题。
+            MainActivity extends androidx.activity.ComponentActivity，其父类
+            androidx.core.app.ComponentActivity 直接继承 android.app.Activity，
+            继承链事实成立（已用 javap 反编译 activity-1.12.4.aar 与 core-1.16.0.aar 逐层验证），
+            且 androidx.activity 与传递依赖 androidx.core 均在 releaseCompileClasspath 上。
+            AGP 9.1.1 的 lint 在**纯 Java 模块**下无法跨 aar 追溯这条间接继承链：
+            同模块内直接继承 android.app.Activity 的探针类不报此错，而同仓库 app 模块
+            以 Kotlin 编写、同样继承 androidx ComponentActivity 也不报错——差异仅在此。
+            只压制这一个已证实的误报点，不降级整条规则、不建 lint baseline，
+            其余类仍受 Instantiatable 保护。AGP 升级后应复核本压制是否仍必要。
+        -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="Instantiatable">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
