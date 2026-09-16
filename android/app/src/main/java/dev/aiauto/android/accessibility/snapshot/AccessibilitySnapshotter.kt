@@ -94,6 +94,13 @@ class AccessibilitySnapshotter(
         )
     }
 
+    /**
+     * 把平台动作 id 映射为领域动作。
+     *
+     * 这张表是「节点支持什么」的唯一来源：不在表里的动作即使节点实际支持，
+     * 快照也不会上报，于是路由层会认为不可用而降级到手势或直接失败。
+     * 因此新增动作能力时必须同时在这里登记。
+     */
     private fun Int.toNodeAction(): NodeAction? = when (this) {
         AccessibilityNodeInfo.ACTION_CLICK -> NodeAction.CLICK
         AccessibilityNodeInfo.ACTION_LONG_CLICK -> NodeAction.LONG_CLICK
@@ -104,6 +111,23 @@ class AccessibilitySnapshotter(
         AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_DOWN.id -> NodeAction.SCROLL_DOWN
         AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_LEFT.id -> NodeAction.SCROLL_LEFT
         AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_RIGHT.id -> NodeAction.SCROLL_RIGHT
+        AccessibilityNodeInfo.ACTION_FOCUS -> NodeAction.FOCUS
+        AccessibilityNodeInfo.ACTION_CLEAR_FOCUS -> NodeAction.CLEAR_FOCUS
+        AccessibilityNodeInfo.ACTION_SELECT -> NodeAction.SELECT
+        AccessibilityNodeInfo.ACTION_CLEAR_SELECTION -> NodeAction.CLEAR_SELECTION
+        AccessibilityNodeInfo.ACTION_EXPAND -> NodeAction.EXPAND
+        AccessibilityNodeInfo.ACTION_COLLAPSE -> NodeAction.COLLAPSE
+        AccessibilityNodeInfo.ACTION_DISMISS -> NodeAction.DISMISS
+        AccessibilityNodeInfo.ACTION_COPY -> NodeAction.COPY
+        AccessibilityNodeInfo.ACTION_CUT -> NodeAction.CUT
+        AccessibilityNodeInfo.ACTION_PASTE -> NodeAction.PASTE
+        AccessibilityNodeInfo.ACTION_SET_SELECTION -> NodeAction.SET_SELECTION
+        AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id ->
+            NodeAction.SET_PROGRESS
+
+        AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_TO_POSITION.id ->
+            NodeAction.SCROLL_TO_POSITION
+
         else -> null
     }
 

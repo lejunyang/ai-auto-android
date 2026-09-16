@@ -36,6 +36,14 @@ class AiAutomationAccessibilityService :
     private lateinit var screenshotExecutor: ExecutorService
     private lateinit var userTouchMonitor: UserTouchMonitor
 
+    /**
+     * Toast 与通知的捕获缓冲。
+     *
+     * 在字段声明处初始化而不是 onServiceConnected：事件可能在服务完成其余
+     * 初始化之前就到达，那时若字段未初始化会抛 UninitializedPropertyAccess。
+     */
+    private val transientMessages = TransientMessageCapture()
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         settingsRepository = AccessibilitySettingsRepository.from(this)
@@ -77,6 +85,9 @@ class AiAutomationAccessibilityService :
             return
         }
         userTouchMonitor.onAccessibilityEvent(event)
+        // Toast 与通知必须在事件到达的这一刻记录：Toast 只显示 2 到 3.5 秒，
+        // 等调用方想查时它已经消失，事后查快照拿不到。
+        transientMessages.onAccessibilityEvent(event)
         if (!RecordingRuntime.isListening()) {
             return
         }
@@ -171,12 +182,48 @@ class AiAutomationAccessibilityService :
         )
         serviceInfo = currentServiceInfo.apply {
             packageNames = packages
+            // configuration 以按位或的方式叠加事件类型，因此 manifest 里声明的
+            // typeNotificationStateChanged 会被保留——Toast 捕获依赖它。
+            // 若改成直接赋值就会静默丢掉该事件类型。
             eventTypes = touchConfiguration.eventTypes
             flags = touchConfiguration.flags
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 motionEventSources = touchConfiguration.motionEventSources
             }
         }
+    }
+
+    /**
+     * 返回已捕获的 Toast 与通知文本。
+     *
+     * 只在目标包配置就绪时返回内容：未就绪时缓冲里可能有配置前捕获到的
+     * 任意应用提示，那超出了用户授权的观察范围。
+     */
+    internal fun transientMessages(toastsOnly: Boolean): AccessibilityResult<List<TransientMessage>> {
+        val settings = settingsRepository.load()
+        if (!settings.isReady) {
+            return AccessibilityResult.Failure(
+                code = AccessibilityErrorCode.TARGET_PACKAGES_NOT_CONFIGURED,
+                message = "Transient message capture requires configured target packages",
+            )
+        }
+        val captured = if (toastsOnly) {
+            transientMessages.toasts()
+        } else {
+            transientMessages.messages()
+        }
+        // 只回目标包的提示：Toast 事件的 packageName 是发出它的应用，
+        // 回全部会把无关后台应用的通知泄露给调用方。
+        return AccessibilityResult.Success(
+            captured.filter { message ->
+                message.packageName == null || message.packageName in settings.targetPackages
+            },
+        )
+    }
+
+    /** 清空提示缓冲，供调用方在一次操作前隔离历史提示。 */
+    internal fun clearTransientMessages() {
+        transientMessages.clear()
     }
 
     private fun activePackageName(): String? {
@@ -208,6 +255,19 @@ object AccessibilityRuntime {
         expectedPackage: String,
     ): AccessibilityResult<AccessibilityScreenshot> =
         service?.captureScreenshot(expectedPackage) ?: serviceDisabled()
+
+    /** 读取已捕获的 Toast 与通知文本。 */
+    fun transientMessages(
+        toastsOnly: Boolean = false,
+    ): AccessibilityResult<List<TransientMessage>> =
+        service?.transientMessages(toastsOnly) ?: serviceDisabled()
+
+    /** 清空提示缓冲。 */
+    fun clearTransientMessages(): Boolean {
+        val active = service ?: return false
+        active.clearTransientMessages()
+        return true
+    }
 
     internal fun attach(accessibilityService: AiAutomationAccessibilityService) {
         service = accessibilityService

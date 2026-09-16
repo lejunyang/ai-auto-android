@@ -529,6 +529,50 @@ func (f *fakeAutomation) BridgeSetText(
 	return json.RawMessage(`{"route":"nodeAction","matchScore":1}`), nil
 }
 
+// ScreenState、InputMethods 与文件传输补齐动作面扩展的观察与传输能力。
+// 与本 fake 的其它方法一致：只计数并回可预期的最小结果。
+func (f *fakeAutomation) ScreenState(
+	_ context.Context,
+	device string,
+) (adb.ScreenState, error) {
+	f.calls++
+	return adb.ScreenState{Device: device, State: "ON", On: true}, nil
+}
+
+func (f *fakeAutomation) InputMethods(
+	_ context.Context,
+	device string,
+) (service.InputMethodListResult, error) {
+	f.calls++
+	return service.InputMethodListResult{Device: device, IDs: []string{}, Count: 0}, nil
+}
+
+func (f *fakeAutomation) PushFile(
+	_ context.Context,
+	request service.FileTransferRequest,
+) (adb.FileTransfer, error) {
+	f.calls++
+	return adb.FileTransfer{
+		Device:     request.Device,
+		Action:     "file.push",
+		LocalPath:  request.LocalPath,
+		RemotePath: request.RemotePath,
+	}, nil
+}
+
+func (f *fakeAutomation) PullFile(
+	_ context.Context,
+	request service.FileTransferRequest,
+) (adb.FileTransfer, error) {
+	f.calls++
+	return adb.FileTransfer{
+		Device:     request.Device,
+		Action:     "file.pull",
+		LocalPath:  request.LocalPath,
+		RemotePath: request.RemotePath,
+	}, nil
+}
+
 func (f *fakeAutomation) Wait(
 	context.Context,
 	service.PredicateRequest,

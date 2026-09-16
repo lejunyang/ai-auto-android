@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 配置用途：限定生产无障碍服务订阅的语义事件、反馈类型与平台能力。 -->
+<!-- 配置用途：限定生产无障碍服务订阅的语义事件、反馈类型与平台能力。
+
+     flagRetrieveInteractiveWindows 是多窗口模型的硬前提：不声明它时
+     AccessibilityService.windows 恒为空列表（已在 API 35 模拟器实测），
+     于是对话框、输入法、悬浮窗里的节点全部无法定位。它不是可选优化，
+     缺了这一项跨窗口定位在代码正确的情况下也一定失效。
+
+     typeNotificationStateChanged 是 Toast 捕获的唯一来源：平台把 Toast 与
+     通知都归入这一类事件，并用 className 区分。不订阅它就收不到 Toast 文本，
+     而 Toast 只显示 2 到 3.5 秒，事后查快照已经来不及。 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:accessibilityEventTypes="typeViewClicked|typeViewLongClicked|typeViewTextChanged|typeViewScrolled|typeWindowStateChanged|typeWindowsChanged"
+    android:accessibilityEventTypes="typeViewClicked|typeViewLongClicked|typeViewTextChanged|typeViewScrolled|typeWindowStateChanged|typeWindowsChanged|typeNotificationStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagReportViewIds"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
     android:canPerformGestures="true"
     android:canRetrieveWindowContent="true"
     android:canTakeScreenshot="true"

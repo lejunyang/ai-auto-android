@@ -250,14 +250,26 @@ func TestServiceReturnsOnlySanitizedRecordingSummaryFields(t *testing.T) {
 }
 
 type fakeDirect struct {
-	devices           []protocol.Device
-	actionResult      adb.ActionResult
-	callCount         int
-	tapX              int
-	tapY              int
-	longPressDuration int
-	scrollDirection   adb.ScrollDirection
-	scrollFraction    float64
+	devices             []protocol.Device
+	actionResult        adb.ActionResult
+	callCount           int
+	tapX                int
+	tapY                int
+	longPressDuration   int
+	scrollDirection     adb.ScrollDirection
+	scrollFraction      float64
+	dragStart           adb.Point
+	dragEnd             adb.Point
+	dragDuration        int
+	multiTapPoint       adb.Point
+	multiTaps           int
+	pathPoints          []adb.Point
+	pathDuration        int
+	orientation         adb.Orientation
+	inputMethods        []string
+	selectedInputMethod string
+	deeplinkURI         string
+	deeplinkPackage     string
 }
 
 func (f *fakeDirect) Devices(context.Context) ([]protocol.Device, error) {
@@ -319,9 +331,136 @@ func (f *fakeDirect) Scroll(
 	return f.actionResult, nil
 }
 
+// Drag、MultiTap 与 PathGesture 记录入参供断言：这三者的时长与次数
+// 都由 service 层做默认值填充，不记就无法验证"未指定时用默认值"。
+func (f *fakeDirect) Drag(
+	_ context.Context,
+	_ string,
+	start adb.Point,
+	end adb.Point,
+	durationMS int,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.dragStart = start
+	f.dragEnd = end
+	f.dragDuration = durationMS
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) MultiTap(
+	_ context.Context,
+	_ string,
+	point adb.Point,
+	taps int,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.multiTapPoint = point
+	f.multiTaps = taps
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) PathGesture(
+	_ context.Context,
+	_ string,
+	points []adb.Point,
+	durationMS int,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.pathPoints = points
+	f.pathDuration = durationMS
+	return f.actionResult, nil
+}
+
 func (f *fakeDirect) Text(context.Context, string, string) (adb.ActionResult, error) {
 	f.callCount++
 	return f.actionResult, nil
+}
+
+// 设备状态、IME、deeplink 与文件传输的替身。记录入参供断言：
+// 这几项的默认值填充与参数透传都在 service 层，不记就无法验证。
+func (f *fakeDirect) Rotate(
+	_ context.Context,
+	_ string,
+	orientation adb.Orientation,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.orientation = orientation
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) Wake(context.Context, string) (adb.ActionResult, error) {
+	f.callCount++
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) Unlock(context.Context, string) (adb.ActionResult, error) {
+	f.callCount++
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) ScreenState(
+	_ context.Context,
+	serial string,
+) (adb.ScreenState, error) {
+	f.callCount++
+	return adb.ScreenState{Device: serial, State: "ON", On: true}, nil
+}
+
+func (f *fakeDirect) ListInputMethods(context.Context, string) ([]string, error) {
+	f.callCount++
+	return f.inputMethods, nil
+}
+
+func (f *fakeDirect) SelectInputMethod(
+	_ context.Context,
+	_ string,
+	identifier string,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.selectedInputMethod = identifier
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) HideKeyboard(context.Context, string) (adb.ActionResult, error) {
+	f.callCount++
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) OpenDeeplink(
+	_ context.Context,
+	_ string,
+	uri, packageName string,
+) (adb.ActionResult, error) {
+	f.callCount++
+	f.deeplinkURI = uri
+	f.deeplinkPackage = packageName
+	return f.actionResult, nil
+}
+
+func (f *fakeDirect) PushFile(
+	_ context.Context,
+	serial, localPath, remotePath string,
+) (adb.FileTransfer, error) {
+	f.callCount++
+	return adb.FileTransfer{
+		Device:     serial,
+		Action:     "file.push",
+		LocalPath:  localPath,
+		RemotePath: remotePath,
+	}, nil
+}
+
+func (f *fakeDirect) PullFile(
+	_ context.Context,
+	serial, remotePath, localPath string,
+) (adb.FileTransfer, error) {
+	f.callCount++
+	return adb.FileTransfer{
+		Device:     serial,
+		Action:     "file.pull",
+		LocalPath:  localPath,
+		RemotePath: remotePath,
+	}, nil
 }
 
 func (f *fakeDirect) Key(context.Context, string, string) (adb.ActionResult, error) {

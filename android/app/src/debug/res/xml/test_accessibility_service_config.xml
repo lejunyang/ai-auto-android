@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 配置用途：限定 debug 设备测试服务可观察的事件类型与能力。 -->
+<!-- 配置用途：限定 debug 设备测试服务可观察的事件类型与能力。
+
+     必须与生产 accessibility_service_config.xml 的订阅集合保持一致，
+     否则设备测试测到的能力与生产不同——曾因缺少
+     typeNotificationStateChanged 导致 Toast 捕获在设备测试里恒为空，
+     而生产服务其实能收到该事件。
+
+     flagRetrieveInteractiveWindows 是多窗口枚举的硬前提，缺它时
+     AccessibilityService.windows 恒为空列表。 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeViewClicked|typeViewLongClicked|typeViewTextChanged|typeViewScrolled|typeWindowStateChanged|typeWindowsChanged"
+    android:accessibilityEventTypes="typeViewClicked|typeViewLongClicked|typeViewTextChanged|typeViewScrolled|typeWindowStateChanged|typeWindowsChanged|typeNotificationStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagReportViewIds"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
     android:canPerformGestures="true"
     android:canRetrieveWindowContent="true"
     android:canTakeScreenshot="true"

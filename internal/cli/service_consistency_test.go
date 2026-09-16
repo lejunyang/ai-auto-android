@@ -5,6 +5,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -70,7 +71,9 @@ func TestCLIAndMCPMapActionsToIdenticalServiceSemantics(t *testing.T) {
 	if len(automation.actions) != 2 {
 		t.Fatalf("service action calls = %#v", automation.actions)
 	}
-	if automation.actions[0] != automation.actions[1] {
+	// 用 reflect.DeepEqual 而非 !=：ActionRequest 自 ui.pathGesture 起带
+	// []adb.Point 字段，含切片的结构体不可用 == 比较。
+	if !reflect.DeepEqual(automation.actions[0], automation.actions[1]) {
 		t.Fatalf("CLI action = %#v, MCP action = %#v", automation.actions[0], automation.actions[1])
 	}
 }
@@ -186,14 +189,17 @@ func TestRecordingListCLIUsesSharedServiceWithExplicitDevice(t *testing.T) {
 }
 
 type actionCapturingAutomation struct {
-	actions           []service.ActionRequest
-	recordingLists    []string
-	replays           []service.ReplayRecordingRequest
-	foregrounds       []service.ForegroundRequest
-	appQueries        []service.AppsRequest
-	recordRequests    []service.RecordingRequest
-	predicateRequests []service.PredicateRequest
-	bridgeTexts       []service.BridgeTextRequest
+	actions            []service.ActionRequest
+	recordingLists     []string
+	replays            []service.ReplayRecordingRequest
+	foregrounds        []service.ForegroundRequest
+	appQueries         []service.AppsRequest
+	recordRequests     []service.RecordingRequest
+	predicateRequests  []service.PredicateRequest
+	bridgeTexts        []service.BridgeTextRequest
+	screenStates       []string
+	inputMethodQueries []string
+	fileTransfers      []service.FileTransferRequest
 }
 
 func (a *actionCapturingAutomation) ListDevices(context.Context) (service.DeviceListResult, error) {
@@ -338,5 +344,49 @@ func (a *actionCapturingAutomation) Record(
 		SHA256:      strings.Repeat("a", 64),
 		DurationSec: seconds,
 		Video:       []byte{0, 0, 0, 12, 'f', 't', 'y', 'p', 'm', 'p', '4', '2'},
+	}, nil
+}
+
+// ScreenState、InputMethods 与文件传输补齐动作面扩展的观察与传输能力。
+// 与本 fake 的其它方法一致：记录入参供断言，并回可预期的最小结果。
+func (a *actionCapturingAutomation) ScreenState(
+	_ context.Context,
+	device string,
+) (adb.ScreenState, error) {
+	a.screenStates = append(a.screenStates, device)
+	return adb.ScreenState{Device: device, State: "ON", On: true}, nil
+}
+
+func (a *actionCapturingAutomation) InputMethods(
+	_ context.Context,
+	device string,
+) (service.InputMethodListResult, error) {
+	a.inputMethodQueries = append(a.inputMethodQueries, device)
+	return service.InputMethodListResult{Device: device, IDs: []string{}, Count: 0}, nil
+}
+
+func (a *actionCapturingAutomation) PushFile(
+	_ context.Context,
+	request service.FileTransferRequest,
+) (adb.FileTransfer, error) {
+	a.fileTransfers = append(a.fileTransfers, request)
+	return adb.FileTransfer{
+		Device:     request.Device,
+		Action:     "file.push",
+		LocalPath:  request.LocalPath,
+		RemotePath: request.RemotePath,
+	}, nil
+}
+
+func (a *actionCapturingAutomation) PullFile(
+	_ context.Context,
+	request service.FileTransferRequest,
+) (adb.FileTransfer, error) {
+	a.fileTransfers = append(a.fileTransfers, request)
+	return adb.FileTransfer{
+		Device:     request.Device,
+		Action:     "file.pull",
+		LocalPath:  request.LocalPath,
+		RemotePath: request.RemotePath,
 	}, nil
 }
