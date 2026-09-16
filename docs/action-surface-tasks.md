@@ -30,33 +30,33 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 
 | 编号 | 能力 | 状态 | 验证 API | 证据 |
 | --- | --- | --- | --- | --- |
-| A1 | 多窗口模型（`service.windows` 遍历） | 已交付 | 35 | E1 |
-| A2 | `drag`（按住—停顿—移动） | 已交付（桥侧+直连） | 35 | E2、E5 |
-| A3 | `scrollIntoView` / `scrollUntil` | 已交付 | 35 | E10 |
+| A1 | 多窗口模型（`service.windows` 遍历） | 已交付 | 30 / 33 / 34 / 35 | E1 |
+| A2 | `drag`（按住—停顿—移动） | 已交付（桥侧+直连） | 30 / 33 / 34 / 35 | E2、E5 |
+| A3 | `scrollIntoView` / `scrollUntil` | 已交付 | 30 / 33 / 34 / 35 | E10 |
 | A4 | Bridge 侧 `pressKey` | 部分实现 | — | 仅 MOVE_HOME/MOVE_END 可走无障碍，其余键需 ADB；无设备证据 |
 
 ### P1
 
 | 编号 | 能力 | 状态 | 验证 API | 证据 |
 | --- | --- | --- | --- | --- |
-| A5 | 文本选择（`ACTION_SET_SELECTION`） | 已交付 | 35 | E6 |
-| A6 | 复制 / 剪切 / 粘贴 | 已交付 | 35 | E7、E17 |
-| A7 | 多指与复合手势（pinch / zoom / 旋转 / 双指滚动） | 已交付 | 35 | E4、E18 |
-| A8 | 双击 / N 连击 | 已交付 | 35 | E3、E19 |
-| A9 | 节点动作补齐（8 项） | 部分已交付：EXPAND / COLLAPSE / SET_PROGRESS / FOCUS / SELECT / CLEAR_SELECTION / DISMISS / SCROLL_TO_POSITION 可用；仅 CLEAR_FOCUS 被平台拒绝 | 35 | E8、E9、E20、E22 |
-| A10 | 全局动作补齐（5 项） | 已交付 | 35 | E23 |
-| A11 | 设备状态动作 | 已交付 | 35 | E11 |
-| A12 | IME 控制 | 部分已交付：枚举/切换/收起键盘已验证；显示键盘未实现 | 35 | E12 |
+| A5 | 文本选择（`ACTION_SET_SELECTION`） | 已交付 | 30 / 33 / 34 / 35 | E6 |
+| A6 | 复制 / 剪切 / 粘贴 | 已交付 | 30 / 33 / 34 / 35 | E7、E17 |
+| A7 | 多指与复合手势（pinch / zoom / 旋转 / 双指滚动） | 已交付 | 30 / 33 / 34 / 35 | E4、E18 |
+| A8 | 双击 / N 连击 | 已交付 | 30 / 33 / 34 / 35 | E3、E19 |
+| A9 | 节点动作补齐（8 项） | 部分已交付：EXPAND / COLLAPSE / SET_PROGRESS / FOCUS / SELECT / CLEAR_SELECTION / DISMISS / SCROLL_TO_POSITION 可用；仅 CLEAR_FOCUS 被平台拒绝 | 30 / 33 / 34 / 35 | E8、E9、E20、E22 |
+| A10 | 全局动作补齐（5 项） | 已交付 | 30 / 33 / 34 / 35 | E23 |
+| A11 | 设备状态动作 | 已交付 | 30 / 33 / 34 / 35 | E11 |
+| A12 | IME 控制 | 部分已交付：枚举/切换/收起键盘已验证；显示键盘未实现 | 30 / 33 / 34 / 35 | E12 |
 
 ### P2
 
 | 编号 | 能力 | 状态 | 验证 API | 证据 |
 | --- | --- | --- | --- | --- |
-| A13 | 剪贴板读写 | 已交付（桥侧） | 35 | E13 |
-| A14 | deeplink 打开 | 已交付 | 35 | E14 |
-| A15 | 文件 push / pull | 已交付 | 35 | E15 |
-| A16 | Toast 捕获 | 已交付 | 35 | E16 |
-| A17 | 路径手势 | 已交付 | 35 | E21 |
+| A13 | 剪贴板读写 | 已交付（桥侧） | 30 / 33 / 34 / 35 | E13 |
+| A14 | deeplink 打开 | 已交付 | 30 / 33 / 34 / 35 | E14 |
+| A15 | 文件 push / pull | 已交付 | 30 / 33 / 34 / 35 | E15 |
+| A16 | Toast 捕获 | 已交付 | 30 / 33 / 34 / 35 | E16 |
+| A17 | 路径手势 | 已交付 | 30 / 33 / 34 / 35 | E21 |
 
 ### 设备证据编号
 
