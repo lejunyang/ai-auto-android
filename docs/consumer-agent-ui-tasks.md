@@ -19,21 +19,21 @@
 |---|---|---|---|
 | 导航骨架 | 底部四 tab + 嵌套导航 + 路由参数 Uri.encode | 已实现，待设备复验 | compileDebugKotlin通过 |
 | 主题 | 固定配色（背景#FAFBFC/表面#FFFFFF/主色#2563EB），无动态取色 | 已实现，待设备复验 | Theme.kt固定配色；AppTokens.kt已建 |
-| 设计token层 | AppColors/AppShapes/AppSpacing/AppTypography + DesignTokenParityTest | 已实现，单测通过 | AppTokens.kt编译通过；DesignTokenParityTest 31测试通过（Argb常量比较） |
+| 设计token层 | AppColors/AppShapes/AppSpacing/AppTypography + DesignTokenParityTest | 已实现，单测通过 | AppTokens.kt编译通过；DesignTokenParityTest 37测试通过（Argb常量比较） |
 | 共享组件 | AppComponents.kt + ScriptStoreProducers.kt（IO+错误态+ON_RESUME） | 已实现，待设备复验 | compileDebugKotlin通过 |
 | 助理页 | Composer卡片+快捷chips+技能列表+语音按钮 | 已实现，待设备复验 | final-01首页截图 |
 | 技能页 | 脚本列表+紧凑空态+虚线轻卡teach | 已实现，待设备复验 | final-02技能页截图 |
 | 记录页 | 真实会话历史+全部/已完成/需处理筛选+详情 | 已实现，待有数据设备验证 | compileDebugKotlin通过；test-only fixture待预置 |
 | 我的页 | 紧凑布局+52dp头像+真实通知状态(不硬编码已启用) | 已实现，待设备复验 | final-04我的页截图 |
-| 模块A：会话历史持久化 | SessionHistoryRecord(固定摘要安全策略)+Store(有界/可删/损坏Partial)+coordinator终态写入 | 已实现，单测通过 | compileDebugKotlin通过；SessionHistoryStoreTest 14测试通过（UUID id/TASK_SUMMARY/损坏Partial/有界/删除） |
+| 模块A：会话历史持久化 | SessionHistoryRecord(固定摘要安全策略)+Store(有界/可删/损坏Partial)+coordinator终态写入 | 已实现，单测通过 | compileDebugKotlin通过；SessionHistoryStoreTest 13测试通过（UUID id/TASK_SUMMARY/损坏Partial/有界/删除） |
 | 模块B：语音输入 | VoiceInputHandler+权限检查+拒绝/无服务降级+外发说明+助理页语音按钮 | 已实现，代码验证(权限拒绝逻辑)，设备未复验 | compileDebugKotlin通过 |
-| 模块C：前台服务+运行通知 | SessionCoordinator单一owner+Application级Runtime+ViewModel仅订阅+通知安全短标题 | 已实现，单测通过，真实会话运行时未设备验证 | SessionCoordinatorTest 13测试通过；compileDebugKotlin通过 |
+| 模块C：前台服务+运行通知 | SessionCoordinator单一owner+Application级Runtime+ViewModel仅订阅+通知安全短标题 | 已实现，单测通过，真实会话运行时未设备验证 | SessionCoordinatorTest 16测试通过；compileDebugKotlin通过 |
 | 模块D：受控悬浮窗 | OverlayController+权限引导+运行状态/结果+收起展开+我的页入口 | 已实现，真实会话运行时未设备验证 | OverlayController/OverlayWindow编译通过 |
 | 模块E：录制编辑器 | 步骤编排/用一句话表达tab+UpdateDescription命令+撤销/保存冲突/高级字段 | 已实现，待设备验证 | compileDebugKotlin通过；tab结构已建 |
-| 模块F：语言归纳 | SkillLanguageGenerator+Provider调用+敏感过滤+不静默覆盖+已接入编辑器 | 已实现，单测通过（NotConfigured/HTTP错误/空响应/敏感过滤） | compileDebugKotlin通过；SkillLanguageGeneratorTest 5测试通过 |
+| 模块F：语言归纳 | SkillLanguageGenerator+Provider调用+敏感过滤+不静默覆盖+已接入编辑器 | 已实现，单测通过（NotConfigured/HTTP错误/空响应/敏感过滤） | compileDebugKotlin通过；SkillLanguageGeneratorTest 4测试通过 |
 | 设备视觉验证 | 固定AVD(ui-visual-35 1080x2400 420dpi zh-CN)+显式serial+可靠截图+PIL验证 | 已验证（UI四tab） | final-01~04四tab截图PIL verify通过；1080x2400 |
-| 全量验证 | make comments + testDebugUnitTest + assembleDebug | 已验证 | testDebugUnitTest 486通过/1跳过（旧RecordingScriptStore基线ignore）；assembleDebug BUILD SUCCESSFUL；make comments通过；git diff --check通过 |
-| 源码清理 | HomeScreen.kt/TaskScreen.kt（git已删除）；SessionViewModelTest.kt已恢复更新为12测试 | 已完成 | git f1ef91b删除HomeScreen/TaskScreen；13cce8e恢复SessionViewModelTest |
+| 全量验证 | make comments + testDebugUnitTest + assembleDebug + lintDebug | 已验证 | testDebugUnitTest 486项：485通过/1跳过（旧RecordingScriptStore基线ignore）；assembleDebug与lintDebug BUILD SUCCESSFUL；make comments通过；git diff --check通过 |
+| 源码清理 | HomeScreen.kt/TaskScreen.kt（git已删除）；SessionViewModelTest.kt已恢复更新为11测试 | 已完成 | git f1ef91b删除HomeScreen/TaskScreen；13cce8e恢复SessionViewModelTest |
 | 验证产物清理 | artifacts/ui-validation/ 下旧截图v2-v15及损坏01-04已删除（ignored目录，不进git）；保留final-01~04和prototype参考 | 已完成 | 本地文件系统清理 |
 
 ## 安全约束（不可妥协）
