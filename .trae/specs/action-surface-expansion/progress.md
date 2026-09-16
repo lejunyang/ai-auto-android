@@ -415,3 +415,49 @@ API 35 不兼容」——**这个判断是错的**。完整堆栈的 Reason 子�
 
 证据 E24 记录了四 API 的修复前后对照。新增
 `scripts/emulator/verify-ui-regressions.mjs` 固化这两个类的跨 API 复测。
+
+## Round 9：把设备矩阵分辨率提升到真机档位
+
+用户指出 320x640 偏离真机太远。查证后确认这不是有意的测试策略，而是上一轮为绕开
+runner 的 packageSha256 校验而手工建 AVD 时，沿用了模板 config.ini 里
+hw.lcd.width/height/density=320/640/160 的默认值——**此前 84 次设备执行全部跑在
+这个档位上，而且没人察觉**。项目自身的 profiles.json 一直写的是 1080x2400/420。
+
+**先把欠账还掉（D9）**
+不再绕过 runner，而是修它：
+- ABI 白名单加 x86_64、API 白名单加 35（原先锁死 [30,33,34]+arm64 是 N31 在
+  Apple Silicon 上落地的环境假设）；放开的是白名单成员，tag / systemImage 拼接
+  一致性 / packageSha256 与 receipt 逐字比对全部保留。
+- packageSha256 用**真实值**：osdk 缓存里留有从 dl.google.com 下的原始 archive，
+  对其算 SHA-256；同时算出的 SHA-1 与 osdk 记录的 checksum 逐一相符，证明是未被
+  篡改的官方包。D7 的缺口由此真正关闭，而不是绕过。
+- 顺带发现既有问题：profiles.json 的 toolchain pin 与 osdk.toml 已脱节，导致
+  runner 对 **arm64 profile 也**报 SDK_TOOL_VERSION_MISMATCH——N31 在当前工具链下
+  本就跑不起来。以 osdk.toml 为权威同步为 23.0 / 37.0.1 / 37.1.11。
+
+cli.mjs verify 通过。但 create 仍失败：osdk 把同一 system image 同时暴露在规范
+目录与 ~v1~<percent-encoded> 别名目录，avdmanager 的仓库扫描判为重复并报
+"contains no system images"。试过用只含规范布局的 junction SDK root，无效
+（avdmanager 仍扫 osdk 的 install 根）。故只把「创建 AVD」交给新的
+matrix-avd.mjs，其分辨率处理照抄 runner 并**增加回读校验**。
+
+**档位选择（D8）**
+主档 1080x2400/420dpi（沿用 profiles.json，不另立标准）；API 35 上加
+720x1600/320dpi 与 1440x3200/560dpi 两个对照档。对照档只在一个 API 上跑：
+分辨率相关的布局问题不依赖 API 版本——B6 已经证明（四个 API 表现完全一致），
+用一个 API 换两个档位比在四个 API 上重复同一档更有证据价值。
+
+**结果：6 次全量执行、168 次用例执行，无一失败。**
+主档四个 API 各 28/28；两个对照档各 28/28；每档 wm size / wm density 回读
+verified:true。
+
+**最值得记的一点**：三档结果完全一致，没有出现「小屏掩盖」或「大屏新暴露」。
+事前预期恰恰相反——B5/B6 根因都与小屏强相关。它们没变，是因为两处修法都做成了
+与屏幕尺寸解耦（performScrollToNode 按语义滚动、点击位置按控件结构指定）。
+**如果当时用固定坐标或放宽断言"修绿"，这次换档就会重新失败。** 这反过来说明
+上一轮拒绝走捷径是对的。
+
+**文档处理**：E1–E23 保留 320x640 标注不改写——那些坐标与 bounds 数值确实是在
+该档量出的，改写会把「当时看到的现象」说成在别的档位也是同样数值。能力结论由
+新增的 E25 覆盖真机档位。新增平台事实 F10（hw.lcd 三项必须成套写、wm 设置必须
+回读校验）。

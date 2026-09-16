@@ -60,10 +60,18 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 
 ### 设备证据编号
 
-统一环境：serial `emulator-5554`，AVD `osdk-test-35`，API 35（Android 15），
-320x640，x86_64，无障碍 `capabilities=161`，`Crashed services:{}`。
-执行方式：`ActionSurfaceDeviceTest`，走生产 `AccessibilityActionRouter`
+**E1–E23 的原始取证环境**：serial `emulator-5554`，AVD `osdk-test-35`，
+API 35（Android 15），**320x640 / 160dpi**，x86_64，无障碍 `capabilities=161`，
+`Crashed services:{}`。执行方式：走生产 `AccessibilityActionRouter`
 与 `AndroidAccessibilityBackend`，非测试专用简化通道。
+
+> **关于 320x640**：这一档并非有意的测试策略，而是手工创建 AVD 时沿用了模板
+> `config.ini` 里 `hw.lcd.width/height/density=320/640/160` 的默认值。它离真机
+> 太远（真机普遍 1080x2400 上下），E1–E23 各条**单看**只能证明「该能力在小屏
+> 上可用」。**E25 已在 1080x2400 / 420dpi 等三档真机档位复跑了这些用例的全集**，
+> 因此这些能力的结论现已覆盖真机档位——详见第 6.1 节。下方 E1–E23 各条保留
+> 原始 320x640 的观测细节（坐标、bounds 等数值是在该档位下量出的），
+> 不改写为新分辨率，以免把「当时看到的现象」说成在别的档位也是同样数值。
 
 | 编号 | 内容 |
 | --- | --- |
@@ -90,7 +98,8 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 | E21 | 同 E19 用例中的三点折线路径手势 PASS，模拟图案解锁那类需精确经过中间点的轨迹。 |
 | E22 | `scrollsACollectionContainerToAGivenPosition` PASS。夹具新增平台自带 `ListView`（40 行 / 视口约 3 行）作为 `CollectionInfo` 容器。断言首行下标离开顶部且请求行在可视范围内——平台语义是「把该行滚到可见」而非「置顶」，实测请求第 20 行后 `firstVisiblePosition=18`，断言 `== 20` 会把正确行为判成失败。与 E20 的 ScrollView 失败断言合起来才完整刻画该能力边界。 |
 | E23 | `GlobalActionDeviceTest` `OK (5 tests)`。按可中断性分档：通知栏 / 快捷设置 / 电源菜单断言窗口集合变化后用 BACK 复位并**断言回到夹具**；截屏断言夹具窗口仍在（不破坏会话）；锁屏独立用例，动作后主动 WAKEUP + MENU 解锁并断言服务仍能观察窗口——若锁屏后服务不可用，该动作在实际自动化里就无法安全使用。测试后复查 `mScreenState=ON`、焦点回到 launcher，无残留状态。 |
-| E24 | B5 / B6 修复后的四 API 复测，入口 `scripts/emulator/verify-ui-regressions.mjs`，serial 均为 `emulator-5554`（AVD `aactl-matrix-30/33/34` 与 `osdk-test-35`，统一 320x640 / x86_64，逐个冷启动）。**修复前**：`MainActivityLaunchModeInstrumentedTest` 在 API 35 三轮稳定失败（`Failed to inject touch input`，`Reason` 为找不到「录制操作」节点）、30/33/34 通过；`RecordingEditorScreenInstrumentedTest` 四个 API 全部失败（`expected:<step-two> but was:<null>`）。**修复后**：两个类在 API 30 / 33 / 34 / 35 上全部 `pass`（前者 2 tests、后者 1 test），`allPassed=true`。清理：每个 API 跑完卸载测试 APK 并关闭模拟器，三个一次性 AVD 用后删除。 |
+| E24 | B5 / B6 修复后的四 API 复测，入口 `scripts/emulator/verify-ui-regressions.mjs`，serial 均为 `emulator-5554`（AVD `aactl-matrix-30/33/34` 与 `osdk-test-35`，**320x640** / x86_64，逐个冷启动）。**修复前**：`MainActivityLaunchModeInstrumentedTest` 在 API 35 三轮稳定失败（`Failed to inject touch input`，`Reason` 为找不到「录制操作」节点）、30/33/34 通过；`RecordingEditorScreenInstrumentedTest` 四个 API 全部失败（`expected:<step-two> but was:<null>`）。**修复后**：两个类在 API 30 / 33 / 34 / 35 上全部 `pass`。清理：每个 API 跑完卸载测试 APK 并关闭模拟器，一次性 AVD 用后删除。**注**：本条是 320x640 下的对照，真机档位的复跑见 E25。 |
+| E25 | **真机分辨率档位复跑**（本轮新增），入口 `scripts/emulator/matrix-avd.mjs` + `action-surface-matrix.mjs`，serial 均为 `emulator-5554`，x86_64，逐档冷启动。每档启动后用 `wm size` / `wm density` 设置并**回读校验**实际生效值（`verified:true`），而非仅凭设置命令返回码。<br>**主档 1080x2400 / 420dpi**：API 30 / 33 / 34 / 35 各 9 个类 **28/28 通过、0 失败**（含 21 项动作面用例与 B5/B6 两项 UI 回归），`screen` 回读均为 `Physical size: 1080x2400`。<br>**高低对照档（API 35）**：`720x1600 / 320dpi` 28/28 通过；`1440x3200 / 560dpi` 28/28 通过。<br>合计本条共 6 次全量执行、168 次用例执行，无一失败。清理：四个一次性 AVD 全部删除，用户自有 AVD 未触碰。 |
 
 最近一次执行结果：
 - `ActionSurfaceDeviceTest`：`OK (4 tests)`。
@@ -199,7 +208,7 @@ A11 → A12 → A13 → A14 → A15 → A16 → A17。
 
 ## 4.1 平台事实沉淀（后续实现必须先看这一节）
 
-以下九条都是设备实测结论，不是文档推断。每一条都曾导致一次"代码看起来正确
+以下十条都是设备实测结论，不是文档推断。每一条都曾导致一次"代码看起来正确
 但行为不对"的排查，写在这里避免同类坑重复踩。
 
 | 编号 | 结论 | 影响范围 |
@@ -213,8 +222,9 @@ A11 → A12 → A13 → A14 → A15 → A16 → A17。
 | F7 | API 35 上 `settings put secure enabled_accessibility_services ""` 返回 `Bad arguments` 且**旧值残留**；API 30/33/34 接受空串。清空必须用 `settings delete secure ...` | 任何"重置无障碍再重新启用"的脚本在 API 35 上会静默失效，表现为服务停在 `Crashed services`、`Bound services` 恒空，极易误判为"能力回归"。已修入 `scripts/emulator/action-surface-matrix.mjs` |
 | F8 | 重装 APK 会把包置为 `enabled=0` 并重置 `accessibility_enabled`，服务进入半禁用状态而出现在 `Crashed services` | 每次重装后必须 `pm enable <pkg>` 再重写 secure 设置，且以 `dumpsys accessibility` 的 `Bound services` 非空为就绪判据——写 settings 只是改字符串，bind 是异步结果 |
 | F9 | Compose 测试的 `performClick` 点的是**节点中心**；若被测节点自身可点、内部又有子按钮横跨其垂直中线，点击会被子按钮消费而外层回调收不到。实测：卡片 `(16,338,304,448)` 中心 `(160,393)` 落在子按钮 `(156,384,214,424)` 内 | 「整块可点 + 内部按钮行」这种布局，测试必须显式指定点击位置（如标题行）而非依赖默认中心。另：`Failed to inject touch input` 的报错文案会把人引向"注入不兼容"，实际失败常在**查找阶段**——必须读 `Reason` 子句。Lazy 列表不组合屏外内容，节点会直接不存在；`verticalScroll` 则节点存在但在视口外，两者现象相似而修法不同 |
+| F10 | 手工创建 AVD 时若只改 `image.sysdir.1` 而沿用模板的 `hw.lcd.*`，会静默继承模板的屏幕参数（本仓库模板是 320x640 / 160dpi）。`wm size` / `wm density` 的返回码**不能**作为生效证据 | 任何自建 AVD 的脚本都必须显式写 `hw.lcd.width/height/density` 三项（缺一会得到畸形组合），并在启动后**回读** `wm size` / `wm density` 校验。此前 84 次设备执行全部跑在 320x640 上而无人察觉，就是因为缺这道回读 |
 
-## 4.2 已拍板的取舍（D1–D7）
+## 4.2 已拍板的取舍（D1–D9）
 
 | 编号 | 决定 | 理由 |
 | --- | --- | --- |
@@ -224,9 +234,11 @@ A11 → A12 → A13 → A14 → A15 → A16 → A17。
 | D4 | 行为变更采用「独立分支 + 非快进合并保留边界 + 定位探针用完即删」 | B1 的实践验证了这套流程的价值：独立分支让行为变更不与功能提交混杂；非快进合并保留了排查过程的提交边界，便于回溯「为什么改成这样」；定位探针（三层对照 + 可见节点指纹）以 AssertionError 输出观测值，是排查工具而非回归断言，留在仓库里会成为永久失败的测试，因此完成即删，只保留可复用的只读探针。作为后续行为变更的范式 |
 | D5 | 多 API 矩阵改用 **x86_64** 镜像，但**不改** `scripts/emulator/profiles.json` 的 arm64 三项，也不新增 x86_64 profile | 原 `api-30/33/34` 声明 `arm64-v8a`，是早期 Apple Silicon 环境的遗留：本机 Windows x86_64 上 arm64 镜像无法启动。但 N31 runner 对 profile 有强校验——`packageSha256` 必须是真实的官方 archive SHA-256，并要与 `package-receipts.json` 逐字一致。osdk 安装镜像时不产生这份 receipt，我也无法在不下载官方 archive 的前提下算出其 SHA-256。填空串会触发 `CONFIG_INVALID`，填全零则是**伪造校验值**——它看起来像真的却不是，比明确的空缺更危险。因此本轮矩阵不经 N31 runner，直接用 `avdmanager` + `emulator` 驱动，profile 文件保持原样。arm64 三项对仍在 Apple Silicon 上工作的环境依然有效 |
 | D6 | 镜像通过 `osdk install "android-system-images@android-NN;google_apis;x86_64"` 安装，`osdk.toml` 的 pin 保持只写 API 35 | 矩阵用的三个镜像是**测试基础设施**而非构建依赖：`osdk.toml` 的 pin 决定「构建这个项目需要什么」，而 API 30/33/34 镜像只在跑设备矩阵时需要。把它们 pin 进去会让每个只想编译的人都被迫下载约 5GB。安装走 osdk 命令而非手工编辑配置，符合 osdk.toml 注释里的要求 |
-| D7 | N31 runner 的多 API x86_64 接入记为**未完成**而非绕过 | 要让 runner 支持 x86_64 profile，需要为每个镜像提供真实的官方 archive SHA-256 与 `package-receipts.json`。这属于 N31 自身的能力扩展（把 osdk 安装的镜像纳入其 receipt 体系），不在动作面职责内，且不影响本轮的能力验证结论 |
+| D7 | ~~N31 runner 的多 API x86_64 接入记为**未完成**而非绕过~~ **已在后续轮次完成**，见 D9 | 当时的缺口是拿不到官方 archive 的真实 SHA-256。后来发现 osdk 缓存里留有原始 archive，算出真实值后该缺口被真正填上，而不是绕过 |
+| D8 | 设备矩阵分辨率取 **1080x2400 / 420dpi 为主档**，并在 API 35 上加 `720x1600 / 320dpi` 与 `1440x3200 / 560dpi` 两个对照档 | 主档直接沿用 `profiles.json` 里既有 profile 的定义，不另立标准；这一档覆盖当前主流真机。对照档沿用 N45 历史上验过的另两档，取高低两端以暴露布局在极端密度下的问题。**对照档只在 API 35 上跑**而非四个 API 全跑：分辨率相关的布局问题不依赖 API 版本——B6 已经证明这一点（它在四个 API 上表现完全一致），因此用一个 API 换两个额外档位，比在四个 API 上重复同一档更有证据价值。密度与分辨率成套配置（420/320/560dpi），避免「高分辨率配低密度」这种真机上不存在的畸形组合 |
+| D9 | 让矩阵回到 runner 的正式路径：放开 runner 的 ABI / API 白名单并补齐真实 `packageSha256`；但 **AVD 创建仍用单独脚本** | 前半部分修的是真问题：runner 的 toolchain pin 早已与 `osdk.toml` 脱节，导致它对 **arm64 profile 也**报 `SDK_TOOL_VERSION_MISMATCH`，即 N31 在当前工具链下本就跑不起来。补齐后 `cli.mjs verify` 通过，D7 的缺口真正关闭。后半部分是环境限制而非取舍：osdk 把同一 system image 同时暴露在规范目录与 `~v1~<percent-encoded>` 别名目录下，`avdmanager` 的仓库扫描据此判为重复并报 `contains no system images`；尝试用只含规范布局的 junction SDK root 也无效（avdmanager 仍会扫 osdk 的 install 根）。故只把「创建 AVD」这一步交给 `matrix-avd.mjs`，其分辨率处理照抄 runner 并**增加回读校验**——上一轮正是因为缺回读，320x640 才一路蒙混过关 |
 
-D1–D7 全部已决，无待用户拍板事项。
+D1–D9 全部已决，无待用户拍板事项。
 
 ## 5. 允许修改范围
 
@@ -261,15 +273,21 @@ release 变体不得引入任何 test-only 入口。
 | 项 | 值 |
 | --- | --- |
 | serial | `emulator-5554` |
-| AVD | `osdk-test-35` |
-| API | 35（Android 15） |
-| 分辨率 | 320x640 |
+| AVD | `aactl-matrix-30/33/34/35`（一次性，用后删除） |
+| API | 30 / 33 / 34 / 35 |
+| 分辨率（主档） | **1080x2400 / 420dpi** |
+| 分辨率（对照档） | 720x1600 / 320dpi 与 1440x3200 / 560dpi（仅 API 35） |
 | ABI | x86_64 |
+
+分辨率档位的取舍见 4.2 节 D8。E1–E23 是在早期的 320x640 / 160dpi 下取证的，
+其中的坐标与 bounds 数值仍属那一档；能力结论已由 E25 在上述真机档位复跑覆盖。
 
 ### 6.1 多 API 矩阵实测结果
 
 镜像通过 `osdk install "android-system-images@android-NN;google_apis;x86_64"`
-安装（D6），AVD 名 `aactl-matrix-30/33/34`，统一 320x640 / x86_64 / swiftshader，
+安装（D6），AVD 由 `scripts/emulator/matrix-avd.mjs` 创建并显式写入
+`hw.lcd.width/height/density`，启动后再用 `wm size` / `wm density` 设置并
+**回读校验**（`verified:true`）。
 每次冷启动、`-no-snapshot-save`，跑完卸载测试 APK。执行入口：
 `scripts/emulator/action-surface-matrix.mjs`。
 
@@ -277,6 +295,9 @@ release 变体不得引入任何 test-only 入口。
 `ActionSurfaceNodeActionDeviceTest` 5 + `ActionSurfaceRemainingDeviceTest` 5 +
 `GlobalActionDeviceTest` 5 + `TransientMessageDeviceTest` 2），外加 7 项既有
 无门控用例作为回归对照。
+
+下表为**主档 1080x2400 / 420dpi** 的结果（证据 E25）。同一批用例此前在
+320x640 下也全部通过（E24 及更早），两档结论一致。
 
 | 能力组（用例数） | API 30 | API 33 | API 34 | API 35 |
 | --- | --- | --- | --- | --- |
@@ -296,8 +317,26 @@ release 变体不得引入任何 test-only 入口。
 | `MainActivityLaunchModeInstrumentedTest`（2） | 通过 | 通过 | 通过 | 通过 |
 | `RecordingEditorScreenInstrumentedTest`（1） | 通过 | 通过 | 通过 | 通过 |
 
-后两行原为「API 35 失败」与「四个 API 全失败」，已在 B5 / B6 修复后复测转绿，
-四个 API 均通过（证据 E24）。修复前后的现象与根因见第 10 节与 10.1 节。
+后两行原为「API 35 失败」与「四个 API 全失败」，已在 B5 / B6 修复后复测转绿。
+
+### 6.1.1 分辨率档位对照（API 35）
+
+| 档位 | 回读校验 | 结果 |
+| --- | --- | --- |
+| 720x1600 / 320dpi | `verified:true` | 9 类 **28/28 通过** |
+| 1080x2400 / 420dpi（主档） | `verified:true` | 9 类 **28/28 通过** |
+| 1440x3200 / 560dpi | `verified:true` | 9 类 **28/28 通过** |
+
+**三档结果完全一致，没有出现「小屏掩盖」或「大屏新暴露」的问题。** 这一点值得
+明确记录，因为事前预期恰恰相反：B5 / B6 的根因都与小屏强相关（LazyColumn 屏外
+不组合、卡片中心落在子按钮上），本来很可能在换档后表现不同。它们没有——因为
+两处修法都做成了与屏幕尺寸解耦（`performScrollToNode` 按语义滚动、点击位置按
+控件结构而非绝对坐标指定），而不是针对 320x640 打的补丁。**如果当时用固定坐标
+或放宽断言"修绿"，这次换档就会重新失败。**
+
+反向的担心（此前在小屏下"通过"的用例依赖紧凑布局、大屏下会失败）同样没有发生：
+21 项动作面用例的断言都打在控件真实状态上（selection 区间、progress 值、
+剪贴板内容、窗口集合等），这类断言本身不依赖屏幕尺寸。
 
 **未纳入本轮矩阵的用例及原因**（不是「通过」，是没跑）：
 `AccessibilityScreenshotCapabilityTest`、`UserTouchDeviceTest`、
@@ -324,8 +363,10 @@ release 变体不得引入任何 test-only 入口。
 21 项用例四个 API 全部通过。`flagRetrieveInteractiveWindows`（F2）与
 `TYPE_WINDOW_CONTENT_CHANGED`（F5）这两条约束在四个 API 上同样成立。
 
-**仍未验证**：API 31 / 32 / 36 未测（未安装镜像）；1080x2400 等大屏未测，
-本轮四个 API 统一 320x640；真机未测。
+**仍未验证**：API 31 / 32 / 36 未测（未安装镜像）；**真机未测**——三档分辨率都是
+模拟器上用 `wm size` / `wm density` 覆盖出来的，与真机的物理屏幕、厂商 ROM、
+真实输入驱动仍有差别；横屏（rotation 90）下的全量矩阵未跑（A11 的旋转能力本身
+有单项证据，但不是全量矩阵）；平板 / 折叠屏的大宽高比与分屏未测。
 
 
 ## 7. 提交边界
@@ -357,7 +398,7 @@ release 变体不得引入任何 test-only 入口。
 | D3 | API 30 / 33 / 34 镜像在本机未安装（`$ANDROID_HOME/system-images` 下只有 `android-35`），且 `profiles.json` 声明的是 arm64 镜像而本机为 x86_64。 | ①仅交付 API 35 证据，多版本矩阵标注未完成；②下载 x86_64 版 30/33/34 镜像后补齐矩阵（需数 GB 下载与较长时间） | **已按 ② 完成**。用户要求补齐并接受下载成本；三个镜像经 `osdk install` 装齐，21 项动作面用例在 API 30/33/34/35 全部通过，结果见第 6.1 节，跨 API 差异见第 6.2 节。 |
 | D4 | 文本编辑组（A5/A6）与节点动作组（A9）缺少设备夹具：现有 `ScreenshotTestActivity` 只有 Button 与 ScrollView，没有 EditText、SeekBar、可展开控件。 | ①扩充 debug 夹具 Activity 以覆盖这些控件（仅 debug 变体，不进 release）；②不做设备验证，这些能力长期标注为「已实现未验证」 | **已按 ① 完成**，夹具只进 debug 变体，release manifest 经核零 test-only 入口。此外 Organizer 已确认把「独立分支 + 非快进合并保留边界 + 定位探针用完即删」作为后续行为变更的范式，理由见 4.2 节 D4 行。 |
 
-**结论：D1–D7 全部已决，无待用户拍板事项。**
+**结论：D1–D9 全部已决，无待用户拍板事项。**
 
 本轮新增的 B5 / B6 两个既有失败**不需要用户拍板**：它们的性质（非本批引入、
 影响范围、为何按 D4 应单独立项）都已查实并记录在第 10 节，属于后续独立任务的
