@@ -90,6 +90,7 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 | E21 | 同 E19 用例中的三点折线路径手势 PASS，模拟图案解锁那类需精确经过中间点的轨迹。 |
 | E22 | `scrollsACollectionContainerToAGivenPosition` PASS。夹具新增平台自带 `ListView`（40 行 / 视口约 3 行）作为 `CollectionInfo` 容器。断言首行下标离开顶部且请求行在可视范围内——平台语义是「把该行滚到可见」而非「置顶」，实测请求第 20 行后 `firstVisiblePosition=18`，断言 `== 20` 会把正确行为判成失败。与 E20 的 ScrollView 失败断言合起来才完整刻画该能力边界。 |
 | E23 | `GlobalActionDeviceTest` `OK (5 tests)`。按可中断性分档：通知栏 / 快捷设置 / 电源菜单断言窗口集合变化后用 BACK 复位并**断言回到夹具**；截屏断言夹具窗口仍在（不破坏会话）；锁屏独立用例，动作后主动 WAKEUP + MENU 解锁并断言服务仍能观察窗口——若锁屏后服务不可用，该动作在实际自动化里就无法安全使用。测试后复查 `mScreenState=ON`、焦点回到 launcher，无残留状态。 |
+| E24 | B5 / B6 修复后的四 API 复测，入口 `scripts/emulator/verify-ui-regressions.mjs`，serial 均为 `emulator-5554`（AVD `aactl-matrix-30/33/34` 与 `osdk-test-35`，统一 320x640 / x86_64，逐个冷启动）。**修复前**：`MainActivityLaunchModeInstrumentedTest` 在 API 35 三轮稳定失败（`Failed to inject touch input`，`Reason` 为找不到「录制操作」节点）、30/33/34 通过；`RecordingEditorScreenInstrumentedTest` 四个 API 全部失败（`expected:<step-two> but was:<null>`）。**修复后**：两个类在 API 30 / 33 / 34 / 35 上全部 `pass`（前者 2 tests、后者 1 test），`allPassed=true`。清理：每个 API 跑完卸载测试 APK 并关闭模拟器，三个一次性 AVD 用后删除。 |
 
 最近一次执行结果：
 - `ActionSurfaceDeviceTest`：`OK (4 tests)`。
@@ -111,19 +112,32 @@ Android 单测 408 项、`lintDebug`、`assembleDebug` 通过；
 | B2 | `internal/mcpserver` 视觉清理测试偶发失败 | **与本批无关，保留记录**。`visualCleanupConnection.Write` 先发响应、后做 cleanup，测试拿到响应即断言 `pendingCount()==0`，构成竞态。基线 `main` 单包 5/5、`make test` 4/4 通过；本分支单包 8/8、`make test` 4/4 通过。不影响生产（cleanup 最终一定执行）。修复属 N44/N45 视觉模块范围，按 Organizer 指示本批不改 |
 | B3 | `SCROLL_TO_POSITION` 在 ScrollView 上不可用 | **平台限制，已完整刻画**。该动作要求容器提供 `CollectionInfo`（ListView / RecyclerView 等），ScrollView 不是集合容器。补入 `ListView` 夹具后确认该能力**在集合容器上可用**（E22），ScrollView 上的失败断言保留（E20）。两条合起来定义边界，不再有「未验证」的空白 |
 | B4 | `CLEAR_FOCUS` 被平台拒绝 | **未完成**。拒绝方式是 `ACTION_FAILED` 而非 `ACTION_NOT_SUPPORTED`，即节点声明了该动作但 View 的 `performAccessibilityAction` 返回 false。已排除「无焦点可清」：用 `uiautomator dump` 确认 `focused=false` 后补上 FOCUS 前置，行为不变。影响：无法主动清除输入焦点；变通做法是聚焦另一个节点。已在设备测试中断言其失败，若将来平台行为变化会被测试发现 |
-| B5 | `MainActivityLaunchModeInstrumentedTest` 在 API 35 失败 | **既有问题，非本批引入，未修**。`Failed to inject touch input`，API 35 上 3/3 稳定复现，API 30/33/34 全部通过。已排除本项目责任：关闭本项目两个无障碍服务后仍失败；该文件未被本分支改动（`git diff main...HEAD` 为空）。属 Espresso 触摸注入与 API 35 + 320x640 的兼容问题。影响：该用例在 API 35 上不可用，其覆盖的启动模式行为在 API 35 缺证据（30/33/34 有）。按 D4，修它属独立行为变更，应单独立项而非混入本批 |
-| B6 | `RecordingEditorScreenInstrumentedTest` 四个 API 一致失败 | **既有问题，非本批引入，未修**。`expected:<step-two> but was:<null>`，API 30/33/34/35 全部失败——因此**不是** API 差异，而是此前未被发现的既有失败：用例以 `showDiscardConfirmation = true` 建立初始态，该对话框在 320x640 上遮挡了待点击的步骤行。此前只跑过动作面用例、没跑这一类，所以一直没暴露。该文件未被本分支改动。影响：录制编辑器的步骤选择在自动化下无证据。修它需调整用例初始态或断言顺序，属独立变更 |
+| B5 | `MainActivityLaunchModeInstrumentedTest` 在 API 35 失败 | **已修复**（`03a49cc`）。报错写作 `Failed to inject touch input`，看起来像触摸注入与 API 35 不兼容——**这个表述把人带偏了**。完整堆栈的 `Reason` 是「找不到满足 `Text contains '录制操作'` 的节点」：注入从未发生，失败在查找阶段。真因是首页为 `LazyColumn`，「录制操作」在第 6 个 item，320x640 上落在首屏之外，而 Lazy 列表**不组合**屏外内容，节点因此根本不存在。API 30/33/34 通过不是因为注入能力更好，而是可用高度不同、该 item 恰好进了首屏。修法用 `performScrollToNode` 而非固定坐标或放宽断言，使用例与屏幕高度、字体缩放、edge-to-edge 压缩解耦。四个 API 全部通过（E24） |
+| B6 | `RecordingEditorScreenInstrumentedTest` 四个 API 一致失败 | **已修复**（`47ea099`）。有两个叠加的失败点，原因不同、修法也不同：①**步骤卡片**——`performClick` 默认点节点中心，而卡片中心 `(160,393)` 正好落在内部「停用」按钮 `(156,384,214,424)` 内，点击被子按钮消费，`onSelectStep` 收不到；这不是坐标算错，是 `EditorStepCard` 把「整卡可点选中」与按钮行叠放、按钮行又横跨垂直中线的结构使然，改点标题行解决。②**表单提交按钮**——确实在视口外，用 `performScrollToNode` 解决。四个 API 全部通过（E24） |
 
-## 10.1 本轮矩阵暴露的既有问题（B5 / B6）说明
+## 10.1 B5 / B6 的定位过程（两次假设被推翻）
 
-这两项都不是本批代码引入的，但**是本批矩阵第一次把它们照出来**：此前设备验证
-只在 API 35 上跑动作面用例，既没覆盖其他 API，也没覆盖这两个既有用例。
+这两项都不是动作面代码引入的，但**是多 API 矩阵第一次把它们照出来**：此前设备
+验证只在 API 35 上跑动作面用例，既没覆盖其他 API，也没覆盖这两个既有用例。
 
-值得记下的判断过程：B5 一开始看起来像「API 35 上无障碍能力有问题」，因为它只在
-API 35 失败。但关掉本项目的两个无障碍服务后它照样失败，`git diff` 也证明该文件
-未被本分支碰过——两条独立证据把责任排除在本批之外。B6 反过来：它只在一个 API
-上跑时看着像 API 35 特有，四个 API 都跑之后才看清是**全版本一致失败**，与 API
-无关。**同一个「失败」现象，跨 API 矩阵才能区分「版本差异」与「一直就坏」。**
+**跨 API 才能区分「版本差异」与「一直就坏」。** B5 只在 API 35 失败，B6 四个 API
+一致失败——若只在单一 API 上跑，B6 会被误判成 API 35 特有的问题。
+
+**B6 的两个假设都被实测推翻，值得记下来避免重走**：
+1. 「确认框遮挡步骤行」——把初始态改成不弹框后**依然失败**；
+2. 「目标在视口外」——补 `performScrollToNode` 后**依然失败**。
+
+最后靠一次性探针打印真实几何才定位：节点 bounds 完全在视口内（338–448 / 640）、
+语义里有 `OnClick`，但回调就是不触发；把子按钮几何一并打出来，才看到卡片中心
+恰好被「停用」按钮占据。**如果当时按假设 1 或 2 直接改，测试可能因别的原因转绿，
+真正的中心重叠问题会留在原地。**
+
+**一条没能立住的断言，及其处理**：定位过程中我曾加过一个「确认框存在时点不到
+身后内容」的模态性断言，实测它失败——但这不代表模态失效。原因是
+`performTouchInput` 直接在 Compose owner 层注入事件，绕过了真正拦截触摸的 Dialog
+窗口层。用它写断言会得到一个「测试通过但与真实行为无关」的假结论，因此**删掉了
+该断言**并在测试类注释里写明原因与将来的正确覆盖方式（走 UiAutomator 之类的真实
+注入路径），而不是留一个看起来有覆盖、实则测错对象的用例。
 
 
 ## 11. 本批未实现且已确认无法实现的项
@@ -184,7 +198,7 @@ A11 → A12 → A13 → A14 → A15 → A16 → A17。
 
 ## 4.1 平台事实沉淀（后续实现必须先看这一节）
 
-以下八条都是设备实测结论，不是文档推断。每一条都曾导致一次"代码看起来正确
+以下九条都是设备实测结论，不是文档推断。每一条都曾导致一次"代码看起来正确
 但行为不对"的排查，写在这里避免同类坑重复踩。
 
 | 编号 | 结论 | 影响范围 |
@@ -197,6 +211,7 @@ A11 → A12 → A13 → A14 → A15 → A16 → A17。
 | F6 | 设备上**不存在** `cmd clipboard` shell 命令（`No shell command implementation`），但 `service list` 里有 `clipboard: [android.content.IClipboard]` | 剪贴板读写无法走 ADB 通道，只能经 App Bridge 的 `ClipboardManager`；且 API 29+ 起读取剪贴板要求应用处于前台 |
 | F7 | API 35 上 `settings put secure enabled_accessibility_services ""` 返回 `Bad arguments` 且**旧值残留**；API 30/33/34 接受空串。清空必须用 `settings delete secure ...` | 任何"重置无障碍再重新启用"的脚本在 API 35 上会静默失效，表现为服务停在 `Crashed services`、`Bound services` 恒空，极易误判为"能力回归"。已修入 `scripts/emulator/action-surface-matrix.mjs` |
 | F8 | 重装 APK 会把包置为 `enabled=0` 并重置 `accessibility_enabled`，服务进入半禁用状态而出现在 `Crashed services` | 每次重装后必须 `pm enable <pkg>` 再重写 secure 设置，且以 `dumpsys accessibility` 的 `Bound services` 非空为就绪判据——写 settings 只是改字符串，bind 是异步结果 |
+| F9 | Compose 测试的 `performClick` 点的是**节点中心**；若被测节点自身可点、内部又有子按钮横跨其垂直中线，点击会被子按钮消费而外层回调收不到。实测：卡片 `(16,338,304,448)` 中心 `(160,393)` 落在子按钮 `(156,384,214,424)` 内 | 「整块可点 + 内部按钮行」这种布局，测试必须显式指定点击位置（如标题行）而非依赖默认中心。另：`Failed to inject touch input` 的报错文案会把人引向"注入不兼容"，实际失败常在**查找阶段**——必须读 `Reason` 子句。Lazy 列表不组合屏外内容，节点会直接不存在；`verticalScroll` 则节点存在但在视口外，两者现象相似而修法不同 |
 
 ## 4.2 已拍板的取舍（D1–D7）
 
@@ -277,8 +292,11 @@ release 变体不得引入任何 test-only 入口。
 | --- | --- | --- | --- | --- |
 | `AndroidScriptEnvironmentProviderDeviceTest`（1） | 通过 | 通过 | 通过 | 通过 |
 | `RecordingScreensInstrumentedTest`（3） | 通过 | 通过 | 通过 | 通过 |
-| `MainActivityLaunchModeInstrumentedTest`（2） | 通过 | 通过 | 通过 | **失败** |
-| `RecordingEditorScreenInstrumentedTest`（1） | **失败** | **失败** | **失败** | **失败** |
+| `MainActivityLaunchModeInstrumentedTest`（2） | 通过 | 通过 | 通过 | 通过 |
+| `RecordingEditorScreenInstrumentedTest`（1） | 通过 | 通过 | 通过 | 通过 |
+
+后两行原为「API 35 失败」与「四个 API 全失败」，已在 B5 / B6 修复后复测转绿，
+四个 API 均通过（证据 E24）。修复前后的现象与根因见第 10 节与 10.1 节。
 
 **未纳入本轮矩阵的用例及原因**（不是「通过」，是没跑）：
 `AccessibilityScreenshotCapabilityTest`、`UserTouchDeviceTest`、
@@ -295,8 +313,8 @@ release 变体不得引入任何 test-only 入口。
 | 差异 | 观测 | 影响 |
 | --- | --- | --- |
 | **G1** `settings put secure enabled_accessibility_services ""` 在 API 35 被拒 | API 35 返回 `Bad arguments` 且旧值残留，服务停在 `Crashed services` 而 `Bound services` 恒空；API 30/33/34 接受空串 | 清空该设置必须用 `settings delete`。按旧写法在 API 35 上会表现为「无障碍能力全部失效」，而真因只是清空没生效——极易误判为能力回归。已修入矩阵脚本 |
-| **G2** `MainActivityLaunchModeInstrumentedTest` 仅在 API 35 失败 | `Failed to inject touch input`，API 35 上 3/3 稳定复现；30/33/34 全通过。关闭本项目两个无障碍服务后仍失败，故**与本项目无关**；该文件未被本分支改动（`git diff main...HEAD` 为空），最后一次改动是既有提交 `0ed52b2` | Espresso 的 `performClick` 在 API 35 320x640 上注入失败。属既有测试与 API 35 的兼容问题，非本批引入。**已如实记为跨 API 差异，未修**——修它属独立行为变更，应按 D4 单独立项 |
-| **G3** `RecordingEditorScreenInstrumentedTest` 在四个 API 一致失败 | `expected:<step-two> but was:<null>`，30/33/34/35 全部失败 | **不是** API 差异，而是一个此前未被发现的既有失败：该用例在 320x640 上点击被 `showDiscardConfirmation = true` 的对话框遮挡。此前只在 API 35 单点跑过动作面用例、没跑这一类，所以一直没暴露。该文件未被本分支改动，非本批引入 |
+| **G2** `MainActivityLaunchModeInstrumentedTest` 仅在 API 35 失败（**已修复**，见 B5） | `Failed to inject touch input`，API 35 上 3/3 稳定复现；30/33/34 全通过 | **这条最终不是 API 行为差异，而是首屏可用高度差异**。真因是「录制操作」在 `LazyColumn` 第 6 个 item，320x640 的 API 35 上落在首屏外而 Lazy 不组合屏外内容，节点不存在；30/33/34 上该 item 恰好进了首屏。修复后四个 API 均通过。教训：`Failed to inject touch input` 这条报错文案会把人引向「注入不兼容」，必须读 `Reason` 才能看到真实失败阶段 |
+| **G3** `RecordingEditorScreenInstrumentedTest` 在四个 API 一致失败（**已修复**，见 B6） | `expected:<step-two> but was:<null>`，30/33/34/35 全部失败 | **不是** API 差异，而是此前未被发现的既有失败。原因有两个且都与最初假设无关：卡片中心被内部「停用」按钮占据、表单提交按钮在视口外。修复后四个 API 均通过 |
 
 **没有观测到差异的方面**（值得记录，因为事前预期这里最可能出现分歧）：
 多窗口枚举、`dispatchGesture` 多 stroke 与 `willContinue` 续接、
