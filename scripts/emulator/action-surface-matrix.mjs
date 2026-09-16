@@ -79,8 +79,11 @@ const requireEmulator = (serial) => {
  */
 const provisionAccessibility = async (serial) => {
   adb(serial, ["shell", "pm", "enable", APP_PACKAGE]);
-  adb(serial, ["shell", "settings", "put", "secure", "enabled_accessibility_services", ""]);
-  await sleep(1500);
+  // 清空必须用 `settings delete` 而非 `put ""`：API 35 上传空串会被判为
+  // "Bad arguments" 而静默不生效，导致旧值残留、服务停在 Crashed 状态。
+  adb(serial, ["shell", "settings", "delete", "secure", "enabled_accessibility_services"]);
+  adb(serial, ["shell", "settings", "put", "secure", "accessibility_enabled", "0"]);
+  await sleep(2500);
   adb(serial, [
     "shell",
     "settings",
