@@ -5,6 +5,8 @@ package dev.aiauto.android.ui.settings
  * （AI 模型、允许操作的应用、连接电脑），所有状态由导航层注入，本页不硬编码任何状态。
  */
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,12 +35,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 
 import dev.aiauto.android.R
 import dev.aiauto.android.bridge.DesktopBridgeState
@@ -68,14 +77,15 @@ fun SettingsScreen(
     onProviderClick: () -> Unit,
     onAccessibilityClick: () -> Unit,
     onBridgeClick: () -> Unit,
+    onOverlayClick: () -> Unit,
 ) {
     // 就绪条件：模型已配置、无障碍已披露且系统服务已启用；桥接状态不参与就绪判断。
     val ready = providerReady && accessibilityEnabled && accessibilityConfigured
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // 1. 个人信息头部：左侧 logo，右侧名称与本地优先定位。
         item {
@@ -151,7 +161,56 @@ fun SettingsScreen(
             }
         }
 
-        // 4. 控制权说明：段落标题与说明文字。
+        // 4. 随时唤起：悬浮入口与运行通知，会话运行期间可在其他应用旁观察和控制。
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SectionHeader(title = stringResource(R.string.settings_quick_access_title))
+                TagChip(
+                    text = stringResource(R.string.settings_quick_access_tag),
+                    tone = TagTone.NEUTRAL,
+                )
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            ) {
+                Column {
+                    // 悬浮入口：需系统 SYSTEM_ALERT_WINDOW 权限，未授权时引导至系统设置。
+                    SettingRow(
+                        icon = Icons.Default.Layers,
+                        title = stringResource(R.string.settings_overlay_title),
+                        description = stringResource(R.string.settings_overlay_desc),
+                        status = stringResource(R.string.settings_overlay_permission_needed),
+                        onClick = onOverlayClick,
+                    )
+                    // 运行通知：状态来自真实通知权限与渠道，不硬编码"已启用"。
+                    val context = LocalContext.current
+                    val notificationEnabled = remember(context) {
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        ) == PackageManager.PERMISSION_GRANTED
+                    }
+                    SettingRow(
+                        icon = Icons.Default.Notifications,
+                        title = stringResource(R.string.settings_notification_title),
+                        description = stringResource(R.string.settings_notification_desc),
+                        status = if (notificationEnabled) "可用" else "需授权",
+                        onClick = {},
+                    )
+                }
+            }
+        }
+
+        // 5. 控制权说明：段落标题与说明文字。
         item {
             SectionHeader(title = stringResource(R.string.settings_control_title))
         }
@@ -165,7 +224,7 @@ fun SettingsScreen(
     }
 }
 
-/** 个人信息头部：圆角方形 logo + 名称与"本地优先 · 自己掌控"定位语。 */
+/** 个人信息头部：52dp 圆角方形 logo + 名称与"本地优先 · 自己掌控"定位语。 */
 @Composable
 private fun ProfileHeader(
     modifier: Modifier = Modifier,
@@ -173,32 +232,33 @@ private fun ProfileHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
+            .padding(top = 4.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Surface(
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier.size(52.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(26.dp),
                 )
             }
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(14.dp))
         Column {
             Text(
                 text = stringResource(R.string.settings_profile_name),
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
             )
             Text(
                 text = stringResource(R.string.settings_profile_desc),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -220,8 +280,8 @@ private fun AssistantStatusCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // 标题行：左侧"助理状态"，右侧就绪标签。
             Row(
@@ -296,36 +356,37 @@ private fun SettingRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // 左侧图标底。
         Surface(
             shape = RoundedCornerShape(10.dp),
             color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(36.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(10.dp))
         // 中间：标题、描述与可选附加信息（如目标应用数量）。
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = description,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

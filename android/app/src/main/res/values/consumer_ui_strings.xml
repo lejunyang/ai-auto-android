@@ -10,17 +10,23 @@
     <!-- 助理页 -->
     <string name="assistant_greeting_subtitle">你的随身自动化助理</string>
     <string name="assistant_greeting_title">有什么，可以交给我？</string>
+    <string name="assistant_app_title">AI Auto</string>
+    <string name="assistant_app_subtitle">让手机，替你完成。</string>
+    <string name="assistant_hello">你好，今天想做点什么</string>
+    <string name="assistant_ready">已就绪</string>
+    <string name="assistant_not_ready">未就绪</string>
+    <string name="assistant_quick_1">整理稍后阅读</string>
+    <string name="assistant_quick_2">提取页面重点</string>
+    <string name="assistant_skills_title">常用技能</string>
     <string name="assistant_task_hint">比如，把稍后阅读整理成清单</string>
     <string name="assistant_choose_apps">选择应用</string>
-    <string name="assistant_start">预览任务计划</string>
+    <string name="assistant_start">开始任务</string>
     <string name="assistant_quick_skills">常用技能</string>
     <string name="assistant_view_all">查看全部</string>
     <string name="assistant_teach_title">教它一次，以后交给它</string>
     <string name="assistant_teach_subtitle">录下操作，变成你的专属技能</string>
     <string name="assistant_recent">最近活动</string>
-    <string name="assistant_no_recent">还没有运行记录。会话审计只保存动作摘要，不记录密码、验证码或原始截图。</string>
-    <string name="assistant_ready">已就绪</string>
-    <string name="assistant_not_ready">待配置</string>
+    <string name="assistant_no_recent">还没有运行记录。会话审计只保存动作摘要，不记录任务原文或原始截图。</string>
     <string name="assistant_setup_needed">请先完成 AI 模型与无障碍配置</string>
     <string name="assistant_no_skills">还没有保存的技能。录制一次操作，就能反复使用。</string>
 
@@ -48,7 +54,7 @@
     <string name="history_created_at">创建于 %1$s</string>
     <string name="history_steps">%1$d 步</string>
     <string name="history_saved_tag">已保存</string>
-    <string name="history_privacy_note">记录只保留脚本元数据与动作摘要，不保存密码、验证码或原始截图。</string>
+    <string name="history_privacy_note">记录只保留固定摘要与动作元数据，不保存任务原文或原始截图。</string>
 
     <!-- 我的页 -->
     <string name="settings_title">我的</string>
@@ -71,6 +77,14 @@
     <string name="settings_bridge_desc">扫码或手工邀请码</string>
     <string name="settings_bridge_connected">已连接</string>
     <string name="settings_bridge_disconnected">未连接</string>
+    <string name="settings_quick_access_title">随时唤起</string>
+    <string name="settings_quick_access_tag">运行中可用</string>
+    <string name="settings_overlay_title">悬浮入口</string>
+    <string name="settings_overlay_desc">在其他应用旁边，轻点就能问</string>
+    <string name="settings_overlay_permission_needed">需授权</string>
+    <string name="settings_overlay_enabled">已启用</string>
+    <string name="settings_notification_title">运行通知</string>
+    <string name="settings_notification_desc">可查看状态、暂停和停止</string>
     <string name="settings_control_title">你始终有控制权</string>
     <string name="settings_control_desc">没有任务时不持续看屏。锁屏、权限失效或页面不可验证时暂停。支付、登录与系统安全确认由你处理。</string>
     <string name="settings_target_count">%1$d 个应用</string>

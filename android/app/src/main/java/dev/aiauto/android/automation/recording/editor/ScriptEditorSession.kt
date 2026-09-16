@@ -47,6 +47,14 @@ sealed interface ScriptEditCommand {
     fun edit(script: AutomationScript): EditResult
 }
 
+/** 更新脚本自然语言描述；用于语言归纳生成建议后用户确认保存。 */
+data class UpdateDescription(
+    val description: String,
+) : ScriptEditCommand {
+    override fun edit(script: AutomationScript): EditResult =
+        EditResult.Applied(script.copy(description = description))
+}
+
 data class InsertStep(
     val index: Int,
     val step: RecordedStep,

@@ -4,24 +4,35 @@ package dev.aiauto.android.ui.skills
  * 功能用途：C 端"技能"主页面。
  * 展示用户已录制的自动化脚本列表（头部标题、筛选标签、技能卡片、空态与录制引导），
  * 数据全部来自 RecordingScriptStore，不内置任何示例技能。
+ * 按原型视觉：紧凑空态、虚线轻卡录制引导、"灵感"分组明确标注未实现。
  */
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.RadioButtonChecked
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,13 +41,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 import dev.aiauto.android.R
 import dev.aiauto.android.automation.recording.AutomationScriptSummary
 import dev.aiauto.android.automation.recording.RecordingScriptStore
-import dev.aiauto.android.ui.components.EmptyState
 import dev.aiauto.android.ui.components.SkillCard
 
 import java.time.Instant
@@ -69,8 +82,8 @@ fun SkillsScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         // 页面头部：左侧"我的技能"标题与副标题，右侧 + 图标按钮触发录制。
         item {
@@ -82,11 +95,12 @@ fun SkillsScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.skills_title),
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
                     )
                     Text(
                         text = stringResource(R.string.skills_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -112,20 +126,32 @@ fun SkillsScreen(
                                 SkillFilter.ALL -> R.string.skills_filter_all
                                 SkillFilter.MINE -> R.string.skills_filter_mine
                             }
-                            Text(stringResource(labelRes))
+                            Text(stringResource(labelRes), fontSize = 13.sp)
                         },
                     )
                 }
             }
         }
 
-        // 技能列表：无脚本时展示空态，否则逐张渲染真实技能卡片。
+        // 技能列表：无脚本时展示紧凑空态，否则逐张渲染真实技能卡片。
         if (scripts.isEmpty()) {
             item {
-                EmptyState(
-                    title = stringResource(R.string.skills_empty_title),
-                    description = stringResource(R.string.skills_empty_desc),
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.skills_empty_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = stringResource(R.string.skills_empty_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         } else {
             items(scripts, key = { it.id }) { script ->
@@ -143,21 +169,50 @@ fun SkillsScreen(
             }
         }
 
-        // 底部录制引导卡片：常驻列表底部，引导用户录制新技能。
+        // 底部录制引导卡片：虚线轻卡，引导用户录制新技能。
         item {
-            SkillCard(
-                title = stringResource(R.string.skills_teach_title),
-                description = stringResource(R.string.skills_teach_subtitle),
-                meta = "",
-                onClick = onStartRecording,
-                icon = {
-                    Icon(
-                        imageVector = Icons.Default.FiberManualRecord,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                },
-            )
+            TeachLightCard(onClick = onStartRecording)
+        }
+
+        // 底部安全间距。
+        item { Spacer(Modifier.height(8.dp)) }
+    }
+}
+
+/** 虚线轻卡录制引导：按原型视觉，虚线边框 + 录制图标 + 标题/副标题。 */
+@Composable
+private fun TeachLightCard(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(16.dp),
+            ),
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(40.dp),
+            ) {
+                androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.RadioButtonChecked, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.skills_teach_title), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.skills_teach_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
 }

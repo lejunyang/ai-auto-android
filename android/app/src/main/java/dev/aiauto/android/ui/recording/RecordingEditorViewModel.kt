@@ -28,6 +28,9 @@ import dev.aiauto.android.automation.recording.editor.EditStepWait
 import dev.aiauto.android.automation.recording.editor.EditorSavePort
 import dev.aiauto.android.automation.recording.editor.EditorSaveResult
 import dev.aiauto.android.automation.recording.editor.EditorPersistenceResult
+import dev.aiauto.android.automation.recording.editor.UpdateDescription
+import dev.aiauto.android.automation.recording.editor.language.LanguageGenerationResult
+import dev.aiauto.android.automation.recording.editor.language.SkillLanguageGenerator
 import dev.aiauto.android.automation.recording.editor.RecordingScriptStoreSavePort
 import dev.aiauto.android.automation.recording.editor.ReorderStep
 import dev.aiauto.android.automation.recording.editor.ScriptDryRunEngine
@@ -88,6 +91,7 @@ class RecordingEditorViewModel(
     initialScript: AutomationScript,
     private val savePort: EditorSavePort? = null,
     private val dryRunEngine: ScriptDryRunEngine? = null,
+    private val languageGenerator: SkillLanguageGenerator? = null,
     private val scriptIdFactory: () -> String = { UUID.randomUUID().toString() },
     private val stepIdFactory: () -> String = { UUID.randomUUID().toString() },
     private val createdAtFactory: () -> String = { java.time.Instant.now().toString() },
@@ -98,6 +102,25 @@ class RecordingEditorViewModel(
     )
 
     val uiState: StateFlow<RecordingEditorUiState> = mutableUiState.asStateFlow()
+
+    /** 更新脚本自然语言描述（用户确认 AI 生成建议或手动编辑后调用）。 */
+    fun updateDescription(description: String) {
+        apply(UpdateDescription(description))
+    }
+
+    /**
+     * 调用 SkillLanguageGenerator 生成自然语言描述建议。
+     * 生成结果仅通过回调返回，不自动修改脚本；用户确认后需调用 updateDescription。
+     * 未配置 Provider 或生成失败时返回对应错误状态。
+     */
+    suspend fun generateDescription(): LanguageGenerationResult {
+        val generator = languageGenerator ?: return LanguageGenerationResult.NotConfigured
+        return generator.generate(
+            scriptName = session.script.name,
+            steps = session.script.steps,
+            previousDescription = session.script.description.takeIf { it.isNotBlank() },
+        )
+    }
 
     fun selectStep(stepId: String) {
         val step = session.script.steps.find { it.id == stepId } ?: return
@@ -343,10 +366,25 @@ class RecordingEditorViewModel(
                     require(modelClass.isAssignableFrom(RecordingEditorViewModel::class.java))
                     val store = dev.aiauto.android.automation.recording.RecordingScriptStore
                         .from(applicationContext)
+                    // 创建语言归纳生成器：读取 Provider 配置与 API Key，未配置时 generator 为 null。
+                    val providerRepository = dev.aiauto.android.provider.ProviderConfigRepository(
+                        preferences = applicationContext.getSharedPreferences("provider-config", Context.MODE_PRIVATE),
+                        secretCipher = dev.aiauto.android.security.AndroidKeystoreSecretCipher(),
+                    )
+                    val storedConfig = providerRepository.load()
+                    val languageGenerator = if (storedConfig.hasApiKey) {
+                        SkillLanguageGenerator(
+                            config = storedConfig.config,
+                            apiKey = providerRepository.readApiKey(),
+                        )
+                    } else {
+                        null
+                    }
                     return RecordingEditorViewModel(
                         initialScript = initialScript,
                         savePort = RecordingScriptStoreSavePort(store),
                         dryRunEngine = AndroidRecordingEditorDryRun.create(),
+                        languageGenerator = languageGenerator,
                     ) as T
                 }
             }

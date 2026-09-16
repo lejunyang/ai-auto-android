@@ -173,6 +173,8 @@ fun RecordingHost(
                             viewModel.closeEditor(editorState.script.id)
                         },
                         onDismissDiscard = editor::dismissDiscardConfirmation,
+                        onGenerateDescription = { editor.generateDescription() },
+                        onUpdateDescription = { description -> editor.updateDescription(description) },
                     )
                 }
             }

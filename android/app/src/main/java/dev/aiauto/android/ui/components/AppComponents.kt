@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.History
@@ -194,8 +195,9 @@ fun TagChip(
         )
 
         TagTone.WARNING -> TagColors(
-            background = MaterialTheme.colorScheme.tertiaryContainer,
-            foreground = MaterialTheme.colorScheme.onTertiaryContainer,
+            // 原型琥珀色：--amber:#9b6419，用于"未完成配置""需处理"等警告状态。
+            background = Color(0xFFFBF0DA),
+            foreground = Color(0xFF9B6419),
         )
 
         TagTone.ERROR -> TagColors(

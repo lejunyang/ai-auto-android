@@ -4,12 +4,22 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 前台服务：AI 自动化会话运行时保活，用户可通过通知随时暂停/停止。 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- 通知：Android 13+ 运行时权限，用于显示会话运行状态通知。 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 麦克风：按需语音输入，权限拒绝后降级为文本输入。 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- 悬浮窗：受控悬浮助理，需用户在系统设置中手动授权。 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- 配置用途：无相机设备仍可安装并使用手工邀请码。 -->
     <uses-feature
         android:name="android.hardware.camera.any"
         android:required="false" />
 
     <application
+        android:name=".AiAutoApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -42,6 +52,15 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
+        </service>
+        <!-- AI 自动化会话前台服务：runtime owner，锁屏时强制暂停，通知可暂停/停止。 -->
+        <service
+            android:name=".automation.session.service.AutomationSessionService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="AI automation session runtime with user-visible pause/stop controls" />
         </service>
     </application>
 </manifest>

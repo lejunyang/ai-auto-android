@@ -5,6 +5,7 @@ package dev.aiauto.android.ui
  * 统一管理 Provider、无障碍、桌面桥、录制脚本存储等共享依赖的注入。
  */
 
+import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -29,6 +30,7 @@ import androidx.navigation.navArgument
 import dev.aiauto.android.accessibility.settings.AccessibilityServiceStatus
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.automation.recording.RecordingScriptStore
+import dev.aiauto.android.automation.session.history.SessionHistoryStore
 import dev.aiauto.android.automation.session.AndroidAutomationSessionFactory
 import dev.aiauto.android.bridge.DesktopBridgeController
 import dev.aiauto.android.provider.ProviderConfigRepository
@@ -60,14 +62,23 @@ private object Route {
     const val BRIDGE = "bridge"
     const val LAN_PAIRING = "lan-pairing"
 
+    /**
+     * 构造会话路由。任务文本必须 Uri.encode，避免含 &/#/?/中文等字符时
+     * 破坏 query 解析；NavType.StringType 在回读时自动 decode，因此只需单次编码，
+     * 不会双重编码。
+     */
     fun session(task: String = ""): String =
-        "session?task=$task"
+        "session?task=${Uri.encode(task)}"
 
+    /**
+     * 构造录制路由。scriptId 为 UUID 但仍统一编码以防御异常输入；
+     * startRecording 为布尔字面量无需编码。
+     */
     fun recording(
         scriptId: String? = null,
         startRecording: Boolean = false,
     ): String =
-        "recording?scriptId=${scriptId ?: ""}&startRecording=$startRecording"
+        "recording?scriptId=${Uri.encode(scriptId ?: "")}&startRecording=$startRecording"
 }
 
 /** 底部导航可见的根路由集合。 */
@@ -100,8 +111,10 @@ fun AiAutoAndroidApp(
     var accessibilityEnabled by remember {
         mutableStateOf(AccessibilityServiceStatus.isEnabled(context))
     }
-    val targetPackages = remember(accessibilityRepository) {
-        accessibilityRepository.load().targetPackages
+    // targetPackages 必须响应式更新：用户在无障碍页修改目标应用后，
+    // onSettingsChanged 与 ON_RESUME 都会重新读取，避免助理页/我的页显示陈旧范围。
+    var targetPackages by remember {
+        mutableStateOf(initialAccessibility.targetPackages)
     }
 
     // 会话工厂与录制脚本存储在导航层共享，避免每个页面重复创建。
@@ -119,6 +132,10 @@ fun AiAutoAndroidApp(
     val recordingScriptStore = remember(context) {
         RecordingScriptStore.from(context)
     }
+    // 会话历史存储：append-only、有界、损坏文件明确反馈，用于记录页真实运行历史。
+    val sessionHistoryStore = remember(context) {
+        SessionHistoryStore.from(context)
+    }
 
     val bridgeState by bridgeController.state.collectAsStateWithLifecycle()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -129,8 +146,10 @@ fun AiAutoAndroidApp(
     DisposableEffect(lifecycleOwner, accessibilityRepository) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                accessibilityConfigured = accessibilityRepository.load().isReady
+                val latest = accessibilityRepository.load()
+                accessibilityConfigured = latest.isReady
                 accessibilityEnabled = AccessibilityServiceStatus.isEnabled(context)
+                targetPackages = latest.targetPackages
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -201,18 +220,16 @@ fun AiAutoAndroidApp(
                 )
             }
 
-            // 记录：已保存脚本与运行记录，空态明确。
+            // 记录：真实会话运行历史，基于 phase 筛选，空态明确。
             composable(Route.HISTORY) {
                 HistoryScreen(
-                    scriptStore = recordingScriptStore,
-                    onOpenScript = { scriptId ->
-                        navController.navigate(Route.recording(scriptId = scriptId))
-                    },
+                    historyStore = sessionHistoryStore,
                 )
             }
 
             // 我的：状态汇总与设置入口。
             composable(Route.SETTINGS) {
+                val context = LocalContext.current
                 SettingsScreen(
                     providerReady = providerReady,
                     accessibilityConfigured = accessibilityConfigured,
@@ -222,6 +239,14 @@ fun AiAutoAndroidApp(
                     onProviderClick = { navController.navigate(Route.PROVIDER) },
                     onAccessibilityClick = { navController.navigate(Route.ACCESSIBILITY) },
                     onBridgeClick = { navController.navigate(Route.BRIDGE) },
+                    // 悬浮入口：引导至系统设置授予 SYSTEM_ALERT_WINDOW 权限。
+                    onOverlayClick = {
+                        val intent = android.content.Intent(
+                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.fromParts("package", context.packageName, null),
+                        )
+                        context.startActivity(intent)
+                    },
                 )
             }
 
@@ -236,8 +261,12 @@ fun AiAutoAndroidApp(
                 ),
             ) { backStackEntry ->
                 val initialTask = backStackEntry.arguments?.getString("task").orEmpty()
+                // SessionRuntime 由 AiAutoApplication.onCreate 初始化，此处不重复初始化。
                 val sessionViewModel: SessionViewModel = viewModel(
-                    factory = SessionViewModel.factory(sessionFactory),
+                    factory = SessionViewModel.factory(
+                        appContext = LocalContext.current.applicationContext,
+                        availablePackages = sessionFactory.configuredTargetPackages().sorted(),
+                    ),
                 )
                 SessionScreen(
                     viewModel = sessionViewModel,
@@ -292,6 +321,7 @@ fun AiAutoAndroidApp(
                     onBack = navController::popBackStack,
                     onSettingsChanged = {
                         accessibilityConfigured = it.isReady
+                        targetPackages = it.targetPackages
                     },
                 )
             }

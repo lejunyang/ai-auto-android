@@ -2,16 +2,23 @@ package dev.aiauto.android.ui.session
 
 /**
  * 功能用途：实现 AI 自动化会话的状态展示、确认、暂停与停止交互。
+ *
+ * 架构边界：
+ * - ViewModel 仅为 UI 展示层：订阅 SessionCoordinator.sessionState，通过 command 端口操作。
+ * - 不创建/启动/停止 engine，不写历史（由 SessionCoordinator 作为唯一 owner 负责）。
+ * - onCleared 只取消自己的 collection Job，不停止会话（显式用户 stop 才停）。
+ * - Activity 销毁/配置变更/返回界面后，重新订阅同一 coordinator 即可恢复状态。
  */
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 
-import dev.aiauto.android.automation.session.AutomationSessionEngine
-import dev.aiauto.android.automation.session.AutomationSessionFactory
 import dev.aiauto.android.automation.session.AutomationSessionState
 import dev.aiauto.android.automation.session.SessionRequest
+import dev.aiauto.android.automation.session.coordinator.SessionRuntime
+import dev.aiauto.android.automation.session.service.AutomationSessionService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,17 +35,15 @@ data class SessionUiState(
 )
 
 class SessionViewModel(
-    private val sessionFactory: AutomationSessionFactory,
+    private val appContext: Context,
+    private val availablePackages: List<String>,
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow(
         SessionUiState(
-            availableTargetPackages = sessionFactory.configuredTargetPackages().sorted(),
-            targetPackageInput = sessionFactory.configuredTargetPackages().sorted().firstOrNull()
-                .orEmpty(),
+            availableTargetPackages = availablePackages,
+            targetPackageInput = availablePackages.firstOrNull().orEmpty(),
         ),
     )
-    private var engine: AutomationSessionEngine? = null
-    private var sessionJob: Job? = null
     private var stateCollectionJob: Job? = null
 
     val uiState: StateFlow<SessionUiState> = mutableUiState.asStateFlow()
@@ -70,6 +75,11 @@ class SessionViewModel(
         }
     }
 
+    /**
+     * 启动会话：通过前台 Service 传递完整 SessionRequest。
+     * Service 作为薄壳调用 SessionCoordinator.start()，coordinator 是唯一 runtime owner。
+     * 启动后订阅 coordinator.sessionState 同步 UI。
+     */
     fun start() {
         if (mutableUiState.value.session.isRunning) {
             return
@@ -83,69 +93,77 @@ class SessionViewModel(
             return
         }
 
-        val created = sessionFactory.create()
-        if (created.isFailure) {
+        val coordinator = SessionRuntime.getCoordinator()
+        if (coordinator == null) {
             mutableUiState.value = mutableUiState.value.copy(
-                setupError = created.exceptionOrNull()?.message
-                    ?: "Automation session dependencies are unavailable.",
+                setupError = "Session runtime is not initialized.",
             )
             return
         }
-        val nextEngine = created.getOrThrow()
-        engine = nextEngine
+
+        // 传递完整 SessionRequest（含 screenshotsAllowed）给 Service，Service 再交给 coordinator。
+        AutomationSessionService.start(
+            context = appContext,
+            task = task,
+            targetPackage = targetPackage,
+            screenshotsAllowed = mutableUiState.value.screenshotsAllowed,
+        )
+
+        // 订阅 coordinator.sessionState，同步 UI 状态。
+        subscribeToCoordinator()
+    }
+
+    /** 订阅 coordinator.sessionState，Activity 恢复时也可调用重新订阅。 */
+    fun subscribeToCoordinator() {
+        val coordinator = SessionRuntime.getCoordinator() ?: return
         stateCollectionJob?.cancel()
         stateCollectionJob = viewModelScope.launch {
-            nextEngine.state.collect { sessionState ->
+            coordinator.sessionState.collect { sessionState ->
                 mutableUiState.value = mutableUiState.value.copy(
                     session = sessionState,
                     setupError = null,
                 )
             }
         }
-        sessionJob?.cancel()
-        sessionJob = viewModelScope.launch {
-            nextEngine.start(
-                SessionRequest(
-                    task = task,
-                    targetPackage = targetPackage,
-                    screenshotsAllowed = mutableUiState.value.screenshotsAllowed,
-                ),
-            )
-        }
     }
 
     fun pause() {
-        engine?.pause()
+        SessionRuntime.getCoordinator()?.pause()
     }
 
     fun resume() {
-        engine?.resume()
+        SessionRuntime.getCoordinator()?.resume()
     }
 
     fun confirm(confirmationId: Int, approved: Boolean) {
-        engine?.confirmPendingAction(confirmationId, approved)
+        SessionRuntime.getCoordinator()?.confirm(confirmationId, approved)
     }
 
     fun stop() {
-        engine?.stop()
-        mutableUiState.value = mutableUiState.value.copy(
-            session = engine?.state?.value ?: mutableUiState.value.session,
-        )
-        sessionJob?.cancel()
+        // 用户显式 stop：通过 Service 发送 ACTION_STOP，Service 路由到 coordinator.stop()。
+        AutomationSessionService.stop(appContext)
     }
 
+    /**
+     * ViewModel 销毁时只取消自己的订阅，不停止会话。
+     * 后台会话由 Service/coordinator 持有，Activity 销毁不影响运行。
+     */
     override fun onCleared() {
-        engine?.stop()
+        stateCollectionJob?.cancel()
+        stateCollectionJob = null
         super.onCleared()
     }
 
     companion object {
-        fun factory(sessionFactory: AutomationSessionFactory): ViewModelProvider.Factory =
+        fun factory(
+            appContext: Context,
+            availablePackages: List<String>,
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     require(modelClass.isAssignableFrom(SessionViewModel::class.java))
-                    return SessionViewModel(sessionFactory) as T
+                    return SessionViewModel(appContext, availablePackages) as T
                 }
             }
 
