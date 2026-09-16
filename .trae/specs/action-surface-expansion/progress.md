@@ -334,3 +334,41 @@ D1–D4 全部已决。
 
 
 
+
+## Round 7：多 API 矩阵（API 30 / 33 / 34 / 35）
+
+用 `osdk install "android-system-images@android-NN;google_apis;x86_64"` 装齐
+API 30 / 33 / 34 三个 x86_64 镜像（D6：不 pin 进 osdk.toml，因为它们是测试基础
+设施而非构建依赖，pin 进去会让只想编译的人被迫下载约 5GB）。
+
+`avdmanager create avd` 在本机失败：osdk 把同一镜像同时暴露在真实目录与
+percent-encoded 别名目录下，avdmanager 的本地仓库扫描因此报
+`contains no system images`。改为直接按既有 AVD 的 config.ini 结构生成三个
+`aactl-matrix-30/33/34`，绕开 avdmanager 的仓库扫描。
+
+D5：**没有**给 profiles.json 加 x86_64 profile。N31 runner 要求 packageSha256 是
+真实的官方 archive SHA-256 且与 package-receipts.json 逐字一致，而 osdk 安装不
+产生这份 receipt。填空串触发 CONFIG_INVALID，填全零是伪造校验值——看起来像真的
+却不是，比明确空缺更危险。因此本轮矩阵不经 N31 runner，直接用 emulator 驱动；
+N31 的 x86_64 接入记为未完成（D7）。
+
+新增 `scripts/emulator/action-surface-matrix.mjs`：把「预置无障碍 → 安装 APK →
+逐类跑测试 → 汇总」固化下来。前置条件不一致时跨 API 差异就无法归因到平台，
+所以这一串必须每个 API 完全相同。
+
+**结果：21 项动作面用例在 API 30 / 33 / 34 / 35 全部通过（21/21 × 4）。**
+
+三条跨 API 观测（详见 docs/action-surface-tasks.md 第 6.2 节）：
+- G1/F7：`settings put secure enabled_accessibility_services ""` 在 API 35 返回
+  Bad arguments 且旧值残留，API 30/33/34 接受空串。清空必须用 settings delete。
+  这个坑本轮真实发生过，表现为「无障碍能力全部失效」，真因只是清空没生效。
+- G2/B5：MainActivityLaunchModeInstrumentedTest 仅 API 35 失败（3/3 稳定复现）。
+  关闭本项目两个无障碍服务后仍失败，且该文件未被本分支改动，故非本批引入。
+- G3/B6：RecordingEditorScreenInstrumentedTest 四个 API 一致失败，因此不是 API
+  差异而是既有失败——只在一个 API 上跑时会误判成版本特有。
+
+后一条尤其说明矩阵的价值：**同一个失败现象，跨 API 才能区分「版本差异」与
+「一直就坏」。**
+
+未验证范围如实记录：API 31/32/36 未测；1080x2400 等大屏未测（四个 API 统一
+320x640）；真机未测；依赖录屏授权/LAN 双运行时/真人触摸的 8 个用例未纳入。
