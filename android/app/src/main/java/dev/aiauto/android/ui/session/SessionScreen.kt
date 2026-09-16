@@ -23,6 +23,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -37,9 +38,17 @@ import dev.aiauto.android.ui.components.ScreenScaffold
 fun SessionScreen(
     viewModel: SessionViewModel,
     onBack: () -> Unit,
+    initialTask: String = "",
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val session = uiState.session
+
+    // 从助理页带入任务描述时，预填输入框；仅在首次组合且会话未运行时执行。
+    LaunchedEffect(initialTask) {
+        if (initialTask.isNotBlank() && !session.isRunning) {
+            viewModel.updateTask(initialTask)
+        }
+    }
 
     ScreenScaffold(
         title = stringResource(R.string.session_title),

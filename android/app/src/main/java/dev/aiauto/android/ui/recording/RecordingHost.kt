@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,9 +35,21 @@ fun RecordingHost(
     onBack: () -> Unit,
     observationProvider: RecordingEditorObservationProvider? = null,
     visualReplayAuthorizationProvider: VisualReplayAuthorizationProvider? = null,
+    initialScriptId: String? = null,
+    startRecordingImmediately: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val recording = uiState.recording
+
+    // 从技能页进入时，可直接打开指定脚本详情或立即开始新录制，
+    // 避免用户先看到脚本列表再点一次。仅在首次组合时执行一次。
+    LaunchedEffect(initialScriptId, startRecordingImmediately) {
+        if (initialScriptId != null) {
+            viewModel.openScript(initialScriptId)
+        } else if (startRecordingImmediately) {
+            viewModel.openNewRecording()
+        }
+    }
 
     when (uiState.destination) {
         RecordingDestination.LIST -> RecordingListScreen(

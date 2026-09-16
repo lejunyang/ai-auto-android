@@ -1,0 +1,336 @@
+package dev.aiauto.android.ui.components
+
+/**
+ * 功能用途：提供 C 端四 tab 架构下的共享 Compose 组件，包括底部导航、段落标题、
+ * 技能卡片、标签、空态与问候头部，统一各主页面的视觉语言与交互模式。
+ */
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schema
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+
+/** 底部导航的四个主入口定义，路由常量与 AiAutoAndroidApp 中的 Route 保持一致。 */
+enum class AppTab(
+    val route: String,
+    val label: String,
+    val icon: ImageVector,
+) {
+    ASSISTANT("assistant", "助理", Icons.Default.AutoAwesome),
+    SKILLS("skills", "技能", Icons.Default.Schema),
+    HISTORY("history", "记录", Icons.Default.History),
+    SETTINGS("settings", "我的", Icons.Default.Person),
+    ;
+
+    companion object {
+        /** 根据路由查找所属 tab，子页面返回 null。 */
+        fun fromRoute(route: String?): AppTab? =
+            entries.firstOrNull { it.route == route }
+    }
+}
+
+@Composable
+fun AppBottomNavigation(
+    currentRoute: String?,
+    onTabSelected: (AppTab) -> Unit,
+) {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+    ) {
+        AppTab.entries.forEach { tab ->
+            val selected = currentRoute == tab.route
+            NavigationBarItem(
+                selected = selected,
+                onClick = { onTabSelected(tab) },
+                icon = {
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = tab.label,
+                        modifier = Modifier.size(22.dp),
+                    )
+                },
+                label = { Text(tab.label, style = MaterialTheme.typography.labelSmall) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                ),
+            )
+        }
+    }
+}
+
+/** 段落标题，右侧可放置操作按钮（如"查看全部"）。 */
+@Composable
+fun SectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onActionClick: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 20.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+        )
+        if (actionLabel != null && onActionClick != null) {
+            TextButton(onClick = onActionClick) {
+                Text(actionLabel, style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
+/** 技能/记录卡片，展示图标、名称、描述与元数据。 */
+@Composable
+fun SkillCard(
+    title: String,
+    description: String,
+    meta: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    icon: @Composable (() -> Unit)? = null,
+) {
+    Card(
+        onClick = onClick ?: {},
+        enabled = onClick != null,
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                if (icon != null) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) { icon() }
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Text(
+                text = meta,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            )
+        }
+    }
+}
+
+/** 标签 chip，用于状态标记（如"已完成""需处理""示例"）。 */
+@Composable
+fun TagChip(
+    text: String,
+    modifier: Modifier = Modifier,
+    tone: TagTone = TagTone.NEUTRAL,
+) {
+    val colors = when (tone) {
+        TagTone.SUCCESS -> TagColors(
+            background = MaterialTheme.colorScheme.primaryContainer,
+            foreground = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+
+        TagTone.WARNING -> TagColors(
+            background = MaterialTheme.colorScheme.tertiaryContainer,
+            foreground = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
+
+        TagTone.ERROR -> TagColors(
+            background = MaterialTheme.colorScheme.errorContainer,
+            foreground = MaterialTheme.colorScheme.onErrorContainer,
+        )
+
+        TagTone.NEUTRAL -> TagColors(
+            background = MaterialTheme.colorScheme.surfaceVariant,
+            foreground = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = colors.background,
+        modifier = modifier,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.foreground,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+        )
+    }
+}
+
+enum class TagTone { SUCCESS, WARNING, ERROR, NEUTRAL }
+
+private data class TagColors(
+    val background: androidx.compose.ui.graphics.Color,
+    val foreground: androidx.compose.ui.graphics.Color,
+)
+
+/** 空态提示，用于无脚本、无记录等场景。 */
+@Composable
+fun EmptyState(
+    title: String,
+    description: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp, horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.size(56.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+    }
+}
+
+/** 助理页问候头部，展示欢迎语与应用标识。 */
+@Composable
+fun GreetingHeader(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+        )
+    }
+}
+
+/** 就绪状态徽章，展示在助理页头部右侧。 */
+@Composable
+fun ReadyBadge(
+    ready: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val color = if (ready) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(color, CircleShape),
+        )
+        Text(
+            text = if (ready) "已就绪" else "待配置",
+            style = MaterialTheme.typography.labelLarge,
+            color = color,
+        )
+    }
+}
+
+/** 横向分隔线。 */
+@Composable
+fun Divider(modifier: Modifier = Modifier) {
+    Spacer(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+    )
+}

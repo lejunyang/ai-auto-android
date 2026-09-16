@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 配置用途：定义 C 端四 tab 架构（助理、技能、记录、我的）的用户可见字符串。 -->
+<resources>
+    <!-- 底部导航 -->
+    <string name="tab_assistant">助理</string>
+    <string name="tab_skills">技能</string>
+    <string name="tab_history">记录</string>
+    <string name="tab_settings">我的</string>
+
+    <!-- 助理页 -->
+    <string name="assistant_greeting_subtitle">你的随身自动化助理</string>
+    <string name="assistant_greeting_title">有什么，可以交给我？</string>
+    <string name="assistant_task_hint">比如，把稍后阅读整理成清单</string>
+    <string name="assistant_choose_apps">选择应用</string>
+    <string name="assistant_start">预览任务计划</string>
+    <string name="assistant_quick_skills">常用技能</string>
+    <string name="assistant_view_all">查看全部</string>
+    <string name="assistant_teach_title">教它一次，以后交给它</string>
+    <string name="assistant_teach_subtitle">录下操作，变成你的专属技能</string>
+    <string name="assistant_recent">最近活动</string>
+    <string name="assistant_no_recent">还没有运行记录。会话审计只保存动作摘要，不记录密码、验证码或原始截图。</string>
+    <string name="assistant_ready">已就绪</string>
+    <string name="assistant_not_ready">待配置</string>
+    <string name="assistant_setup_needed">请先完成 AI 模型与无障碍配置</string>
+    <string name="assistant_no_skills">还没有保存的技能。录制一次操作，就能反复使用。</string>
+
+    <!-- 技能页 -->
+    <string name="skills_title">我的技能</string>
+    <string name="skills_subtitle">把重复操作，留给它。</string>
+    <string name="skills_filter_all">全部</string>
+    <string name="skills_filter_mine">我教的</string>
+    <string name="skills_new">录制新技能</string>
+    <string name="skills_empty_title">还没有技能</string>
+    <string name="skills_empty_desc">录下一遍操作，整理后保存，以后就能反复调用。</string>
+    <string name="skills_step_count">%1$d 个步骤</string>
+    <string name="skills_target_apps">目标：%1$s</string>
+    <string name="skills_teach_title">录一遍，比写一遍简单</string>
+    <string name="skills_teach_subtitle">自动捕获 → 整理 → 检查 → 保存</string>
+
+    <!-- 记录页 -->
+    <string name="history_title">运行记录</string>
+    <string name="history_subtitle">只留下有用的结果。</string>
+    <string name="history_filter_all">全部</string>
+    <string name="history_filter_done">已完成</string>
+    <string name="history_filter_attention">需处理</string>
+    <string name="history_empty_title">暂无运行记录</string>
+    <string name="history_empty_desc">运行任务或回放技能后，结果会出现在这里。只保留必要摘要，不保存敏感内容。</string>
+    <string name="history_created_at">创建于 %1$s</string>
+    <string name="history_steps">%1$d 步</string>
+    <string name="history_saved_tag">已保存</string>
+    <string name="history_privacy_note">记录只保留脚本元数据与动作摘要，不保存密码、验证码或原始截图。</string>
+
+    <!-- 我的页 -->
+    <string name="settings_title">我的</string>
+    <string name="settings_subtitle">把边界设好，其余交给它。</string>
+    <string name="settings_profile_name">我的随身助理</string>
+    <string name="settings_profile_desc">本地优先 · 自己掌控</string>
+    <string name="settings_status_title">助理状态</string>
+    <string name="settings_status_ready">已就绪</string>
+    <string name="settings_status_not_ready">未完成配置</string>
+    <string name="settings_connections">连接与能力</string>
+    <string name="settings_provider_title">AI 模型</string>
+    <string name="settings_provider_desc">地址、模型与连接检查</string>
+    <string name="settings_provider_configured">已配置</string>
+    <string name="settings_provider_not_configured">未配置</string>
+    <string name="settings_accessibility_title">允许操作的应用</string>
+    <string name="settings_accessibility_desc">范围与无障碍授权</string>
+    <string name="settings_accessibility_enabled">已启用</string>
+    <string name="settings_accessibility_not_enabled">需授权</string>
+    <string name="settings_bridge_title">连接电脑</string>
+    <string name="settings_bridge_desc">扫码或手工邀请码</string>
+    <string name="settings_bridge_connected">已连接</string>
+    <string name="settings_bridge_disconnected">未连接</string>
+    <string name="settings_control_title">你始终有控制权</string>
+    <string name="settings_control_desc">没有任务时不持续看屏。锁屏、权限失效或页面不可验证时暂停。支付、登录与系统安全确认由你处理。</string>
+    <string name="settings_target_count">%1$d 个应用</string>
+</resources>
