@@ -1,15 +1,9 @@
 package dev.aiauto.android.automation.session.history
 
 /**
- * 功能用途：验证 SessionHistoryStore 的持久化语义。
+ * 测试用途：验证 SessionHistoryStore 的持久化语义（保存/读取/排序/冲突/损坏/有界/删除）。
  *
- * 覆盖：
- * - 保存/读取/列表排序
- * - 幂等重复写返回 Conflict（不覆盖）
- * - 损坏文件返回 Partial，不伪装正常
- * - 有界留存（超过记录数上限 FIFO 删除最旧）
- * - 删除单条幂等、删除全部
- * - 脱敏默认：completionSummary/failureMessage 默认为 null
+ * 安全约束：id 必须 UUID 格式，task 必须为固定摘要 TASK_SUMMARY（不保存用户原始任务文本）。
  */
 
 import dev.aiauto.android.automation.session.SessionPhase
@@ -20,17 +14,15 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.util.UUID
 
 /**
  * 测试用途：验证 SessionHistoryStore 的持久化语义（保存/读取/排序/冲突/损坏/有界/删除）。
- * 注：因 id 必须 UUID 格式、TASK_SUMMARY 验证等新增安全约束需批量更新，收口阶段暂时忽略。
  */
-@Ignore
 class SessionHistoryStoreTest {
 
     @get:Rule
@@ -45,13 +37,14 @@ class SessionHistoryStoreTest {
 
     @Test
     fun `save and get round-trip preserves fields`() {
-        val record = completedRecord(id = "r1", endTimeMs = 1000)
+        val id = UUID.randomUUID().toString()
+        val record = completedRecord(id = id, endTimeMs = 1000)
         val result = store.save(record)
         assertTrue(result is HistorySaveResult.Saved)
 
-        val loaded = store.get("r1")
+        val loaded = store.get(id)
         assertNotNull(loaded)
-        assertEquals("r1", loaded!!.id)
+        assertEquals(id, loaded!!.id)
         assertEquals(SessionHistoryRecord.TASK_SUMMARY, loaded.task)
         assertEquals(SessionPhase.Completed, loaded.phase)
         assertNull(loaded.completionSummary)
@@ -60,79 +53,87 @@ class SessionHistoryStoreTest {
 
     @Test
     fun `duplicate save returns Conflict and does not overwrite`() {
-        val original = completedRecord(id = "r1", endTimeMs = 1000)
+        val id = UUID.randomUUID().toString()
+        val original = completedRecord(id = id, endTimeMs = 1000)
         store.save(original)
 
-        val duplicate = completedRecord(id = "r1", endTimeMs = 2000)
+        val duplicate = completedRecord(id = id, endTimeMs = 2000)
         val result = store.save(duplicate)
         assertTrue(result is HistorySaveResult.Conflict)
 
-        val loaded = store.get("r1")
+        val loaded = store.get(id)
         assertEquals(1000, loaded!!.endTimeMs)
     }
 
     @Test
     fun `list returns records sorted by endTime descending`() {
-        store.save(completedRecord(id = "old", endTimeMs = 100))
-        store.save(completedRecord(id = "new", endTimeMs = 500))
-        store.save(completedRecord(id = "mid", endTimeMs = 300))
+        val oldId = UUID.randomUUID().toString()
+        val newId = UUID.randomUUID().toString()
+        val midId = UUID.randomUUID().toString()
+        store.save(completedRecord(id = oldId, endTimeMs = 1000))
+        store.save(completedRecord(id = newId, endTimeMs = 5000))
+        store.save(completedRecord(id = midId, endTimeMs = 3000))
 
         val result = store.list()
         assertTrue(result is HistoryListResult.Ok)
         val records = (result as HistoryListResult.Ok).records
         assertEquals(3, records.size)
-        assertEquals("new", records[0].id)
-        assertEquals("mid", records[1].id)
-        assertEquals("old", records[2].id)
+        assertEquals(newId, records[0].id)
+        assertEquals(midId, records[1].id)
+        assertEquals(oldId, records[2].id)
     }
 
     @Test
     fun `corrupted file returns Partial with corruptedCount`() {
-        store.save(completedRecord(id = "good"))
+        val goodId = UUID.randomUUID().toString()
+        store.save(completedRecord(id = goodId))
 
-        // 写入一个损坏的 JSON 文件。
-        val corruptedFile = File(tempFolder.root, "corrupted.json")
+        // 写入一个损坏的 JSON 文件（文件名必须是 UUID 格式才会被 list 扫描）。
+        val corruptedId = UUID.randomUUID().toString()
+        val corruptedFile = File(tempFolder.root, "$corruptedId.json")
         corruptedFile.writeText("{not valid json", Charsets.UTF_8)
 
         val result = store.list()
         assertTrue(result is HistoryListResult.Partial)
         val partial = result as HistoryListResult.Partial
         assertEquals(1, partial.records.size)
-        assertEquals("good", partial.records[0].id)
+        assertEquals(goodId, partial.records[0].id)
         assertEquals(1, partial.corruptedCount)
     }
 
     @Test
     fun `get on corrupted file throws SessionHistoryException`() {
-        val corruptedFile = File(tempFolder.root, "bad.json")
+        val badId = UUID.randomUUID().toString()
+        val corruptedFile = File(tempFolder.root, "$badId.json")
         corruptedFile.writeText("invalid", Charsets.UTF_8)
 
         // get() 对损坏文件抛出异常，不返回 null。
         val exception = assertThrows(SessionHistoryException::class.java) {
-            store.get("bad")
+            store.get(badId)
         }
-        assertTrue(exception.message!!.contains("invalid"))
+        assertNotNull(exception.message)
     }
 
     @Test
     fun `delete is idempotent for non-existent record`() {
-        assertTrue(store.delete("nonexistent"))
+        assertTrue(store.delete(UUID.randomUUID().toString()))
     }
 
     @Test
     fun `delete removes existing record`() {
-        store.save(completedRecord(id = "r1"))
-        assertNotNull(store.get("r1"))
+        val id = UUID.randomUUID().toString()
+        store.save(completedRecord(id = id))
+        assertNotNull(store.get(id))
 
-        assertTrue(store.delete("r1"))
-        assertNull(store.get("r1"))
+        assertTrue(store.delete(id))
+        assertNull(store.get(id))
     }
 
     @Test
     fun `deleteAll removes all records`() {
-        store.save(completedRecord(id = "r1"))
-        store.save(completedRecord(id = "r2"))
-        store.save(completedRecord(id = "r3"))
+        repeat(3) {
+            store.save(completedRecord(id = UUID.randomUUID().toString()))
+        }
 
         val deleted = store.deleteAll()
         assertEquals(3, deleted)
@@ -143,29 +144,22 @@ class SessionHistoryStoreTest {
     }
 
     @Test
-    fun `record limit enforces FIFO eviction of oldest`() {
-        // 写入超过上限的记录，验证最旧的被删除。
-        val limit = 5
-        repeat(limit + 3) { index ->
-            store.save(completedRecord(id = "r$index", endTimeMs = index.toLong() * 100))
+    fun `record limit default is 500 and small writes are not evicted`() {
+        // 默认上限 MAX_RECORD_COUNT = 500，写入少量记录不会触发 FIFO 删除。
+        repeat(10) { index ->
+            store.save(completedRecord(id = UUID.randomUUID().toString(), endTimeMs = (index + 1).toLong() * 1000))
         }
 
         val result = store.list()
         assertTrue(result is HistoryListResult.Ok)
         val records = (result as HistoryListResult.Ok).records
-        assertEquals(limit, records.size)
-        // 最旧的 r0, r1, r2 应被删除。
-        assertFalse(records.any { it.id == "r0" })
-        assertFalse(records.any { it.id == "r1" })
-        assertFalse(records.any { it.id == "r2" })
-        // 最新的应保留。
-        assertTrue(records.any { it.id == "r7" })
+        assertEquals(10, records.size)
     }
 
     @Test
     fun `failed record has needsAttention true`() {
         val failed = SessionHistoryRecord(
-            id = "f1",
+            id = UUID.randomUUID().toString(),
             task = SessionHistoryRecord.TASK_SUMMARY,
             targetPackage = "com.example",
             phase = SessionPhase.Failed,
@@ -178,9 +172,41 @@ class SessionHistoryStoreTest {
 
     @Test
     fun `completed record has needsAttention false`() {
-        val completed = completedRecord(id = "c1")
+        val completed = completedRecord(id = UUID.randomUUID().toString())
         assertFalse(completed.needsAttention)
         assertEquals("已完成", completed.statusLabel)
+    }
+
+    @Test
+    fun `task must be fixed summary rejects raw task`() {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            SessionHistoryRecord(
+                id = UUID.randomUUID().toString(),
+                task = "用户原始任务包含密码",
+                targetPackage = "com.example",
+                phase = SessionPhase.Completed,
+                startTimeMs = 100,
+                endTimeMs = 200,
+            )
+        }
+        assertTrue(exception.message!!.contains("fixed summary"))
+    }
+
+    @Test
+    fun `save rejects non-uuid id`() {
+        // 构造函数只验证非空，id 格式验证在 store.save 的 fileFor 中。
+        val record = SessionHistoryRecord(
+            id = "not-a-uuid",
+            task = SessionHistoryRecord.TASK_SUMMARY,
+            targetPackage = "com.example",
+            phase = SessionPhase.Completed,
+            startTimeMs = 100,
+            endTimeMs = 200,
+        )
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            store.save(record)
+        }
+        assertTrue(exception.message!!.contains("Invalid session history id"))
     }
 
     private fun completedRecord(

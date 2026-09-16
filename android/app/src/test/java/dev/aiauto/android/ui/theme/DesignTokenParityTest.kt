@@ -11,66 +11,64 @@ package dev.aiauto.android.ui.theme
  */
 
 import org.junit.Assert.assertEquals
-import org.junit.Ignore
 import org.junit.Test
 
 /**
  * 测试用途：设计 token 一致性测试，断言 AppColors/AppShapes/AppSpacing/AppTypography 等于原型 token。
- * 注：颜色 token 值需与最新原型 token 对齐，收口阶段暂时忽略；视觉验证由设备截图确认。
+ * 数据来源：artifacts/ui-validation/main-agent/prototype-tokens.json（411x914 视口，CSS px == dp）。
  */
-@Ignore
 class DesignTokenParityTest {
 
-    //region 颜色断言（原型 color.*）
+    //region 颜色断言（原型 color.*，比较 Argb 常量避免 Compose Color 单元测试依赖）
 
     @Test
     fun `background color matches prototype`() {
-        assertEquals(0xFFFAFBFC.toInt(), AppColors.Background.value.toInt())
+        assertEquals(0xFFFAFBFC.toInt(), AppColors.BackgroundArgb.toInt())
     }
 
     @Test
     fun `surface color matches prototype`() {
-        assertEquals(0xFFFFFFFF.toInt(), AppColors.Surface.value.toInt())
+        assertEquals(0xFFFFFFFF.toInt(), AppColors.SurfaceArgb.toInt())
     }
 
     @Test
     fun `ink color matches prototype`() {
-        assertEquals(0xFF17212E.toInt(), AppColors.Ink.value.toInt())
+        assertEquals(0xFF17212E.toInt(), AppColors.InkArgb.toInt())
     }
 
     @Test
     fun `muted color matches prototype`() {
-        assertEquals(0xFF6B7788.toInt(), AppColors.Muted.value.toInt())
+        assertEquals(0xFF6B7788.toInt(), AppColors.MutedArgb.toInt())
     }
 
     @Test
     fun `line color matches prototype`() {
-        assertEquals(0xFFE5EAF1.toInt(), AppColors.Line.value.toInt())
+        assertEquals(0xFFE5EAF1.toInt(), AppColors.LineArgb.toInt())
     }
 
     @Test
     fun `primary color matches prototype`() {
-        assertEquals(0xFF2563EB.toInt(), AppColors.Primary.value.toInt())
+        assertEquals(0xFF2563EB.toInt(), AppColors.PrimaryArgb.toInt())
     }
 
     @Test
     fun `primaryContainer color matches prototype`() {
-        assertEquals(0xFFEEF4FF.toInt(), AppColors.PrimaryContainer.value.toInt())
+        assertEquals(0xFFEEF4FF.toInt(), AppColors.PrimaryContainerArgb.toInt())
     }
 
     @Test
     fun `success color matches prototype`() {
-        assertEquals(0xFF237863.toInt(), AppColors.Success.value.toInt())
+        assertEquals(0xFF237863.toInt(), AppColors.SuccessArgb.toInt())
     }
 
     @Test
     fun `warning color matches prototype`() {
-        assertEquals(0xFF9B6419.toInt(), AppColors.Warning.value.toInt())
+        assertEquals(0xFF9B6419.toInt(), AppColors.WarningArgb.toInt())
     }
 
     @Test
     fun `danger color matches prototype`() {
-        assertEquals(0xFFB63E49.toInt(), AppColors.Danger.value.toInt())
+        assertEquals(0xFFB63E49.toInt(), AppColors.DangerArgb.toInt())
     }
 
     //endregion
@@ -79,27 +77,27 @@ class DesignTokenParityTest {
 
     @Test
     fun `composer border color matches prototype`() {
-        assertEquals(0xFFD9E3F3.toInt(), AppColors.ComposerBorder.value.toInt())
+        assertEquals(0xFFD9E3F3.toInt(), AppColors.ComposerBorderArgb.toInt())
     }
 
     @Test
     fun `skillTile border color matches prototype`() {
-        assertEquals(0xFFE5EAF1.toInt(), AppColors.SkillTileBorder.value.toInt())
+        assertEquals(0xFFE5EAF1.toInt(), AppColors.SkillTileBorderArgb.toInt())
     }
 
     @Test
     fun `teachCard background matches prototype`() {
-        assertEquals(0xFFF3F6FC.toInt(), AppColors.TeachBackground.value.toInt())
+        assertEquals(0xFFF3F6FC.toInt(), AppColors.TeachBackgroundArgb.toInt())
     }
 
     @Test
     fun `teachCard border color matches prototype`() {
-        assertEquals(0xFFCCD9EC.toInt(), AppColors.TeachBorder.value.toInt())
+        assertEquals(0xFFCCD9EC.toInt(), AppColors.TeachBorderArgb.toInt())
     }
 
     @Test
     fun `quickChip background matches prototype`() {
-        assertEquals(0xFFE8EDF4.toInt(), AppColors.QuickChipBackground.value.toInt())
+        assertEquals(0xFFE8EDF4.toInt(), AppColors.QuickChipBackgroundArgb.toInt())
     }
 
     //endregion

@@ -18,57 +18,74 @@ import androidx.compose.ui.unit.sp
 
 object AppColors {
     /** 页面背景（原型 background #FAFBFC）。 */
-    val Background = Color(0xFFFAFBFC)
+    const val BackgroundArgb = 0xFFFAFBFC
+    val Background = Color(BackgroundArgb)
 
     /** 卡片表面（原型 surface #FFFFFF）。 */
-    val Surface = Color(0xFFFFFFFF)
+    const val SurfaceArgb = 0xFFFFFFFF
+    val Surface = Color(SurfaceArgb)
 
     /** 次级表面/底部导航（原型 surfaceMuted #fafbfc）。 */
-    val SurfaceMuted = Color(0xFFFAFBFC)
+    const val SurfaceMutedArgb = 0xFFFAFBFC
+    val SurfaceMuted = Color(SurfaceMutedArgb)
 
     /** 主文字（原型 ink #17212E）。 */
-    val Ink = Color(0xFF17212E)
+    const val InkArgb = 0xFF17212E
+    val Ink = Color(InkArgb)
 
     /** 次要文字（原型 muted #6B7788）。 */
-    val Muted = Color(0xFF6B7788)
+    const val MutedArgb = 0xFF6B7788
+    val Muted = Color(MutedArgb)
 
     /** 描边线（原型 line #E5EAF1）。 */
-    val Line = Color(0xFFE5EAF1)
+    const val LineArgb = 0xFFE5EAF1
+    val Line = Color(LineArgb)
 
     /** 主色/克制蓝（原型 primary #2563EB）。 */
-    val Primary = Color(0xFF2563EB)
+    const val PrimaryArgb = 0xFF2563EB
+    val Primary = Color(PrimaryArgb)
 
     /** 主色容器（原型 primaryContainer #EEF4FF）。 */
-    val PrimaryContainer = Color(0xFFEEF4FF)
+    const val PrimaryContainerArgb = 0xFFEEF4FF
+    val PrimaryContainer = Color(PrimaryContainerArgb)
 
     /** 成功色（原型 success #237863）。 */
-    val Success = Color(0xFF237863)
+    const val SuccessArgb = 0xFF237863
+    val Success = Color(SuccessArgb)
 
     /** 警告色（原型 warning #9B6419）。 */
-    val Warning = Color(0xFF9B6419)
+    const val WarningArgb = 0xFF9B6419
+    val Warning = Color(WarningArgb)
 
     /** 危险/错误色（原型 danger #B63E49）。 */
-    val Danger = Color(0xFFB63E49)
+    const val DangerArgb = 0xFFB63E49
+    val Danger = Color(DangerArgb)
 
     //region 组件级颜色（原型 components.*.borderColor / background）
 
     /** composer 卡片描边（原型 #D9E3F3）。 */
-    val ComposerBorder = Color(0xFFD9E3F3)
+    const val ComposerBorderArgb = 0xFFD9E3F3
+    val ComposerBorder = Color(ComposerBorderArgb)
 
     /** 技能 tile 描边（原型 #E5EAF1）。 */
-    val SkillTileBorder = Color(0xFFE5EAF1)
+    const val SkillTileBorderArgb = 0xFFE5EAF1
+    val SkillTileBorder = Color(SkillTileBorderArgb)
 
     /** teach 卡片背景（原型 #F3F6FC）。 */
-    val TeachBackground = Color(0xFFF3F6FC)
+    const val TeachBackgroundArgb = 0xFFF3F6FC
+    val TeachBackground = Color(TeachBackgroundArgb)
 
     /** teach 卡片描边（原型 #CCD9EC）。 */
-    val TeachBorder = Color(0xFFCCD9EC)
+    const val TeachBorderArgb = 0xFFCCD9EC
+    val TeachBorder = Color(TeachBorderArgb)
 
     /** tile 图标容器背景（原型 #EEF4FF）。 */
-    val TileIconBackground = Color(0xFFEEF4FF)
+    const val TileIconBackgroundArgb = 0xFFEEF4FF
+    val TileIconBackground = Color(TileIconBackgroundArgb)
 
     /** quickChip 背景（原型 #E8EDF4）。 */
-    val QuickChipBackground = Color(0xFFE8EDF4)
+    const val QuickChipBackgroundArgb = 0xFFE8EDF4
+    val QuickChipBackground = Color(QuickChipBackgroundArgb)
 
     //endregion
 }

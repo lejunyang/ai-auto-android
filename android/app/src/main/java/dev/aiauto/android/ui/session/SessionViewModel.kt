@@ -167,7 +167,7 @@ class SessionViewModel(
                 }
             }
 
-        private const val MAX_TASK_LENGTH = 4_000
-        private const val MAX_PACKAGE_LENGTH = 255
+        internal const val MAX_TASK_LENGTH = 4_000
+        internal const val MAX_PACKAGE_LENGTH = 255
     }
 }
