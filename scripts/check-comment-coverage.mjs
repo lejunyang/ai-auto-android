@@ -14,6 +14,8 @@ const commandScript = /\.(sh|ps1)$/;
 const workflow = /^\.github\/workflows\/[^/]+\.ya?ml$/;
 const controlledConfig = /\.(properties|toml)$/;
 const commentableXml = /^(android|protocol)\/.*\.xml$/;
+// 配置用途：设计原型也是受管手写界面，使用 HTML 注释检查其用途说明。
+const prototypeHtml = /^docs\/ui-prototype\/.*\.html$/;
 
 const isExcluded = (file) =>
   excludedDirectory.test(file) || excludedFile.test(file);
@@ -28,6 +30,7 @@ const isManaged = (file) =>
     || workflow.test(file)
     || controlledConfig.test(file)
     || commentableXml.test(file)
+    || prototypeHtml.test(file)
   );
 
 const chinese = /\p{Script=Han}/gu;
@@ -89,7 +92,7 @@ const meaningfulBody = (body, semanticPattern) => {
 };
 
 const commentsFor = (file, content) => {
-  if (file.endsWith(".xml")) return xmlComments(content);
+  if (file.endsWith(".xml") || prototypeHtml.test(file)) return xmlComments(content);
   if (file.endsWith(".kt") || file.endsWith(".java")) {
     return kdocComments(content);
   }
@@ -158,6 +161,18 @@ const validateContent = (file, content) => {
 
 const runSelfTest = () => {
   const cases = [
+    {
+      name: "接受原型 HTML 的中文用途注释",
+      file: "docs/ui-prototype/index.html",
+      content: "<!-- 功能用途：展示自动化助理的离线交互原型与功能边界。 -->\n<main>示例</main>\n",
+      valid: true,
+    },
+    {
+      name: "拒绝原型 HTML 仅有可见用途文字",
+      file: "docs/ui-prototype/index.html",
+      content: "<main>功能用途：展示自动化助理的离线交互原型与功能边界。</main>\n",
+      valid: false,
+    },
     {
       name: "拒绝无信息量中文注释",
       file: "scripts/temporary.mjs",
