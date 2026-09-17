@@ -18,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -80,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import dev.aiauto.android.R
 import dev.aiauto.android.automation.recording.AutomationScriptSummary
 import dev.aiauto.android.automation.recording.RecordingScriptStore
+import dev.aiauto.android.ui.components.AppIcons
 import dev.aiauto.android.ui.components.EmptyState
 import dev.aiauto.android.ui.components.IconTile
 import dev.aiauto.android.ui.components.ScriptLoadState
@@ -192,19 +194,26 @@ fun AssistantScreen(
             )
         }
 
-        // 4. 快捷 chips：整理稍后阅读 / 提取页面重点。
+        // 4. 快捷 chips：灰底小胶囊，背景 #E8EDF4、文字 #5D6C82、圆角 10dp、min-height 44dp、字号 11sp、自动换行。
         item {
             val quick1 = stringResource(R.string.assistant_quick_1)
             val quick2 = stringResource(R.string.assistant_quick_2)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssistChip(
-                    onClick = { taskInput = quick1 },
-                    label = { Text(quick1, fontSize = 13.sp) },
-                )
-                AssistChip(
-                    onClick = { taskInput = quick2 },
-                    label = { Text(quick2, fontSize = 13.sp) },
-                )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(quick1, quick2).forEach { label ->
+                    Surface(
+                        onClick = { taskInput = label },
+                        shape = RoundedCornerShape(10.dp),
+                        color = AppColors.QuickChipBackground,
+                        modifier = Modifier.heightIn(min = 44.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(label, fontSize = 11.sp, color = AppColors.QuickChipText)
+                        }
+                    }
+                }
             }
         }
 
@@ -357,9 +366,10 @@ private fun GreetingSection() {
             )
             Text(
                 text = stringResource(R.string.assistant_greeting_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 32.sp,
+                fontSize = 27.sp,
+                fontWeight = FontWeight(620),
+                letterSpacing = (-1).sp,
+                lineHeight = 37.8.sp,
             )
         }
         // auto 符号：三角形图标，蓝色边框圆形背景。
@@ -442,7 +452,7 @@ private fun ComposerCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Icon(
-                            Icons.Default.PhoneAndroid,
+                            AppIcons.Phone,
                             null,
                             modifier = Modifier.size(14.dp),
                             tint = AppColors.ComposerPillText,
@@ -455,28 +465,28 @@ private fun ComposerCard(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(onClick = onVoiceClick) {
+                    IconButton(onClick = onVoiceClick, modifier = Modifier.size(44.dp)) {
                         Icon(
-                            Icons.Default.Mic,
+                            AppIcons.Mic,
                             contentDescription = "语音输入",
                             tint = if (isListening) MaterialTheme.colorScheme.primary else AppColors.ComposerPillText,
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                    // 发送按钮：蓝色圆角 14dp。
+                    // 发送按钮：蓝色圆角 14dp，向上箭头，点击区 44dp。
                     Surface(
                         onClick = onSubmit,
                         enabled = ready && taskInput.isNotBlank(),
                         shape = RoundedCornerShape(14.dp),
                         color = if (ready && taskInput.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(44.dp),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                Icons.AutoMirrored.Filled.Send,
+                                AppIcons.Up,
                                 contentDescription = null,
                                 tint = if (ready && taskInput.isNotBlank()) MaterialTheme.colorScheme.onPrimary else AppColors.ComposerPillText,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                     }

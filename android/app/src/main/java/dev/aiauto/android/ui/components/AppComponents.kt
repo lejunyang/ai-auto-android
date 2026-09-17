@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
@@ -74,14 +75,16 @@ fun AppBottomNavigation(
     currentRoute: String?,
     onTabSelected: (AppTab) -> Unit,
 ) {
-    // 原型底栏精确值：总高72dp、padding 7dp/8dp/4dp、顶部1dp #E5EAF1描边；
+    // 原型底栏精确值：内容区68dp（手机模式媒体查询未覆盖height，沿用桌面68px）、
+    // padding 7dp/8dp/4dp、顶部1dp #E5EAF1描边；
     // tab按钮 Column居中、图标与文字gap 3dp、min-height 48dp；
     // 选中态胶囊 46dp宽×27dp高、圆角12dp、背景#E8EFFD；图标20dp、标签12sp。
+    // 根容器加 navigationBarsPadding 处理系统手势条，避免手势条压标签。
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
             .background(AppColors.SurfaceMuted)
+            .navigationBarsPadding()
             .drawBehind {
                 val stroke = 1.dp.toPx()
                 drawRect(
@@ -94,13 +97,14 @@ fun AppBottomNavigation(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(AppSpacing.NavHeight)
                 .padding(start = 8.dp, end = 8.dp, top = 7.dp, bottom = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             AppTab.entries.forEach { tab ->
                 val selected = currentRoute == tab.route
                 Column(
                     modifier = Modifier
+                        .weight(1f)
                         .height(48.dp)
                         .clickable { onTabSelected(tab) },
                     horizontalAlignment = Alignment.CenterHorizontally,

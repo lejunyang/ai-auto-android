@@ -198,7 +198,7 @@ object AppSpacing {
     val TileGap = 10.dp
 
     /** 底部导航高度（原型实测 72dp）。 */
-    val NavHeight = 72.dp
+    val NavHeight = 68.dp
 
     /** 底部导航图标尺寸（原型实测 20dp）。 */
     val NavIconSize = 20.dp

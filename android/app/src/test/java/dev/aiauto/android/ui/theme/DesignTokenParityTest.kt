@@ -207,7 +207,9 @@ class DesignTokenParityTest {
 
     @Test
     fun `nav height matches prototype`() {
-        assertEquals(72f, AppSpacing.NavHeight.value, 1f)
+        // 原型手机模式媒体查询(max-width:680px)未覆盖.bottom-nav的height，沿用桌面68px；
+        // 总高=68dp内容区+系统手势条inset(navigationBarsPadding)。
+        assertEquals(68f, AppSpacing.NavHeight.value, 1f)
     }
 
     @Test

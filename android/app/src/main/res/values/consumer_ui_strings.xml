@@ -9,7 +9,7 @@
 
     <!-- 助理页 -->
     <string name="assistant_greeting_subtitle">你的随身自动化助理</string>
-    <string name="assistant_greeting_title">有什么，可以交给我？</string>
+    <string name="assistant_greeting_title">有什么，\n可以交给我？</string>
     <string name="assistant_app_title">AI Auto</string>
     <string name="assistant_app_subtitle">让手机，替你完成。</string>
     <string name="assistant_hello">你好，今天想做点什么</string>
