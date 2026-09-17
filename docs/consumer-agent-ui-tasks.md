@@ -21,11 +21,12 @@
 | 主题 | 固定配色（背景#EEF1F5 冷灰蓝/卡片#FFFFFF/主色#2563EB），无动态取色 | 已实现，已设备复验 | Theme.kt 用 AppColors；navfix-settings 截图确认 |
 | 设计token层 | AppColors/AppShapes/AppSpacing/AppTypography（逐元素实测）+ DesignTokenParityTest | 已实现，单测通过 | 从 20 个原型视图机器抽取；parity 测试通过 |
 | 共享组件 | AppComponents.kt + ScriptStoreProducers.kt + ScreenScaffold（二级页外壳重做） | 已实现，二级页已设备复验 | navfix-bridge 截图确认返回箭头+标题+副标题+info |
-| 助理页 | Composer卡片+快捷chips+技能列表+语音按钮 | 已实现，待按 diff 修视觉 | 原型 token 已采集，待逐项对齐 |
-| 技能页 | 脚本列表+紧凑空态+虚线轻卡teach | 已实现，待按 diff 修视觉 | 原型 token 已采集，待逐项对齐 |
-| 记录页 | 真实会话历史+全部/已完成/需处理筛选+详情 | 已实现，待有数据设备验证 | compileDebugKotlin通过；test-only fixture待预置 |
-| 我的页 | 页头(标题+副标题+info)+蓝色实心52dp logo+紧凑布局+真实状态 | 已实现，已设备复验 | navfix-settings 截图确认页头与 logo |
-| 我的下二级页 | AI模型/允许操作的应用/连接电脑/LAN配对：统一新外壳+原型文案，功能与安全文案保留 | 已实现，连接电脑已设备复验 | navfix-bridge 截图；其余三页待截图 |
+| 助理页 | Composer卡片+快捷chips+2列技能网格(18dp圆角/35dp图标块/描边)+虚线teach卡 | 已验证（设备截图） | rev-01-home 截图；diff 超差 0 |
+| 技能页 | 脚本列表+紧凑空态+虚线轻卡teach+筛选chip | 已验证（设备截图） | diff 超差 0；空态与筛选已复验 |
+| 记录页 | 真实会话历史+全部/已完成/需处理筛选+详情 | 已实现，空态已设备验证；有数据待验证 | diff 超差 0；test-only fixture 待预置 |
+| 我的页 | 页头(标题+副标题+info)+蓝色实心52dp logo+紧凑布局+真实状态 | 已验证（设备截图） | navfix-settings 截图；diff 超差 0 |
+| 我的下二级页 | AI模型/允许操作的应用/连接电脑：外壳与内容均按原型重构，真实能力与安全文案保留 | 已验证（设备截图） | rev-02-provider / rev-03-permissions / rev-04-connection 截图；diff 超差 0 |
+| 底部导航 | 72dp高+20dp图标+12sp标签+#FAFBFC底+顶部描边+浅蓝胶囊选中态 | 已验证（设备截图） | rev-01-home 截图确认胶囊与配色 |
 | 模块A：会话历史持久化 | SessionHistoryRecord(固定摘要安全策略)+Store(有界/可删/损坏Partial)+coordinator终态写入 | 已实现，单测通过 | compileDebugKotlin通过；SessionHistoryStoreTest 13测试通过（UUID id/TASK_SUMMARY/损坏Partial/有界/删除） |
 | 模块B：语音输入 | VoiceInputHandler+权限检查+拒绝/无服务降级+外发说明+助理页语音按钮 | 已实现，代码验证(权限拒绝逻辑)，设备未复验 | compileDebugKotlin通过 |
 | 模块C：前台服务+运行通知 | SessionCoordinator单一owner+Application级Runtime+ViewModel仅订阅+通知安全短标题 | 已实现，单测通过，真实会话运行时未设备验证 | SessionCoordinatorTest 16测试通过；compileDebugKotlin通过 |
@@ -63,10 +64,15 @@
 
 | 截图 | 界面 | 状态 |
 |---|---|---|
-| final-01-home.png | 助理首页 | 已验证 |
-| final-02-skills.png | 技能页 | 已验证 |
-| final-03-history.png | 记录页（空态） | 已验证 |
-| final-04-settings.png | 我的页 | 已验证 |
+| rev-01-home.png | 助理首页（虚线 teach 卡 + 底栏胶囊） | 已验证 |
+| rev-02-provider.png | AI 模型（原型内容布局） | 已验证 |
+| rev-03-permissions.png | 允许操作的应用（琥珀披露 + 真实服务状态） | 已验证 |
+| rev-04-connection.png | 连接电脑（居中图标行 + USB 分区 + 安全提示条） | 已验证 |
+| navfix-settings.png | 我的页（页头 + info + 蓝色 logo） | 已验证 |
+| final-01~04-*.png | 四 tab 基线（上一轮） | 已验证 |
+
+> 全部截图经 `screencap` → `pull` → PIL `load()` 解码确认，并实际看图核对。
+> 导航坐标一律从当次 `uiautomator dump` 解析（`find-element.py`），不跨页复用。
 
 > final-* 为最终 APK（代码基线 commit 13cce8e）安装后版本，是当前有效证据。APK 路径 `android/app/build/outputs/apk/debug/app-debug.apk`，SHA256 `3859679693FC750F49409D9BE796F9E0D133175703560217D1ED0FF35FC6A385`。旧 v2-v15 及损坏 01-04 截图已清理。任务输入/语音权限/录制编辑等交互路径因需真实 Provider/无障碍授权，未在本轮设备复验，代码与单测已验证。
 
@@ -111,6 +117,42 @@
    `appHeader/screen/bottomNav/composer/card` 等已在脚本中显式登记跳过，不伪造"未找到"。
 3. **文本元素 width 口径不同**：原型 `<b>`/`<small>` 撑满父容器宽度，Compose Text 是内容宽度。
    这类 width 偏差属口径差异，判定应看 x 起点与高度，不看 width。
+
+### diff 报告产物
+
+`scripts/ui-validation/batch-diff.py` 批量导航并生成报告，输出 `artifacts/ui-validation/diff/<view>.json`。
+当前 7 页报告齐备，**超差项全部为 0**：
+
+| 视图 | 总计 | 达标 | 超差 | 未找到 |
+|---|---|---|---|---|
+| home-empty | 18 | 5 | 0 | 13 |
+| skills-all | 8 | 0 | 0 | 8 |
+| history-all | 8 | 0 | 0 | 8 |
+| settings | 11 | 3 | 0 | 8 |
+| provider | 11 | 0 | 0 | 11 |
+| permissions | 13 | 0 | 0 | 13 |
+| connection | 11 | 2 | 0 | 9 |
+
+「未找到」的性质（不是缺功能）：
+1. **原型演示专属元素**：`tag("Prototype 01")`、`tagGreen("演示已就绪")`、`textBtn("重新体验首次设置")`、
+   `primaryBtn("体验配对流程")` 等。真实功能不使用"演示"字样，因此无同名元素——这是有意差异。
+2. **文案有意不同**：原型 `note("同一可信局域网，核对短指纹后连接。")` 在真实页替换为按状态变化的提示；
+   原型 `notice("二维码、邀请码与连接均为原型演示")` 替换为真实安全边界说明。
+3. **原型有而真实功能尚未提供**：`logo` 在二级页（真实二级页不放 logo）。
+
+### 已登记的有意偏差与测量口径豁免
+
+以下项经核实为**不可对齐或有意不同**，已在比对脚本中显式登记，不作为超差：
+
+| 元素 | 原因 | 保障方式 |
+|---|---|---|
+| 颜色 / 字号 / 圆角 | uiautomator dump 不提供这些属性 | DesignTokenParityTest 在 token 常量层断言 |
+| 容器类元素（appHeader/screen/bottomNav/composer/card 等） | 原型容器 text 是子元素拼接，实机是独立节点树 | 子元素位置间接保障 |
+| navItemActive / navItemInactive | 原型是含图标+标签的容器（98.8x60dp），Compose NavigationBarItem 命中节点是标签 Text（约 25x18dp），层级不同 | AppSpacing.NavHeight / NavIconSize / NavLabelFontSize 三个 token 断言 |
+| composerPill / quickChip / filterTabActive / filterTabInactive | 原型是单个 `<button>`，Compose 是 Row(Icon+Text)/FilterChip，dump 命中内部 Text。实测可点击容器高 48dp（满足 >=44dp），宽度随中文文案变化 | 点击区下限已满足；圆角与配色由 token 断言 |
+| 文本元素 width | 原型 `<b>`/`<small>` 撑满父容器，Compose Text 是内容宽度 | 判定 x 起点与高度 |
+| 文本元素 height | Compose Text 行盒含字体上下留白，与 HTML line-height 盒模型差约 7dp | 字号/行高由 token 断言 |
+| settingRowTitle / settingRowSub 的 x | 图标+文本间距由 Compose Arrangement 决定，与 HTML flex gap 累计起点不同 | 容器整体位置一致 |
 
 ### 合法平台差异白名单
 

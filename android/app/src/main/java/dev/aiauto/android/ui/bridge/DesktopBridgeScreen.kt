@@ -1,26 +1,42 @@
 package dev.aiauto.android.ui.bridge
 
 /**
- * 功能用途：实现 DesktopBridgeScreen 对应的桌面端与 App 本地 Bridge 协议、认证或请求处理。
+ * 功能用途：「连接电脑」页面。按原型 #connection 的信息层级重构表现层，
+ * 承载真实的桌面桥能力：本机 ADB 转发开关、一次性配对码轮换、LAN 配对入口。
+ *
+ * 与原型的差异（有意为之，不照搬"演示"字样）：
+ * - 原型是纯演示，按钮文案为「体验配对流程」；本页对接真实 DesktopBridgeController，
+ *   因此按钮按真实状态显示「开启桌面桥 / 关闭桌面桥」，不伪装成演示。
+ * - 原型底部「二维码、邀请码与连接均为原型演示」的免责声明不适用于真实功能，
+ *   替换为真实的安全边界说明（仅绑定回环地址、码与 token 的有效期与不落盘）。
+ *
+ * 保留的安全文案（不可删）：仅本机回环绑定、不监听 Wi-Fi / 移动网络、
+ * 一次性码 2 分钟且用后失效、会话 token 最长 15 分钟且不显示不写日志、
+ * USB 调试信任与桌面桥是两层独立授权。
  */
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import dev.aiauto.android.R
@@ -28,7 +44,21 @@ import dev.aiauto.android.bridge.BridgeLimits
 import dev.aiauto.android.bridge.BridgeProtocol
 import dev.aiauto.android.bridge.DesktopBridgeController
 import dev.aiauto.android.bridge.DesktopBridgeStatus
+import dev.aiauto.android.ui.components.CenteredIconRow
+import dev.aiauto.android.ui.components.NoteText
+import dev.aiauto.android.ui.components.NoticeBar
+import dev.aiauto.android.ui.components.PageDesc
+import dev.aiauto.android.ui.components.PageHeading
+import dev.aiauto.android.ui.components.ProtoCard
+import dev.aiauto.android.ui.components.ProtoPrimaryButton
+import dev.aiauto.android.ui.components.ProtoSecondaryButton
+import dev.aiauto.android.ui.components.ProtoSectionHead
+import dev.aiauto.android.ui.components.ProtoTextButton
 import dev.aiauto.android.ui.components.ScreenScaffold
+import dev.aiauto.android.ui.components.TagChip
+import dev.aiauto.android.ui.components.TagTone
+import dev.aiauto.android.ui.theme.AppColors
+import dev.aiauto.android.ui.theme.AppSpacing
 
 @Composable
 fun DesktopBridgeScreen(
@@ -47,140 +77,169 @@ fun DesktopBridgeScreen(
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = AppSpacing.ScreenHorizontal)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = when (state.status) {
-                    DesktopBridgeStatus.STOPPED -> "桌面桥已关闭"
-                    DesktopBridgeStatus.STARTING -> "正在启动本地桥"
-                    DesktopBridgeStatus.WAITING_FOR_CODE -> "等待桌面配对"
-                    DesktopBridgeStatus.CONNECTED -> "桌面会话已连接"
-                    DesktopBridgeStatus.ERROR -> "桌面桥启动失败"
-                },
-                style = MaterialTheme.typography.headlineSmall,
-                color = if (state.enabled) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-            )
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            // 1. 页面大标题与描述（原型 page-heading + page-desc）。
+            PageHeading(text = stringResource(R.string.bridge_heading))
+            PageDesc(text = stringResource(R.string.bridge_desc))
+
+            Spacer(Modifier.height(4.dp))
+
+            // 2. 主操作卡片：居中「手机 → 电脑」图标行 + 当前状态 + 主按钮。
+            //    原型是居中布局（text-align:center，padding 28x18），此处保持一致。
+            ProtoCard(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    horizontal = 18.dp,
+                    vertical = 28.dp,
                 ),
             ) {
-                Column(
-                    modifier = Modifier.padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = "仅限本机 ADB 转发",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = "服务只绑定 ${BridgeProtocol.LOOPBACK_ADDRESS}:" +
-                            "${BridgeLimits.PORT}，不会监听 Wi-Fi 或移动网络。" +
-                            "关闭后端口立即停止接受连接，桌面无法读取设备或界面数据。",
-                    )
-                    Text(
-                        text = "一次性码有效 2 分钟且成功使用后立即失效；会话 token 最长有效 15 分钟，不会显示在界面或写入日志。",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = "同一局域网主动连接",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = "从桌面 CLI 获取一次性 invitation，手工输入后核对网卡、" +
-                            "地址和短指纹。LAN 会话与本机 ADB Bridge 相互独立。",
-                    )
-                    OutlinedButton(
-                        onClick = onLanPairing,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("打开 LAN 配对")
-                    }
-                }
-            }
-            state.pairingCode?.let { code ->
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                CenteredIconRow(
+                    icons = listOf(
+                        Icons.Default.PhoneAndroid,
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        Icons.Default.Computer,
                     ),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text("短期一次性码")
-                        Text(
-                            text = code,
-                            style = MaterialTheme.typography.displaySmall,
-                        )
-                        Text("请只提供给当前通过 ADB 授权的电脑。")
-                    }
-                }
-            }
-            if (
-                state.status == DesktopBridgeStatus.WAITING_FOR_CODE &&
-                state.pairingCode == null
-            ) {
-                Text(
-                    text = "一次性码已过期或已使用，请生成新码后再连接。",
-                    color = MaterialTheme.colorScheme.tertiary,
                 )
-            }
-            state.connectedHost?.let { host ->
+                Spacer(Modifier.height(16.dp))
+                // 状态标题来自真实 controller 状态，不硬编码。
                 Text(
-                    text = "当前电脑：$host",
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            state.errorMessage?.let { message ->
-                Text(
-                    text = message,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            if (!state.enabled) {
-                Button(
-                    onClick = controller::start,
+                    text = bridgeStatusTitle(state.status),
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("开启桌面桥")
-                }
-            } else {
-                if (state.status != DesktopBridgeStatus.CONNECTED) {
-                    OutlinedButton(
-                        onClick = controller::rotatePairingCode,
+                    fontSize = 17.sp,
+                    lineHeight = 25.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.Ink,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(7.dp))
+                NoteText(
+                    text = bridgeStatusHint(state.status),
+                    textAlign = TextAlign.Center,
+                )
+
+                // 一次性配对码：仅在存在时展示，属真实运行态数据。
+                state.pairingCode?.let { code ->
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = code,
                         modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("生成新的一次性码")
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.Primary,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    NoteText(
+                        text = stringResource(R.string.bridge_code_scope),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                // 一次性码已失效的真实反馈。
+                if (
+                    state.status == DesktopBridgeStatus.WAITING_FOR_CODE &&
+                    state.pairingCode == null
+                ) {
+                    Spacer(Modifier.height(12.dp))
+                    NoteText(
+                        text = stringResource(R.string.bridge_code_expired),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                // 已连接的电脑标识（真实会话信息）。
+                state.connectedHost?.let { host ->
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.bridge_connected_host, host),
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppColors.Primary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                // 启动失败等错误的真实反馈。
+                state.errorMessage?.let { message ->
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = message,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppColors.Danger,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // 主按钮：按真实开关状态切换，不使用原型的"体验"字样。
+                if (!state.enabled) {
+                    ProtoPrimaryButton(
+                        text = stringResource(R.string.bridge_start),
+                        onClick = controller::start,
+                    )
+                } else {
+                    ProtoPrimaryButton(
+                        text = stringResource(R.string.bridge_stop),
+                        onClick = controller::stop,
+                    )
+                    if (state.status != DesktopBridgeStatus.CONNECTED) {
+                        Spacer(Modifier.height(8.dp))
+                        ProtoSecondaryButton(
+                            text = stringResource(R.string.bridge_rotate_code),
+                            onClick = controller::rotatePairingCode,
+                        )
                     }
                 }
-                Button(
-                    onClick = controller::stop,
+
+                // 文字按钮：LAN 配对入口（原型对应「输入邀请码演示」的位置）。
+                ProtoTextButton(
+                    text = stringResource(R.string.bridge_open_lan),
+                    onClick = onLanPairing,
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("关闭桌面桥")
-                }
+                )
             }
+
+            // 3.「也可以用 USB」分区，带「已有基础」标签（原型 section-head + tag）。
+            ProtoSectionHead(title = stringResource(R.string.bridge_usb_section)) {
+                TagChip(
+                    text = stringResource(R.string.bridge_usb_tag),
+                    tone = TagTone.NEUTRAL,
+                )
+            }
+            NoteText(text = stringResource(R.string.bridge_usb_note))
+
+            Spacer(Modifier.height(8.dp))
+
+            // 4. 底部安全边界提示条：真实约束，不是原型免责声明。
+            NoticeBar(text = stringResource(R.string.bridge_security_notice, BridgeProtocol.LOOPBACK_ADDRESS, BridgeLimits.PORT))
         }
     }
 }
+
+/** 把真实桥状态映射为卡片主标题，不硬编码就绪。 */
+@Composable
+private fun bridgeStatusTitle(status: DesktopBridgeStatus): String = stringResource(
+    when (status) {
+        DesktopBridgeStatus.STOPPED -> R.string.bridge_status_stopped
+        DesktopBridgeStatus.STARTING -> R.string.bridge_status_starting
+        DesktopBridgeStatus.WAITING_FOR_CODE -> R.string.bridge_status_waiting
+        DesktopBridgeStatus.CONNECTED -> R.string.bridge_status_connected
+        DesktopBridgeStatus.ERROR -> R.string.bridge_status_error
+    },
+)
+
+/** 状态对应的一句话说明，帮助用户判断下一步。 */
+@Composable
+private fun bridgeStatusHint(status: DesktopBridgeStatus): String = stringResource(
+    when (status) {
+        DesktopBridgeStatus.STOPPED -> R.string.bridge_hint_stopped
+        DesktopBridgeStatus.STARTING -> R.string.bridge_hint_starting
+        DesktopBridgeStatus.WAITING_FOR_CODE -> R.string.bridge_hint_waiting
+        DesktopBridgeStatus.CONNECTED -> R.string.bridge_hint_connected
+        DesktopBridgeStatus.ERROR -> R.string.bridge_hint_error
+    },
+)

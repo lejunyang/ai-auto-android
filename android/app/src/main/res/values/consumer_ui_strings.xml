@@ -85,6 +85,79 @@
     <string name="lan_page_title">局域网配对</string>
     <string name="lan_page_subtitle">同一可信网络，核对短指纹后连接</string>
     <string name="lan_page_info">从桌面 CLI 获取一次性邀请码，手工输入或扫码后核对网卡、地址与短指纹再建立连接。LAN 会话与本机 ADB 桥相互独立，可随时关闭。</string>
+
+    <!-- 连接电脑页内容（按原型 #connection 信息层级，承载真实桌面桥能力） -->
+    <string name="bridge_heading">手机与电脑，\n配合做事。</string>
+    <string name="bridge_desc">电脑上的 Agent 可以通过受控连接\n使用手机的观察与执行能力。</string>
+    <!-- 状态标题：来自 DesktopBridgeController 真实状态 -->
+    <string name="bridge_status_stopped">桌面桥未开启</string>
+    <string name="bridge_status_starting">正在启动本地桥</string>
+    <string name="bridge_status_waiting">等待电脑配对</string>
+    <string name="bridge_status_connected">电脑会话已连接</string>
+    <string name="bridge_status_error">桌面桥启动失败</string>
+    <!-- 状态说明：告诉用户下一步 -->
+    <string name="bridge_hint_stopped">开启后只在本机回环端口等待电脑连接。</string>
+    <string name="bridge_hint_starting">正在绑定本机端口，请稍候。</string>
+    <string name="bridge_hint_waiting">把下面的一次性码输入电脑，核对后即可连接。</string>
+    <string name="bridge_hint_connected">电脑可通过受控连接使用手机的观察与执行能力。</string>
+    <string name="bridge_hint_error">端口可能被占用，请关闭后重试。</string>
+    <string name="bridge_code_scope">请只提供给当前通过 USB 调试授权的电脑。</string>
+    <string name="bridge_code_expired">一次性码已过期或已使用，请生成新码后再连接。</string>
+    <string name="bridge_connected_host">当前电脑：%1$s</string>
+    <string name="bridge_start">开启桌面桥</string>
+    <string name="bridge_stop">关闭桌面桥</string>
+    <string name="bridge_rotate_code">生成新的一次性码</string>
+    <string name="bridge_open_lan">改用局域网邀请码连接</string>
+    <string name="bridge_usb_section">也可以用 USB</string>
+    <string name="bridge_usb_tag">已有基础</string>
+    <string name="bridge_usb_note">USB 调试信任和桌面桥是两层授权，均由你显式建立；会话随时可关闭。</string>
+    <string name="bridge_security_notice">服务只绑定 %1$s:%2$d，不会监听 Wi-Fi 或移动网络。一次性码有效 2 分钟且成功使用后立即失效；会话 token 最长有效 15 分钟，不会显示在界面或写入日志。关闭后端口立即停止接受连接。</string>
+
+    <!-- AI 模型页内容（按原型 #provider 信息层级，承载真实 Provider 配置） -->
+    <string name="provider_heading">接上你的 AI。</string>
+    <string name="provider_desc">支持 OpenAI 兼容接口。\n高级参数收起，不挡住第一次使用。</string>
+    <string name="provider_security_notice">API Key 使用 Android Keystore 加密保存，不写入日志、不进入备份，保存后输入框立即清空。请求只发送当前任务所需的最小界面摘要。</string>
+    <string name="provider_field_base_url">服务地址</string>
+    <string name="provider_base_url_placeholder">https://api.openai.com/v1</string>
+    <string name="provider_base_url_hint">仅允许 HTTPS，不接受查询参数或内嵌账号</string>
+    <string name="provider_field_model">模型名称</string>
+    <string name="provider_model_placeholder">gpt-4.1-mini</string>
+    <string name="provider_model_hint">填写服务方支持的模型标识</string>
+    <string name="provider_field_api_key">API Key</string>
+    <string name="provider_api_key_placeholder">输入 API Key</string>
+    <string name="provider_api_key_stored">已加密保存，留空则不更新</string>
+    <string name="provider_api_key_hint">保存后输入框会立即清空</string>
+    <string name="provider_advanced_expand">展开高级设置</string>
+    <string name="provider_advanced_collapse">收起高级设置</string>
+    <string name="provider_field_timeout">超时 / 秒</string>
+    <string name="provider_timeout_hint">允许 1 到 300 秒</string>
+    <string name="provider_save">保存配置</string>
+    <string name="provider_test">测试连接</string>
+    <string name="provider_testing">正在测试</string>
+    <string name="provider_save_ok">配置已安全保存</string>
+    <string name="provider_save_failed">配置保存失败，请确认设备安全状态后重试。</string>
+    <string name="provider_test_ok">连接成功，服务方返回了有效响应。</string>
+    <string name="provider_test_failed">连接失败：%1$s</string>
+    <string name="provider_bottom_note">密钥加密与连接测试由本机完成；连接测试只发一次最小请求，用于确认地址与模型可用。</string>
+
+    <!-- 允许操作的应用页内容（按原型 #permissions 信息层级，保留醒目披露全文） -->
+    <string name="accessibility_heading">只在你允许的范围内。</string>
+    <string name="accessibility_desc">读取界面文字与控件，执行你发起的操作。\n拒绝授权，仍可浏览和编辑技能。</string>
+    <string name="accessibility_disclosure_title">无障碍服务可以读取屏幕并代你操作。</string>
+    <string name="accessibility_disclosure_body">这是系统级能力，必须由你在系统设置中亲自开启。启用后，服务会在你填写的目标应用中读取界面文字、控件说明、层级、位置和状态，并可执行点击、长按、输入、滚动、返回、主页和最近任务。</string>
+    <string name="accessibility_disclosure_detail">这些信息可能包含你正在查看或输入的内容。密码字段、验证码和支付相关节点会在快照中清除，且不会记录或上传；受保护页面可能无法观察或操作。</string>
+    <string name="accessibility_disclosure_scope">本应用不是面向残障辅助用途的无障碍工具。你可以随时在系统设置中关闭服务，或在此撤销同意。</string>
+    <string name="accessibility_service_state">系统无障碍服务</string>
+    <string name="accessibility_service_on">已启用</string>
+    <string name="accessibility_service_off">未启用</string>
+    <string name="accessibility_apps_section">允许的应用</string>
+    <string name="accessibility_packages_label">允许操作的目标应用包名</string>
+    <string name="accessibility_packages_placeholder">com.example.app</string>
+    <string name="accessibility_packages_hint">每行、空格或逗号分隔，最多 32 个；服务不会处理其他应用。</string>
+    <string name="accessibility_consent">我已了解读取与操作的范围</string>
+    <string name="accessibility_grant">同意并打开系统无障碍设置</string>
+    <string name="accessibility_revoke">撤销同意</string>
+    <string name="accessibility_bottom_note">这里只提供引导，不会自动打开或更改系统设置。模型图像授权每次任务单独选择，默认关闭。</string>
     <string name="settings_profile_name">我的随身助理</string>
     <string name="settings_profile_desc">本地优先 · 自己掌控</string>
     <string name="settings_status_title">助理状态</string>

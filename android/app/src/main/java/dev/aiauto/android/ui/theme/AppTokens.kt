@@ -122,6 +122,14 @@ object AppColors {
     const val NoticeBackgroundArgb = 0xFFEEF4FF
     val NoticeBackground = Color(NoticeBackgroundArgb)
 
+    /** amber notice 背景（原型 .notice.amber 实测 #FFF4E3），用于高影响披露。 */
+    const val WarningContainerArgb = 0xFFFFF4E3
+    val WarningContainer = Color(WarningContainerArgb)
+
+    /** amber notice 文字（原型实测 #956725）。 */
+    const val WarningNoticeTextArgb = 0xFF956725
+    val WarningNoticeText = Color(WarningNoticeTextArgb)
+
     //endregion
 }
 

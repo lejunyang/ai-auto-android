@@ -37,9 +37,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+
+import dev.aiauto.android.ui.theme.AppColors
+import dev.aiauto.android.ui.theme.AppSpacing
+import dev.aiauto.android.ui.theme.AppTypographyTokens
 
 /** 底部导航的四个主入口定义，路由常量与 AiAutoAndroidApp 中的 Route 保持一致。 */
 enum class AppTab(
@@ -65,9 +72,21 @@ fun AppBottomNavigation(
     currentRoute: String?,
     onTabSelected: (AppTab) -> Unit,
 ) {
+    // 原型底栏实测：高 72dp、背景 #FAFBFC、顶部 1dp #E5EAF1 描边、
+    // 图标 20dp、标签 12sp/18、选中 #2563EB、未选中 #7A8595。
     NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = AppColors.SurfaceMuted,
         tonalElevation = 0.dp,
+        modifier = Modifier
+            .height(AppSpacing.NavHeight)
+            .drawBehind {
+                val stroke = 1.dp.toPx()
+                drawRect(
+                    color = AppColors.Line,
+                    topLeft = Offset(0f, 0f),
+                    size = Size(size.width, stroke),
+                )
+            },
     ) {
         AppTab.entries.forEach { tab ->
             val selected = currentRoute == tab.route
@@ -78,16 +97,23 @@ fun AppBottomNavigation(
                     Icon(
                         imageVector = tab.icon,
                         contentDescription = tab.label,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(AppSpacing.NavIconSize),
                     )
                 },
-                label = { Text(tab.label, style = MaterialTheme.typography.labelSmall) },
+                label = {
+                    Text(
+                        text = tab.label,
+                        fontSize = AppTypographyTokens.NavLabelFontSize,
+                        lineHeight = AppTypographyTokens.NavLabelLineHeight,
+                    )
+                },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    selectedIconColor = AppColors.Primary,
+                    selectedTextColor = AppColors.Primary,
+                    unselectedIconColor = AppColors.NavInactive,
+                    unselectedTextColor = AppColors.NavInactive,
+                    // 原型选中态是浅蓝胶囊底（#EEF4FF），不是半透明。
+                    indicatorColor = AppColors.PrimaryContainer,
                 ),
             )
         }

@@ -11,6 +11,7 @@ package dev.aiauto.android.ui.home
  * - 语音输入按需启用：检查麦克风权限，未授权时引导至系统设置，不静默请求。
  */
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -67,6 +69,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -74,8 +77,14 @@ import dev.aiauto.android.R
 import dev.aiauto.android.automation.recording.AutomationScriptSummary
 import dev.aiauto.android.automation.recording.RecordingScriptStore
 import dev.aiauto.android.ui.components.EmptyState
+import dev.aiauto.android.ui.components.IconTile
 import dev.aiauto.android.ui.components.ScriptLoadState
+import dev.aiauto.android.ui.components.dashedBorder
 import dev.aiauto.android.ui.components.produceScriptSummaries
+import dev.aiauto.android.ui.theme.AppColors
+import dev.aiauto.android.ui.theme.AppShapes
+import dev.aiauto.android.ui.theme.AppSpacing
+import dev.aiauto.android.ui.theme.AppTypographyTokens
 import dev.aiauto.android.ui.voice.VoiceInputHandler
 import dev.aiauto.android.ui.voice.VoiceInputResult
 
@@ -464,61 +473,83 @@ private fun ComposerCard(
 /** 技能卡片（2列网格用）：图标 + 标题 + 小字。 */
 @Composable
 private fun SkillTile(script: AutomationScriptSummary, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
+    // 原型 .skill-tile 实测：180.5x112.5dp、18dp 圆角、1dp #E5EAF1 描边、白底、12dp 内边距。
+    val shape = RoundedCornerShape(AppShapes.SkillTile)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(AppSpacing.SkillTileHeight)
+            .background(AppColors.Surface, shape)
+            .border(BorderStroke(1.dp, AppColors.SkillTileBorder), shape)
+            .clickable(onClick = onClick)
+            .padding(AppSpacing.SkillTilePadding),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(36.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.MenuBook, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                }
-            }
-            Text(script.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
-            Text(
-                script.targetPackages.firstOrNull() ?: "",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
+        // 原型 .tile-icon 实测：35dp 方块、11dp 圆角、#EEF4FF 底。
+        IconTile(icon = Icons.Default.MenuBook)
+        Text(
+            text = script.name,
+            fontSize = AppTypographyTokens.TileTitleFontSize,
+            lineHeight = AppTypographyTokens.TileTitleLineHeight,
+            fontWeight = FontWeight.Bold,
+            color = AppColors.Ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = script.targetPackages.firstOrNull() ?: "",
+            fontSize = AppTypographyTokens.TileMetaFontSize,
+            lineHeight = AppTypographyTokens.TileMetaLineHeight,
+            color = AppColors.Muted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
 /** 教它一次卡片：录制图标 + 标题/副标题 + + 图标。 */
 @Composable
 private fun TeachCard(onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
+    // 原型 .teach-card 实测：371x73.5dp、18dp 圆角、1dp #CCD9EC 虚线描边、#F3F6FC 底、16dp 内边距。
+    val shape = RoundedCornerShape(AppShapes.TeachCard)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(AppSpacing.TeachCardHeight)
+            .background(AppColors.TeachBackground, shape)
+            .dashedBorder(color = AppColors.TeachBorder, cornerRadius = AppShapes.TeachCard)
+            .clickable(onClick = onClick)
+            .padding(horizontal = AppSpacing.TeachCardPadding),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.RadioButtonChecked, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                }
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.assistant_teach_title), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.assistant_teach_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        // 录制图标：原型用 record 图标（同心圆），不是实心圆点。
+        Icon(
+            imageVector = Icons.Outlined.RadioButtonChecked,
+            contentDescription = null,
+            tint = AppColors.Primary,
+            modifier = Modifier.size(22.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.assistant_teach_title),
+                fontSize = AppTypographyTokens.TileTitleFontSize,
+                lineHeight = AppTypographyTokens.TileTitleLineHeight,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.Ink,
+            )
+            Text(
+                text = stringResource(R.string.assistant_teach_subtitle),
+                fontSize = AppTypographyTokens.TileMetaFontSize,
+                lineHeight = AppTypographyTokens.TileMetaLineHeight,
+                color = AppColors.Muted,
+            )
         }
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            tint = AppColors.Primary,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }

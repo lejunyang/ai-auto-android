@@ -10,16 +10,16 @@ import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,7 +38,21 @@ import dev.aiauto.android.accessibility.settings.AccessibilitySettings
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.accessibility.settings.TargetPackageParseResult
 import dev.aiauto.android.accessibility.settings.TargetPackageParser
+import dev.aiauto.android.ui.components.FieldLabel
+import dev.aiauto.android.ui.components.NoteText
+import dev.aiauto.android.ui.components.NoticeBar
+import dev.aiauto.android.ui.components.NoticeTone
+import dev.aiauto.android.ui.components.PageDesc
+import dev.aiauto.android.ui.components.PageHeading
+import dev.aiauto.android.ui.components.ProtoCard
+import dev.aiauto.android.ui.components.ProtoPrimaryButton
+import dev.aiauto.android.ui.components.ProtoSecondaryButton
+import dev.aiauto.android.ui.components.ProtoSectionHead
 import dev.aiauto.android.ui.components.ScreenScaffold
+import dev.aiauto.android.ui.components.TagChip
+import dev.aiauto.android.ui.components.TagTone
+import dev.aiauto.android.ui.theme.AppColors
+import dev.aiauto.android.ui.theme.AppSpacing
 
 @Composable
 fun AccessibilityScreen(
@@ -74,44 +88,49 @@ fun AccessibilityScreen(
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = AppSpacing.ScreenHorizontal)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = if (serviceEnabled) "系统服务已启用" else "系统服务未启用",
-                style = MaterialTheme.typography.headlineSmall,
-                color = if (serviceEnabled) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.error
-                },
+            // 1. 页面大标题与描述（原型 page-heading + page-desc）。
+            PageHeading(text = stringResource(R.string.accessibility_heading))
+            PageDesc(text = stringResource(R.string.accessibility_desc))
+
+            // 2. 醒目披露（原型 .notice.amber）：无障碍是高影响能力，必须显著披露。
+            //    此处保留全部原有披露文案，只改容器表现。
+            NoticeBar(
+                tone = NoticeTone.AMBER,
+                title = stringResource(R.string.accessibility_disclosure_title),
+                text = stringResource(R.string.accessibility_disclosure_body),
             )
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
+            NoteText(text = stringResource(R.string.accessibility_disclosure_detail))
+            NoteText(text = stringResource(R.string.accessibility_disclosure_scope))
+
+            Spacer(Modifier.height(4.dp))
+
+            // 3. 系统服务状态：真实读取，不硬编码。
+            ProtoCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "醒目披露：此服务可以读取屏幕内容并代你操作",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = stringResource(R.string.accessibility_service_state),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = AppColors.Ink,
                     )
-                    Text(
-                        text = "启用后，服务会在你填写的目标应用中读取界面文字、控件说明、层级、位置和状态，并可执行点击、长按、输入、滚动、返回、主页和最近任务。",
-                    )
-                    Text(
-                        text = "这些信息可能包含你正在查看或输入的内容。密码字段、验证码和支付相关节点会在快照中清除，且不会记录或上传；受保护页面可能无法观察或操作。",
-                    )
-                    Text(
-                        text = "本应用不是面向残障辅助用途的无障碍工具。你可以随时在系统设置中关闭服务，或在此撤销同意。",
-                        style = MaterialTheme.typography.bodyMedium,
+                    TagChip(
+                        text = if (serviceEnabled) {
+                            stringResource(R.string.accessibility_service_on)
+                        } else {
+                            stringResource(R.string.accessibility_service_off)
+                        },
+                        tone = if (serviceEnabled) TagTone.SUCCESS else TagTone.WARNING,
                     )
                 }
             }
+
+            // 4.「允许的应用」分区：包名输入（真实配置，非示例列表）。
+            ProtoSectionHead(title = stringResource(R.string.accessibility_apps_section))
+            FieldLabel(text = stringResource(R.string.accessibility_packages_label))
             OutlinedTextField(
                 value = targetPackages,
                 onValueChange = {
@@ -119,17 +138,20 @@ fun AccessibilityScreen(
                     feedback = null
                     hasError = false
                 },
-                label = { Text("允许操作的目标应用包名") },
-                placeholder = { Text("com.example.app") },
+                placeholder = { Text(stringResource(R.string.accessibility_packages_placeholder)) },
                 supportingText = {
-                    Text("每行、空格或逗号分隔，最多 32 个；服务不会处理其他应用。")
+                    Text(stringResource(R.string.accessibility_packages_hint))
                 },
                 minLines = 3,
+                shape = RoundedCornerShape(13.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            // 5. 同意勾选（原型底部 checkbox + label）。
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.heightIn(min = AppSpacing.MinTouchTarget),
             ) {
                 Checkbox(
                     checked = disclosureAccepted,
@@ -140,16 +162,20 @@ fun AccessibilityScreen(
                     },
                 )
                 Text(
-                    text = "我已阅读并同意上述读取与操作范围",
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = stringResource(R.string.accessibility_consent),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AppColors.Ink,
                 )
             }
-            Button(
+
+            // 6. 主操作：同意并跳系统设置（原型 .primary.full「查看系统授权步骤」的真实对应）。
+            ProtoPrimaryButton(
+                text = stringResource(R.string.accessibility_grant),
                 onClick = {
                     if (!disclosureAccepted) {
                         hasError = true
                         feedback = "请先明确勾选同意醒目披露。"
-                        return@Button
+                        return@ProtoPrimaryButton
                     }
                     when (val parsed = TargetPackageParser.parse(targetPackages)) {
                         is TargetPackageParseResult.Invalid -> {
@@ -161,7 +187,7 @@ fun AccessibilityScreen(
                             if (parsed.packages.isEmpty()) {
                                 hasError = true
                                 feedback = "请至少填写一个目标应用包名。"
-                                return@Button
+                                return@ProtoPrimaryButton
                             }
                             val settings = AccessibilitySettings(
                                 disclosureAccepted = true,
@@ -172,7 +198,7 @@ fun AccessibilityScreen(
                             } catch (_: IllegalStateException) {
                                 hasError = true
                                 feedback = "保存无障碍配置失败，请重试。"
-                                return@Button
+                                return@ProtoPrimaryButton
                             }
                             onSettingsChanged(settings)
                             feedback = "配置已保存。请在系统页面选择“AI 安卓自动化执行服务”。"
@@ -181,11 +207,11 @@ fun AccessibilityScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("同意并打开系统无障碍设置")
-            }
-            OutlinedButton(
+            )
+
+            // 7. 撤销同意：用户随时可收回授权。
+            ProtoSecondaryButton(
+                text = stringResource(R.string.accessibility_revoke),
                 onClick = {
                     val latestPackages = repository.load().targetPackages
                     val settings = AccessibilitySettings(
@@ -197,27 +223,26 @@ fun AccessibilityScreen(
                     } catch (_: IllegalStateException) {
                         hasError = true
                         feedback = "撤销同意失败，请重试。"
-                        return@OutlinedButton
+                        return@ProtoSecondaryButton
                     }
                     disclosureAccepted = false
                     onSettingsChanged(settings)
                     hasError = false
                     feedback = "已撤销 App 内同意。若系统服务仍启用，请同时在系统设置中关闭。"
                 },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("撤销同意")
-            }
+            )
+
+            // 8. 真实操作反馈。
             feedback?.let { message ->
                 Text(
                     text = message,
-                    color = if (hasError) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (hasError) AppColors.Danger else AppColors.Success,
                 )
             }
+
+            // 9. 底部边界说明。
+            NoteText(text = stringResource(R.string.accessibility_bottom_note))
         }
     }
 }
