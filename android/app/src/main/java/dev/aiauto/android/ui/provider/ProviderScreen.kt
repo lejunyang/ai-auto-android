@@ -136,69 +136,47 @@ fun ProviderScreen(
 
             // 3. 表单字段：服务地址 / 模型名称 / API Key（原型 label + input 结构）。
             FieldLabel(text = stringResource(R.string.provider_field_base_url))
-            OutlinedTextField(
+            ProtoTextField(
                 value = baseUrl,
                 onValueChange = {
                     baseUrl = it
                     clearFeedback()
                 },
-                placeholder = { Text(stringResource(R.string.provider_base_url_placeholder)) },
-                supportingText = {
-                    Text(
-                        errors[ProviderConfigField.BASE_URL]
-                            ?: stringResource(R.string.provider_base_url_hint),
-                    )
-                },
+                placeholder = stringResource(R.string.provider_base_url_placeholder),
+                hint = errors[ProviderConfigField.BASE_URL]
+                    ?: stringResource(R.string.provider_base_url_hint),
                 isError = errors.containsKey(ProviderConfigField.BASE_URL),
                 enabled = !isTesting,
-                singleLine = true,
-                shape = RoundedCornerShape(13.dp),
-                modifier = Modifier.fillMaxWidth(),
             )
 
             FieldLabel(text = stringResource(R.string.provider_field_model))
-            OutlinedTextField(
+            ProtoTextField(
                 value = model,
                 onValueChange = {
                     model = it
                     clearFeedback()
                 },
-                placeholder = { Text(stringResource(R.string.provider_model_placeholder)) },
-                supportingText = {
-                    Text(
-                        errors[ProviderConfigField.MODEL]
-                            ?: stringResource(R.string.provider_model_hint),
-                    )
-                },
+                placeholder = stringResource(R.string.provider_model_placeholder),
+                hint = errors[ProviderConfigField.MODEL]
+                    ?: stringResource(R.string.provider_model_hint),
                 isError = errors.containsKey(ProviderConfigField.MODEL),
                 enabled = !isTesting,
-                singleLine = true,
-                shape = RoundedCornerShape(13.dp),
-                modifier = Modifier.fillMaxWidth(),
             )
 
             FieldLabel(text = stringResource(R.string.provider_field_api_key))
-            OutlinedTextField(
+            ProtoTextField(
                 value = apiKey,
                 onValueChange = {
                     apiKey = it
                     clearFeedback()
                 },
-                placeholder = {
-                    Text(
-                        if (hasStoredApiKey) {
-                            stringResource(R.string.provider_api_key_stored)
-                        } else {
-                            stringResource(R.string.provider_api_key_placeholder)
-                        },
-                    )
+                placeholder = if (hasStoredApiKey) {
+                    stringResource(R.string.provider_api_key_stored)
+                } else {
+                    stringResource(R.string.provider_api_key_placeholder)
                 },
-                supportingText = {
-                    Text(
-                        errors[ProviderConfigField.API_KEY]
-                            ?: stringResource(R.string.provider_api_key_hint),
-                    )
-                },
+                hint = errors[ProviderConfigField.API_KEY]
+                    ?: stringResource(R.string.provider_api_key_hint),
                 isError = errors.containsKey(ProviderConfigField.API_KEY),
                 enabled = !isTesting,
                 keyboardOptions = KeyboardOptions(
@@ -207,9 +185,6 @@ fun ProviderScreen(
                     autoCorrectEnabled = false,
                 ),
                 visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                shape = RoundedCornerShape(13.dp),
-                modifier = Modifier.fillMaxWidth(),
             )
 
             // 4. 高级设置（原型 <details> 折叠）：超时不挡住第一次使用。
@@ -223,24 +198,18 @@ fun ProviderScreen(
             )
             if (advancedExpanded) {
                 FieldLabel(text = stringResource(R.string.provider_field_timeout))
-                OutlinedTextField(
+                ProtoTextField(
                     value = timeout,
                     onValueChange = {
                         timeout = it.filter(Char::isDigit).take(3)
                         clearFeedback()
                     },
-                    supportingText = {
-                        Text(
-                            errors[ProviderConfigField.TIMEOUT]
-                                ?: stringResource(R.string.provider_timeout_hint),
-                        )
-                    },
+                    placeholder = "",
+                    hint = errors[ProviderConfigField.TIMEOUT]
+                        ?: stringResource(R.string.provider_timeout_hint),
                     isError = errors.containsKey(ProviderConfigField.TIMEOUT),
                     enabled = !isTesting,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    shape = RoundedCornerShape(13.dp),
-                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
@@ -350,5 +319,49 @@ fun ProviderScreen(
             // 7. 底部说明：密钥加密与连接测试的真实职责边界。
             NoteText(text = stringResource(R.string.provider_bottom_note))
         }
+    }
+}
+
+/**
+ * 功能用途：原型风格输入框——固定 50dp 高度（与原型 input token 一致），
+ * 辅助文字在框外独立渲染（避免 OutlinedTextField 内置 supportingText 撑高到 78dp）。
+ *
+ * 原型结构：label（独立）→ input（371x50dp，13dp 圆角）→ 辅助文字（独立）。
+ */
+@Composable
+private fun ProtoTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    hint: String,
+    modifier: Modifier = Modifier,
+    isError: Boolean = false,
+    enabled: Boolean = true,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation =
+        androidx.compose.ui.text.input.VisualTransformation.None,
+) {
+    Column(modifier = modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = { Text(placeholder) },
+            isError = isError,
+            enabled = enabled,
+            singleLine = true,
+            keyboardOptions = keyboardOptions,
+            visualTransformation = visualTransformation,
+            shape = RoundedCornerShape(13.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+        )
+        // 辅助文字在框外独立渲染，错误时使用危险色。
+        Text(
+            text = hint,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isError) AppColors.Danger else AppColors.Muted,
+            modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+        )
     }
 }

@@ -9,6 +9,7 @@ package dev.aiauto.android.ui.skills
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,9 +19,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -50,7 +52,6 @@ import androidx.compose.ui.unit.sp
 import dev.aiauto.android.R
 import dev.aiauto.android.automation.recording.AutomationScriptSummary
 import dev.aiauto.android.automation.recording.RecordingScriptStore
-import dev.aiauto.android.ui.components.SkillCard
 
 import java.time.Instant
 import java.time.ZoneId
@@ -80,13 +81,15 @@ fun SkillsScreen(
     // 当前选中的筛选标签，默认"全部"。
     var selectedFilter by remember { mutableStateOf(SkillFilter.ALL) }
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         // 页面头部：左侧"我的技能"标题与副标题，右侧 + 图标按钮触发录制。
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -115,7 +118,7 @@ fun SkillsScreen(
         }
 
         // 筛选标签行：全部 / 我教的。MVP 阶段两者内容一致，仅维护选中态。
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SkillFilter.entries.forEach { filter ->
                     FilterChip(
@@ -135,7 +138,7 @@ fun SkillsScreen(
 
         // 技能列表：无脚本时展示紧凑空态，否则逐张渲染真实技能卡片。
         if (scripts.isEmpty()) {
-            item {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -155,14 +158,12 @@ fun SkillsScreen(
             }
         } else {
             items(scripts, key = { it.id }) { script ->
-                SkillCard(
+                SkillGridCard(
                     title = script.name,
-                    // 描述展示目标应用包名，多个以"、"连接。
-                    description = stringResource(
+                    subtitle = stringResource(
                         R.string.skills_target_apps,
                         script.targetPackages.joinToString("、"),
                     ),
-                    // 元信息："N 步 · 创建于 yyyy-MM-dd HH:mm"。
                     meta = buildScriptMeta(script),
                     onClick = { onOpenSkill(script.id) },
                 )
@@ -170,12 +171,12 @@ fun SkillsScreen(
         }
 
         // 底部录制引导卡片：虚线轻卡，引导用户录制新技能。
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             TeachLightCard(onClick = onStartRecording)
         }
 
         // 底部安全间距。
-        item { Spacer(Modifier.height(8.dp)) }
+        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(8.dp)) }
     }
 }
 
@@ -241,5 +242,72 @@ private fun formatCreatedAt(iso: String): String {
             .format(formatter)
     } catch (e: Exception) {
         iso
+    }
+}
+
+/**
+ * 技能网格卡片：按原型 2 列网格视觉，紧凑卡片含彩色图标块 + 标题 + 副标题 + 元信息。
+ * 卡片有边框 + 冷白底 + 无阴影，与原型卡片语言一致。
+ */
+@Composable
+private fun SkillGridCard(
+    title: String,
+    subtitle: String,
+    meta: String,
+    onClick: () -> Unit,
+) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(18.dp),
+            ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // 彩色图标块：35x35，圆角 11，背景 primaryContainer。
+            Surface(
+                shape = RoundedCornerShape(11.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(35.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            // 标题：tileTitle 13sp/700。
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            // 副标题：tileMeta 12sp/400。
+            Text(
+                text = subtitle,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+            // 元信息：步骤数 + 创建时间。
+            Text(
+                text = meta,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
     }
 }

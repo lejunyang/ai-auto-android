@@ -90,9 +90,62 @@ TEXT_WIDTH_EXEMPT = {
 # 盒模型不同（实测差约 7dp）。字号/行高由 DesignTokenParityTest 断言。
 TEXT_HEIGHT_EXEMPT = TEXT_WIDTH_EXEMPT
 
+# notice/noticeAmber 匹配到内部 Text 而非容器时，宽/高/x 不可比（容器尺寸由 token 断言）。
+NOTICE_INNER_TEXT_EXEMPT = {"notice", "noticeAmber"}
+
 # x 起点豁免：图标+文本 Row 的内部间距由 Compose Arrangement 决定，
 # 与 HTML flex gap 的累计起点不同；容器整体位置一致即可。
 TEXT_X_EXEMPT = {"settingRowTitle", "settingRowSub", "skillTileTitle", "skillTileMeta"}
+
+# 文案别名映射：原型演示文案 ↔ 真实功能文案。
+# 原型使用"演示/体验"字样，真实功能使用实际操作文案，因此按文本无法直接匹配。
+# key 是原型 text 片段，value 是实机 text 片段列表（任一命中即匹配）。
+TEXT_ALIASES: dict[str, list[str]] = {
+    # provider 页按钮
+    "保存演示配置": ["保存配置"],
+    "演示连接检查": ["测试连接", "连接检查"],
+    # connection 页按钮
+    "体验配对流程": ["开启桌面桥", "关闭桌面桥"],
+    "输入邀请码演示": ["改用局域网邀请码连接", "邀请码", "局域网"],
+    # permissions 页按钮
+    "查看系统授权步骤": ["授权", "开启无障碍", "系统设置"],
+    # 页面标题（文案有意不同）
+    "教会它的事": ["技能"],
+    "做过的，都在这里": ["记录", "运行记录"],
+    # 通用
+    "重新体验首次设置": ["首次设置", "设置向导"],
+}
+
+# 页面标题类元素要求位于页面上方（y < 300dp），避免匹配到页面中部的空态文字
+PAGE_HEADING_LABELS = {"pageHeading", "greetingTitle"}
+# 页面描述类元素也位于页面上方（y < 250dp），避免匹配到状态标题
+PAGE_DESC_LABELS = {"pageDesc", "greetingHello"}
+
+# 类型匹配规则：原型 label → 实机 class 后缀集合。
+# 当文本（含别名）匹配失败时，按类型+最近 y 位置配对。
+TYPE_HINTS: dict[str, set[str]] = {
+    "input": {"EditText"},
+    "primaryBtn": {"View", "Button"},
+    "primaryBtnFull": {"View", "Button"},
+    "secondaryBtn": {"View", "Button"},
+    "textBtn": {"View", "Button", "TextView"},
+    "notice": {"TextView", "View"},
+    "noticeAmber": {"TextView", "View"},
+    "pageHeading": {"TextView"},
+    "pageDesc": {"TextView"},
+    "note": {"TextView"},
+    "label": {"TextView"},
+    "sectionTitle": {"TextView"},
+    "card": {"View", "FrameLayout", "LinearLayout"},
+}
+
+# 按钮类元素要求 clickable=true（排除静态文本）
+BUTTON_LABELS = {"primaryBtn", "primaryBtnFull", "secondaryBtn"}
+# 文字按钮：clickable=true，高度 < 40dp（与主按钮区分）
+TEXT_BUTTON_LABELS = {"textBtn"}
+
+# 类型匹配时的 y 搜索带宽（dp）：在原型 y ± 此范围内找最近的同类型元素
+TYPE_MATCH_Y_BAND = 120.0
 
 
 def px_to_dp(px: float) -> float:
@@ -153,20 +206,35 @@ def parse_bounds(bounds: str) -> dict[str, float] | None:
 
 
 def collect_app_elements(root: ET.Element) -> list[dict]:
-    """遍历 dump 树，收集所有有文本或可点击的节点。"""
+    """遍历 dump 树，收集所有有文本或可点击的节点。
+
+    对 clickable=true 但自身无 text 的节点（Compose Button 渲染为
+    android.view.View，文案在子 TextView），聚合其后代节点的文本，
+    使按钮可按文案（含别名）匹配。
+    """
     out: list[dict] = []
     for node in root.iter("node"):
         text = (node.get("text") or "").strip()
         desc = (node.get("content-desc") or "").strip()
         clickable = node.get("clickable") == "true"
-        if not text and not desc and not clickable:
+        # 聚合后代文本（用于无文案的可点击容器）
+        aggregated = ""
+        if clickable and not text and not desc:
+            parts = []
+            for child in node.iter("node"):
+                ct = (child.get("text") or child.get("content-desc") or "").strip()
+                if ct and ct not in parts:
+                    parts.append(ct)
+            aggregated = " ".join(parts)
+        display_text = text or desc or aggregated
+        if not display_text and not clickable:
             continue
         box = parse_bounds(node.get("bounds", ""))
         if not box or box["width"] <= 0 or box["height"] <= 0:
             continue
         out.append(
             {
-                "text": text or desc,
+                "text": display_text,
                 "class": node.get("class", ""),
                 "clickable": clickable,
                 "box": box,
@@ -175,26 +243,118 @@ def collect_app_elements(root: ET.Element) -> list[dict]:
     return out
 
 
+def _text_fragment_match(el: dict, frag: str) -> bool:
+    """判断实机元素文本是否包含原型片段（取前 12 字符避免长文案截断问题）。"""
+    if not frag:
+        return False
+    return frag[:12] in el["text"]
+
+
+def _alias_match(proto_text: str, app_el: dict) -> bool:
+    """通过别名映射表匹配：原型文案的任一别名片段出现在实机文本中。"""
+    for proto_frag, app_aliases in TEXT_ALIASES.items():
+        if proto_frag[:10] in proto_text:
+            for alias in app_aliases:
+                if alias in app_el["text"]:
+                    return True
+    return False
+
+
+def _type_candidates(app_elements: list[dict], label: str, proto_el: dict) -> list[dict]:
+    """按类型提示筛选候选元素，并在 y 带宽内按距离排序。
+
+    对容器类元素（notice/card）附加最小宽度约束，避免匹配到内部小文本节点。
+    """
+    hints = TYPE_HINTS.get(label)
+    if not hints:
+        return []
+    proto_box = proto_el.get("box") or {}
+    proto_y = proto_box.get("y", 0)
+    proto_w = proto_box.get("width", 0)
+    # 容器类元素要求宽度至少为原型的 50%，避免匹配到内部小文本
+    min_width = proto_w * 0.5 if label in {"notice", "noticeAmber", "card"} else 0
+    # 段落类文本（note/pageDesc）要求宽度 >= 200dp，避免匹配到 placeholder/label
+    if label in {"note", "pageDesc"}:
+        min_width = max(min_width, 200.0)
+    candidates = []
+    for el in app_elements:
+        cls_short = el["class"].split(".")[-1]
+        if cls_short not in hints:
+            continue
+        if label in BUTTON_LABELS and not el["clickable"]:
+            continue
+        if label in BUTTON_LABELS and el["box"]["height"] < 40:
+            continue
+        if el["box"]["width"] < min_width:
+            continue
+        if abs(el["box"]["y"] - proto_y) <= TYPE_MATCH_Y_BAND:
+            candidates.append(el)
+    candidates.sort(key=lambda e: abs(e["box"]["y"] - proto_y))
+    return candidates
+
+
 def find_app_element(
     app_elements: list[dict],
-    text_fragment: str,
-    min_y: float | None = None,
+    proto_el: dict,
+    label: str,
+    matched: set[int] | None = None,
 ) -> dict | None:
-    """按文本片段匹配实机元素，可选叠加 y 位置下限约束。
+    """多级匹配实机元素。
 
-    min_y 用于区分同名文本（如底栏「我的」与设置行「我的随身助理」）。
+    优先级：
+    1. 原型文本片段直接匹配实机文本
+    2. 别名映射匹配（原型演示文案 ↔ 真实功能文案）
+    3. 类型+最近 y 位置匹配（对 input/button/notice 等文案不同或无文案元素）
+
+    matched: 已被其他原型元素占用的实机元素 id 集合，避免重复匹配。
     """
-    if not text_fragment:
-        return None
-    frag = text_fragment.strip()[:12]
-    if not frag:
-        return None
-    for el in app_elements:
-        if frag not in el["text"]:
-            continue
-        if min_y is not None and el["box"]["y"] < min_y:
-            continue
-        return el
+    if matched is None:
+        matched = set()
+    proto_text = proto_el.get("text") or ""
+    proto_y = (proto_el.get("box") or {}).get("y", 0)
+
+    def _available(el: dict) -> bool:
+        if id(el) in matched:
+            return False
+        # 主按钮：clickable=true 且高度 >= 40dp
+        if label in BUTTON_LABELS:
+            if not el["clickable"] or el["box"]["height"] < 40:
+                return False
+        # 文字按钮：clickable=true 且高度 < 40dp（避免匹配到设置行）
+        if label in TEXT_BUTTON_LABELS:
+            if not el["clickable"] or el["box"]["height"] >= 40:
+                return False
+        # 对页面标题类元素，要求位于页面上方（避免匹配到空态文字）
+        if label in PAGE_HEADING_LABELS and el["box"]["y"] > 300:
+            return False
+        # 对页面描述类元素，要求位于页面上方（避免匹配到状态标题）
+        if label in PAGE_DESC_LABELS and el["box"]["y"] > 250:
+            return False
+        return True
+
+    # 第 1 级：文本直接匹配
+    if proto_text:
+        frag = proto_text.strip()[:12]
+        for el in app_elements:
+            if _available(el) and _text_fragment_match(el, frag):
+                el["_matchBy"] = "text"
+                return el
+
+    # 第 2 级：别名匹配
+    if proto_text:
+        for el in app_elements:
+            if _available(el) and _alias_match(proto_text, el):
+                el["_matchBy"] = "alias"
+                return el
+
+    # 第 3 级：类型+位置匹配
+    candidates = _type_candidates(app_elements, label, proto_el)
+    candidates = [c for c in candidates if _available(c)]
+    if candidates:
+        best = candidates[0]
+        best["_matchBy"] = "type-position"
+        return best
+
     return None
 
 
@@ -221,6 +381,7 @@ def compare_element(label: str, proto_el: dict, app_el: dict | None) -> dict:
         "prototypeText": proto_el.get("text"),
         "appText": app_el["text"] if app_el else None,
         "matched": app_el is not None,
+        "matchBy": app_el.get("_matchBy") if app_el else None,
         "metrics": [],
         "notMeasurable": [],
     }
@@ -248,7 +409,8 @@ def compare_element(label: str, proto_el: dict, app_el: dict | None) -> dict:
     abox = app_el["box"]
     # 文本元素的 width 是内容宽度（Compose）vs 父容器宽度（HTML），口径不同，
     # 登记为豁免而不是判超差；高度与 x 起点仍然比对。
-    if label in TEXT_WIDTH_EXEMPT:
+    # notice 匹配到内部 Text 时，宽/高/x 均不可比（容器由 token 断言）。
+    if label in TEXT_WIDTH_EXEMPT or label in NOTICE_INNER_TEXT_EXEMPT:
         entry["notMeasurable"].append(
             {
                 "metric": "box.width",
@@ -261,7 +423,7 @@ def compare_element(label: str, proto_el: dict, app_el: dict | None) -> dict:
         entry["metrics"].append(
             compare_value("box.width", pbox.get("width"), abox["width"], TOLERANCE["size"])
         )
-    if label in TEXT_HEIGHT_EXEMPT:
+    if label in TEXT_HEIGHT_EXEMPT or label in NOTICE_INNER_TEXT_EXEMPT:
         entry["notMeasurable"].append(
             {
                 "metric": "box.height",
@@ -275,7 +437,7 @@ def compare_element(label: str, proto_el: dict, app_el: dict | None) -> dict:
             compare_value("box.height", pbox.get("height"), abox["height"], TOLERANCE["size"])
         )
 
-    if label in TEXT_X_EXEMPT:
+    if label in TEXT_X_EXEMPT or label in NOTICE_INNER_TEXT_EXEMPT:
         entry["notMeasurable"].append(
             {
                 "metric": "box.x",
@@ -331,6 +493,7 @@ def main() -> int:
 
     results = []
     skipped_containers = []
+    matched_app_indices: set[int] = set()  # 已匹配的实机元素索引，避免重复匹配
     for label, proto_el in (proto.get("elements") or {}).items():
         if not proto_el:
             continue
@@ -338,7 +501,10 @@ def main() -> int:
         if label in CONTAINER_ELEMENTS:
             skipped_containers.append(label)
             continue
-        app_el = find_app_element(app_elements, proto_el.get("text") or "")
+        app_el = find_app_element(app_elements, proto_el, label, matched_app_indices)
+        if app_el is not None:
+            # 记录该实机元素已被占用（用 id 去重，因为元素是 dict）
+            matched_app_indices.add(id(app_el))
         results.append(compare_element(label, proto_el, app_el))
 
     over = [r for r in results if r["status"] == "OVER_TOLERANCE"]
@@ -393,6 +559,12 @@ def main() -> int:
         print(f"\n未在实机找到的原型元素 ({len(missing)}):")
         for r in missing[:20]:
             print(f"  {r['element']} (原型文案: {r['prototypeText']})")
+    # 显示各匹配方式分布，便于追溯别名/类型匹配是否生效
+    match_dist: dict[str, int] = {}
+    for r in results:
+        mb = r.get("matchBy") or "none"
+        match_dist[mb] = match_dist.get(mb, 0) + 1
+    print(f"\n匹配方式分布: {match_dist}")
 
     print(f"\n报告: {out_path}")
     return 0

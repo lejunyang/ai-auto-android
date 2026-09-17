@@ -256,6 +256,7 @@ fun ProtoTextButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    center: Boolean = false,
 ) {
     TextButton(
         onClick = onClick,
@@ -266,6 +267,8 @@ fun ProtoTextButton(
             fontSize = AppTypographyTokens.TextBtnFontSize,
             lineHeight = AppTypographyTokens.TextBtnLineHeight,
             color = AppColors.Primary,
+            textAlign = if (center) androidx.compose.ui.text.style.TextAlign.Center else androidx.compose.ui.text.style.TextAlign.Start,
+            modifier = if (center) Modifier.fillMaxWidth() else Modifier,
         )
     }
 }

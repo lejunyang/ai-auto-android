@@ -195,11 +195,12 @@ fun DesktopBridgeScreen(
                     }
                 }
 
-                // 文字按钮：LAN 配对入口（原型对应「输入邀请码演示」的位置）。
+                // 文字按钮：LAN 配对入口（原型对应「输入邀请码演示」的位置，居中）。
                 ProtoTextButton(
                     text = stringResource(R.string.bridge_open_lan),
                     onClick = onLanPairing,
                     modifier = Modifier.fillMaxWidth(),
+                    center = true,
                 )
             }
 
