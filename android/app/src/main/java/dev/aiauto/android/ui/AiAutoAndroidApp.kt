@@ -47,6 +47,7 @@ import dev.aiauto.android.ui.recording.RecordingHost
 import dev.aiauto.android.ui.recording.RecordingViewModel
 import dev.aiauto.android.ui.session.SessionScreen
 import dev.aiauto.android.ui.session.SessionViewModel
+import dev.aiauto.android.ui.navigation.switchTab
 import dev.aiauto.android.ui.settings.SettingsScreen
 
 /** 路由常量：四个主 tab 为根路由，其余为全屏子页面。 */
@@ -164,13 +165,9 @@ fun AiAutoAndroidApp(
                 AppBottomNavigation(
                     currentRoute = currentRoute,
                     onTabSelected = { tab ->
-                        navController.navigate(tab.route) {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        // 统一走 switchTab，与页内跳 tab 使用完全相同的 NavOptions，
+                        // 避免存档 key 被污染导致 tab 失效。
+                        navController.switchTab(tab.route, Route.ASSISTANT)
                     },
                 )
             }
@@ -199,10 +196,11 @@ fun AiAutoAndroidApp(
                         navController.navigate(Route.recording(startRecording = true))
                     },
                     onGoToSkills = {
-                        navController.navigate(AppTab.SKILLS.route)
+                        // 页内跳 tab 必须走 switchTab，不能裸 navigate（否则污染返回栈存档）。
+                        navController.switchTab(AppTab.SKILLS.route, Route.ASSISTANT)
                     },
                     onGoToSettings = {
-                        navController.navigate(AppTab.SETTINGS.route)
+                        navController.switchTab(AppTab.SETTINGS.route, Route.ASSISTANT)
                     },
                 )
             }

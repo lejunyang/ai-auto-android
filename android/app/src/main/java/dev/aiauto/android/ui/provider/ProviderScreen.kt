@@ -24,12 +24,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
+import dev.aiauto.android.R
 import dev.aiauto.android.provider.OpenAICompatibleProvider
 import dev.aiauto.android.provider.ProviderActionParser
 import dev.aiauto.android.provider.ProviderConfig
@@ -93,8 +95,10 @@ fun ProviderScreen(
     }
 
     ScreenScaffold(
-        title = "AI Provider",
+        title = stringResource(R.string.provider_page_title),
         onBack = onBack,
+        subtitle = stringResource(R.string.provider_page_subtitle),
+        infoText = stringResource(R.string.provider_page_info),
     ) {
         Column(
             modifier = Modifier

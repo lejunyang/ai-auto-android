@@ -59,6 +59,32 @@
     <!-- 我的页 -->
     <string name="settings_title">我的</string>
     <string name="settings_subtitle">把边界设好，其余交给它。</string>
+    <!-- 我的页页头（原型 setHeader 标题/副标题）与右上 info 说明 -->
+    <string name="settings_page_title">我的</string>
+    <string name="settings_page_subtitle">把边界设好，其余交给它。</string>
+    <string name="settings_page_info">关于这一页</string>
+    <string name="settings_page_info_body">这里设置助理的能力边界：连接哪个模型、允许操作哪些应用、是否连接电脑。本页只修改本应用的配置，不会更改系统设置；无障碍与悬浮窗等系统权限需要你在系统设置中亲自开启。</string>
+    <string name="common_got_it">知道了</string>
+    <!-- 二级页通用：返回与说明入口 -->
+    <string name="common_back">返回</string>
+    <string name="common_info">说明</string>
+
+    <!-- 二级页标题与副标题（对齐原型 setHeader 文案） -->
+    <string name="provider_page_title">AI 模型</string>
+    <string name="provider_page_subtitle">地址、模型与连接检查</string>
+    <string name="provider_page_info">这里配置 OpenAI 兼容接口的服务地址、模型名与 API Key。API Key 使用系统密钥库加密存储，不会明文写入日志或界面。连接检查只做一次最小请求，用于确认地址与模型可用。</string>
+
+    <string name="accessibility_page_title">允许操作的应用</string>
+    <string name="accessibility_page_subtitle">范围与无障碍授权</string>
+    <string name="accessibility_page_info">无障碍服务可以读取屏幕内容并代你执行点击、滑动与输入。这是系统级能力，必须由你在系统设置中亲自开启，本页只提供引导与范围管理。助理只在你选择的应用内、且只在任务执行期间使用该能力。</string>
+
+    <string name="bridge_page_title">连接电脑</string>
+    <string name="bridge_page_subtitle">可选能力，不是独立使用的前提</string>
+    <string name="bridge_page_info">桌面桥让电脑上的 Agent 通过受控连接使用手机的观察与执行能力。服务只绑定本机回环地址，不监听 Wi-Fi 或移动网络。一次性码短时有效且用后立即失效，会话 token 不显示在界面也不写入日志。</string>
+
+    <string name="lan_page_title">局域网配对</string>
+    <string name="lan_page_subtitle">同一可信网络，核对短指纹后连接</string>
+    <string name="lan_page_info">从桌面 CLI 获取一次性邀请码，手工输入或扫码后核对网卡、地址与短指纹再建立连接。LAN 会话与本机 ADB 桥相互独立，可随时关闭。</string>
     <string name="settings_profile_name">我的随身助理</string>
     <string name="settings_profile_desc">本地优先 · 自己掌控</string>
     <string name="settings_status_title">助理状态</string>

@@ -30,8 +30,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
+import dev.aiauto.android.R
 import dev.aiauto.android.accessibility.settings.AccessibilitySettings
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.accessibility.settings.TargetPackageParseResult
@@ -64,8 +66,10 @@ fun AccessibilityScreen(
     }
 
     ScreenScaffold(
-        title = "无障碍执行",
+        title = stringResource(R.string.accessibility_page_title),
         onBack = onBack,
+        subtitle = stringResource(R.string.accessibility_page_subtitle),
+        infoText = stringResource(R.string.accessibility_page_info),
     ) {
         Column(
             modifier = Modifier

@@ -23,7 +23,8 @@ class DesignTokenParityTest {
 
     @Test
     fun `background color matches prototype`() {
-        assertEquals(0xFFFAFBFC.toInt(), AppColors.BackgroundArgb.toInt())
+        // 原型 --bg 实测 #EEF1F5（冷灰蓝），不是 #FAFBFC。
+        assertEquals(0xFFEEF1F5.toInt(), AppColors.BackgroundArgb.toInt())
     }
 
     @Test
@@ -100,6 +101,41 @@ class DesignTokenParityTest {
         assertEquals(0xFFE8EDF4.toInt(), AppColors.QuickChipBackgroundArgb.toInt())
     }
 
+    @Test
+    fun `quickChip text color matches prototype`() {
+        assertEquals(0xFF5D6C82.toInt(), AppColors.QuickChipTextArgb.toInt())
+    }
+
+    @Test
+    fun `tileIcon mint background matches prototype`() {
+        assertEquals(0xFFECF5F2.toInt(), AppColors.TileIconMintBackgroundArgb.toInt())
+    }
+
+    @Test
+    fun `composerPill background matches prototype`() {
+        assertEquals(0xFFF5F7FA.toInt(), AppColors.ComposerPillBackgroundArgb.toInt())
+    }
+
+    @Test
+    fun `composerPill text color matches prototype`() {
+        assertEquals(0xFF6D7889.toInt(), AppColors.ComposerPillTextArgb.toInt())
+    }
+
+    @Test
+    fun `tinyOrbit border matches prototype`() {
+        assertEquals(0xFFC9D8F6.toInt(), AppColors.TinyOrbitBorderArgb.toInt())
+    }
+
+    @Test
+    fun `nav inactive color matches prototype`() {
+        assertEquals(0xFF7A8595.toInt(), AppColors.NavInactiveArgb.toInt())
+    }
+
+    @Test
+    fun `notice text color matches prototype`() {
+        assertEquals(0xFF587198.toInt(), AppColors.NoticeTextArgb.toInt())
+    }
+
     //endregion
 
     //region 圆角断言（原型 radius.* / components.*.radius）
@@ -132,6 +168,27 @@ class DesignTokenParityTest {
     @Test
     fun `iconBox radius matches prototype`() {
         assertEquals(11f, AppShapes.IconBox.value, 1f)
+    }
+
+    @Test
+    fun `card radius matches prototype`() {
+        // 原型 --radius 22dp（通用卡片）。
+        assertEquals(22f, AppShapes.Card.value, 1f)
+    }
+
+    @Test
+    fun `composerPill radius matches prototype`() {
+        assertEquals(9f, AppShapes.ComposerPill.value, 1f)
+    }
+
+    @Test
+    fun `iconButton radius matches prototype`() {
+        assertEquals(14f, AppShapes.IconButton.value, 1f)
+    }
+
+    @Test
+    fun `settingsLogo radius matches prototype`() {
+        assertEquals(18f, AppShapes.SettingsLogo.value, 1f)
     }
 
     //endregion
@@ -178,6 +235,51 @@ class DesignTokenParityTest {
         assertEquals(44f, AppSpacing.MinTouchTarget.value, 1f)
     }
 
+    @Test
+    fun `composer height matches prototype`() {
+        assertEquals(139f, AppSpacing.ComposerHeight.value, 1f)
+    }
+
+    @Test
+    fun `skillTile height matches prototype`() {
+        assertEquals(112.5f, AppSpacing.SkillTileHeight.value, 1f)
+    }
+
+    @Test
+    fun `tileIcon size matches prototype`() {
+        assertEquals(35f, AppSpacing.TileIconSize.value, 1f)
+    }
+
+    @Test
+    fun `teachCard height matches prototype`() {
+        assertEquals(73.5f, AppSpacing.TeachCardHeight.value, 1f)
+    }
+
+    @Test
+    fun `navItem height matches prototype`() {
+        assertEquals(60f, AppSpacing.NavItemHeight.value, 1f)
+    }
+
+    @Test
+    fun `settingsLogo size matches prototype`() {
+        assertEquals(52f, AppSpacing.SettingsLogoSize.value, 1f)
+    }
+
+    @Test
+    fun `settingRow height matches prototype`() {
+        assertEquals(65f, AppSpacing.SettingRowHeight.value, 1f)
+    }
+
+    @Test
+    fun `primaryButton height matches prototype`() {
+        assertEquals(46f, AppSpacing.PrimaryButtonHeight.value, 1f)
+    }
+
+    @Test
+    fun `iconButton size meets min touch target`() {
+        assertEquals(44f, AppSpacing.IconButtonSize.value, 1f)
+    }
+
     //endregion
 
     //region 字号断言（原型 typography.*.fontSize）
@@ -220,6 +322,46 @@ class DesignTokenParityTest {
     @Test
     fun `tag font size matches prototype`() {
         assertEquals(12f, AppTypographyTokens.TagFontSize.value, 0.5f)
+    }
+
+    @Test
+    fun `pageHeading font size matches prototype`() {
+        assertEquals(24f, AppTypographyTokens.PageHeadingFontSize.value, 0.5f)
+    }
+
+    @Test
+    fun `pageDesc font size matches prototype`() {
+        assertEquals(14f, AppTypographyTokens.PageDescFontSize.value, 0.5f)
+    }
+
+    @Test
+    fun `note font size matches prototype`() {
+        assertEquals(14f, AppTypographyTokens.NoteFontSize.value, 0.5f)
+    }
+
+    @Test
+    fun `primaryButton font size matches prototype`() {
+        assertEquals(13f, AppTypographyTokens.PrimaryButtonFontSize.value, 0.5f)
+    }
+
+    @Test
+    fun `quickChip font size matches prototype`() {
+        assertEquals(11f, AppTypographyTokens.QuickChipFontSize.value, 0.5f)
+    }
+
+    @Test
+    fun `composerPill font size matches prototype`() {
+        assertEquals(11f, AppTypographyTokens.ComposerPillFontSize.value, 0.5f)
+    }
+
+    @Test
+    fun `sectionTitle letterSpacing matches prototype`() {
+        assertEquals(-0.6f, AppTypographyTokens.SectionTitleLetterSpacing.value, 0.1f)
+    }
+
+    @Test
+    fun `pageHeading letterSpacing matches prototype`() {
+        assertEquals(-0.8f, AppTypographyTokens.PageHeadingLetterSpacing.value, 0.1f)
     }
 
     //endregion

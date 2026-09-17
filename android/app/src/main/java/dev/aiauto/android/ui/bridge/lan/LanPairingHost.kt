@@ -12,8 +12,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+import dev.aiauto.android.R
 import dev.aiauto.android.ui.components.ScreenScaffold
 
 @Composable
@@ -48,8 +50,10 @@ fun LanPairingHost(
     }
 
     ScreenScaffold(
-        title = "LAN 桌面连接",
+        title = stringResource(R.string.lan_page_title),
         onBack = onBack,
+        subtitle = stringResource(R.string.lan_page_subtitle),
+        infoText = stringResource(R.string.lan_page_info),
     ) {
         LanPairingScreen(
             state = state.pairing,

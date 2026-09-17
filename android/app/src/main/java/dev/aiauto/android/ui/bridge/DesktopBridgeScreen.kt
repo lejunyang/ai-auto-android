@@ -19,9 +19,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+import dev.aiauto.android.R
 import dev.aiauto.android.bridge.BridgeLimits
 import dev.aiauto.android.bridge.BridgeProtocol
 import dev.aiauto.android.bridge.DesktopBridgeController
@@ -37,8 +39,10 @@ fun DesktopBridgeScreen(
     val state by controller.state.collectAsStateWithLifecycle()
 
     ScreenScaffold(
-        title = "桌面桥",
+        title = stringResource(R.string.bridge_page_title),
         onBack = onBack,
+        subtitle = stringResource(R.string.bridge_page_subtitle),
+        infoText = stringResource(R.string.bridge_page_info),
     ) {
         Column(
             modifier = Modifier

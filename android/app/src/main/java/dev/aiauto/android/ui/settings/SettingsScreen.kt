@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,14 +29,21 @@ import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -54,6 +62,9 @@ import dev.aiauto.android.ui.components.Divider
 import dev.aiauto.android.ui.components.SectionHeader
 import dev.aiauto.android.ui.components.TagChip
 import dev.aiauto.android.ui.components.TagTone
+import dev.aiauto.android.ui.theme.AppColors
+import dev.aiauto.android.ui.theme.AppShapes
+import dev.aiauto.android.ui.theme.AppSpacing
 
 /**
  * "我的"主页面。
@@ -87,6 +98,11 @@ fun SettingsScreen(
         contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // 0. 页头：原型 setHeader('我的','把边界设好，其余交给它。') + 右上 info 按钮。
+        item {
+            SettingsPageHeader()
+        }
+
         // 1. 个人信息头部：左侧 logo，右侧名称与本地优先定位。
         item {
             ProfileHeader()
@@ -224,6 +240,62 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * 我的页页头。对应原型 setHeader('我的','把边界设好，其余交给它。')：
+ * 左侧标题 + 副标题，右侧 info 按钮（说明本页边界，不改任何系统设置）。
+ */
+@Composable
+private fun SettingsPageHeader(
+    modifier: Modifier = Modifier,
+) {
+    var showInfo by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = AppSpacing.HeaderHeight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.settings_page_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.Ink,
+            )
+            Text(
+                text = stringResource(R.string.settings_page_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = AppColors.Muted,
+            )
+        }
+        IconButton(
+            onClick = { showInfo = true },
+            modifier = Modifier.size(AppSpacing.IconButtonSize),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = stringResource(R.string.settings_page_info),
+                tint = AppColors.Muted,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+    }
+
+    if (showInfo) {
+        AlertDialog(
+            onDismissRequest = { showInfo = false },
+            title = { Text(stringResource(R.string.settings_page_info)) },
+            text = { Text(stringResource(R.string.settings_page_info_body)) },
+            confirmButton = {
+                TextButton(onClick = { showInfo = false }) {
+                    Text(stringResource(R.string.common_got_it))
+                }
+            },
+        )
+    }
+}
+
 /** 个人信息头部：52dp 圆角方形 logo + 名称与"本地优先 · 自己掌控"定位语。 */
 @Composable
 private fun ProfileHeader(
@@ -236,15 +308,17 @@ private fun ProfileHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(52.dp),
+            // 原型 logo 是蓝色实心圆角方块（bg #2563EB，radius 18dp，52x52），
+            // 不是浅蓝底 primaryContainer。
+            shape = RoundedCornerShape(AppShapes.SettingsLogo),
+            color = AppColors.Primary,
+            modifier = Modifier.size(AppSpacing.SettingsLogoSize),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = AppColors.Surface,
                     modifier = Modifier.size(26.dp),
                 )
             }
