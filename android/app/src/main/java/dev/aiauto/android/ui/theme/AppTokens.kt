@@ -98,6 +98,14 @@ object AppColors {
     const val QuickChipTextArgb = 0xFF5D6C82
     val QuickChipText = Color(QuickChipTextArgb)
 
+    /** filter-tab 未选中背景（原型实测 #EAF0F7）。 */
+    const val FilterTabBackgroundArgb = 0xFFEAF0F7
+    val FilterTabBackground = Color(FilterTabBackgroundArgb)
+
+    /** filter-tab 未选中文字（原型实测 #6C7B90）。 */
+    const val FilterTabTextArgb = 0xFF6C7B90
+    val FilterTabText = Color(FilterTabTextArgb)
+
     /** composer 内"选择应用"pill 背景（原型实测 #F5F7FA）。 */
     const val ComposerPillBackgroundArgb = 0xFFF5F7FA
     val ComposerPillBackground = Color(ComposerPillBackgroundArgb)

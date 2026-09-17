@@ -274,6 +274,73 @@ object AppIcons {
             icon
         }
 
+    /** 设置行：盾牌（shield），stroke 描边。用于"允许操作的应用"入口。 */
+    val Shield: ImageVector
+        get() = _shield ?: run {
+            val icon = ImageVector.Builder(
+                name = "Shield",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f,
+            ).apply {
+                addPath(
+                    pathData = addPathNodes("M12 3l8 3v5c0 4.5-3.5 8-8 9-4.5-1-8-4.5-8-9V6l8-3z"),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 1.65f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+            }.build()
+            _shield = icon
+            icon
+        }
+
+    /** 设置行：显示器（monitor），stroke 描边。用于"连接电脑"入口。 */
+    val Monitor: ImageVector
+        get() = _monitor ?: run {
+            val icon = ImageVector.Builder(
+                name = "Monitor",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f,
+            ).apply {
+                // 屏幕：rect x=3 y=4 width=18 height=12 rx=2
+                addPath(
+                    pathData = addPathNodes(
+                        "M5 4h14c1.1 0 2 .9 2 2v8c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z",
+                    ),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 1.65f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+                // 底座支架：M12 18v3
+                addPath(
+                    pathData = addPathNodes("M12 18v3"),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 1.65f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+                // 底座：M8 21h8
+                addPath(
+                    pathData = addPathNodes("M8 21h8"),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 1.65f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+            }.build()
+            _monitor = icon
+            icon
+        }
+
     /** 图标缓存，避免每次重组重建 ImageVector。 */
     private var _spark: ImageVector? = null
     private var _flow: ImageVector? = null
@@ -282,4 +349,6 @@ object AppIcons {
     private var _up: ImageVector? = null
     private var _phone: ImageVector? = null
     private var _mic: ImageVector? = null
+    private var _shield: ImageVector? = null
+    private var _monitor: ImageVector? = null
 }

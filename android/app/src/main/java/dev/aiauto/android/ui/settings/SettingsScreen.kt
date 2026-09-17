@@ -7,6 +7,7 @@ package dev.aiauto.android.ui.settings
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,6 +60,7 @@ import dev.aiauto.android.R
 import dev.aiauto.android.bridge.DesktopBridgeState
 import dev.aiauto.android.bridge.DesktopBridgeStatus
 import dev.aiauto.android.ui.components.Divider
+import dev.aiauto.android.ui.components.AppIcons
 import dev.aiauto.android.ui.components.SectionHeader
 import dev.aiauto.android.ui.components.TagChip
 import dev.aiauto.android.ui.components.TagTone
@@ -125,15 +127,20 @@ fun SettingsScreen(
         // 3. 连接与能力：三个可点击设置入口，放入同一卡片以保持视觉聚合。
         item {
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = AppColors.Line,
+                        shape = RoundedCornerShape(18.dp),
+                    ),
+                colors = CardDefaults.cardColors(containerColor = AppColors.Surface),
+                shape = RoundedCornerShape(18.dp),
             ) {
-                Column {
-                    // AI 模型入口：状态随 providerReady 切换。
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    // AI 模型入口：状态随 providerReady 切换。图标=spark。
                     SettingRow(
-                        icon = Icons.Default.AutoAwesome,
+                        icon = AppIcons.Spark,
                         title = stringResource(R.string.settings_provider_title),
                         description = stringResource(R.string.settings_provider_desc),
                         status = stringResource(
@@ -142,11 +149,11 @@ fun SettingsScreen(
                         ),
                         onClick = onProviderClick,
                     )
-                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                    Divider(modifier = Modifier.padding(horizontal = 0.dp))
 
-                    // 允许操作的应用入口：状态随服务启用切换，并展示目标应用数量。
+                    // 允许操作的应用入口：状态随服务启用切换，并展示目标应用数量。图标=shield。
                     SettingRow(
-                        icon = Icons.Default.Security,
+                        icon = AppIcons.Shield,
                         title = stringResource(R.string.settings_accessibility_title),
                         description = stringResource(R.string.settings_accessibility_desc),
                         status = stringResource(
@@ -159,12 +166,12 @@ fun SettingsScreen(
                         ),
                         onClick = onAccessibilityClick,
                     )
-                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                    Divider(modifier = Modifier.padding(horizontal = 0.dp))
 
-                    // 连接电脑入口：仅在 CONNECTED 时显示已连接，其余均为未连接。
+                    // 连接电脑入口：仅在 CONNECTED 时显示已连接，其余均为未连接。图标=monitor。
                     val bridgeConnected = bridgeState.status == DesktopBridgeStatus.CONNECTED
                     SettingRow(
-                        icon = Icons.Default.Computer,
+                        icon = AppIcons.Monitor,
                         title = stringResource(R.string.settings_bridge_title),
                         description = stringResource(R.string.settings_bridge_desc),
                         status = stringResource(
@@ -193,12 +200,17 @@ fun SettingsScreen(
         }
         item {
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = AppColors.Line,
+                        shape = RoundedCornerShape(18.dp),
+                    ),
+                colors = CardDefaults.cardColors(containerColor = AppColors.Surface),
+                shape = RoundedCornerShape(18.dp),
             ) {
-                Column {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     // 悬浮入口：需系统 SYSTEM_ALERT_WINDOW 权限，未授权时引导至系统设置。
                     SettingRow(
                         icon = Icons.Default.Layers,
@@ -316,7 +328,7 @@ private fun ProfileHeader(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = Icons.Default.AutoAwesome,
+                    imageVector = AppIcons.Spark,
                     contentDescription = null,
                     tint = AppColors.Surface,
                     modifier = Modifier.size(26.dp),
@@ -339,7 +351,7 @@ private fun ProfileHeader(
     }
 }
 
-/** 助理状态卡片：标题行右侧 TagChip 标注就绪/未完成，下方逐项列出子状态。 */
+/** 助理状态卡片：原型白底 .card（bg surface、1px line 描边、圆角、padding17），标题行右侧 TagChip，下方逐项子状态。 */
 @Composable
 private fun AssistantStatusCard(
     ready: Boolean,
@@ -348,14 +360,19 @@ private fun AssistantStatusCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = AppColors.Line,
+                shape = RoundedCornerShape(18.dp),
+            ),
+        colors = CardDefaults.cardColors(containerColor = AppColors.Surface),
+        shape = RoundedCornerShape(18.dp),
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(17.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             // 标题行：左侧"助理状态"，右侧就绪标签。
             Row(
@@ -365,7 +382,8 @@ private fun AssistantStatusCard(
             ) {
                 Text(
                     text = stringResource(R.string.settings_status_title),
-                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
                 )
                 TagChip(
                     text = stringResource(
@@ -375,7 +393,7 @@ private fun AssistantStatusCard(
                     tone = if (ready) TagTone.SUCCESS else TagTone.WARNING,
                 )
             }
-            // 逐项说明模型与无障碍子状态，便于一眼定位未完成项。
+            // 逐项说明模型与无障碍子状态。
             StatusLine(
                 label = stringResource(R.string.settings_provider_title),
                 value = stringResource(
@@ -394,7 +412,7 @@ private fun AssistantStatusCard(
     }
 }
 
-/** 状态卡片内的一行说明：左侧子项名称，右侧当前状态。 */
+/** 状态卡片内的一行说明：左侧子项名称，右侧当前状态。原型 11sp muted。 */
 @Composable
 private fun StatusLine(
     label: String,
@@ -406,17 +424,22 @@ private fun StatusLine(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+            color = AppColors.Muted,
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
         )
     }
 }
 
-/** 设置行：图标 + 标题/描述/附加信息 + 右侧状态文字与箭头，整行可点击。 */
+/**
+ * 设置行：原型 setting-row 规格。
+ * 无图标底块，图标 20dp color#68809e；min-height63dp、padding 11dp 0；
+ * 标题 14sp bold、副标题 10sp muted(margin-top3)；右侧 11sp muted + chevron。
+ */
 @Composable
 private fun SettingRow(
     icon: ImageVector,
@@ -430,61 +453,57 @@ private fun SettingRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .heightIn(min = 63.dp)
+            .padding(vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 左侧图标底。
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(36.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
-        Spacer(Modifier.width(10.dp))
-        // 中间：标题、描述与可选附加信息（如目标应用数量）。
+        // 左侧图标：20dp，无图标底块，color #68809e（用 Muted 近似）。
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            tint = AppColors.Muted,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        // 中间：标题、描述与可选附加信息。
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp,
+                color = AppColors.Muted,
+                lineHeight = 15.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 3.dp),
             )
             if (extra != null) {
                 Text(
                     text = extra,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    fontSize = 10.sp,
+                    color = AppColors.Muted,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
         }
         Spacer(Modifier.width(8.dp))
-        // 右侧状态文字与右向箭头。
+        // 右侧状态文字与右向箭头：11sp muted。
         Text(
             text = status,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.sp,
+            color = AppColors.Muted,
         )
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
+            tint = AppColors.Muted,
+            modifier = Modifier.size(16.dp),
         )
     }
 }

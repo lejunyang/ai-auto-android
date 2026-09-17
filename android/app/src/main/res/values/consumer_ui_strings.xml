@@ -42,10 +42,33 @@
     <string name="skills_target_apps">目标：%1$s</string>
     <string name="skills_teach_title">录一遍，比写一遍简单</string>
     <string name="skills_teach_subtitle">自动捕获 → 整理 → 检查 → 保存</string>
+    <string name="skills_page_heading">教会它的事</string>
+    <string name="skills_filter_ideas">灵感</string>
+    <string name="skills_future_concept">未来概念</string>
+    <string name="skills_planning">规划中</string>
+    <string name="skills_idea_1_title">到点，帮我整理</string>
+    <string name="skills_idea_1_desc">定时、打开应用时或手动触发，真正占用屏幕前先确认</string>
+    <string name="skills_idea_2_title">懂你的偏好，不偷学你的生活</string>
+    <string name="skills_idea_2_desc">记住经你确认的规则，随时查看修改删除</string>
+    <string name="skills_idea_dialog_title">规划中</string>
+    <string name="skills_idea_dialog_content">这是未来概念，当前不可执行。我们会在技术与授权边界成熟后逐步落地。</string>
+    <string name="skills_info_dialog_title">关于技能</string>
+    <string name="skills_info_dialog_content">技能是你录制并整理后的自动化流程。全部/我教的展示已保存技能，灵感为未来概念。点击技能进入编辑器查看和修改步骤。</string>
+    <string name="skills_provenance_semantic">语义录制</string>
+    <string name="skills_provenance_coordinate">坐标录制</string>
+    <string name="skills_provenance_manual">手动</string>
+    <string name="skills_manual_trigger">手动触发</string>
+    <string name="skills_view_steps">查看步骤</string>
 
     <!-- 记录页 -->
     <string name="history_title">运行记录</string>
     <string name="history_subtitle">只留下有用的结果。</string>
+    <string name="history_page_heading">做过的，都在这里。</string>
+    <string name="history_info_dialog_title">关于运行记录</string>
+    <string name="history_info_dialog_content">运行记录只保存任务摘要与动作元数据，不保存密码、验证码或原始页面内容。已完成的记录可查看经过的步骤，需处理的记录表示目标发生变化已停止后续动作。</string>
+    <string name="history_status_done_desc">查看结果与经过的步骤</string>
+    <string name="history_status_attention_desc">目标发生变化，已停止后续动作</string>
+    <string name="history_task_summary">自动化任务</string>
     <string name="history_filter_all">全部</string>
     <string name="history_filter_done">已完成</string>
     <string name="history_filter_attention">需处理</string>

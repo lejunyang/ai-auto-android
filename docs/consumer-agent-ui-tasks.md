@@ -5,7 +5,7 @@
 > `.trae/specs/n56-consumer-ui-wave2/`），本文不重复长日志。
 >
 > 状态定义：待做 / 进行中 / 已实现待设备验证 / 已验证（含设备截图证据） / 阻塞
-> 最后更新：2026-09-17
+> 最后更新：2026-09-18
 
 ## 总目标
 
@@ -22,9 +22,9 @@
 | 设计token层 | AppColors/AppShapes/AppSpacing/AppTypography（逐元素实测）+ DesignTokenParityTest | 已实现，单测通过 | 从 20 个原型视图机器抽取；parity 测试通过 |
 | 共享组件 | AppComponents.kt + ScriptStoreProducers.kt + ScreenScaffold（二级页外壳重做） | 已实现，二级页已设备复验 | navfix-bridge 截图确认返回箭头+标题+副标题+info |
 | 助理页 | Composer卡片(24dp圆角+1px#D9E3F3边框+阴影+无内部分隔线+16dp padding+50dp输入框+灰底pill选择应用+自定义phone/mic/up图标)+问候标题强制两行(27sp/620/-1/37.8)+快捷chips灰底小胶囊(#E8EDF4/#5D6C82/10dp/44dp/11sp/自动换行)+2列技能网格+虚线teach卡+点击空白失焦收键盘 | 已验证（设备截图+失焦mInputShown） | p1-home 截图确认两行标题/灰底chips/向上箭头发送/自定义图标；失焦验证：点输入框mInputShown=true→点空白mInputShown=false |
-| 技能页 | 2列网格卡片(彩色图标块+标题+副标题+元信息)+紧凑空态+虚线轻卡teach+筛选chip | 已验证（设备截图，含数据） | skills-grid2 截图确认2列网格；diff 超差 0；test-only fixture 预置2脚本验证 |
-| 记录页 | 真实会话历史+全部/已完成/需处理筛选+详情+固定摘要安全策略 | 已验证（设备截图，含数据与筛选） | history-with-data / history-filter-completed 截图；test-only fixture 预置2条历史（Completed/Failed），筛选功能验证通过 |
-| 我的页 | 页头(标题+副标题+info)+蓝色实心52dp logo+紧凑布局+真实状态 | 已验证（设备截图） | navfix-settings 截图；diff 超差 0 |
+| 技能页 | 单列宽卡列表(原型skills-all)：页头info+区块标题"教会它的事"+加号+三filter-tab(全部/我教的/灵感，选中ink底白字)+技能卡(图标块35dp+已保存tag+标题14sp+目标包名描述+步数手动触发+chevron)+灵感未来概念卡(不可执行)+teach虚线轻卡 | 已验证（设备截图，含数据） | final-skills 截图确认单列宽卡+info按钮+区块标题+三filter-tab+图标块+已保存tag；test-only fixture预置脚本验证 |
+| 记录页 | 单列宽卡(原型history-all)：页头info+区块标题"做过的，都在这里。"+三filter-tab(全部/已完成/需处理，选中ink底白字)+记录卡(状态tag已完成绿/需处理琥珀+chevron+标题固定"自动化任务"TASK_SUMMARY脱敏+状态说明+元信息目标包名·时间·N步)+详情对话框+隐私note | 已验证（设备截图，含数据与筛选） | final-history/final-history-done 截图；test-only fixture预置2条历史(Completed/Failed)，已完成筛选仅显示Completed记录，状态标签固定"已完成"/"需处理" |
+| 我的页 | 页头(标题+副标题+info)+蓝色实心52dp logo(白四角星spark)+助理状态卡(白底+1px line边框+18dp圆角+padding17+就绪/未完成配置tag+AI模型/允许操作的应用子状态)+连接与能力三行setting-row(无图标底块+20dp自定义spark/shield/monitor图标#68809e+min-height63dp+padding11dp0+行间border-bottom+标题14sp bold+副标题10sp muted+右侧11sp muted+chevron)+随时唤起(悬浮入口/运行通知真实授权状态) | 已验证（设备截图） | final-settings 截图确认白底状态卡+无图标底块setting-row+spark/shield/monitor自定义图标+settings选中横线+圆全变蓝 |
 | 我的下二级页 | AI模型/允许操作的应用/连接电脑：外壳与内容均按原型重构，真实能力与安全文案保留 | 已验证（设备截图） | rev-02-provider / rev-03-permissions / rev-04-connection 截图；diff 超差 0 |
 | 底部导航 | 自定义Row+Column实现（68dp内容区+navigationBarsPadding手势条+weight(1f)均分宽度+padding 7/8/4dp+顶部1dp描边+46×27dp选中胶囊#E8EFFD+20dp自定义stroke图标(spark/flow/clock/settings)+12sp标签），弃用Material3 NavigationBar；settings横线选中跟随tint变蓝；flow节点7×5横向矩形 | 已验证（设备截图+dump点击中心坐标） | p1-home/p1-skills/p1-settings 截图确认4个自定义stroke图标+选中态浅蓝胶囊+手势条不压标签；点击各tab中心(135/405/675/945)均正确导航 |
 | 模块A：会话历史持久化 | SessionHistoryRecord(固定摘要安全策略)+Store(有界/可删/损坏Partial)+coordinator终态写入 | 已实现，单测通过 | compileDebugKotlin通过；SessionHistoryStoreTest 13测试通过（UUID id/TASK_SUMMARY/损坏Partial/有界/删除） |
@@ -33,9 +33,9 @@
 | 模块D：受控悬浮窗 | OverlayController+权限引导+运行状态/结果+收起展开+我的页入口 | 已实现，真实会话运行时未设备验证 | OverlayController/OverlayWindow编译通过 |
 | 模块E：录制编辑器 | 步骤编排/用一句话表达tab+UpdateDescription命令+撤销/保存冲突/高级字段 | 已实现，待设备验证 | compileDebugKotlin通过；tab结构已建 |
 | 模块F：语言归纳 | SkillLanguageGenerator+Provider调用+敏感过滤+不静默覆盖+已接入编辑器 | 已实现，单测通过（NotConfigured/HTTP错误/空响应/敏感过滤） | compileDebugKotlin通过；SkillLanguageGeneratorTest 4测试通过 |
-| 设备视觉验证 | 固定AVD(ui-visual-35 1080x2400 420dpi zh-CN)+显式serial+可靠截图+PIL验证 | 已验证（四tab+技能2列网格有数据+记录有数据/筛选+失焦） | skills-grid2/history-with-data/history-filter-completed/p0-home 截图PIL verify通过；1080x2400 |
+| 设备视觉验证 | 固定AVD(ui-visual-35 1080x2400 420dpi zh-CN)+显式serial+可靠截图(screencap到设备再pull)+PIL验证 | 已验证（四tab+技能单列有数据+记录有数据/已完成筛选+我的页白底状态卡） | final-home/final-skills/final-history/final-history-done/final-settings 截图PIL verify通过(1080x2400)；坐标从当次uiautomator dump解析 |
 | 元素对比机制 | element-compare.py：从dump提取bounds→PIL crop裁剪元素图→原型截图按DOM rect裁剪→并排对比图+尺寸差异报告 | 已实现，首页8元素对比产出 | artifacts/ui-validation/element-compare/ 下8张对比图+report.json；greetingTitle(两行修复后OK)/composerInput/teachCard/skillTile尺寸OK；容器类元素(composer/bottomNav/appHeader)匹配口径为内部文本节点，实际视觉已截图验证 |
-| 全量验证 | make comments + testDebugUnitTest + assembleDebug + lintDebug | 已验证 | testDebugUnitTest通过；assembleDebug与lintDebug BUILD SUCCESSFUL；make comments通过（539文件）；git diff --check通过 |
+| 全量验证 | make comments + testDebugUnitTest + assembleDebug + lintDebug | 已验证 | testDebugUnitTest 525测试通过(0失败1跳过为既有flaky)；assembleDebug与lintDebug BUILD SUCCESSFUL；make comments通过（539文件）；git diff --check通过 |
 | 源码清理 | HomeScreen.kt/TaskScreen.kt（git已删除）；SessionViewModelTest.kt已恢复更新为11测试 | 已完成 | git f1ef91b删除HomeScreen/TaskScreen；13cce8e恢复SessionViewModelTest |
 | 验证产物清理 | artifacts/ui-validation/ 下旧截图v2-v15及损坏01-04已删除（ignored目录，不进git）；保留final-01~04和prototype参考 | 已完成 | 本地文件系统清理 |
 
@@ -65,24 +65,20 @@
 
 | 截图 | 界面 | 状态 |
 |---|---|---|
-| p1-home.png | 助理首页（两行标题+灰底chips+向上箭头发送+自定义图标+底栏均分） | 已验证 |
-| p1-skills.png | 技能页（2列网格+flow图标选中态） | 已验证 |
-| p1-settings.png | 我的页（settings图标选中横线+圆全变蓝） | 已验证 |
-| p0-home.png | 助理首页（上一轮基线） | 已验证 |
-| rev-01-home.png | 助理首页（上一轮基线） | 已验证 |
+| final-home.png | 助理首页（两行标题+灰底chips+向上箭头发送+自定义图标+底栏均分） | 已验证 |
+| final-skills.png | 技能页（单列宽卡+info按钮+区块标题+三filter-tab+图标块+已保存tag，含数据） | 已验证 |
+| final-history.png | 记录页（全部筛选，Completed+Failed，单列宽卡+固定标题"自动化任务"） | 已验证 |
+| final-history-done.png | 记录页（已完成筛选，仅显示Completed记录，状态标签"已完成"） | 已验证 |
+| final-settings.png | 我的页（白底状态卡+无图标底块setting-row+spark/shield/monitor自定义图标+settings选中横线+圆全变蓝） | 已验证 |
+| p1-home.png | 助理首页（上一轮基线） | 已验证 |
 | rev-02-provider.png | AI 模型（原型内容布局） | 已验证 |
 | rev-03-permissions.png | 允许操作的应用（琥珀披露 + 真实服务状态） | 已验证 |
 | rev-04-connection.png | 连接电脑（居中图标行 + USB 分区 + 安全提示条） | 已验证 |
-| navfix-settings.png | 我的页（页头 + info + 蓝色 logo） | 已验证 |
-| skills-grid2.png | 技能页（2列网格有数据，test-only fixture 预置2脚本） | 已验证 |
-| history-with-data.png | 记录页（有数据，Completed+Failed 两条历史） | 已验证 |
-| history-filter-completed.png | 记录页（已完成筛选，仅显示 Completed 记录） | 已验证 |
-| final-01~04-*.png | 四 tab 基线（上一轮） | 已验证 |
 
 > 全部截图经 `screencap` → `pull` → PIL `load()` 解码确认，并实际看图核对。
 > 导航坐标一律从当次 `uiautomator dump` 解析（`find-element.py`），不跨页复用。
 
-> final-* 为最终 APK（代码基线含技能2列网格+记录有数据验证）安装后版本，是当前有效证据。APK 路径 `android/app/build/outputs/apk/debug/app-debug.apk`，SHA256 `AAE58BE7D8D1273F9F600853CE783C9CD9C67AC2198F3E719A5E78C996A2797D`（含底栏68dp+手势条inset+tab均分+settings横线tint+flow 7×5矩形+问候两行+灰底chips+自定义phone/mic/up图标）。旧 v2-v15 及损坏 01-04 截图已清理。任务输入/语音权限/录制编辑等交互路径因需真实 Provider/无障碍授权，未在本轮设备复验，代码与单测已验证。
+> final-* 为最终 APK（代码基线含技能单列宽卡+记录单列宽卡+我的页白底状态卡与原型setting-row）安装后版本，是当前有效证据。APK 路径 `android/app/build/outputs/apk/debug/app-debug.apk`，SHA256 `4602AD88E454FC503F0AFFD03F2AF14850D438A3865EDD9A9D4239FFE1C8E539`（含底栏68dp+手势条inset+tab均分+settings横线tint+flow 7×5矩形+问候两行+灰底chips+自定义phone/mic/up图标+技能单列宽卡+记录固定摘要"自动化任务"+我的页白底状态卡与spark/shield/monitor图标）。旧 v2-v15 及损坏 01-04 截图已清理。任务输入/语音权限/录制编辑等交互路径因需真实 Provider/无障碍授权，未在本轮设备复验，代码与单测已验证。
 
 **debug test-only fixture 注入方式**：`python scripts/ui-validation/inject-fixtures.py --serial <serial>` 预置 2 个无敏感测试脚本 + 2 条历史记录（Completed/Failed，task 固定为"自动化任务"）；清理：加 `--clean`。仅 debug 变体，通过 `adb run-as` 写入应用私有目录，不影响 release。
 
