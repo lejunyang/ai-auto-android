@@ -106,6 +106,10 @@ object AppColors {
     const val ComposerPillTextArgb = 0xFF6D7889
     val ComposerPillText = Color(ComposerPillTextArgb)
 
+    /** composer 输入框 placeholder 文字（原型实测 #909CAB）。 */
+    const val ComposerPlaceholderArgb = 0xFF909CAB
+    val ComposerPlaceholder = Color(ComposerPlaceholderArgb)
+
     /** tinyOrbit（首页右侧 auto 图标容器）描边（原型实测 #C9D8F6）。 */
     const val TinyOrbitBorderArgb = 0xFFC9D8F6
     val TinyOrbitBorder = Color(TinyOrbitBorderArgb)
@@ -113,6 +117,10 @@ object AppColors {
     /** 底部导航未选中文字（原型实测 #7A8595）。 */
     const val NavInactiveArgb = 0xFF7A8595
     val NavInactive = Color(NavInactiveArgb)
+
+    /** 底部导航选中态胶囊背景（原型实测 #E8EFFD）。 */
+    const val NavActiveBackgroundArgb = 0xFFE8EFFD
+    val NavActiveBackground = Color(NavActiveBackgroundArgb)
 
     /** notice 文字（原型实测 #587198）。 */
     const val NoticeTextArgb = 0xFF587198

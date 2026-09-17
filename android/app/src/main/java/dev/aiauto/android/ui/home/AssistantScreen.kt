@@ -32,6 +32,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -67,6 +69,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -102,6 +106,8 @@ fun AssistantScreen(
     onStartRecording: () -> Unit,
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     // 任务输入草稿：rememberSaveable 支持旋转/进程恢复。
     var taskInput by rememberSaveable { mutableStateOf("") }
     // 就绪条件：模型已配置、无障碍已披露且系统服务已启用。
@@ -138,7 +144,14 @@ fun AssistantScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                })
+            },
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -362,7 +375,7 @@ private fun GreetingSection() {
     }
 }
 
-/** Composer 卡片：白色大圆角卡片，输入无框，底部操作行在卡片内。 */
+/** Composer 卡片：白色24dp圆角卡片，1px #D9E3F3边框+阴影，输入无框，底部操作行在卡片内。 */
 @Composable
 private fun ComposerCard(
     taskInput: String,
@@ -375,82 +388,102 @@ private fun ComposerCard(
     voiceMessage: String?,
     onVoiceClick: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
+    Surface(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 7.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = AppColors.ComposerBorder,
+                shape = RoundedCornerShape(24.dp),
+            ),
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            // 输入区：无框文本，placeholder。
+        Column(modifier = Modifier.padding(16.dp)) {
+            // 输入区：无框文本，minHeight 50dp，字号 15sp，placeholder #909CAB。
             androidx.compose.foundation.text.BasicTextField(
                 value = taskInput,
                 onValueChange = onTaskInputChange,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 24.sp,
+                ),
                 decorationBox = { innerTextField ->
                     if (taskInput.isEmpty()) {
                         Text(
                             text = stringResource(R.string.assistant_task_hint),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 15.sp,
+                            color = AppColors.ComposerPlaceholder,
                         )
                     }
                     innerTextField()
                 },
             )
 
-            Spacer(Modifier.height(4.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(Modifier.height(4.dp))
-
-            // 底部操作行：选择应用 + 麦克风 + 发送。
+            // 底部操作行：margin-top 5dp，两端对齐。
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedButton(
+                // 选择应用：灰底 pill，背景 #F5F7FA、圆角 9dp、字号 11sp、文字 #6D7889、min-height 44dp、无边框。
+                Surface(
                     onClick = onChooseApps,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(9.dp),
+                    color = AppColors.ComposerPillBackground,
+                    modifier = Modifier.heightIn(min = 44.dp),
                 ) {
-                    Icon(Icons.Default.PhoneAndroid, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = if (targetPackages.isNotEmpty()) "选择应用 · ${targetPackages.size}" else "选择应用",
-                        fontSize = 13.sp,
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.PhoneAndroid,
+                            null,
+                            modifier = Modifier.size(14.dp),
+                            tint = AppColors.ComposerPillText,
+                        )
+                        Text(
+                            text = if (targetPackages.isNotEmpty()) "选择应用 · ${targetPackages.size}" else "选择应用",
+                            fontSize = 11.sp,
+                            color = AppColors.ComposerPillText,
+                        )
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     IconButton(onClick = onVoiceClick) {
                         Icon(
                             Icons.Default.Mic,
                             contentDescription = "语音输入",
-                            tint = if (isListening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = if (isListening) MaterialTheme.colorScheme.primary else AppColors.ComposerPillText,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
-                    IconButton(
+                    // 发送按钮：蓝色圆角 14dp。
+                    Surface(
                         onClick = onSubmit,
                         enabled = ready && taskInput.isNotBlank(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (ready && taskInput.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.size(40.dp),
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (ready && taskInput.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.size(40.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.Send,
-                                    contentDescription = null,
-                                    tint = if (ready && taskInput.isNotBlank()) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = null,
+                                tint = if (ready && taskInput.isNotBlank()) MaterialTheme.colorScheme.onPrimary else AppColors.ComposerPillText,
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                 }
             }
 
-            // 语音提示/未就绪提示。
+            // 语音提示/未就绪提示：在卡片内，无额外边框。
             voiceMessage?.let { msg ->
                 Spacer(Modifier.height(8.dp))
                 Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)

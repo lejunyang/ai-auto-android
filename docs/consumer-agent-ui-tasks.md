@@ -21,20 +21,21 @@
 | 主题 | 固定配色（背景#EEF1F5 冷灰蓝/卡片#FFFFFF/主色#2563EB），无动态取色 | 已实现，已设备复验 | Theme.kt 用 AppColors；navfix-settings 截图确认 |
 | 设计token层 | AppColors/AppShapes/AppSpacing/AppTypography（逐元素实测）+ DesignTokenParityTest | 已实现，单测通过 | 从 20 个原型视图机器抽取；parity 测试通过 |
 | 共享组件 | AppComponents.kt + ScriptStoreProducers.kt + ScreenScaffold（二级页外壳重做） | 已实现，二级页已设备复验 | navfix-bridge 截图确认返回箭头+标题+副标题+info |
-| 助理页 | Composer卡片+快捷chips+2列技能网格(18dp圆角/35dp图标块/描边)+虚线teach卡 | 已验证（设备截图） | rev-01-home 截图；diff 超差 0 |
+| 助理页 | Composer卡片(24dp圆角+1px#D9E3F3边框+阴影+无内部分隔线+16dp padding+50dp输入框+灰底pill选择应用)+快捷chips+2列技能网格+虚线teach卡+点击空白失焦收键盘 | 已验证（设备截图+失焦mInputShown） | p0-home 截图确认Composer新样式；失焦验证：点输入框mInputShown=true→点空白mInputShown=false |
 | 技能页 | 2列网格卡片(彩色图标块+标题+副标题+元信息)+紧凑空态+虚线轻卡teach+筛选chip | 已验证（设备截图，含数据） | skills-grid2 截图确认2列网格；diff 超差 0；test-only fixture 预置2脚本验证 |
 | 记录页 | 真实会话历史+全部/已完成/需处理筛选+详情+固定摘要安全策略 | 已验证（设备截图，含数据与筛选） | history-with-data / history-filter-completed 截图；test-only fixture 预置2条历史（Completed/Failed），筛选功能验证通过 |
 | 我的页 | 页头(标题+副标题+info)+蓝色实心52dp logo+紧凑布局+真实状态 | 已验证（设备截图） | navfix-settings 截图；diff 超差 0 |
 | 我的下二级页 | AI模型/允许操作的应用/连接电脑：外壳与内容均按原型重构，真实能力与安全文案保留 | 已验证（设备截图） | rev-02-provider / rev-03-permissions / rev-04-connection 截图；diff 超差 0 |
-| 底部导航 | 72dp高+20dp图标+12sp标签+#FAFBFC底+顶部描边+浅蓝胶囊选中态 | 已验证（设备截图） | rev-01-home 截图确认胶囊与配色 |
+| 底部导航 | 自定义Row+Column实现（72dp高+padding 7/8/4dp+顶部1dp描边+46×27dp选中胶囊#E8EFFD+20dp自定义stroke图标+12sp标签），弃用Material3 NavigationBar | 已验证（设备截图） | p0-home 截图确认4个自定义stroke图标(spark/flow/clock/settings)+选中态浅蓝胶囊 |
 | 模块A：会话历史持久化 | SessionHistoryRecord(固定摘要安全策略)+Store(有界/可删/损坏Partial)+coordinator终态写入 | 已实现，单测通过 | compileDebugKotlin通过；SessionHistoryStoreTest 13测试通过（UUID id/TASK_SUMMARY/损坏Partial/有界/删除） |
 | 模块B：语音输入 | VoiceInputHandler+权限检查+拒绝/无服务降级+外发说明+助理页语音按钮 | 已实现，代码验证(权限拒绝逻辑)，设备未复验 | compileDebugKotlin通过 |
 | 模块C：前台服务+运行通知 | SessionCoordinator单一owner+Application级Runtime+ViewModel仅订阅+通知安全短标题 | 已实现，单测通过，真实会话运行时未设备验证 | SessionCoordinatorTest 16测试通过；compileDebugKotlin通过 |
 | 模块D：受控悬浮窗 | OverlayController+权限引导+运行状态/结果+收起展开+我的页入口 | 已实现，真实会话运行时未设备验证 | OverlayController/OverlayWindow编译通过 |
 | 模块E：录制编辑器 | 步骤编排/用一句话表达tab+UpdateDescription命令+撤销/保存冲突/高级字段 | 已实现，待设备验证 | compileDebugKotlin通过；tab结构已建 |
 | 模块F：语言归纳 | SkillLanguageGenerator+Provider调用+敏感过滤+不静默覆盖+已接入编辑器 | 已实现，单测通过（NotConfigured/HTTP错误/空响应/敏感过滤） | compileDebugKotlin通过；SkillLanguageGeneratorTest 4测试通过 |
-| 设备视觉验证 | 固定AVD(ui-visual-35 1080x2400 420dpi zh-CN)+显式serial+可靠截图+PIL验证 | 已验证（四tab+技能2列网格有数据+记录有数据/筛选） | skills-grid2/history-with-data/history-filter-completed 截图PIL verify通过；1080x2400 |
-| 全量验证 | make comments + testDebugUnitTest + assembleDebug + lintDebug | 已验证 | testDebugUnitTest 486项：485通过/1跳过（旧RecordingScriptStore基线ignore）；assembleDebug与lintDebug BUILD SUCCESSFUL；make comments通过；git diff --check通过 |
+| 设备视觉验证 | 固定AVD(ui-visual-35 1080x2400 420dpi zh-CN)+显式serial+可靠截图+PIL验证 | 已验证（四tab+技能2列网格有数据+记录有数据/筛选+失焦） | skills-grid2/history-with-data/history-filter-completed/p0-home 截图PIL verify通过；1080x2400 |
+| 元素对比机制 | element-compare.py：从dump提取bounds→PIL crop裁剪元素图→原型截图按DOM rect裁剪→并排对比图+尺寸差异报告 | 已实现，首页8元素对比产出 | artifacts/ui-validation/element-compare/ 下8张对比图+report.json；composerInput/teachCard/skillTile尺寸OK |
+| 全量验证 | make comments + testDebugUnitTest + assembleDebug + lintDebug | 已验证 | testDebugUnitTest通过；assembleDebug与lintDebug BUILD SUCCESSFUL；make comments通过（539文件）；git diff --check通过 |
 | 源码清理 | HomeScreen.kt/TaskScreen.kt（git已删除）；SessionViewModelTest.kt已恢复更新为11测试 | 已完成 | git f1ef91b删除HomeScreen/TaskScreen；13cce8e恢复SessionViewModelTest |
 | 验证产物清理 | artifacts/ui-validation/ 下旧截图v2-v15及损坏01-04已删除（ignored目录，不进git）；保留final-01~04和prototype参考 | 已完成 | 本地文件系统清理 |
 
@@ -64,7 +65,8 @@
 
 | 截图 | 界面 | 状态 |
 |---|---|---|
-| rev-01-home.png | 助理首页（虚线 teach 卡 + 底栏胶囊） | 已验证 |
+| p0-home.png | 助理首页（自定义stroke图标底栏+Composer新样式+虚线teach卡） | 已验证 |
+| rev-01-home.png | 助理首页（上一轮基线） | 已验证 |
 | rev-02-provider.png | AI 模型（原型内容布局） | 已验证 |
 | rev-03-permissions.png | 允许操作的应用（琥珀披露 + 真实服务状态） | 已验证 |
 | rev-04-connection.png | 连接电脑（居中图标行 + USB 分区 + 安全提示条） | 已验证 |
@@ -77,7 +79,7 @@
 > 全部截图经 `screencap` → `pull` → PIL `load()` 解码确认，并实际看图核对。
 > 导航坐标一律从当次 `uiautomator dump` 解析（`find-element.py`），不跨页复用。
 
-> final-* 为最终 APK（代码基线含技能2列网格+记录有数据验证）安装后版本，是当前有效证据。APK 路径 `android/app/build/outputs/apk/debug/app-debug.apk`，SHA256 `16609B66119FB01252515AA8FA9314C012ECAE8A2F1040856777440640B86B39`。旧 v2-v15 及损坏 01-04 截图已清理。任务输入/语音权限/录制编辑等交互路径因需真实 Provider/无障碍授权，未在本轮设备复验，代码与单测已验证。
+> final-* 为最终 APK（代码基线含技能2列网格+记录有数据验证）安装后版本，是当前有效证据。APK 路径 `android/app/build/outputs/apk/debug/app-debug.apk`，SHA256 `AB0A532B87F08D8BE1C0F4461B93C3E314880F2BA6D38E6D8149DACD17E5705D`（含自定义stroke图标+Composer重写+失焦修复+元素对比机制）。旧 v2-v15 及损坏 01-04 截图已清理。任务输入/语音权限/录制编辑等交互路径因需真实 Provider/无障碍授权，未在本轮设备复验，代码与单测已验证。
 
 **debug test-only fixture 注入方式**：`python scripts/ui-validation/inject-fixtures.py --serial <serial>` 预置 2 个无敏感测试脚本 + 2 条历史记录（Completed/Failed，task 固定为"自动化任务"）；清理：加 `--clean`。仅 debug 变体，通过 `adb run-as` 写入应用私有目录，不影响 release。
 
