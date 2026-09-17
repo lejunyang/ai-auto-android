@@ -447,9 +447,10 @@ private fun ComposerCard(
                     modifier = Modifier.heightIn(min = 44.dp),
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 14.dp),
+                        // 原型 .composer-foot .pill：padding 6px 8px、gap 5px；min-height 44dp 由手机模式覆盖。
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
                         Icon(
                             AppIcons.Phone,
