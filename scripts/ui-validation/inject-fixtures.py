@@ -99,8 +99,14 @@ def main() -> int:
     run_as(args.serial, "mkdir -p files/recordings files/session-history")
 
     if args.clean:
-        run_as(args.serial, "sh -c 'rm -f files/recordings/*.json files/session-history/*.json'")
-        print("已清理所有 fixture")
+        # 同时清理 0 字节的 .<id>.json.lock 写入锁残留（点开头隐藏文件需单独 glob）。
+        run_as(
+            args.serial,
+            "sh -c 'rm -f files/recordings/*.json files/recordings/*.lock "
+            "files/recordings/.*.lock files/session-history/*.json "
+            "files/session-history/*.lock files/session-history/.*.lock'",
+        )
+        print("已清理所有 fixture 与锁文件")
         return 0
 
     # 注入 2 个测试脚本

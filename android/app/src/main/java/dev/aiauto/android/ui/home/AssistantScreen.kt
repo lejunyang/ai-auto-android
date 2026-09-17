@@ -30,9 +30,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -244,14 +242,23 @@ fun AssistantScreen(
             }
         } else {
             item {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.height(if (scripts.size > 2) 200.dp else 100.dp),
-                ) {
-                    items(scripts.take(4)) { script ->
-                        SkillTile(script = script, onClick = { onOpenSkill(script.id) })
+                // 原型 .skill-grid 是非滚动的两列等宽网格，高度由 tile 内容（固定 112.5dp）撑开。
+                // 这里用普通 Column+Row 静态布局，避免在 LazyColumn 内嵌同方向 LazyVerticalGrid
+                // （嵌套同方向滚动需固定高度，此前写死 100dp 把 tile 从 112.5 压到 100dp）。
+                val tiles = scripts.take(4)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    tiles.chunked(2).forEach { rowTiles ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            rowTiles.forEach { script ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    SkillTile(script = script, onClick = { onOpenSkill(script.id) })
+                                }
+                            }
+                            // 奇数个时补一个等宽空位，保持最后一行左对齐、宽度一致。
+                            if (rowTiles.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
                     }
                 }
             }
@@ -350,7 +357,7 @@ private fun AppHeader(ready: Boolean) {
     }
 }
 
-/** 问候区：你好小字 + 大标题 + 右侧 auto 符号。 */
+/** 问候区：你好小字 + 大标题 + 右侧 tiny-orbit 品牌符号（auto）。 */
 @Composable
 private fun GreetingSection() {
     Row(
@@ -372,14 +379,25 @@ private fun GreetingSection() {
                 lineHeight = 37.8.sp,
             )
         }
-        // auto 符号：三角形图标，蓝色边框圆形背景。
+        // 原型 .tiny-orbit：42dp、1px #C9D8F6 描边、圆角14、pale 底，整体旋转 -7°；
+        // 内部 auto 品牌符号 27dp 反向旋转 7°保持正立。
         Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(44.dp),
+            shape = RoundedCornerShape(AppShapes.TinyOrbit),
+            color = AppColors.PrimaryContainer,
+            border = BorderStroke(1.dp, AppColors.TinyOrbitBorder),
+            modifier = Modifier
+                .size(AppSpacing.TinyOrbitSize)
+                .graphicsLayer { rotationZ = -7f },
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text("△", color = MaterialTheme.colorScheme.primary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Icon(
+                    AppIcons.Auto,
+                    contentDescription = null,
+                    tint = AppColors.Primary,
+                    modifier = Modifier
+                        .size(27.dp)
+                        .graphicsLayer { rotationZ = 7f },
+                )
             }
         }
     }
@@ -529,8 +547,8 @@ private fun SkillTile(script: AutomationScriptSummary, onClick: () -> Unit) {
             .padding(AppSpacing.SkillTilePadding),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // 原型 .tile-icon 实测：35dp 方块、11dp 圆角、#EEF4FF 底。
-        IconTile(icon = Icons.Default.MenuBook)
+        // 原型 .tile-icon 实测：35dp 方块、11dp 圆角、#EEF4FF 底；图标用与原型一致的描边书本。
+        IconTile(icon = AppIcons.Book)
         Text(
             text = script.name,
             fontSize = AppTypographyTokens.TileTitleFontSize,

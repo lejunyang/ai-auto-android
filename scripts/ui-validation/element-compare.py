@@ -35,33 +35,91 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-# 原型元素名 → 实机匹配规则。
+# 各原型视图 → 该视图参与比对的元素规则。hints 一律用【实机真实文案】，
+# 因为 Compose hierarchy 里出现的是 app 实际文本（原型演示文案与真实脱敏文案有意不同）。
 # kind:
 #   display     纯展示元素，宽高都严格按容差判定
 #   interactive 可点击元素，宽度严格，高度允许点击区比视觉背景最多大 6dp
 #               （手机模式 min-height 44，Compose 点击区常为 48dp）
 #   structural  实机无单一对应容器（Compose 不生成背景节点），只记录不判超差
 # size_ref 可覆盖原型 JSON box（用于原型采集口径含 safe-area 等已知偏差，以 CSS token 为准）。
-ELEMENT_MAP = {
-    "appHeader": {"strategy": "cluster", "hints": ["AI Auto", "让手机", "未就绪"], "kind": "structural"},
-    "greetingTitle": {"strategy": "leaf", "hints": ["有什么"], "kind": "display"},
-    # composer 卡片在未就绪态会多出一行真实警告，用 state_extra_hints 扣除该行高度后对比核心卡片。
-    "composer": {
-        "strategy": "lca", "hints": ["比如", "选择应用", "语音输入"], "kind": "container",
-        "state_extra_hints": ["请先完成"],
+VIEW_ELEMENTS = {
+    # ---------------- 助理首页（空态/未就绪） ----------------
+    "home-empty": {
+        "appHeader": {"strategy": "cluster", "hints": ["AI Auto", "让手机", "未就绪"], "kind": "structural"},
+        "greetingTitle": {"strategy": "leaf", "hints": ["有什么"], "kind": "display"},
+        # composer 卡片在未就绪态会多出一行真实警告，用 state_extra_hints 扣除该行高度后对比核心卡片。
+        "composer": {
+            "strategy": "lca", "hints": ["比如", "选择应用", "语音输入"], "kind": "container",
+            "state_extra_hints": ["请先完成"],
+        },
+        "composerInput": {"strategy": "edittext", "hints": ["比如"], "kind": "display"},
+        "composerFoot": {"strategy": "row", "hints": ["选择应用"], "kind": "interactive"},
+        "composerPill": {"strategy": "clickable", "hints": ["选择应用"], "pick": "min", "kind": "interactive"},
+        "composerIconBtn": {"strategy": "clickable", "hints": ["语音输入"], "pick": "min", "kind": "interactive"},
+        "composerSendBtn": {"strategy": "row_item", "hints": ["选择应用"], "index": -1, "kind": "interactive"},
+        "quickChip": {"strategy": "clickable", "hints": ["整理稍后阅读"], "pick": "min", "kind": "interactive"},
+        "teachCard": {"strategy": "clickable", "hints": ["教它一次"], "pick": "max", "kind": "display"},
+        "skillTile": {"strategy": "clickable", "hints": ["整理稍后阅读"], "pick": "max", "kind": "display"},
+        # 原型采集 bottomNav box=72 含 safe-area 口径，CSS 实际 height:68px，以 CSS token 为准。
+        "bottomNav": {"strategy": "lca", "hints": ["助理", "技能", "记录", "我的"], "kind": "display",
+                      "size_ref": [411, 68]},
+        "navItemActive": {"strategy": "tab_item", "hints": ["助理"], "kind": "interactive"},
     },
-    "composerInput": {"strategy": "edittext", "hints": ["比如"], "kind": "display"},
-    "composerFoot": {"strategy": "row", "hints": ["选择应用"], "kind": "interactive"},
-    "composerPill": {"strategy": "clickable", "hints": ["选择应用"], "pick": "min", "kind": "interactive"},
-    "composerIconBtn": {"strategy": "clickable", "hints": ["语音输入"], "pick": "min", "kind": "interactive"},
-    "composerSendBtn": {"strategy": "row_item", "hints": ["选择应用"], "index": -1, "kind": "interactive"},
-    "quickChip": {"strategy": "clickable", "hints": ["整理稍后阅读"], "pick": "min", "kind": "interactive"},
-    "teachCard": {"strategy": "clickable", "hints": ["教它一次"], "pick": "max", "kind": "display"},
-    "skillTile": {"strategy": "clickable", "hints": ["整理稍后阅读"], "pick": "max", "kind": "display"},
-    # 原型采集 bottomNav box=72 含 safe-area 口径，CSS 实际 height:68px，以 CSS token 为准。
-    "bottomNav": {"strategy": "lca", "hints": ["助理", "技能", "记录", "我的"], "kind": "display",
-                  "size_ref": [411, 68]},
-    "navItemActive": {"strategy": "tab_item", "hints": ["助理"], "kind": "interactive"},
+    # ---------------- 技能页（全部，有数据） ----------------
+    "skills-all": {
+        "appHeader": {"strategy": "cluster", "hints": ["我的技能", "把重复操作"], "kind": "structural"},
+        # 区块大标题 page-heading 24sp：原型盒宽随块级，只比高度（字号/行高）。
+        "pageHeading": {"strategy": "leaf", "hints": ["教会它的事"], "kind": "display",
+                        "dimensions": "height"},
+        "filterTabs": {"strategy": "lca", "hints": ["全部", "我教的", "灵感"], "kind": "structural"},
+        "filterTabActive": {"strategy": "clickable", "hints": ["全部"], "pick": "min", "kind": "interactive"},
+        "filterTabInactive": {"strategy": "clickable", "hints": ["我教的"], "pick": "min", "kind": "interactive"},
+        # 技能单列宽卡：命中技能名的最大可点击祖先。
+        "skillListCard": {"strategy": "clickable", "hints": ["整理稍后阅读"], "pick": "max", "kind": "display"},
+        # 绿色"已保存"标签（原型 tagGreen 文案"示例技能"，实机脱敏为"已保存"，比高度不比宽度）。
+        "tagSaved": {"strategy": "tag", "hints": ["已保存"], "kind": "display", "proto_key": "tagGreen",
+                     "dimensions": "height"},
+        "bottomNav": {"strategy": "lca", "hints": ["助理", "技能", "记录", "我的"], "kind": "display",
+                      "size_ref": [411, 68]},
+        "navItemActive": {"strategy": "tab_item", "hints": ["技能"], "kind": "interactive"},
+    },
+    # ---------------- 记录页（全部，有数据） ----------------
+    "history-all": {
+        "appHeader": {"strategy": "cluster", "hints": ["运行记录", "只留下有用"], "kind": "structural"},
+        "pageHeading": {"strategy": "leaf", "hints": ["做过的"], "kind": "display",
+                        "dimensions": "height"},
+        "filterTabs": {"strategy": "lca", "hints": ["全部", "已完成", "需处理"], "kind": "structural"},
+        "filterTabActive": {"strategy": "clickable", "hints": ["全部"], "pick": "min", "kind": "interactive"},
+        "filterTabInactive": {"strategy": "clickable", "hints": ["已完成"], "pick": "min", "kind": "interactive"},
+        # 记录卡：标题统一脱敏为"自动化任务"，命中其最大可点击祖先。
+        "recordCard": {"strategy": "clickable", "hints": ["自动化任务"], "pick": "max", "kind": "display"},
+        "tagDone": {"strategy": "tag", "hints": ["已完成"], "kind": "display", "proto_key": "tagGreen",
+                    "dimensions": "height"},
+        "tagAttention": {"strategy": "tag", "hints": ["需处理"], "kind": "display", "proto_key": "tagAmber",
+                         "dimensions": "height"},
+        "bottomNav": {"strategy": "lca", "hints": ["助理", "技能", "记录", "我的"], "kind": "display",
+                      "size_ref": [411, 68]},
+        "navItemActive": {"strategy": "tab_item", "hints": ["记录"], "kind": "interactive"},
+    },
+    # ---------------- 我的页 ----------------
+    "settings": {
+        # 页头"我的"与底栏重名，用副标题"把边界设好"唯一定位页头簇。
+        "appHeader": {"strategy": "cluster", "hints": ["把边界设好"], "kind": "structural"},
+        # 助理状态卡：用状态卡独有词"助理状态"+"未完成配置"求最小公共祖先。
+        "statusCard": {"strategy": "lca", "hints": ["助理状态", "未完成配置"], "kind": "display"},
+        # 状态标签：原型为绿色"演示已就绪"，实机按真实未配置状态显示琥珀"未完成配置"（有意偏差，比高度）。
+        "tagStatus": {"strategy": "tag", "hints": ["未完成配置"], "kind": "display", "proto_key": "tagGreen",
+                      "dimensions": "height"},
+        # section-head h3 16sp：只比高度。
+        "sectionTitle": {"strategy": "leaf", "hints": ["连接与能力"], "kind": "display",
+                         "dimensions": "height"},
+        # AI 模型设置行：状态卡内同名文本不可点击，clickable 只会命中可点的设置行。
+        "settingRow": {"strategy": "clickable", "hints": ["AI 模型"], "pick": "max", "kind": "interactive"},
+        "bottomNav": {"strategy": "lca", "hints": ["助理", "技能", "记录", "我的"], "kind": "display",
+                      "size_ref": [411, 68]},
+        "navItemActive": {"strategy": "tab_item", "hints": ["我的"], "kind": "interactive"},
+    },
 }
 
 # 尺寸容差：展示元素宽高 ±2dp。
@@ -253,6 +311,26 @@ def resolve_element(root: Node, rule: dict) -> dict | None:
             else max(containers, key=lambda x: x.area)
         return _result(chosen.bounds, f"clickable-{rule.get('pick', 'min')}", chosen.label())
 
+    if strategy == "tag":
+        # 纯展示标签（不可点击的 Surface 胶囊）：从文本叶子沿父链找尺寸落在 tag 合理范围
+        # （高 22-34dp、宽 36-150dp）的最近祖先，即带底色/圆角的 Surface 容器。
+        leaves = find_text_leaves(nodes, hints[0])
+        if not leaves:
+            return None
+        leaf = min(leaves, key=lambda x: x.area)
+        cur = leaf.parent
+        chosen = None
+        while cur is not None:
+            h_dp = cur.height / DP_SCALE
+            w_dp = cur.width / DP_SCALE
+            if 22 <= h_dp <= 34 and 36 <= w_dp <= 150:
+                chosen = cur
+                break
+            cur = cur.parent
+        target = chosen or leaf
+        return _result(target.bounds, "tag-container" if chosen else "tag-leaf-fallback",
+                       target.label())
+
     if strategy in ("row", "row_item"):
         leaves = find_text_leaves(nodes, hints[0])
         anchors = [c for c in (first_clickable_ancestor(n) for n in leaves) if c is not None]
@@ -387,17 +465,22 @@ def judge(rule: dict, proto_w: float, proto_h: float, app_w: float, app_h: float
     kind = rule.get("kind", "display")
     if kind == "structural":
         return "INFO", "实机无单一容器节点，仅记录文本簇尺寸"
+    # dimensions=height 时只比高度：原型块级标题宽度是占满行的盒宽，Compose Text 是内容宽，
+    # 宽度口径天然不一致，字号/行高由高度承载，故只判高度。
+    dims = rule.get("dimensions", "both")
     dw = round(app_w - proto_w, 1)
     dh = round(app_h - proto_h, 1)
     if kind == "interactive":
         # 触摸目标允许比视觉背景最多大 6dp（Compose 最小触摸目标常为 48dp，原型视觉为 44dp），
         # 但点击区不得明显小于视觉尺寸。宽高均允许 [proto-2, proto+6]。
-        w_bad = app_w < proto_w - SIZE_TOLERANCE_DP or app_w > proto_w + INTERACTIVE_HEIGHT_EXTRA
-        h_bad = app_h < proto_h - SIZE_TOLERANCE_DP or app_h > proto_h + INTERACTIVE_HEIGHT_EXTRA
+        w_bad = (app_w < proto_w - SIZE_TOLERANCE_DP or app_w > proto_w + INTERACTIVE_HEIGHT_EXTRA) \
+            if dims != "height" else False
+        h_bad = (app_h < proto_h - SIZE_TOLERANCE_DP or app_h > proto_h + INTERACTIVE_HEIGHT_EXTRA) \
+            if dims != "width" else False
         return ("OVER" if (w_bad or h_bad) else "OK"), f"{dw:+}/{dh:+}dp"
-    # container/display：宽高严格。container 的状态差异通过 state_note 人工解释。
-    w_bad = abs(dw) > SIZE_TOLERANCE_DP
-    h_bad = abs(dh) > SIZE_TOLERANCE_DP
+    # container/display：按 dimensions 决定比宽/比高/都比，容差 ±2dp。
+    w_bad = abs(dw) > SIZE_TOLERANCE_DP if dims != "height" else False
+    h_bad = abs(dh) > SIZE_TOLERANCE_DP if dims != "width" else False
     return ("OVER" if (w_bad or h_bad) else "OK"), f"{dw:+}/{dh:+}dp"
 
 
@@ -430,12 +513,19 @@ def main() -> int:
         print("实机 UI hierarchy 解析失败")
         return 1
 
+    element_map = VIEW_ELEMENTS.get(args.view)
+    if element_map is None:
+        print(f"未配置视图 {args.view}，可选：{sorted(VIEW_ELEMENTS)}")
+        return 1
+
     results = []
     comparison_images = []
-    for element_name, rule in ELEMENT_MAP.items():
-        if element_name not in proto_elements:
+    for element_name, rule in element_map.items():
+        # 规则名可与原型采集 key 不同（如实机脱敏 tag 对应原型 tagGreen/tagAmber），用 proto_key 映射。
+        proto_key = rule.get("proto_key", element_name)
+        if proto_key not in proto_elements or not isinstance(proto_elements[proto_key], dict):
             continue
-        proto_el = proto_elements[element_name]
+        proto_el = proto_elements[proto_key]
         box = proto_el.get("box", {})
         proto_w = float(box.get("width", 0))
         proto_h = float(box.get("height", 0))
@@ -449,7 +539,8 @@ def main() -> int:
         if app_el is None:
             results.append({"element": element_name, "proto_size": f"{proto_w:g}x{proto_h:g}dp",
                             "app_size": "NOT_FOUND", "delta": "N/A", "status": "OVER",
-                            "match_method": rule["strategy"]})
+                            "over_tolerance": True, "match_method": rule["strategy"],
+                            "app_text": ""})
             continue
 
         ax1, ay1, ax2, ay2 = app_el["bounds_px"]

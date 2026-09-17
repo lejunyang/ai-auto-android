@@ -341,6 +341,112 @@ object AppIcons {
             icon
         }
 
+    /**
+     * 品牌符号（auto）：三角形 + 中竖线，stroke 描边。原型 icon('auto')，
+     * 用于我的页蓝底 logo、问候右侧 tiny-orbit、悬浮球；区别于助理 tab 的四角星 spark。
+     */
+    val Auto: ImageVector
+        get() = _auto ?: run {
+            val icon = ImageVector.Builder(
+                name = "Auto",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f,
+            ).apply {
+                // 三角形外轮廓：左下(5,17) → 顶点(12,5) → 右下(19,17) → 回到底边左端
+                addPath(
+                    pathData = addPathNodes("M5 17L12 5l7 12H5"),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 1.65f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+                // 中竖线：从顶点(12,5) 向下到(12,20)，穿出底边
+                addPath(
+                    pathData = addPathNodes("M12 5V20"),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 1.65f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+            }.build()
+            _auto = icon
+            icon
+        }
+
+    /** 技能卡/技能网格：书本（book），stroke 描边。原型 icon('book')，代表"读取/来源应用"。 */
+    val Book: ImageVector
+        get() = _book ?: run {
+            val icon = ImageVector.Builder(
+                name = "Book",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f,
+            ).apply {
+                // 打开的书本外轮廓 + 中缝
+                addPath(
+                    pathData = addPathNodes(
+                        "M3 5c4-2 7-1 9 1 2-2 5-3 9-1v15c-4-2-7-1-9 0-2-1-5-2-9 0V5zM12 6v14",
+                    ),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 1.65f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+            }.build()
+            _book = icon
+            icon
+        }
+
+    /** 技能卡第二应用：便签（note），stroke 描边。原型 icon('note')，代表"整理/目标应用"。 */
+    val Note: ImageVector
+        get() = _note ?: run {
+            val icon = ImageVector.Builder(
+                name = "Note",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f,
+            ).apply {
+                // 带折角的文档
+                addPath(
+                    pathData = addPathNodes(
+                        "M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z",
+                    ),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 1.65f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+                // 折角
+                addPath(
+                    pathData = addPathNodes("M14 3v6h6"),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 1.65f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+                // 文本行
+                addPath(
+                    pathData = addPathNodes("M8 13h8M8 17h5"),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 1.65f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+            }.build()
+            _note = icon
+            icon
+        }
+
     /** 图标缓存，避免每次重组重建 ImageVector。 */
     private var _spark: ImageVector? = null
     private var _flow: ImageVector? = null
@@ -351,4 +457,7 @@ object AppIcons {
     private var _mic: ImageVector? = null
     private var _shield: ImageVector? = null
     private var _monitor: ImageVector? = null
+    private var _auto: ImageVector? = null
+    private var _book: ImageVector? = null
+    private var _note: ImageVector? = null
 }

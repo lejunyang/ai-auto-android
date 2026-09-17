@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,6 +44,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -156,11 +159,23 @@ fun SectionHeader(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
+            // 原型 .section-head h3：16sp/650/行高24/字距 -0.6（分区小标题，区别于 24sp 的 page-heading）。
+            fontSize = 16.sp,
+            fontWeight = FontWeight(650),
+            lineHeight = 24.sp,
+            letterSpacing = (-0.6).sp,
+            color = AppColors.Ink,
         )
         if (actionLabel != null && onActionClick != null) {
-            TextButton(onClick = onActionClick) {
-                Text(actionLabel, style = MaterialTheme.typography.labelLarge)
+            TextButton(
+                onClick = onActionClick,
+                contentPadding = PaddingValues(horizontal = 4.dp),
+            ) {
+                Text(
+                    actionLabel,
+                    fontSize = 13.sp,
+                    color = AppColors.Primary,
+                )
             }
         }
     }
@@ -234,15 +249,16 @@ fun TagChip(
     tone: TagTone = TagTone.NEUTRAL,
 ) {
     val colors = when (tone) {
+        // 原型 .tag.green：底 #EAF6F0、字 --green #237863，用于"已完成/已保存"。
         TagTone.SUCCESS -> TagColors(
-            background = MaterialTheme.colorScheme.primaryContainer,
-            foreground = MaterialTheme.colorScheme.onPrimaryContainer,
+            background = AppColors.SuccessContainer,
+            foreground = AppColors.Success,
         )
 
+        // 原型 .tag.amber：底 #FFF3DF、字 --amber #9B6419，用于"需处理/未完成配置"。
         TagTone.WARNING -> TagColors(
-            // 原型琥珀色：--amber:#9b6419，用于"未完成配置""需处理"等警告状态。
-            background = Color(0xFFFBF0DA),
-            foreground = Color(0xFF9B6419),
+            background = AppColors.WarningTagContainer,
+            foreground = AppColors.Warning,
         )
 
         TagTone.ERROR -> TagColors(
@@ -256,15 +272,22 @@ fun TagChip(
         )
     }
     Surface(
-        shape = RoundedCornerShape(6.dp),
+        // 原型 .tag：圆角 7px。
+        shape = RoundedCornerShape(7.dp),
         color = colors.background,
         modifier = modifier,
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelSmall,
+            // 原型 .tag：字号 11px、line-height≈1.4、padding 5px 8px，整盒约 26.8dp 高。
+            // 关闭中文默认 includeFontPadding 并锁定行高，避免标签被撑高到 34dp。
+            style = MaterialTheme.typography.labelSmall.copy(
+                lineHeight = 16.sp,
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+            ),
+            fontSize = 11.sp,
             color = colors.foreground,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
         )
     }
 }

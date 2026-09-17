@@ -110,15 +110,16 @@ fun HistoryScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.history_title),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 32.sp,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight(650),
+                        lineHeight = 24.sp,
+                        letterSpacing = (-0.7).sp,
                     )
                     Text(
                         text = stringResource(R.string.history_subtitle),
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         color = AppColors.Muted,
-                        lineHeight = 20.sp,
+                        lineHeight = 16.sp,
                     )
                 }
                 IconButton(onClick = { showInfoDialog = true }) {
@@ -136,10 +137,10 @@ fun HistoryScreen(
         item {
             Text(
                 text = stringResource(R.string.history_page_heading),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 28.sp,
-                letterSpacing = (-0.5).sp,
+                fontSize = 24.sp,
+                fontWeight = FontWeight(700),
+                lineHeight = 36.sp,
+                letterSpacing = (-0.8).sp,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }

@@ -269,15 +269,20 @@ private fun SettingsPageHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
+            // 原型 .app-title：18sp/650/字距 -0.7（顶部导航条小标题）。
             Text(
                 text = stringResource(R.string.settings_page_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                fontWeight = FontWeight(650),
+                lineHeight = 24.sp,
+                letterSpacing = (-0.7).sp,
                 color = AppColors.Ink,
             )
+            // 原型 .sub-title（手机模式 12px、muted）。
             Text(
                 text = stringResource(R.string.settings_page_subtitle),
-                style = MaterialTheme.typography.bodySmall,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
                 color = AppColors.Muted,
             )
         }
@@ -320,18 +325,18 @@ private fun ProfileHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Surface(
-            // 原型 logo 是蓝色实心圆角方块（bg #2563EB，radius 18dp，52x52），
-            // 不是浅蓝底 primaryContainer。
+            // 原型 settings logo：蓝色实心圆角方块（bg #2563EB，radius 18dp，52x52），
+            // 内部为 auto 品牌符号（三角形+中竖线），白色；.logo svg 实测 23dp。
             shape = RoundedCornerShape(AppShapes.SettingsLogo),
             color = AppColors.Primary,
             modifier = Modifier.size(AppSpacing.SettingsLogoSize),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = AppIcons.Spark,
+                    imageVector = AppIcons.Auto,
                     contentDescription = null,
                     tint = AppColors.Surface,
-                    modifier = Modifier.size(26.dp),
+                    modifier = Modifier.size(23.dp),
                 )
             }
         }

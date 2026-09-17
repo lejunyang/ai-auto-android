@@ -21,10 +21,10 @@
 | 主题 | 固定配色（背景#EEF1F5 冷灰蓝/卡片#FFFFFF/主色#2563EB），无动态取色 | 已实现，已设备复验 | Theme.kt 用 AppColors；navfix-settings 截图确认 |
 | 设计token层 | AppColors/AppShapes/AppSpacing/AppTypography（逐元素实测）+ DesignTokenParityTest | 已实现，单测通过 | 从 20 个原型视图机器抽取；parity 测试通过 |
 | 共享组件 | AppComponents.kt + ScriptStoreProducers.kt + ScreenScaffold（二级页外壳重做） | 已实现，二级页已设备复验 | navfix-bridge 截图确认返回箭头+标题+副标题+info |
-| 助理页 | Composer卡片(24dp圆角+1px#D9E3F3边框+阴影+无内部分隔线+16dp padding+50dp输入框+灰底pill选择应用+自定义phone/mic/up图标)+问候标题强制两行(27sp/620/-1/37.8)+快捷chips灰底小胶囊(#E8EDF4/#5D6C82/10dp/44dp/11sp/自动换行)+2列技能网格+虚线teach卡+点击空白失焦收键盘 | 已验证（设备截图+失焦mInputShown） | p1-home 截图确认两行标题/灰底chips/向上箭头发送/自定义图标；失焦验证：点输入框mInputShown=true→点空白mInputShown=false |
-| 技能页 | 单列宽卡列表(原型skills-all)：页头info+区块标题"教会它的事"+加号+三filter-tab(全部/我教的/灵感，选中ink底白字)+技能卡(图标块35dp+已保存tag+标题14sp+目标包名描述+步数手动触发+chevron)+灵感未来概念卡(不可执行)+teach虚线轻卡 | 已验证（设备截图，含数据） | final-skills 截图确认单列宽卡+info按钮+区块标题+三filter-tab+图标块+已保存tag；test-only fixture预置脚本验证 |
-| 记录页 | 单列宽卡(原型history-all)：页头info+区块标题"做过的，都在这里。"+三filter-tab(全部/已完成/需处理，选中ink底白字)+记录卡(状态tag已完成绿/需处理琥珀+chevron+标题固定"自动化任务"TASK_SUMMARY脱敏+状态说明+元信息目标包名·时间·N步)+详情对话框+隐私note | 已验证（设备截图，含数据与筛选） | final-history/final-history-done 截图；test-only fixture预置2条历史(Completed/Failed)，已完成筛选仅显示Completed记录，状态标签固定"已完成"/"需处理" |
-| 我的页 | 页头(标题+副标题+info)+蓝色实心52dp logo(白四角星spark)+助理状态卡(白底+1px line边框+18dp圆角+padding17+就绪/未完成配置tag+AI模型/允许操作的应用子状态)+连接与能力三行setting-row(无图标底块+20dp自定义spark/shield/monitor图标#68809e+min-height63dp+padding11dp0+行间border-bottom+标题14sp bold+副标题10sp muted+右侧11sp muted+chevron)+随时唤起(悬浮入口/运行通知真实授权状态) | 已验证（设备截图） | final-settings 截图确认白底状态卡+无图标底块setting-row+spark/shield/monitor自定义图标+settings选中横线+圆全变蓝 |
+| 助理页 | Composer卡片(24dp圆角+1px#D9E3F3边框+阴影+无内部分隔线+16dp padding+50dp输入框+灰底pill选择应用+自定义phone/mic/up图标)+问候标题强制两行(27sp/620/-1/37.8)+右上tiny-orbit(42dp浅蓝圆角方块rotate-7°内蓝色Auto三角竖线，替换原"△"字符占位)+快捷chips灰底小胶囊(#E8EDF4/#5D6C82/10dp/44dp/11sp/自动换行)+常用技能两列等高网格(静态Column+Row，tile固定112.5dp)+虚线teach卡+点击空白失焦收键盘 | 已验证（四页37元素0超差+设备截图+失焦） | v3-home-empty 截图；element-compare skillTile 180.6x112.4≈原型180.5x112.5；失焦mInputShown true→false |
+| 技能页 | 单列宽卡列表(原型skills-all)：页头info+区块标题"教会它的事"(24sp/700)+加号+三filter-tab(全部/我教的/灵感，选中ink底白字)+技能卡(左上AppIconBlock真实launcher图标，包不存在回退描边Book/Note+已保存绿色TagChip+标题14sp+目标包名描述+步数手动触发+chevron)+灵感未来概念卡(点击弹"规划中"，不可执行)+teach虚线轻卡 | 已验证（0超差+设备截图+交互11/11） | v3-skills-all 截图；灵感卡弹规划中对话框、info弹"关于技能"、+进入录制流程均设备验证；test-only fixture预置脚本 |
+| 记录页 | 单列宽卡(原型history-all)：页头info+区块标题"做过的，都在这里。"(24sp/700)+三filter-tab(全部/已完成/需处理，选中ink底白字)+记录卡(状态tag已完成绿/需处理琥珀，统一TagChip约25.9dp+chevron+标题固定"自动化任务"TASK_SUMMARY脱敏+状态说明+元信息目标包名·时间·N步)+只读详情对话框(目标应用/开始/结束/N步/隐私说明)+隐私note | 已验证（0超差+设备截图+交互） | v3-history-all 截图；点记录卡弹只读详情、info弹"关于运行记录"、已完成筛选仅显示Completed均设备验证 |
+| 我的页 | 页头(标题18sp+副标题12sp+info)+蓝色实心52dp logo(白色Auto三角竖线，非spark)+助理状态卡(白底+1px line边框+18dp圆角+琥珀"未完成配置"tag+AI模型/允许操作的应用子状态)+连接与能力三行setting-row(无图标底块+20dp自定义spark/shield/monitor描边图标#68809e+min-height63dp+行间border-bottom+右侧状态+chevron)+随时唤起(悬浮入口/运行通知真实授权状态"需授权>") | 已验证（0超差+设备截图+交互） | v3-settings 截图；info弹"关于这一页"设备验证；logo为白Auto、setting-row为自定义描边图标 |
 | 我的下二级页 | AI模型/允许操作的应用/连接电脑：外壳与内容均按原型重构，真实能力与安全文案保留 | 已验证（设备截图） | rev-02-provider / rev-03-permissions / rev-04-connection 截图；diff 超差 0 |
 | 底部导航 | 自定义Row+Column实现（68dp内容区+navigationBarsPadding手势条+weight(1f)均分宽度+padding 7/8/4dp+顶部1dp描边+46×27dp选中胶囊#E8EFFD+20dp自定义stroke图标(spark/flow/clock/settings)+12sp标签），弃用Material3 NavigationBar；settings横线选中跟随tint变蓝；flow节点7×5横向矩形 | 已验证（设备截图+dump点击中心坐标） | p1-home/p1-skills/p1-settings 截图确认4个自定义stroke图标+选中态浅蓝胶囊+手势条不压标签；点击各tab中心(135/405/675/945)均正确导航 |
 | 模块A：会话历史持久化 | SessionHistoryRecord(固定摘要安全策略)+Store(有界/可删/损坏Partial)+coordinator终态写入 | 已实现，单测通过 | compileDebugKotlin通过；SessionHistoryStoreTest 13测试通过（UUID id/TASK_SUMMARY/损坏Partial/有界/删除） |
@@ -33,11 +33,46 @@
 | 模块D：受控悬浮窗 | OverlayController+权限引导+运行状态/结果+收起展开+我的页入口 | 已实现，真实会话运行时未设备验证 | OverlayController/OverlayWindow编译通过 |
 | 模块E：录制编辑器 | 步骤编排/用一句话表达tab+UpdateDescription命令+撤销/保存冲突/高级字段 | 已实现，待设备验证 | compileDebugKotlin通过；tab结构已建 |
 | 模块F：语言归纳 | SkillLanguageGenerator+Provider调用+敏感过滤+不静默覆盖+已接入编辑器 | 已实现，单测通过（NotConfigured/HTTP错误/空响应/敏感过滤） | compileDebugKotlin通过；SkillLanguageGeneratorTest 4测试通过 |
-| 设备视觉验证 | 固定AVD(ui-visual-35 1080x2400 420dpi zh-CN)+显式serial+可靠截图(screencap到设备再pull)+PIL验证 | 已验证（四tab+技能单列有数据+记录有数据/已完成筛选+我的页白底状态卡） | final-home/final-skills/final-history/final-history-done/final-settings 截图PIL verify通过(1080x2400)；坐标从当次uiautomator dump解析 |
-| 元素对比机制 | element-compare.py：从dump提取bounds→PIL crop裁剪元素图→原型截图按DOM rect裁剪→并排对比图+尺寸差异报告 | 已实现，首页8元素对比产出 | artifacts/ui-validation/element-compare/ 下8张对比图+report.json；greetingTitle(两行修复后OK)/composerInput/teachCard/skillTile尺寸OK；容器类元素(composer/bottomNav/appHeader)匹配口径为内部文本节点，实际视觉已截图验证 |
-| 全量验证 | make comments + testDebugUnitTest + assembleDebug + lintDebug | 已验证 | testDebugUnitTest 525测试通过(0失败1跳过为既有flaky)；assembleDebug与lintDebug BUILD SUCCESSFUL；make comments通过（539文件）；git diff --check通过 |
+| 设备视觉验证 | 固定AVD(ui-visual-35 1080x2400 420dpi zh-CN)+显式serial+可靠截图(screencap到设备再pull)+PIL验证+MainAgent逐张目检 | 已验证（四页0超差+交互11/11） | v3-home-empty/v3-skills-all/v3-history-all/v3-settings 四张最终截图PIL verify并实际看图；interact/ 下对话框与录制页截图 |
+| 元素对比机制 | element-compare.py（节点树版）：uiautomator dump 解析 bounds→叶子/edittext/clickable/LCA/聚类多策略匹配→PIL crop 并排裁剪→尺寸差异；tag 只比高度、容器类按口径豁免 | 已验证，四页37元素0超差 | home-empty 0/13、skills-all 0/9、history-all 0/9、settings 0/6；产物 artifacts/ui-validation/element-compare/ |
+| 交互设备验证 | 灵感筛选/未来概念卡/规划中对话框、三页info说明、记录只读详情、+进入录制并返回、筛选切换 | 已验证 11/11 | verify_interactions.py 全 PASS；ia-02-idea-dialog/ib-01-history-detail/ia-04-record 截图目检 |
+| 全量验证 | make comments + testDebugUnitTest + assembleDebug + lintDebug | 已验证 | testDebugUnitTest 525通过/0失败/1跳过(既有)；lintDebug、assembleDebug BUILD SUCCESSFUL；make comments通过（540文件）；git diff --check通过 |
 | 源码清理 | HomeScreen.kt/TaskScreen.kt（git已删除）；SessionViewModelTest.kt已恢复更新为11测试 | 已完成 | git f1ef91b删除HomeScreen/TaskScreen；13cce8e恢复SessionViewModelTest |
 | 验证产物清理 | artifacts/ui-validation/ 下旧截图v2-v15及损坏01-04已删除（ignored目录，不进git）；保留final-01~04和prototype参考 | 已完成 | 本地文件系统清理 |
+
+## 本轮逐元素复核修正（2026-09-18，MainAgent 亲手设备验收）
+
+organizer 交付三页对齐后，MainAgent 不采信"报告完成"，自行装 APK、dump、裁剪、看图，
+按原型采集 token 逐项核对并修正，最终四页 37 个元素 **0 超差**、交互 11/11。
+
+1. **图标体系统一为自定义描边图标（AppIcons.kt）**：以原型 `paths` 对象为准，用
+   `ImageVector.Builder + addPathNodes`（stroke-width 1.65、round cap/join）重绘，弃用造型不符的
+   Material 实心图标。品牌符号 **Auto = 三角形+中竖线**（`M5 17L12 5l7 12H5`+`M12 5V20`），
+   用于问候右上 tiny-orbit、我的页 logo（蓝底白 Auto）、悬浮球；底栏助理仍是四角星 spark。
+   新增 Book/Note 描边图标；首页 tile 与最近活动由 Material MenuBook 改为描边 Book。
+2. **真实 launcher 图标（AppIconBlock.kt，新建）**：技能卡左上按 `targetPackages.distinct().take(2)`
+   加载应用真实图标（PackageManager 先验存在再取图标，Dispatchers.IO 不阻塞主线程，toBitmap 后
+   clip 11dp 圆角、无底色）；包不存在（如 fixture 的 com.example.*）回退浅蓝底描边 Book /
+   薄荷底 Note。真实已安装应用的双图标圆角加载路径已具备，待真机/真实包名目检。
+3. **标签配色与高度（TagChip）**：记录"已完成"=绿、"需处理"=琥珀、技能"已保存"=绿
+   （原先误用蓝色，且技能页是内联 Surface 未复用组件，已统一改为 TagChip SUCCESS）。
+   高度由 33.9dp 修到约 25.9dp（对齐原型 tagGreen 26.8dp）：`lineHeight=16.sp` 且
+   `PlatformTextStyle(includeFontPadding=false)` 必须放进 `style.copy`，不能作 Text() 顶层参数。
+4. **标题字号层级**（以原型采集 JSON font 字段为准，曾整体反掉）：页头标题 18sp/650/行高24/字距-0.7、
+   副标题 12sp；区块大标题（"教会它的事"/"做过的，都在这里。"）24sp/700/行高36/字距-0.8；
+   我的页分区标题 16sp/650（通用 SectionHeader 同步）。
+5. **首页 skillTile 高度**：根因是 LazyColumn 内嵌同方向 `LazyVerticalGrid` 并写死 `height(100dp)`，
+   把 tile 固定的 112.5dp 压到 100.2dp。改为非滚动静态 `Column + Row(chunked(2)) + Box(weight(1f))`，
+   奇数补 Spacer，高度由 tile 112.5dp 自然撑开；复验 180.6x112.4 达标。
+6. **fixture 幂等**：inject-fixtures.py 原先每次随机 UUID 且不清理，多轮运行累积出重复卡与大量
+   0 字节 `.<id>.json.lock`。`--clean` 现在同时删 `*.json`、`*.lock`、`.*.lock`；run_views.py
+   注入前先 clean 再注入，结果恒定 2 脚本 + 2 历史，不重复。
+7. **冷启动 ANR（结论：非代码死锁）**：debug 包冷启动首帧 RenderThread 积压（Displayed≈7s、
+   Skipped 203 frames）期间，uiautomator 反复 dump 注入焦点事件，5s 未被处理即触发
+   "Input dispatching timed out (FocusEvent)" 系统 ANR 对话框，但背后首页已完整渲染，无 FATAL、
+   主线程堆栈停在 performDraw→HardwareRenderer.setStopped→future.get 等 RenderThread。
+   对照实验：force-stop→am start 后静候约 18s 不注入任何事件即正常。run_views.py 已固化
+   "静候 18s + 低频轮询首页文本（4s 间隔、最多 6 次）后才导航"，复跑稳定无 ANR。
 
 ## 安全约束（不可妥协）
 
@@ -53,9 +88,10 @@
 
 1. **模块C 前台服务运行时**：通知暂停/停止操作、锁屏 ACTION_SCREEN_OFF 强制暂停、服务异常销毁恢复——代码已实现，SessionCoordinator 单测通过，但未在真实会话运行时设备验证。
 2. **模块D 悬浮窗运行时**：会话运行时自动显示悬浮窗、收起/展开、暂停/停止/结果展示——代码已实现，但未在真实会话运行时设备验证（需用户先授权 SYSTEM_ALERT_WINDOW）。
-3. **模块E/F 录制编辑器完整流程**：录制→编辑→语言生成→保存→返回——代码已实现，但未在设备上完整闭环验证。
-4. **技能页2列网格/记录页有数据**：已通过 debug test-only fixture 预置数据并设备验证（skills-grid2 / history-with-data / history-filter-completed 截图）。
+3. **模块E/F 录制编辑器完整流程**：从技能页 + 进入"录制新流程"页（脚本名/目标包名/敏感字段 secret 提示/步骤预览）已设备验证；但录制→捕获步骤→编辑→语言生成→保存→返回的完整闭环未在设备走通（需无障碍/投影授权）。
+4. **技能/记录有数据态与筛选**：已通过 debug test-only fixture 预置恒定 2 脚本 + 2 历史并设备验证（v3-skills-all / v3-history-all，记录"已完成"筛选仅显示 Completed，灵感 tab 未来概念卡与规划中对话框、记录只读详情均验证）。
 5. **真机验证**：当前所有设备验证在模拟器（ui-visual-35）完成，真机兼容性需用户授权后验证。
+6. **真实 launcher 图标圆角加载**：AppIconBlock 的双真实应用图标组合仅在包存在时出现，本轮 fixture 用不存在的 com.example.* 只验了 Book/Note 回退；真机或已安装真实包名下的圆角图标待目检。
 
 ## 最终有效截图清单
 
@@ -65,20 +101,25 @@
 
 | 截图 | 界面 | 状态 |
 |---|---|---|
-| final-home.png | 助理首页（两行标题+灰底chips+向上箭头发送+自定义图标+底栏均分） | 已验证 |
-| final-skills.png | 技能页（单列宽卡+info按钮+区块标题+三filter-tab+图标块+已保存tag，含数据） | 已验证 |
-| final-history.png | 记录页（全部筛选，Completed+Failed，单列宽卡+固定标题"自动化任务"） | 已验证 |
-| final-history-done.png | 记录页（已完成筛选，仅显示Completed记录，状态标签"已完成"） | 已验证 |
-| final-settings.png | 我的页（白底状态卡+无图标底块setting-row+spark/shield/monitor自定义图标+settings选中横线+圆全变蓝） | 已验证 |
-| p1-home.png | 助理首页（上一轮基线） | 已验证 |
-| rev-02-provider.png | AI 模型（原型内容布局） | 已验证 |
-| rev-03-permissions.png | 允许操作的应用（琥珀披露 + 真实服务状态） | 已验证 |
-| rev-04-connection.png | 连接电脑（居中图标行 + USB 分区 + 安全提示条） | 已验证 |
+| verify-round6/v3-home-empty.png | 助理首页（两行问候+蓝Auto orbit+composer+灰chips+两等高112.4 tile描边Book+虚线teach+最近活动+自定义底栏） | 已验证，0超差 |
+| verify-round6/v3-skills-all.png | 技能页（区块24sp+三筛选深色选中+单列宽卡+AppIconBlock回退Book/Note+绿已保存TagChip，不重复） | 已验证，0超差 |
+| verify-round6/v3-history-all.png | 记录页（区块24sp+绿已完成/琥珀需处理TagChip+固定"自动化任务"+状态说明+元信息+隐私note） | 已验证，0超差 |
+| verify-round6/v3-settings.png | 我的页（蓝底白Auto logo+琥珀未完成配置+白底状态卡+spark/shield/monitor描边setting-row） | 已验证，0超差 |
+| verify-round6/interact/ia-01-ideas.png | 灵感 tab：两张未来概念卡（蓝"未来概念"tag） | 已验证 |
+| verify-round6/interact/ia-02-idea-dialog.png | 点灵感卡弹"规划中，当前不可执行"对话框 | 已验证 |
+| verify-round6/interact/ia-04-record.png | + 进入"录制新流程"页（脚本名/目标包名/secret 提示/步骤预览） | 已验证 |
+| verify-round6/interact/ib-01-history-detail.png | 记录卡只读详情（状态tag+N步+目标应用+开始/结束+隐私说明） | 已验证 |
+| rev-02-provider.png / rev-03-permissions.png / rev-04-connection.png | AI模型 / 允许操作的应用 / 连接电脑（二级页原型内容布局） | 已验证 |
 
 > 全部截图经 `screencap` → `pull` → PIL `load()` 解码确认，并实际看图核对。
 > 导航坐标一律从当次 `uiautomator dump` 解析（`find-element.py`），不跨页复用。
 
-> final-* 为最终 APK（代码基线含技能单列宽卡+记录单列宽卡+我的页白底状态卡与原型setting-row）安装后版本，是当前有效证据。APK 路径 `android/app/build/outputs/apk/debug/app-debug.apk`，SHA256 `4602AD88E454FC503F0AFFD03F2AF14850D438A3865EDD9A9D4239FFE1C8E539`（含底栏68dp+手势条inset+tab均分+settings横线tint+flow 7×5矩形+问候两行+灰底chips+自定义phone/mic/up图标+技能单列宽卡+记录固定摘要"自动化任务"+我的页白底状态卡与spark/shield/monitor图标）。旧 v2-v15 及损坏 01-04 截图已清理。任务输入/语音权限/录制编辑等交互路径因需真实 Provider/无障碍授权，未在本轮设备复验，代码与单测已验证。
+> v3-* 为当前有效证据，对应当前 main 工作区代码（含自定义描边图标系统 AppIcons/AppIconBlock、Auto 品牌符号、
+> TagChip 配色与高度、标题字号层级、首页静态网格 tile 112.5dp、四页 37 元素 0 超差、交互 11/11）。
+> APK 路径 `android/app/build/outputs/apk/debug/app-debug.apk`，大小 76,889,541 字节，
+> SHA256 `5635DB3ABBD987CBFD794B9EAC5350DCC7BB0D3A044EFD04E6C4DE9B94ED72B0`。
+> 冷启动须静候约 18s 再 dump/tap（见上文 ANR 结论）。任务输入/语音权限/真实会话运行时（前台服务、悬浮窗）、
+> 录制编辑完整闭环因需真实 Provider/无障碍/悬浮授权，未在本轮设备复验，代码与单测已验证。
 
 **debug test-only fixture 注入方式**：`python scripts/ui-validation/inject-fixtures.py --serial <serial>` 预置 2 个无敏感测试脚本 + 2 条历史记录（Completed/Failed，task 固定为"自动化任务"）；清理：加 `--clean`。仅 debug 变体，通过 `adb run-as` 写入应用私有目录，不影响 release。
 
@@ -126,8 +167,14 @@
 
 ### diff 报告产物
 
+> 口径更新（2026-09-18）：早期 `compare-app-to-prototype.py`/`batch-diff.py` 按文本匹配，
+> 对容器/图标/带图标按钮误报多。**当前以节点树版 `element-compare.py` 为准**，四个主页面
+> 37 个元素逐项比对**超差全部为 0**：home-empty 0/13、skills-all 0/9、history-all 0/9、settings 0/6
+> （INFO 为实机无独立容器节点的口径项，不计超差；tag 只比高度，宽度差异源于脱敏文案长短）。
+> 下表为早期 7 页文本匹配 diff，保留作历史，不作为最终视觉结论：
+
 `scripts/ui-validation/batch-diff.py` 批量导航并生成报告，输出 `artifacts/ui-validation/diff/<view>.json`。
-当前 7 页报告齐备，**超差项全部为 0**：
+早期 7 页报告超差均为 0（"未找到"主要是原型演示专属元素，见下）：
 
 | 视图 | 总计 | 达标 | 超差 | 未找到 |
 |---|---|---|---|---|

@@ -52,7 +52,10 @@ import androidx.compose.ui.unit.sp
 import dev.aiauto.android.R
 import dev.aiauto.android.automation.recording.AutomationScriptSummary
 import dev.aiauto.android.automation.recording.RecordingScriptStore
+import dev.aiauto.android.ui.components.AppIconBlock
 import dev.aiauto.android.ui.components.AppIcons
+import dev.aiauto.android.ui.components.TagChip
+import dev.aiauto.android.ui.components.TagTone
 import dev.aiauto.android.ui.theme.AppColors
 
 /** 技能筛选标签枚举：全部 / 我教的 / 灵感（未来概念）。 */
@@ -97,17 +100,20 @@ fun SkillsScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
+                    // 原型 .app-title：18sp/650/letterSpacing -0.7（顶部导航条小标题）。
                     Text(
                         text = stringResource(R.string.skills_title),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 32.sp,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight(650),
+                        lineHeight = 24.sp,
+                        letterSpacing = (-0.7).sp,
                     )
+                    // 原型 .sub-title（手机模式 12px、muted）。
                     Text(
                         text = stringResource(R.string.skills_subtitle),
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         color = AppColors.Muted,
-                        lineHeight = 20.sp,
+                        lineHeight = 16.sp,
                     )
                 }
                 IconButton(onClick = { showInfoDialog = true }) {
@@ -130,10 +136,10 @@ fun SkillsScreen(
             ) {
                 Text(
                     text = stringResource(R.string.skills_page_heading),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 28.sp,
-                    letterSpacing = (-0.5).sp,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight(700),
+                    lineHeight = 36.sp,
+                    letterSpacing = (-0.8).sp,
                 )
                 IconButton(onClick = onStartRecording) {
                     Icon(
@@ -300,35 +306,13 @@ private fun SkillListCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 图标块：35x35、圆角11、bg pale、蓝色 spark 图标。
-                Surface(
-                    shape = RoundedCornerShape(11.dp),
-                    color = AppColors.PrimaryContainer,
-                    modifier = Modifier.size(35.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = AppIcons.Spark,
-                            contentDescription = null,
-                            tint = AppColors.Primary,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-                // 来源 tag：中性蓝 tag（provenance 不在 summary 中，用中性"已保存"）。
-                Surface(
-                    shape = RoundedCornerShape(7.dp),
-                    color = AppColors.PrimaryContainer,
-                ) {
-                    Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)) {
-                        Text(
-                            text = stringResource(R.string.history_saved_tag),
-                            fontSize = 11.sp,
-                            color = AppColors.Primary,
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-                }
+                // 左侧应用图标块：真实目标应用 launcher 图标（最多两个），未安装回退 Book/Note。
+                AppIconBlock(targetPackages = script.targetPackages.toList())
+                // 来源 tag：复用通用 TagChip（.tag.green，行高与 padding 与原型一致），文案"已保存"。
+                TagChip(
+                    text = stringResource(R.string.history_saved_tag),
+                    tone = TagTone.SUCCESS,
+                )
             }
 
             // 标题：h3 技能名 14px（margin 12px 0 7px）。

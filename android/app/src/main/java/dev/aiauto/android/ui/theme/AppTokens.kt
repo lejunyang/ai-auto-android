@@ -56,9 +56,17 @@ object AppColors {
     const val SuccessArgb = 0xFF237863
     val Success = Color(SuccessArgb)
 
+    /** 成功标签底色（原型 .tag.green background #EAF6F0）。 */
+    const val SuccessContainerArgb = 0xFFEAF6F0
+    val SuccessContainer = Color(SuccessContainerArgb)
+
     /** 警告色（原型 --amber #9B6419）。 */
     const val WarningArgb = 0xFF9B6419
     val Warning = Color(WarningArgb)
+
+    /** 警告标签底色（原型 .tag.amber background #FFF3DF）。 */
+    const val WarningTagContainerArgb = 0xFFFFF3DF
+    val WarningTagContainer = Color(WarningTagContainerArgb)
 
     /** 危险/错误色（原型 --red #B63E49）。 */
     const val DangerArgb = 0xFFB63E49
@@ -247,8 +255,8 @@ object AppSpacing {
     /** 图标按钮尺寸（原型实测 44dp，满足最小点击区）。 */
     val IconButtonSize = 44.dp
 
-    /** tinyOrbit 尺寸（原型实测 46.8dp）。 */
-    val TinyOrbitSize = 46.8.dp
+    /** tinyOrbit 尺寸（原型 .tiny-orbit CSS width/height 42px）。 */
+    val TinyOrbitSize = 42.dp
 
     /** 我的页 logo 尺寸（settings 视图实测 52dp）。 */
     val SettingsLogoSize = 52.dp
