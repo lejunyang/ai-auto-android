@@ -46,7 +46,7 @@ import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
+import dev.aiauto.android.ui.components.ProtoCircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -362,9 +362,8 @@ fun RecordingEditorScreen(
                             enabled = !isGenerating,
                         ) {
                             if (isGenerating) {
-                                CircularProgressIndicator(
+                                ProtoCircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp,
                                 )
                             }
                             Spacer(Modifier.width(6.dp))

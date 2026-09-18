@@ -21,7 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
+import dev.aiauto.android.ui.components.ProtoCircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -300,7 +300,7 @@ fun ProviderScreen(
             when (val feedback = connectionFeedback) {
                 ConnectionFeedback.Idle -> Unit
                 ConnectionFeedback.Testing -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    ProtoCircularProgressIndicator(modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = stringResource(R.string.provider_testing),

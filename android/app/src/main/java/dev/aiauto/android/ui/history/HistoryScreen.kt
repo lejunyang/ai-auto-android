@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import dev.aiauto.android.ui.components.ProtoCircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -183,7 +183,7 @@ fun HistoryScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    ProtoCircularProgressIndicator(modifier = Modifier.size(20.dp))
                     Text(
                         text = "加载记录中…",
                         fontSize = 13.sp,

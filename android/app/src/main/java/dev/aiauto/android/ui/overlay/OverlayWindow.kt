@@ -47,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -109,7 +110,12 @@ fun OverlayWindowContent(
     modifier: Modifier = Modifier,
 ) {
     // 根 Box 居中：ComposeView 固定 320x400dp，内容在其中居中对齐。
-    Box(modifier = modifier, contentAlignment = Alignment.TopEnd) {
+    // 补 semantics(mergeDescendants=true)：让 Compose 无障碍语义树对 uiautomator 可见，
+    // 否则悬浮窗卡片的按钮/文字不出现在 uiautomator dump 里，自动化只能靠固定坐标。
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.TopEnd,
+    ) {
         // 收起态：48dp 圆形状态图标，点击展开。
         if (!expanded) {
             CollapsedBadge(state = state, actions = actions)

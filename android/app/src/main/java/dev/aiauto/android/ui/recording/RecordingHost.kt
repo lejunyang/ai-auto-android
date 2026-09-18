@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
+import dev.aiauto.android.ui.components.ProtoCircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -206,7 +206,7 @@ private fun RecordingDetailLoadingScreen(
             verticalArrangement = Arrangement.Center,
         ) {
             if (errorMessage == null) {
-                CircularProgressIndicator()
+                ProtoCircularProgressIndicator()
                 Text(
                     text = stringResource(R.string.recording_loading),
                     modifier = Modifier.padding(top = 12.dp),
