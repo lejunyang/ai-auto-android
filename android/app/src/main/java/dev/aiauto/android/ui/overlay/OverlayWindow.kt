@@ -18,6 +18,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,8 +55,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import dev.aiauto.android.ui.theme.AiAutoAndroidTheme
+import dev.aiauto.android.ui.components.protoClickable
 
 /**
  * 悬浮窗展示的会话状态。
@@ -236,6 +241,34 @@ private fun ExpandedCard(
 }
 
 /**
+ * 功能用途：悬浮窗卡片内自绘小按钮，无 Material 水波纹。
+ * primary=true 蓝底白字，false 白底蓝字描边。
+ */
+@Composable
+private fun OverlayButton(
+    text: String,
+    primary: Boolean,
+    onClick: () -> Unit,
+) {
+    val bg = if (primary) androidx.compose.ui.graphics.Color(0xFF2563EB) else androidx.compose.ui.graphics.Color.Transparent
+    val fg = if (primary) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color(0xFF2563EB)
+    Box(
+        modifier = Modifier
+            .height(36.dp)
+            .background(bg, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+            .then(
+                if (!primary) Modifier.border(1.dp, androidx.compose.ui.graphics.Color(0xFF2563EB), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                else Modifier
+            )
+            .protoClickable(onClick)
+            .padding(horizontal = 16.dp),
+        contentAlignment = androidx.compose.ui.Alignment.Center,
+    ) {
+        Text(text = text, color = fg, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+    }
+}
+
+/**
  * 根据会话状态渲染操作按钮行。
  * - 运行中：暂停 + 停止
  * - 已暂停：继续 + 停止
@@ -248,14 +281,14 @@ private fun ActionRow(state: OverlaySessionState, actions: OverlayActions) {
         when (state) {
             is OverlaySessionState.Running -> {
                 // 主按钮：暂停（蓝色实心）；次按钮：停止（描边）。
-                androidx.compose.material3.Button(onClick = { actions.onPause() }) { Text("暂停") }
-                androidx.compose.material3.OutlinedButton(onClick = { actions.onStop() }) { Text("停止") }
+                OverlayButton("暂停", primary = true) { actions.onPause() }
+                OverlayButton("停止", primary = false) { actions.onStop() }
             }
 
             is OverlaySessionState.Paused -> {
                 // 主按钮：继续（蓝色实心）；次按钮：停止（描边）。
-                androidx.compose.material3.Button(onClick = { actions.onResume() }) { Text("继续") }
-                androidx.compose.material3.OutlinedButton(onClick = { actions.onStop() }) { Text("停止") }
+                OverlayButton("继续", primary = true) { actions.onResume() }
+                OverlayButton("停止", primary = false) { actions.onStop() }
             }
 
             is OverlaySessionState.Completed,
