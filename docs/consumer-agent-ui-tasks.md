@@ -467,3 +467,24 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - 应用选择弹窗确认按钮固定底部未改
 - wait噪声去重未做
 - P1-C我的页间距/P1-D弹窗动画未完成
+
+## A+B 弹窗按钮固定+wait去重（2026-09-18）
+
+### A. 应用选择弹窗确认按钮固定底部
+- AppPickerList改LazyColumn weight(1f)+heightIn(max=400dp)
+- 确认按钮固定弹窗底部，30+应用无需滑到底
+
+### B. wait噪声去重
+- RecordingStateMachine.append()加wait去重：
+  - 相邻同类ui.wait合并（保留前一条）
+  - 录制开始首个窗口变化不记
+
+### 验证结果
+- testDebugUnitTest + lintDebug + assembleDebug BUILD SUCCESSFUL
+- make comments通过（545文件）
+- APK SHA256: A53FE2A1B86012B4EFF1BF9A44E3FB65E4CA68E625407BCC460066E960177486
+
+### 未完成边界
+- C. 我的页间距逐元素复核未做
+- D. 弹窗动画连续截图未做
+- packageLabel三处UI传入未验证
