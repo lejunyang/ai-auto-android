@@ -55,6 +55,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalRippleConfiguration
 import kotlinx.serialization.json.contentOrNull
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -110,6 +112,8 @@ fun RecordingEditorScreen(
     DisposableEffect(observationHolder) {
         onDispose { observationHolder?.detach() }
     }
+    // 整页关闭 Material3 默认涟漪，统一无波纹按压反馈。
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
     // 编辑器 tab：步骤编排 / 用一句话表达（语言归纳建议，不覆盖步骤）。
     var editorTab by remember { mutableStateOf(EditorTab.STEPS) }
     // 一句话表达的描述文本与生成状态。
@@ -500,6 +504,7 @@ fun RecordingEditorScreen(
                 }
             },
         )
+    }
     }
 }
 
