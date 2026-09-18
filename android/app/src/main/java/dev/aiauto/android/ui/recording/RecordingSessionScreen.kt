@@ -267,6 +267,7 @@ fun RecordingSessionScreen(
                     number = draft.steps.size - draft.steps
                         .takeLast(MAX_PREVIEW_STEPS).size + index + 1,
                     step = step,
+                    packageLabel = installedApps.associate { it.packageName to it.label },
                 )
             }
         }
@@ -564,6 +565,7 @@ private fun SecondaryButton(
 internal fun RecordingStepCard(
     number: Int,
     step: RecordedStep,
+    packageLabel: Map<String, String> = emptyMap(),
 ) {
     Box(
         modifier = Modifier
@@ -576,7 +578,7 @@ internal fun RecordingStepCard(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "$number. ${dev.aiauto.android.automation.recording.StepHumanizer.humanize(step)}",
+                text = "$number. ${dev.aiauto.android.automation.recording.StepHumanizer.humanize(step, packageLabel)}",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = AppColors.Ink,

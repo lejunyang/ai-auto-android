@@ -18,6 +18,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.contentOrNull
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -128,8 +134,26 @@ fun RecordingDetailScreen(
                 text = stringResource(R.string.recording_all_steps),
                 style = MaterialTheme.typography.titleMedium,
             )
+            // 从 PackageManager 查询步骤中涉及的包名→应用 label 映射。
+            val context = LocalContext.current
+            val pkgNames = remember(script) {
+                script.steps.mapNotNull { step ->
+                    val target = step.action.params["target"] as? kotlinx.serialization.json.JsonObject
+                    (target?.get("packageName") as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
+                }.toSet() + script.targetPackages
+            }
+            val pkgLabel = produceState<Map<String, String>>(initialValue = emptyMap(), pkgNames) {
+                value = withContext(Dispatchers.Default) {
+                    pkgNames.associateWith { pkg ->
+                        runCatching {
+                            val pm = context.packageManager
+                            pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                        }.getOrDefault(pkg.substringAfterLast('.'))
+                    }
+                }
+            }
             script.steps.forEachIndexed { index, step ->
-                RecordingStepCard(number = index + 1, step = step)
+                RecordingStepCard(number = index + 1, step = step, packageLabel = pkgLabel.value)
             }
         }
     }
