@@ -105,7 +105,7 @@ fun AiAutoAndroidApp(
     val initialAccessibility = remember(accessibilityRepository) {
         accessibilityRepository.load()
     }
-    var providerReady by remember { mutableStateOf(initialProvider.hasApiKey) }
+    var providerReady by remember { mutableStateOf(initialProvider.isConfigured) }
     var accessibilityConfigured by remember {
         mutableStateOf(initialAccessibility.isReady)
     }
@@ -143,14 +143,15 @@ fun AiAutoAndroidApp(
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute in TAB_ROUTES
 
-    // 页面恢复时重新读取无障碍状态，确保从系统设置返回后状态同步。
-    DisposableEffect(lifecycleOwner, accessibilityRepository) {
+    // 页面恢复时重新读取无障碍与 Provider 状态，确保从系统设置/配置页返回后状态同步。
+    DisposableEffect(lifecycleOwner, accessibilityRepository, providerRepository) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 val latest = accessibilityRepository.load()
                 accessibilityConfigured = latest.isReady
                 accessibilityEnabled = AccessibilityServiceStatus.isEnabled(context)
                 targetPackages = latest.targetPackages
+                providerReady = providerRepository.load().isConfigured
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

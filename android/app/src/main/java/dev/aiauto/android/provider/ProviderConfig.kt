@@ -4,10 +4,22 @@ package dev.aiauto.android.provider
  * 功能用途：实现 ProviderConfig 对应的 AI Provider 配置、调用、动作解析或敏感日志保护。
  */
 
+/**
+ * Provider 类型：决定使用哪种 AI 后端。
+ * - OPENAI：OpenAI 兼容 HTTP provider，需要 baseUrl/model/apiKey。
+ * - LOCAL_DEMO：本地演示 provider，不需网络和 API key，返回预设动作序列，
+ *   仅用于 debug/test 变体的 UI 流程验证。
+ */
+enum class ProviderType {
+    OPENAI,
+    LOCAL_DEMO,
+}
+
 data class ProviderConfig(
     val baseUrl: String = "https://api.openai.com/v1",
     val model: String = "gpt-4.1-mini",
     val timeoutSeconds: Int = 30,
+    val type: ProviderType = ProviderType.OPENAI,
 )
 
 enum class ProviderConfigField {

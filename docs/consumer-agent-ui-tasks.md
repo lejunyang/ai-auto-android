@@ -242,3 +242,56 @@ pwsh -Command "osdk exec -t java -t android-platforms -t android-build-tools -t 
 ```
 
 设备截图必须用可靠二进制路径：`adb -s <serial> shell screencap -p /sdcard/<name>.png` 后 `adb pull` 到本地，再删除设备临时文件；禁止用 `adb exec-out screencap` 经 PowerShell 文本管道（会转码损坏 PNG）。
+
+## 运行时推进（会话执行闭环）
+
+### 完成状态
+
+| 模块 | 状态 | 设备验证证据 |
+|---|---|---|
+| LocalDemoProvider | ✅ 已实现 | `provider/LocalDemoProvider.kt`，step 计数器，app.launch→task.finish |
+| ProviderType 枚举 | ✅ 已实现 | `ProviderConfig.kt` 新增 `enum class ProviderType { OPENAI, LOCAL_DEMO }` |
+| Factory 分支 | ✅ 已实现 | `AndroidSessionAdapters.kt` 根据 config.type 分支创建 Provider |
+| 就绪判断适配 | ✅ 已实现 | `AiAutoAndroidApp.kt` providerReady 从 hasApiKey 改为 isConfigured |
+| 悬浮窗崩溃修复 | ✅ 已修复 | `OverlayController.kt` 反射设置 ViewTreeLifecycleOwner/ViewModelStoreOwner/SavedStateRegistryOwner |
+| 会话启动→执行→停止 | ✅ 设备验证 | deskclock 会话"已停止"，历史记录写入 |
+| 会话历史持久化 | ✅ 设备验证 | 记录页显示 4 条历史（deskclock 已完成 + settings 需处理×2 + 旧记录） |
+| 前台服务通知渠道 | ✅ 设备验证 | `automation_session` 渠道已创建，importance=2 |
+| 悬浮窗系统通知 | ✅ 设备验证 | "AI 安卓自动化正在其他应用上层显示内容" |
+
+### 关键技术决策
+
+**悬浮窗 ComposeView 崩溃根因**：`OverlayController` 用 `applicationContext` 创建 `ComposeView`，未设置 `ViewTreeLifecycleOwner`/`ViewTreeViewModelStoreOwner`/`ViewTreeSavedStateRegistryOwner`，ComposeView attach 时抛 `IllegalStateException`。
+
+**修复方案**：在 `OverlayController` 内部实现 `OverlayLifecycleOwner`（实现 `LifecycleOwner`+`ViewModelStoreOwner`+`SavedStateRegistryOwner`），通过**反射**调用 `androidx.lifecycle.ViewTreeLifecycleOwner.set()`、`ViewTreeViewModelStoreOwner.set()`、`androidx.savedstate.ViewTreeSavedStateRegistryOwner.set()` 设置 owner。用反射的原因：lifecycle KMP 架构下这些类在 api 制品中，编译 classpath 可能不包含，但运行时 classpath 一定有。
+
+**LocalDemoProvider**：无需 API key、不发网络请求，第一次返回 `app.launch`（目标包从 prompt.uiSummary 正则提取），第二次及以后返回 `task.finish`。用于无真实 AI Provider 时验证会话运行时 UI/流程。
+
+**安全边界正常工作**：`com.android.settings` 被本地策略校验拦截（"Payment, package installer, and system settings targets are not allowed"），会话标记为"需处理"；`com.google.android.deskclock` 正常执行，会话标记为"已完成"。
+
+### 验证命令
+
+```powershell
+# root 授权无障碍（必须完整类名）
+adb -s emulator-5554 shell settings put secure enabled_accessibility_services dev.aiauto.android/dev.aiauto.android.accessibility.AiAutomationAccessibilityService
+adb -s emulator-5554 shell settings put secure accessibility_enabled 1
+
+# root 授权悬浮窗
+adb -s emulator-5554 shell appops set dev.aiauto.android android:system_alert_window allow
+
+# root 写 provider 配置（LOCAL_DEMO 模式，无 API key）
+adb -s emulator-5554 push provider-config.xml /data/data/dev.aiauto.android/shared_prefs/provider-config.xml
+
+# 完整会话测试：输入→发送→计划确认→开始安全会话→观察悬浮窗/前台服务/历史
+```
+
+### 未验证边界（诚实说明）
+
+1. **真实 AI Provider 会话**：当前用 LocalDemoProvider 验证流程，真实 OpenAI 兼容 Provider 需用户配置 API key 后验证。
+2. **悬浮窗交互**：悬浮窗已显示（系统通知确认），但收起/展开/暂停/停止/结果的完整交互未在设备上逐项验证。
+3. **前台服务通知操作**：通知暂停/停止按钮的交互未在设备上验证。
+4. **锁屏 SCREEN_OFF 强制暂停**：代码已实现，未在设备上触发锁屏验证。
+5. **BridgeAutomationProvider**：用户提到"app bridge 操控相当于一种 provider"，长期应实现通过桌面桥协议转发规划请求的 Provider，当前用 LocalDemoProvider 替代。
+6. **Provider 类型选择 UI**：我的页 AI 模型行（ProviderScreen）尚未添加 OPENAI/本地演示的类型选择界面，当前只能通过 root 写 SharedPreferences 设置。
+7. **会话页视觉对齐原型**：SessionScreen 功能完整但视觉是 Material 默认风格，原型已有 session-plan/running/paused/failed/done 五个视图，尚未按原型对齐。
+8. **录制编辑器完整流程**：录制→捕获步骤→编辑→语言生成→保存→返回的完整闭环未在设备走通。

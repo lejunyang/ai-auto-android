@@ -57,6 +57,7 @@ class ProviderConfigRepositoryTest {
     fun `loads configured values and reports an encrypted key`() {
         every { preferences.getString("provider.base-url", null) } returns "https://example.com/v1"
         every { preferences.getString("provider.model", null) } returns "custom-model"
+        every { preferences.getString("provider.type", null) } returns "OPENAI"
         every { preferences.getString("provider.api-key.ciphertext", null) } returns "ciphertext"
         every {
             preferences.getString("provider.api-key.iv", null)
@@ -67,6 +68,7 @@ class ProviderConfigRepositoryTest {
 
         assertEquals("https://example.com/v1", stored.config.baseUrl)
         assertEquals("custom-model", stored.config.model)
+        assertEquals(ProviderType.OPENAI, stored.config.type)
         assertEquals(90, stored.config.timeoutSeconds)
         assertTrue(stored.hasApiKey)
     }
@@ -75,6 +77,7 @@ class ProviderConfigRepositoryTest {
     fun `does not report blank encrypted key material as configured`() {
         every { preferences.getString("provider.base-url", null) } returns null
         every { preferences.getString("provider.model", null) } returns null
+        every { preferences.getString("provider.type", null) } returns null
         every { preferences.getString("provider.api-key.ciphertext", null) } returns ""
         every {
             preferences.getString("provider.api-key.iv", null)

@@ -14,7 +14,14 @@ import dev.aiauto.android.security.SecretCipher
 data class StoredProviderConfig(
     val config: ProviderConfig,
     val hasApiKey: Boolean,
-)
+) {
+    // 是否已配置可用：OPENAI 需要 API key，LOCAL_DEMO 不需要任何密钥。
+    val isConfigured: Boolean
+        get() = when (config.type) {
+            ProviderType.OPENAI -> hasApiKey
+            ProviderType.LOCAL_DEMO -> true
+        }
+}
 
 class ProviderConfigRepository(
     private val preferences: SharedPreferences,
@@ -30,6 +37,9 @@ class ProviderConfigRepository(
                 KEY_TIMEOUT_SECONDS,
                 ProviderConfig().timeoutSeconds,
             ),
+            type = preferences.getString(KEY_TYPE, null)
+                ?.let { runCatching { ProviderType.valueOf(it) }.getOrNull() }
+                ?: ProviderType.OPENAI,
         ),
         hasApiKey = loadEncryptedApiKey() != null,
     )
@@ -40,6 +50,7 @@ class ProviderConfigRepository(
                 .putString(KEY_BASE_URL, ProviderConfigValidator.normalizeBaseUrl(config.baseUrl))
                 .putString(KEY_MODEL, config.model.trim())
                 .putInt(KEY_TIMEOUT_SECONDS, config.timeoutSeconds)
+                .putString(KEY_TYPE, config.type.name)
 
             if (apiKey != null && apiKey.isNotEmpty()) {
                 val encrypted = secretCipher.encrypt(apiKey)
@@ -95,6 +106,7 @@ class ProviderConfigRepository(
         const val KEY_BASE_URL = "provider.base-url"
         const val KEY_MODEL = "provider.model"
         const val KEY_TIMEOUT_SECONDS = "provider.timeout-seconds"
+        const val KEY_TYPE = "provider.type"
         const val KEY_API_KEY_CIPHERTEXT = "provider.api-key.ciphertext"
         const val KEY_API_KEY_IV = "provider.api-key.iv"
     }

@@ -15,10 +15,12 @@ import dev.aiauto.android.bridge.AccessibilityCommandJsonParser
 import dev.aiauto.android.bridge.BridgeException
 import dev.aiauto.android.provider.AutomationPrompt
 import dev.aiauto.android.provider.AutomationProvider
+import dev.aiauto.android.provider.LocalDemoProvider
 import dev.aiauto.android.provider.OpenAICompatibleProvider
 import dev.aiauto.android.provider.ProviderAction
 import dev.aiauto.android.provider.ProviderActionParser
 import dev.aiauto.android.provider.ProviderConfigRepository
+import dev.aiauto.android.provider.ProviderType
 import dev.aiauto.android.provider.VisualObservationContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -280,12 +282,23 @@ class AndroidAutomationSessionFactory(
 
     override fun create(): Result<AutomationSessionEngine> = runCatching {
         val storedProvider = providerRepository.load()
-        val apiKeyChars = providerRepository.readApiKey()
-            ?: throw SessionFailureException("Configure an AI Provider API key first.")
-        val apiKey = try {
-            apiKeyChars.concatToString()
-        } finally {
-            apiKeyChars.fill('\u0000')
+        // LOCAL_DEMO 不需要 API key，用于无真实 AI 时的 UI/流程验证。
+        val provider: AutomationProvider = when (storedProvider.config.type) {
+            ProviderType.LOCAL_DEMO -> LocalDemoProvider()
+            ProviderType.OPENAI -> {
+                val apiKeyChars = providerRepository.readApiKey()
+                    ?: throw SessionFailureException("Configure an AI Provider API key first.")
+                val apiKey = try {
+                    apiKeyChars.concatToString()
+                } finally {
+                    apiKeyChars.fill('\u0000')
+                }
+                OpenAICompatibleProvider(
+                    config = storedProvider.config,
+                    apiKey = apiKey,
+                    actionParser = ProviderActionParser(),
+                )
+            }
         }
         val settings = accessibilityRepository.load()
         if (!settings.isReady) {
@@ -293,11 +306,6 @@ class AndroidAutomationSessionFactory(
                 "Accept the accessibility disclosure and configure target packages first.",
             )
         }
-        val provider = OpenAICompatibleProvider(
-            config = storedProvider.config,
-            apiKey = apiKey,
-            actionParser = ProviderActionParser(),
-        )
         AutomationSessionEngine(
             observer = RuntimeSessionObserver(),
             planner = ProviderSessionPlanner(
