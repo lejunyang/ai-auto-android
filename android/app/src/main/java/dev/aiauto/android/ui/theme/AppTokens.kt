@@ -1,4 +1,4 @@
-package dev.aiauto.android.ui.theme
+﻿package dev.aiauto.android.ui.theme
 
 /**
  * 功能用途：C 端随身 Agent UI 的设计 token 层。
@@ -21,7 +21,7 @@ object AppColors {
      * 页面背景（原型 --bg #EEF1F5 冷灰蓝）。
      * 注意：这是原型的真实值，早期误用 #FAFBFC（surfaceMuted）导致背景偏白。
      */
-    const val BackgroundArgb = 0xFFEEF1F5
+    const val BackgroundArgb = 0xFFFAFBFC
     val Background = Color(BackgroundArgb)
 
     /** 卡片表面（原型 --surface #FFFFFF）。 */

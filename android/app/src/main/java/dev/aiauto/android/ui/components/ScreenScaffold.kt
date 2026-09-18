@@ -78,7 +78,8 @@ fun ScreenScaffold(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
+                .clearFocusOnTapOutside(),
         ) {
             content(Modifier)
         }

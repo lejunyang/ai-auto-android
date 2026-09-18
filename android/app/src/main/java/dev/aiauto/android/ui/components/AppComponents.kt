@@ -7,6 +7,7 @@ package dev.aiauto.android.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -105,11 +107,17 @@ fun AppBottomNavigation(
         ) {
             AppTab.entries.forEach { tab ->
                 val selected = currentRoute == tab.route
+                // 每个 tab 独立 interactionSource；indication=null 去掉满格灰涟漪，
+                // 只保留选中态浅蓝胶囊作为视觉反馈，避免双层涟漪。
+                val interactionSource = remember { MutableInteractionSource() }
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp)
-                        .clickable { onTabSelected(tab) },
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                        ) { onTabSelected(tab) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {

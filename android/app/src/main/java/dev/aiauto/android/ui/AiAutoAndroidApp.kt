@@ -40,6 +40,7 @@ import dev.aiauto.android.ui.bridge.lan.LanPairingHost
 import dev.aiauto.android.ui.bridge.lan.LanPairingViewModel
 import dev.aiauto.android.ui.components.AppBottomNavigation
 import dev.aiauto.android.ui.components.AppTab
+import dev.aiauto.android.ui.components.clearFocusOnTapOutside
 import dev.aiauto.android.ui.history.HistoryScreen
 import dev.aiauto.android.ui.home.AssistantScreen
 import dev.aiauto.android.ui.provider.ProviderScreen
@@ -177,7 +178,7 @@ fun AiAutoAndroidApp(
         NavHost(
             navController = navController,
             startDestination = Route.ASSISTANT,
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.padding(padding).clearFocusOnTapOutside(),
         ) {
             // 助理：任务输入、常用技能、最近活动、就绪状态。
             composable(Route.ASSISTANT) {

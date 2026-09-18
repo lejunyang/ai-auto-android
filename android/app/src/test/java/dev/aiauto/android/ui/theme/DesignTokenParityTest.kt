@@ -1,4 +1,4 @@
-package dev.aiauto.android.ui.theme
+﻿package dev.aiauto.android.ui.theme
 
 /**
  * 功能用途：设计 token 一致性测试。
@@ -23,8 +23,8 @@ class DesignTokenParityTest {
 
     @Test
     fun `background color matches prototype`() {
-        // 原型 --bg 实测 #EEF1F5（冷灰蓝），不是 #FAFBFC。
-        assertEquals(0xFFEEF1F5.toInt(), AppColors.BackgroundArgb.toInt())
+        // 原型手机屏幕外壳 .phone 用 --paper #FAFBFC 近白色；#EEF1F5 是桌面 body 背景。
+        assertEquals(0xFFFAFBFC.toInt(), AppColors.BackgroundArgb.toInt())
     }
 
     @Test
