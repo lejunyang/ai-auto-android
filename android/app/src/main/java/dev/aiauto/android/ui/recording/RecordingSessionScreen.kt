@@ -306,7 +306,7 @@ private fun RecordNoticeBar(status: RecordingStatus) {
             stringResource(R.string.record_notice_idle),
         )
         RecordingStatus.RECORDING -> Triple(
-            0xFFFDE8E8, 0xFFB63E49,
+            0xFFEEF4FF, 0xFF2563EB,
             stringResource(R.string.record_notice_recording),
         )
         RecordingStatus.PAUSED -> Triple(
