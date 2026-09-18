@@ -446,3 +446,24 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - wait噪声去重（WINDOW_CHANGED映射）未做
 - StepHumanizer单元测试未补
 - P1-C我的页间距/P1-D弹窗动画未完成
+
+## StepHumanizer 7个缺陷修复（2026-09-18）
+
+### 修复
+1. wait从params[expected]读取包名（原误读target.packageName）→"等待 时钟 打开"
+2. scroll direction从params[direction]读取→"向上/下/左/右滑动"
+3. techBadge优先显示contentDescription/text（原恒显resourceId）
+4. RecordingEventMapper.role()无语义类名返回空（消除FrameLayout噪声）
+5. 补StepHumanizerTest 11个测试全部通过
+6. humanize支持packageLabel映射参数
+
+### 验证结果
+- StepHumanizerTest 11/11通过
+- testDebugUnitTest + lintDebug + assembleDebug BUILD SUCCESSFUL
+- make comments通过（545文件）
+- APK SHA256: 0BF88A33B22B032D17A78E91EA2F03E131E994B479FAD60E5DAAA70124710B60
+
+### 未完成边界
+- 应用选择弹窗确认按钮固定底部未改
+- wait噪声去重未做
+- P1-C我的页间距/P1-D弹窗动画未完成
