@@ -634,3 +634,11 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 ### 未完成边界
 - 老 `RecordingListScreen.kt`（LIST）保留为无参进入兜底，正常技能页路径不可见；确认无入口后可删除。
 - 悬浮窗收起/展开/暂停交互、会话执行页七状态视觉对齐仍待推进。
+
+## #29/#27/#30 本轮（2026-09-19）
+
+| 模块 | 内容 | 状态 | 验收证据 |
+|---|---|---|---|
+| #29 自定义按压反馈 | ProtoIndication.kt：protoClickable（@Composable，scale 0.98 动画 140ms，indication=null 无水波纹）；ProtoPrimaryButton/SecondaryButton/TextButton 从 Material 重写为自绘 Box | 已实现，编译通过 | ProtoIndication.kt 新建；ProtoComponents.kt 重写 |
+| #27 会话执行页七状态 | SessionScreen 整体重写：状态气泡(plan/running/paused/confirm/done/failed/stopped)+任务标题+进度条(4dp)+自绘 ProtoTextField(BasicTextField+decorationBox)/ProtoSwitch(44x26胶囊) | 已设备验证 | r11-session.png 显示 plan"先看看我准备怎么做"；r11-running.png 显示 failed"会话失败"+红色气泡+50%进度条；自绘表单/按钮/Switch 均生效 |
+| #30 悬浮窗交互 | OverlayWindow.kt/OverlayController.kt 已实现收起(48dp圆形)/展开(卡片)/暂停/继续/停止；设备验证受限：LocalDemoProvider 会话立即失败，悬浮窗未弹出 | 代码已实现，设备验证受限 | OverlayWindow.kt/OverlayController.kt 编译通过；r11-running.png 显示会话失败状态 |
