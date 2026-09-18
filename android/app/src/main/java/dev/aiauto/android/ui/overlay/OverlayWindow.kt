@@ -106,14 +106,17 @@ fun OverlayWindowContent(
     actions: OverlayActions,
     modifier: Modifier = Modifier,
 ) {
-    // 收起态：48dp 圆形状态图标，点击展开。
-    if (!expanded) {
-        CollapsedBadge(state = state, actions = actions, modifier = modifier)
-        return
-    }
+    // 根 Box 居中：ComposeView 固定 320x400dp，内容在其中居中对齐。
+    Box(modifier = modifier, contentAlignment = Alignment.TopEnd) {
+        // 收起态：48dp 圆形状态图标，点击展开。
+        if (!expanded) {
+            CollapsedBadge(state = state, actions = actions)
+            return@Box
+        }
 
-    // 展开态：卡片式布局。
-    ExpandedCard(state = state, actions = actions, modifier = modifier)
+        // 展开态：卡片式布局。
+        ExpandedCard(state = state, actions = actions)
+    }
 }
 
 /**

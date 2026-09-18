@@ -149,7 +149,8 @@ class SessionCoordinator(
             _historyWriteDiagnostic.value = null
             val engine = try {
                 engineFactory()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("SessionCoordinator", "engineFactory() failed: ${e.javaClass.simpleName}: ${e.message}", e)
                 return@synchronized null
             }
             activeEngine = engine

@@ -114,6 +114,7 @@ class AutomationSessionService : Service() {
         val coordinator = SessionRuntime.getCoordinator()
         if (coordinator == null) {
             // coordinator 未初始化：无法启动会话，停止 foreground 并结束服务。
+            android.util.Log.w("SessionService", "handleStart: coordinator is null, stopSelf")
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
@@ -121,6 +122,7 @@ class AutomationSessionService : Service() {
 
         // 验证 request 完整性。
         if (task.isBlank() || targetPackage.isBlank()) {
+            android.util.Log.w("SessionService", "handleStart: task/targetPackage blank, stopSelf")
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
@@ -135,14 +137,17 @@ class AutomationSessionService : Service() {
 
         // coordinator.start 非阻塞，立即返回是否被接受。
         val accepted = coordinator.start(request)
+        android.util.Log.i("SessionService", "coordinator.start(request) accepted=$accepted")
         if (!accepted) {
             // 单会话约束：已有会话运行时，不启动第二会话。
+            android.util.Log.w("SessionService", "coordinator.start rejected, stopSelf")
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
         }
 
         // 启动受控悬浮窗：需 SYSTEM_ALERT_WINDOW 权限，无权限时安全返回不崩溃。
+        android.util.Log.i("SessionService", "creating OverlayController and show()")
         overlayController = OverlayController(this).apply {
             setActions(buildOverlayActions(coordinator))
             updateState(OverlaySessionState.Running(currentTask))

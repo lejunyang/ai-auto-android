@@ -101,12 +101,18 @@ class OverlayController(private val context: Context) {
      * 已显示时重复调用无副作用。
      */
     fun show() {
-        if (!hasPermission()) {
+        val permission = hasPermission()
+        android.util.Log.i("OverlayCtrl", "show() called, hasPermission=$permission, isShowing=$isShowing")
+        if (!permission) {
             // 权限拒绝：明确回调，不崩溃、不强行 addView。
+            android.util.Log.w("OverlayCtrl", "show() no overlay permission")
             onPermissionRequired?.invoke()
             return
         }
-        if (isShowing) return
+        if (isShowing) {
+            android.util.Log.d("OverlayCtrl", "show() already showing, skip")
+            return
+        }
 
         val wm = windowManager ?: return
         val view = ComposeView(appContext).apply {
@@ -117,7 +123,9 @@ class OverlayController(private val context: Context) {
             // 的静态 set 方法——这些类在运行时 classpath 中但不在编译 classpath 中
             // (lifecycle KMP 架构下 api 制品未传递)，反射是最稳的接入方式。
             setViewTreeOwners(this, overlayLifecycle)
+            android.util.Log.i("OverlayCtrl", "setContent called, state=${sessionState.value}, expanded=${expanded.value}")
             setContent {
+                android.util.Log.i("OverlayCtrl", "Compose composition started")
                 AiAutoAndroidTheme {
                     OverlayWindowContent(
                         state = sessionState.value,
@@ -129,13 +137,16 @@ class OverlayController(private val context: Context) {
         }
 
         val params = buildLayoutParams()
+        android.util.Log.i("OverlayCtrl", "about to addView, params=$params")
         runCatching { wm.addView(view, params) }
             .onSuccess {
                 composeView = view
                 isShowing = true
+                android.util.Log.i("OverlayCtrl", "addView success, overlay visible")
             }
-            .onFailure {
+            .onFailure { e ->
                 // addView 失败（如权限刚被回收）不崩溃，保持未显示状态。
+                android.util.Log.e("OverlayCtrl", "addView failed: ${e.javaClass.simpleName}: ${e.message}", e)
                 composeView = null
                 isShowing = false
             }
@@ -182,9 +193,13 @@ class OverlayController(private val context: Context) {
         // dp 转像素：WindowManager 布局参数的 x/y 单位为 px。
         val marginPx = (OVERLAY_MARGIN_DP * density).toInt()
         val topOffsetPx = (OVERLAY_TOP_OFFSET_DP * density).toInt()
+        // 固定尺寸而非 WRAP_CONTENT：ComposeView 在 WindowManager 下 WRAP_CONTENT
+        // 首次 measure 量出 0 导致悬浮窗不可见。给一个足够大的区域，Compose 内容自己居中。
+        val overlayWidthPx = (OVERLAY_WIDTH_DP * density).toInt()
+        val overlayHeightPx = (OVERLAY_HEIGHT_DP * density).toInt()
         return WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            overlayWidthPx,
+            overlayHeightPx,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -267,6 +282,9 @@ class OverlayController(private val context: Context) {
         private const val OVERLAY_MARGIN_DP = 16
         // 距屏幕顶部初始偏移（dp），避开状态栏。
         private const val OVERLAY_TOP_OFFSET_DP = 96
+        // 悬浮窗固定宽高（dp）：足够容纳展开卡片 280dp，收起态 48dp 居中。
+        private const val OVERLAY_WIDTH_DP = 320
+        private const val OVERLAY_HEIGHT_DP = 400
     }
 }
 
