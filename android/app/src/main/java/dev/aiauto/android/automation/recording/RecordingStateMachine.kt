@@ -163,6 +163,17 @@ class RecordingStateMachine(
             return draft
         }
 
+        // wait 噪声去重：ui.wait 与上一个 ui.wait 包名相同时跳过；首个 wait 也跳过（录制开始即记等待噪声）。
+        if (mapped.action.type == "ui.wait") {
+            val prev = draft.steps.lastOrNull()
+            if (prev != null && prev.action.type == "ui.wait") {
+                return draft // 相邻同类 wait 合并，保留前一条
+            }
+            if (draft.steps.isEmpty()) {
+                return draft // 录制开始首个窗口变化不记
+            }
+        }
+
         val nextStep = RecordedStep(
             id = idFactory(),
             recordedAtMs = eventTimeMs - requireNotNull(draft.startedAtMs),

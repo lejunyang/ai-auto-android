@@ -17,6 +17,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -425,7 +428,7 @@ private fun SelectedAppsCard(
     }
 }
 
-/** 弹窗内应用多选列表：每行图标+名称+包名+勾选框。 */
+/** 弹窗内应用多选列表：列表可滚动，确认按钮固定底部不随列表滚动。 */
 @Composable
 private fun AppPickerList(
     apps: List<InstalledApp>,
@@ -433,41 +436,50 @@ private fun AppPickerList(
     onToggle: (String) -> Unit,
     onConfirm: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        apps.forEach { app ->
-            val isChecked = app.packageName in selected
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { onToggle(app.packageName) }
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AppIconBitmap(app)
-                Column(
+    // 列布局：上方可滚动应用列表(weight 1f)，下方固定确认按钮。
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // 可滚动应用列表，最大高度 400dp 防止弹窗过高。
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .heightIn(max = 400.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            items(apps) { app ->
+                val isChecked = app.packageName in selected
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 10.dp),
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { onToggle(app.packageName) }
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(text = app.label, fontSize = 14.sp, color = AppColors.Ink)
-                    Text(text = app.packageName, fontSize = 10.sp, color = AppColors.Muted)
-                }
-                // 简单勾选指示器。
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(RoundedCornerShape(11.dp))
-                        .background(if (isChecked) AppColors.Primary else AppColors.Line),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isChecked) {
-                        Text(text = "✓", fontSize = 14.sp, color = AppColors.Surface)
+                    AppIconBitmap(app)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 10.dp),
+                    ) {
+                        Text(text = app.label, fontSize = 14.sp, color = AppColors.Ink)
+                        Text(text = app.packageName, fontSize = 10.sp, color = AppColors.Muted)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(if (isChecked) AppColors.Primary else AppColors.Line),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (isChecked) {
+                            Text(text = "✓", fontSize = 14.sp, color = AppColors.Surface)
+                        }
                     }
                 }
             }
         }
-        // 确认按钮。
+        // 确认按钮固定在弹窗底部，不随列表滚动。
         PrimaryButton(
             text = stringResource(R.string.record_picker_confirm),
             onClick = onConfirm,
