@@ -41,7 +41,7 @@ class OverlayDemoActivity : Activity() {
             "重新展开" to { controller?.expand() },
             "暂停态" to { setState(OverlaySessionState.Paused("演示任务")); controller?.expand() },
             "继续/Running" to { setState(OverlaySessionState.Running("演示任务")); controller?.expand() },
-            "停止态" to { setState(OverlaySessionState.Completed("演示任务", "已停止")); controller?.expand() },
+            "停止态" to { setState(OverlaySessionState.Stopped("演示任务")); controller?.expand() },
             "完成结果态" to { setState(OverlaySessionState.Completed("演示任务", "任务已完成")); controller?.expand() },
             "失败态" to { setState(OverlaySessionState.Failed("演示任务", "模拟失败原因")); controller?.expand() },
             "隐藏悬浮窗" to { controller?.hide() },
@@ -69,7 +69,7 @@ class OverlayDemoActivity : Activity() {
     private fun demoActions() = object : OverlayActions {
         override fun onPause() { setState(OverlaySessionState.Paused("演示任务")) }
         override fun onResume() { setState(OverlaySessionState.Running("演示任务")) }
-        override fun onStop() { setState(OverlaySessionState.Completed("演示任务", "已停止")) }
+        override fun onStop() { setState(OverlaySessionState.Stopped("演示任务")) }
         override fun onExpand() { Toast.makeText(this@OverlayDemoActivity, "已展开", Toast.LENGTH_SHORT).show() }
         override fun onCollapse() { Toast.makeText(this@OverlayDemoActivity, "已收起", Toast.LENGTH_SHORT).show() }
     }

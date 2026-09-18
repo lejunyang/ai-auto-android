@@ -60,7 +60,8 @@ import dev.aiauto.android.ui.theme.AiAutoAndroidTheme
  * - [Idle]：无任务，悬浮窗仅作指示图标。
  * - [Running]：任务执行中，展示任务名并提供暂停/停止。
  * - [Paused]：任务已暂停，提供继续/停止。
- * - [Completed]：任务完成，展示结果摘要。
+ * - [Completed]：任务成功完成，展示结果摘要。
+ * - [Stopped]：任务被主动停止，使用中性语气，不展示成功结论。
  * - [Failed]：任务失败，展示错误信息。
  */
 sealed interface OverlaySessionState {
@@ -68,6 +69,7 @@ sealed interface OverlaySessionState {
     data class Running(val task: String) : OverlaySessionState
     data class Paused(val task: String) : OverlaySessionState
     data class Completed(val task: String, val summary: String) : OverlaySessionState
+    data class Stopped(val task: String) : OverlaySessionState
     data class Failed(val task: String, val error: String) : OverlaySessionState
 }
 
@@ -251,6 +253,7 @@ private fun ActionRow(state: OverlaySessionState, actions: OverlayActions) {
             }
 
             is OverlaySessionState.Completed,
+            is OverlaySessionState.Stopped,
             is OverlaySessionState.Failed,
             -> {
                 // 终态：关闭即收起悬浮窗，保留小图标便于回看结果。
@@ -268,7 +271,8 @@ private fun ActionRow(state: OverlaySessionState, actions: OverlayActions) {
 private fun bodyText(state: OverlaySessionState): String = when (state) {
     is OverlaySessionState.Running -> "正在自动处理，请稍候…"
     is OverlaySessionState.Paused -> "已暂停，等你回来"
-    is OverlaySessionState.Completed -> "任务执行完毕"  // 成功完成：蓝色对勾
+    is OverlaySessionState.Completed -> "任务执行完毕"  // 成功完成
+    is OverlaySessionState.Stopped -> "已停止，未继续执行后续操作"  // 主动停止：中性，不给成功结论
     is OverlaySessionState.Failed -> "执行遇到问题"
     is OverlaySessionState.Idle -> "待命"
 }
@@ -289,11 +293,8 @@ private fun rememberStatusVisual(state: OverlaySessionState): Pair<ImageVector, 
         is OverlaySessionState.Idle -> Icons.Filled.PlayArrow to onSurfaceVariant
         is OverlaySessionState.Running -> Icons.Filled.Refresh to primary
         is OverlaySessionState.Paused -> Icons.Filled.Pause to primary
-        is OverlaySessionState.Completed -> {
-            // 主动停止用中性 stop 图标，成功完成才用蓝色对勾。
-            if (state.summary.contains("停止")) Pair(Icons.Filled.Close, onSurfaceVariant)
-            else Pair(Icons.Filled.CheckCircle, primary)
-        }
+        is OverlaySessionState.Completed -> Icons.Filled.CheckCircle to primary  // 成功完成：蓝色对勾
+        is OverlaySessionState.Stopped -> Icons.Filled.Close to onSurfaceVariant  // 主动停止：中性
         is OverlaySessionState.Failed -> Icons.Filled.ErrorOutline to error
     }
 }
@@ -321,16 +322,15 @@ private fun taskTitle(state: OverlaySessionState): String = when (state) {
     is OverlaySessionState.Idle -> "AI 自动化"
     is OverlaySessionState.Running -> state.task.ifBlank { "正在执行任务" }
     is OverlaySessionState.Paused -> state.task.ifBlank { "任务已暂停" }
-    is OverlaySessionState.Completed ->
-        // summary 含"已停止"=主动停止，否则=成功完成。
-        if (state.summary.contains("停止")) "任务已停止"
-        else state.task.ifBlank { "任务完成" }
+    is OverlaySessionState.Completed -> state.task.ifBlank { "任务完成" }
+    is OverlaySessionState.Stopped -> "任务已停止"
     is OverlaySessionState.Failed -> state.task.ifBlank { "任务失败" }
 }
 
 /** 摘要文本：仅终态/失败返回内容，运行中与暂停返回 null。 */
 private fun summaryText(state: OverlaySessionState): String? = when (state) {
     is OverlaySessionState.Completed -> state.summary.ifBlank { "任务已完成" }
+    is OverlaySessionState.Stopped -> null  // 主动停止不额外展示摘要，避免与标题/body 冗余
     is OverlaySessionState.Failed -> state.error.ifBlank { "执行失败" }
     else -> null
 }

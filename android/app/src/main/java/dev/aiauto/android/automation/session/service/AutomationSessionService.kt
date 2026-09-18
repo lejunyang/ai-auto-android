@@ -194,7 +194,7 @@ class AutomationSessionService : Service() {
         val state = when (phase) {
             SessionPhase.Completed -> OverlaySessionState.Completed(task, "任务已完成")
             SessionPhase.Failed -> OverlaySessionState.Failed(task, failureMessage ?: "执行失败")
-            SessionPhase.Stopped -> OverlaySessionState.Completed(task, "已停止")
+            SessionPhase.Stopped -> OverlaySessionState.Stopped(task)
             SessionPhase.Paused -> OverlaySessionState.Paused(task)
             else -> OverlaySessionState.Running(task)
         }

@@ -672,3 +672,27 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 | #29 自定义按压反馈 | ProtoIndication.kt：protoClickable（@Composable，scale 0.98 动画 140ms，indication=null 无水波纹）；ProtoPrimaryButton/SecondaryButton/TextButton 从 Material 重写为自绘 Box | 已实现，编译通过 | ProtoIndication.kt 新建；ProtoComponents.kt 重写 |
 | #27 会话执行页七状态 | SessionScreen 整体重写：状态气泡(plan/running/paused/confirm/done/failed/stopped)+任务标题+进度条(4dp)+自绘 ProtoTextField(BasicTextField+decorationBox)/ProtoSwitch(44x26胶囊) | 已设备验证 | r11-session.png 显示 plan"先看看我准备怎么做"；r11-running.png 显示 failed"会话失败"+红色气泡+50%进度条；自绘表单/按钮/Switch 均生效 |
 | #30 悬浮窗交互 | OverlayWindow.kt/OverlayController.kt 已实现收起(48dp圆形)/展开(卡片)/暂停/继续/停止；设备验证受限：LocalDemoProvider 会话立即失败，悬浮窗未弹出 | 代码已实现，设备验证受限 | OverlayWindow.kt/OverlayController.kt 编译通过；r11-running.png 显示会话失败状态 |
+
+## #30 悬浮窗 10 态设备验证 + Stopped 独立状态（2026-09-19 收尾）
+
+**根因修复（停止/完成彻底区分）**：此前主动停止与成功完成共用 `OverlaySessionState.Completed`，靠 `summary.contains("停止")` 脆弱字符串判断，导致停止卡片 body 仍显示「任务执行完毕」成功语气。新增独立状态 `OverlaySessionState.Stopped(task)`：
+- OverlayWindow.kt：sealed interface 增加 Stopped；bodyText / rememberStatusVisual / taskTitle / summaryText / ActionRow 全部补 Stopped 分支并删除字符串 hack。
+  - Stopped：中性 Close 图标 + 标题「任务已停止」+ body「已停止，未继续执行后续操作」+ 无额外摘要 +「收起」。
+  - Completed：蓝色 CheckCircle + 任务名 + body「任务执行完毕」+ summary。
+- AutomationSessionService.kt：`SessionPhase.Stopped` → `OverlaySessionState.Stopped(task)`。
+- OverlayDemoActivity.kt（debug）：停止态按钮与 onStop 改用 Stopped。
+
+**10 态设备验证全部通过**（emulator-5554 / 1080x2400 / 420dpi / zh-CN，screencap→pull→PIL load→实际 Read 看图）：s1 running 展开 / s2 收起圆 / s3 重展开 / s4 paused / s5 继续回 running / s6 stopped（中性）/ s7 completed（蓝对勾）/ s8 failed / s9 隐藏 / s10 重新显示且状态保留。
+
+**截图交付**：10 态截图写入飞书多维表格 Base `O17cbOK1iaCeU2sKZ9rcsvwznFg` / table `tblmRLMioRBkQgAd`（字段：界面状态/说明/截图），s6 已替换为中性停止版并更新说明。
+
+**验证结果**：
+- make comments 通过（547 个手写文件）
+- :app:testDebugUnitTest + :app:lintDebug BUILD SUCCESSFUL
+- :app:assembleDebug BUILD SUCCESSFUL
+- APK SHA256：`8ACD0D21B9C9DBC4F84339924169B0909260BC762BA30843039504C7C4D1D6C4`
+
+**仍未验证/未完成**：
+- overlay 内容不进 uiautomator dump（反射挂 ViewTree owners 时无障碍语义树未桥接），本轮用固定坐标 + 图像核对；自动化 overlay 验证需先修语义桥接。
+- 前台服务通知暂停/停止、锁屏强制暂停的真实会话运行时设备验证；录制→真实无障碍事件→编辑→语言归纳→保存端到端；真机兼容性；真实 OpenAI Provider（需用户 key）。
+- 老 RecordingListScreen.kt 兜底保留，确认无入口后删除。
