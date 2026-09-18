@@ -564,10 +564,15 @@ internal fun RecordingStepCard(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "$number. ${step.action.type}",
+                text = "$number. ${dev.aiauto.android.automation.recording.StepHumanizer.humanize(step)}",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = AppColors.Ink,
+            )
+            Text(
+                text = dev.aiauto.android.automation.recording.StepHumanizer.techBadge(step),
+                fontSize = 10.sp,
+                color = AppColors.Muted,
             )
             Text(
                 text = stringResource(R.string.recording_step_time, step.recordedAtMs),

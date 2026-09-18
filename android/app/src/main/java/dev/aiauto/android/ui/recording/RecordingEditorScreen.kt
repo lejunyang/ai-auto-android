@@ -581,7 +581,7 @@ private fun StepRail(
         ) {
             Column(modifier = Modifier.alpha(if (step.enabled) 1f else 0.46f)) {
                 Text(
-                    text = step.action.type,
+                    text = dev.aiauto.android.automation.recording.StepHumanizer.humanize(step),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = AppColors.Ink,
