@@ -507,3 +507,18 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - C. 我的页间距逐元素复核未做
 - D. 弹窗动画连续截图未做
 - 设备录时钟验证未在本轮执行
+
+## StepRail label+我的页间距（2026-09-18）
+
+### StepRail 传 packageLabel
+- StepRail加packageLabel参数，编辑器后台PackageManager查询包名→label映射
+- 三处展示(录制预览/详情/编辑器)行为一致，wait显示"等待 时钟 打开"
+
+### C. 我的页间距核对
+- 当前数值符合原型token：卡间12dp、卡内17dp、row minHeight63dp、vertical padding11dp
+- 无需调整
+
+### 验证结果
+- testDebugUnitTest + lintDebug + assembleDebug BUILD SUCCESSFUL
+- make comments通过（545文件）
+- APK SHA256: A8D01650DC5832233ECBA7B77ADF16D16F86764580C1261EC519FF671AFED2E6
