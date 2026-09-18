@@ -282,24 +282,31 @@ fun RecordingSessionScreen(
         Box(modifier = Modifier.height(32.dp))
     }
 
-    // 应用多选底部弹窗。
+    // 应用多选底部弹窗：content 只放应用列表，确认按钮通过 bottomBar 固定底部。
     ProtoModalSheet(
         visible = showAppPicker,
         onDismiss = { showAppPicker = false },
         title = stringResource(R.string.record_picker_title),
-    ) {
-        AppPickerList(
-            apps = installedApps,
-            selected = selectedPackages,
-            onToggle = { pkg ->
-                if (!selectedPackages.add(pkg)) selectedPackages.remove(pkg)
-            },
-            onConfirm = {
-                onTargetPackagesChanged(selectedPackages.joinToString(","))
-                showAppPicker = false
-            },
-        )
-    }
+        content = {
+            AppPickerList(
+                apps = installedApps,
+                selected = selectedPackages,
+                onToggle = { pkg ->
+                    if (!selectedPackages.add(pkg)) selectedPackages.remove(pkg)
+                },
+            )
+        },
+        bottomBar = {
+            PrimaryButton(
+                text = stringResource(R.string.record_picker_confirm),
+                onClick = {
+                    onTargetPackagesChanged(selectedPackages.joinToString(","))
+                    showAppPicker = false
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+    )
 }
 
 /** 蓝色安全 NoticeBar（原型 record 视图顶部提示条）。 */
@@ -430,13 +437,12 @@ private fun SelectedAppsCard(
     }
 }
 
-/** 弹窗内应用多选列表：普通 Column 在 ProtoModalSheet 的 verticalScroll 里自然滚动，按钮在列表下方。 */
+/** 弹窗内应用多选列表：只放应用行，确认按钮由 ProtoModalSheet bottomBar 固定底部。 */
 @Composable
 private fun AppPickerList(
     apps: List<InstalledApp>,
     selected: Set<String>,
     onToggle: (String) -> Unit,
-    onConfirm: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         apps.forEach { app ->
@@ -471,14 +477,6 @@ private fun AppPickerList(
                 }
             }
         }
-        // 确认按钮在列表下方，随弹窗内容自然滚动到底可见。
-        PrimaryButton(
-            text = stringResource(R.string.record_picker_confirm),
-            onClick = onConfirm,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp),
-        )
     }
 }
 

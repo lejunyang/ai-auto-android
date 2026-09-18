@@ -343,7 +343,7 @@ fun AssistantScreen(
         visible = showAppSheet,
         onDismiss = { showAppSheet = false },
         title = stringResource(R.string.assistant_apps_sheet_title),
-    ) {
+        content = {
         NoteText(stringResource(R.string.assistant_apps_sheet_desc))
         Spacer(Modifier.height(10.dp))
         if (targetPackages.isEmpty()) {
@@ -383,16 +383,20 @@ fun AssistantScreen(
                     )
                 }
             }
-            Spacer(Modifier.height(12.dp))
+        }
+        }
+        ,
+        bottomBar = {
             ProtoPrimaryButton(
                 text = stringResource(R.string.assistant_apps_confirm),
                 onClick = {
                     selectedApps = draftApps
                     showAppSheet = false
                 },
+                modifier = Modifier.fillMaxWidth(),
             )
-        }
-    }
+        },
+    )
 }
 
 /** App Header：AI Auto 标题 + 副标题 + 就绪徽章。 */

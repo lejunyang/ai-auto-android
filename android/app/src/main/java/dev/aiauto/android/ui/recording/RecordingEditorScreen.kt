@@ -442,7 +442,7 @@ fun RecordingEditorScreen(
             visible = true,
             onDismiss = { editModalVisible = false },
             title = stringResource(R.string.editor_step_modal_title),
-        ) {
+            content = {
             NoteText(stringResource(R.string.editor_step_modal_hint))
             Spacer(Modifier.height(8.dp))
             EditorStepForm(
@@ -451,7 +451,8 @@ fun RecordingEditorScreen(
                 onUpdate = onUpdateForm,
                 onSubmit = onSubmitForm,
             )
-        }
+            }
+        )
     }
 
     // "技能名称"弹窗：确认后才 onRename，随保存持久化。
@@ -460,7 +461,7 @@ fun RecordingEditorScreen(
             visible = true,
             onDismiss = { renameModalVisible = false },
             title = stringResource(R.string.editor_rename_title),
-        ) {
+            content = {
             NoteText(stringResource(R.string.editor_rename_hint))
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
@@ -482,7 +483,8 @@ fun RecordingEditorScreen(
             ) {
                 Text(stringResource(R.string.editor_rename_save))
             }
-        }
+            }
+        )
     }
 
     if (state.showDiscardConfirmation) {

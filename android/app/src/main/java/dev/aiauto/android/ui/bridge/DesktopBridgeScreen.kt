@@ -237,7 +237,7 @@ fun DesktopBridgeScreen(
                 visible = showPairSheet,
                 onDismiss = { dismissedCode = pairingCode },
                 title = stringResource(R.string.bridge_pair_sheet_title),
-            ) {
+                content = {
                 // 副标题：真实状态描述，非"演示"字样。
                 Text(
                     text = stringResource(R.string.bridge_pair_sheet_subtitle),
@@ -293,7 +293,8 @@ fun DesktopBridgeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     center = true,
                 )
-            }
+                }
+            )
         }
     }
 }

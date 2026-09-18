@@ -1,4 +1,4 @@
-﻿package dev.aiauto.android.ui.components
+package dev.aiauto.android.ui.components
 
 /**
  * 功能用途：提供可复用的底部弹窗（ModalBottomSheet 风格）组件。
@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -70,6 +71,7 @@ fun ProtoModalSheet(
     onDismiss: () -> Unit,
     title: String,
     content: @Composable ColumnScope.() -> Unit,
+    bottomBar: @Composable (() -> Unit)? = null,
 ) {
     // Dialog 是否实际组合（visible=false 时延迟 280ms 等退出动画完成再移除）。
     var showDialog by remember { mutableStateOf(visible) }
@@ -168,14 +170,31 @@ fun ProtoModalSheet(
                                     )
                                 }
                             }
-                            // 内容区：可滚动。
+                            // 内容区：weight(1f, fill=false)，内容短只占自然高度，内容长限制在剩余空间内。
+                            // bottomBar 固定在面板底部不参与滚动。
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(bottom = 12.dp),
-                                content = content,
-                            )
+                                    .heightIn(max = 620.dp),
+                            ) {
+                                // 内容区：短内容用 verticalScroll，长列表由调用方自己放 LazyColumn。
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f, fill = false)
+                                        .fillMaxWidth()
+                                        .verticalScroll(rememberScrollState())
+                                        .padding(bottom = 12.dp),
+                                    content = content,
+                                )
+                                // 底部固定操作槽（可选）。
+                                bottomBar?.let { bar ->
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 4.dp),
+                                    ) { bar() }
+                                }
+                            }
                         }
                     }
                 }
