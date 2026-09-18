@@ -198,7 +198,7 @@ class RecordingEventMapper {
             "switch" in simpleName -> "switch"
             "list" in simpleName || "recyclerview" in simpleName -> "list"
             "text" in simpleName -> "text"
-            else -> simpleName
+            else -> ""  // 无语义类名（如 FrameLayout/ViewGroup）不生成 role selector，避免噪声
         }
     }
 
