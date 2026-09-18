@@ -376,3 +376,28 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - 录制全流程（填名称→选应用→开始录制→捕获步骤→编辑→保存）未在设备走通（需真实无障碍授权）
 - 我的页间距逐元素复核（P1-C）未完成
 - 弹窗动画连续截图（P1-D）未完成
+
+## P0 修复：录制页应用多选弹窗（2026-09-18，commit 19c2f2c）
+
+### 问题
+录制页"更改"按钮是死按钮（onChange(packages) 原样写回），用户既不能手输包名也不能弹窗选择，目标应用完全无法设置。
+
+### 修复
+- 录制页加载已安装可启动应用列表（produceState 后台查询，复用无障碍页同款 ACTION_MAIN+CATEGORY_LAUNCHER 逻辑）
+- 点更改弹出 ProtoModalSheet 应用多选（真实图标+应用名+包名+勾选指示器）
+- 确认后把所选包名 join 为字符串回写 ViewModel
+- 已选应用区展示真实图标+应用名列表（不再是裸包名字符串）
+
+### 设备验证（verify-round9/）
+- r9-picker-open.png：弹窗正常（Chrome/Gmail/Maps/时钟等真实应用+真实图标）
+- r9-selected.png：勾选时钟确认后"已选 1 个应用"+时钟图标+应用名正确显示
+
+### 验证结果
+- :app:testDebugUnitTest + :app:lintDebug + :app:assembleDebug BUILD SUCCESSFUL
+- make comments 通过（543 文件）
+- APK SHA256: 62C6478DB689DA0D25E62C6571BA13D60D1CCD45651D4345A7C144FDE6C996BF
+
+### 未验证边界
+- 录制全流程（填名称→开始录制→捕获步骤→编辑→保存）未在设备走通（需真实无障碍事件捕获）
+- P1-C 我的页间距逐元素复核未完成
+- P1-D 弹窗动画连续截图未完成
