@@ -202,9 +202,17 @@ private fun ExpandedCard(
                 )
             }
 
+            // body 状态描述：running 显示正在处理，paused 显示已暂停。
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = bodyText(state),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
             // 摘要/错误信息（终态或失败时展示）。
             summaryText(state)?.let { summary ->
-                Spacer(Modifier.size(8.dp))
+                Spacer(Modifier.size(6.dp))
                 Text(
                     text = summary,
                     style = MaterialTheme.typography.bodySmall,
@@ -231,27 +239,38 @@ private fun ActionRow(state: OverlaySessionState, actions: OverlayActions) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         when (state) {
             is OverlaySessionState.Running -> {
-                OutlinedButton(onClick = { actions.onPause() }) { Text("暂停") }
-                OutlinedButton(onClick = { actions.onStop() }) { Text("停止") }
+                // 主按钮：暂停（蓝色实心）；次按钮：停止（描边）。
+                androidx.compose.material3.Button(onClick = { actions.onPause() }) { Text("暂停") }
+                androidx.compose.material3.OutlinedButton(onClick = { actions.onStop() }) { Text("停止") }
             }
 
             is OverlaySessionState.Paused -> {
-                OutlinedButton(onClick = { actions.onResume() }) { Text("继续") }
-                OutlinedButton(onClick = { actions.onStop() }) { Text("停止") }
+                // 主按钮：继续（蓝色实心）；次按钮：停止（描边）。
+                androidx.compose.material3.Button(onClick = { actions.onResume() }) { Text("继续") }
+                androidx.compose.material3.OutlinedButton(onClick = { actions.onStop() }) { Text("停止") }
             }
 
             is OverlaySessionState.Completed,
             is OverlaySessionState.Failed,
             -> {
                 // 终态：关闭即收起悬浮窗，保留小图标便于回看结果。
-                OutlinedButton(onClick = { actions.onCollapse() }) { Text("关闭") }
+                androidx.compose.material3.Button(onClick = { actions.onCollapse() }) { Text("收起") }
             }
 
             is OverlaySessionState.Idle -> {
-                TextButton(onClick = { actions.onCollapse() }) { Text("收起") }
+                androidx.compose.material3.TextButton(onClick = { actions.onCollapse() }) { Text("收起") }
             }
         }
     }
+}
+
+/** body 状态描述：running/paused/result 等状态的简短中文描述。 */
+private fun bodyText(state: OverlaySessionState): String = when (state) {
+    is OverlaySessionState.Running -> "正在自动处理，请稍候…"
+    is OverlaySessionState.Paused -> "已暂停，等你回来"
+    is OverlaySessionState.Completed -> "任务执行完毕"
+    is OverlaySessionState.Failed -> "执行遇到问题"
+    is OverlaySessionState.Idle -> "待命"
 }
 
 /**
