@@ -545,3 +545,15 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - 不滑动即可点到按钮
 
 ### APK SHA256: E21629FE4BCF42393F24DE1053564F97C6D038F40FDE3DAE0212910A349F6061
+
+## C. 我的页间距修正（2026-09-18）
+
+### 修正
+- SectionHeader padding从20/8改为10/7（原型section-head节奏）
+- SettingsScreen spacedBy从12dp改为0，避免与SectionHeader内置padding叠加
+- ProfileHeader bottom从2dp改为12dp
+
+### 设备验证 r10-settings.png
+- 卡片→区块标题10dp、区块标题→卡片7dp，符合原型
+
+### APK SHA256: 4A7B31BF161069CDC66E8E68BBA37A0BB75FD5150D52805500FC0BBBB34D27EF
