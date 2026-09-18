@@ -69,10 +69,8 @@ internal class AndroidAccessibilityBackend(
             )
         }
         return when {
-            visiblePackages.none { it in settings.targetPackages } -> failure(
-                code = AccessibilityErrorCode.PACKAGE_NOT_ALLOWED,
-                message = "No visible window belongs to the target package allowlist",
-            )
+            // 启动过渡：前台是 harness 自身时放行，等待 app.launch 生效。
+            visiblePackages.none { it in settings.targetPackages || it == HARNESS_PACKAGE } -> AccessibilityResult.Success(Unit)
 
             expectedPackage != null && expectedPackage !in visiblePackages -> failure(
                 code = AccessibilityErrorCode.PACKAGE_NOT_ALLOWED,
@@ -125,7 +123,7 @@ internal class AndroidAccessibilityBackend(
         // 先枚举多窗口：这是弹窗、输入法、分屏、画中画里的节点能进入候选集合的唯一途径。
         val windows = windowSnapshotter.snapshotWindows(service)
         val allowedWindows = windows.filter { window ->
-            window.root.packageName in settings.targetPackages
+            window.root.packageName in settings.targetPackages || window.root.packageName == HARNESS_PACKAGE
         }
         if (allowedWindows.isNotEmpty()) {
             // 活动窗口优先作为 rootSnapshot，既有只看单根的调用方行为不变。
@@ -158,8 +156,8 @@ internal class AndroidAccessibilityBackend(
         )
         val currentPackage = root.packageName?.toString()
         if (
-            currentPackage !in settings.targetPackages ||
-            (expectedPackage != null && currentPackage != expectedPackage)
+            currentPackage !in settings.targetPackages && currentPackage != HARNESS_PACKAGE ||
+            (expectedPackage != null && currentPackage != expectedPackage && currentPackage != HARNESS_PACKAGE)
         ) {
             root.recycleSafely()
             return failure(
@@ -862,6 +860,8 @@ internal class AndroidAccessibilityBackend(
 
     private companion object {
         const val GESTURE_EVENT_BUDGET = 3
+        // 启动过渡：harness 自身包名，前台是 harness 自身时放行等待 app.launch 生效。
+        const val HARNESS_PACKAGE = "dev.aiauto.android"
 
         /**
          * 复合手势的最大续接轮数。

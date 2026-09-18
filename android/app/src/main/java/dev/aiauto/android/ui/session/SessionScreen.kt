@@ -75,7 +75,11 @@ fun SessionScreen(
             item { SessionHeaderCard(uiState) }
 
             if (!session.isRunning) {
-                item { SessionFormCard(uiState, viewModel) }
+                if (session.phase in TERMINAL_PHASES) {
+                    item { TerminalActionsCard(viewModel, onBack) }
+                } else {
+                    item { SessionFormCard(uiState, viewModel) }
+                }
             }
 
             session.pendingConfirmation?.let { confirmation ->
@@ -106,7 +110,7 @@ fun SessionScreen(
                     ProtoCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
                         Text(text = phaseLabel(entry.phase), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = AppColors.Primary)
                         Spacer(Modifier.height(4.dp))
-                        Text(text = entry.message, fontSize = 13.sp, color = AppColors.Muted, lineHeight = 20.sp)
+                        Text(text = humanizeMessage(entry.message), fontSize = 13.sp, color = AppColors.Muted, lineHeight = 20.sp)
                     }
                 }
             }
@@ -169,6 +173,9 @@ private fun SessionHeaderCard(uiState: SessionUiState) {
             lineHeight = 34.sp,
             color = AppColors.Ink,
         )
+        session.failureMessage?.let { msg ->
+            Text(msg, fontSize = 12.sp, color = AppColors.Danger)
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -184,6 +191,15 @@ private fun SessionHeaderCard(uiState: SessionUiState) {
                     .background(AppColors.Primary),
             )
         }
+    }
+}
+
+/** 终态操作卡：重试 + 返回。 */
+@Composable
+private fun TerminalActionsCard(viewModel: SessionViewModel, onBack: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        ProtoSecondaryButton(text = "返回", onClick = onBack, modifier = Modifier.weight(1f))
+        ProtoPrimaryButton(text = "重试", onClick = viewModel::start, modifier = Modifier.weight(1f))
     }
 }
 
@@ -356,6 +372,36 @@ private fun ProtoSwitch(
                 .background(AppColors.Surface),
         )
     }
+}
+
+/** 终端状态集合。 */
+private val TERMINAL_PHASES = setOf(
+    SessionPhase.Completed,
+    SessionPhase.Failed,
+    SessionPhase.Stopped,
+)
+
+/** 内部英文 message → C 端简短中文映射，不直接暴露英文技术细节。 */
+private fun humanizeMessage(raw: String): String = when {
+    raw.contains("Observing the authorized target") -> "正在观察目标应用"
+    raw.contains("Requesting one validated action") -> "正在请求下一步动作"
+    raw.contains("Executing one locally approved action") -> "正在执行已批准动作"
+    raw.contains("Re-observing the target after execution") -> "正在验证执行结果"
+    raw.contains("Session paused by the user") -> "会话已暂停"
+    raw.contains("Session resumed by the user") -> "会话已继续"
+    raw.contains("Session stopped by the user") -> "会话已停止"
+    raw.contains("Session failed") -> "会话失败"
+    raw.contains("Session started for") -> "会话已启动"
+    raw.contains("Session resumed") -> "会话已恢复"
+    raw.contains("Waiting for explicit user confirmation") -> "等待你确认"
+    raw.contains("The active package changed") -> "前台应用已变更"
+    raw.contains("Provider repeated") -> "Provider 重复执行相同动作"
+    raw.contains("The automation session exceeded") -> "会话超时"
+    raw.contains("The user rejected") -> "你拒绝了待确认动作"
+    raw.contains("Launched the authorized target") -> "已启动目标应用"
+    raw.contains("Waited for") -> "等待中"
+    raw.contains("Task finished") -> "任务已完成"
+    else -> raw
 }
 
 /** SessionPhase 映射到原型七状态。 */

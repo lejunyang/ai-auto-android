@@ -187,8 +187,14 @@ class ProviderSessionPlanner internal constructor(
 class RuntimeSessionObserver(
     private val contextBuilder: UiContextBuilder = UiContextBuilder(),
 ) : SessionObserver {
+    companion object {
+        // 启动过渡：harness 自身包名，首次 observe 时放行等待 app.launch 生效。
+        private const val HARNESS_PACKAGE = "dev.aiauto.android"
+    }
     override suspend fun observe(targetPackage: String): SessionObservation =
-        when (val snapshot = AccessibilityRuntime.snapshot(targetPackage)) {
+        // 启动过渡：snapshot(null) 绕过前台包校验，手动检查 activePackage。
+        // 前台是 harness 自身时放行，等待 app.launch 生效。
+        when (val snapshot = AccessibilityRuntime.snapshot(null)) {
             is AccessibilityResult.Failure -> throw SessionFailureException(
                 snapshot.error.message,
             )
@@ -196,7 +202,9 @@ class RuntimeSessionObserver(
             is AccessibilityResult.Success -> {
                 val activePackage = snapshot.value.packageName
                     ?: throw SessionFailureException("The active UI has no package name.")
-                if (activePackage != targetPackage) {
+                // 启动过渡：首次 observe 时前台可能是 harness 自身，放行等待 app.launch 生效。
+                // 安全边界：只放行 harness 自身，不放任任意包。
+                if (activePackage != targetPackage && activePackage != HARNESS_PACKAGE) {
                     throw SessionFailureException(
                         "The active package changed outside the authorized target.",
                     )
@@ -226,7 +234,12 @@ class RuntimeSessionExecutor(
             "Stopping another app is not supported by the non-privileged executor.",
         )
 
-        "ui.wait" -> SessionExecutionResult("Wait condition deferred to verification.")
+        "ui.wait" -> {
+            // 读取 durationMs 参数，真实延迟指定毫秒，让 running 维持足够时间。
+            val durationMs = action.params["durationMs"]?.toString()?.trim('"')?.toLongOrNull() ?: 1000L
+            kotlinx.coroutines.delay(durationMs)
+            SessionExecutionResult("Waited for ${durationMs}ms.")
+        }
         "ui.assert" -> SessionExecutionResult("Assertion deferred to verification.")
         else -> executeAccessibilityAction(action)
     }

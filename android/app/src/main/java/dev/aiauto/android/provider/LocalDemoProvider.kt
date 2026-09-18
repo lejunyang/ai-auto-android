@@ -7,6 +7,9 @@ package dev.aiauto.android.provider
  * - 仅用于 debug/test 变体和 UI 流程验证，不发起任何网络请求，不接触真实 API key。
  * - 返回的动作严格通过 ProviderActionParser 校验，不构造畸形参数。
  * - 目标包名从 prompt.uiSummary 中提取，与会话授权范围一致，不越权操作其他应用。
+ *
+ * 演示序列：app.launch → 4 步 ui.wait（每步 2-3 秒）→ task.finish。
+ * 让 running 维持约 10-15 秒，悬浮窗有时间弹出并交互。
  */
 
 import kotlinx.serialization.json.JsonObject
@@ -24,6 +27,15 @@ class LocalDemoProvider : AutomationProvider {
                 type = "app.launch",
                 params = JsonObject(
                     mapOf("packageName" to JsonPrimitive(targetPackage)),
+                ),
+            )
+            in 1..4 -> ProviderAction(
+                type = "ui.wait",
+                params = JsonObject(
+                    mapOf(
+                        "kind" to JsonPrimitive("duration"),
+                        "durationMs" to JsonPrimitive(2500),
+                    ),
                 ),
             )
             else -> ProviderAction(
@@ -48,8 +60,8 @@ class LocalDemoProvider : AutomationProvider {
     }
 
     companion object {
-        // 默认目标包：系统设置，模拟器中必然存在且无敏感数据。
-        private const val DEFAULT_TARGET_PACKAGE = "com.android.settings"
+        // 默认目标包：时钟，模拟器中必然存在且可启动，无敏感数据。
+        private const val DEFAULT_TARGET_PACKAGE = "com.google.android.deskclock"
         private val TARGET_PACKAGE_REGEX = Regex("Authorized target package:\\s*(\\S+)")
     }
 }

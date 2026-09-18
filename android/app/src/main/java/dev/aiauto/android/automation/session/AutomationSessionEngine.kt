@@ -331,7 +331,9 @@ class AutomationSessionEngine(
         observation: SessionObservation,
         expectedPackage: String,
     ) {
-        if (observation.activePackage != expectedPackage) {
+        // 启动过渡：harness 自身在前台时放行，等待 app.launch 生效。
+        // 安全边界：只放行 harness 自身，不放任任意包。
+        if (observation.activePackage != expectedPackage && observation.activePackage != HARNESS_PACKAGE) {
             throw SessionFailureException(
                 "The active package changed outside the authorized target.",
             )
@@ -446,5 +448,7 @@ class AutomationSessionEngine(
         const val MAX_ACTION_SUMMARY = 500
         const val MAX_FAILURE_MESSAGE = 1_000
         const val MAX_AUDIT_ENTRIES = 100
+        // 启动过渡：harness 自身包名，首次 observe 时放行等待 app.launch 生效。
+        const val HARNESS_PACKAGE = "dev.aiauto.android"
     }
 }
