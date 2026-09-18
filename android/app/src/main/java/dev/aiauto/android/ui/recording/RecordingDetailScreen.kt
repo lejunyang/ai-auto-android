@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import dev.aiauto.android.ui.components.ProtoPrimaryButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import dev.aiauto.android.ui.components.ProtoSecondaryButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -97,7 +97,8 @@ fun RecordingDetailScreen(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
+                ProtoPrimaryButton(
+                    text = stringResource(R.string.recording_replay),
                     onClick = onReplay,
                     enabled = !busy && hasRequiredSecrets(
                         requiredRefs = requiredSecretRefs,
@@ -106,23 +107,19 @@ fun RecordingDetailScreen(
                     modifier = Modifier
                         .weight(1f)
                         .testTag(RecordingTestTags.REPLAY),
-                ) {
-                    Text(stringResource(R.string.recording_replay))
-                }
-                OutlinedButton(
+                )
+                ProtoSecondaryButton(
+                    text = "编辑",
                     onClick = onEdit,
                     enabled = !busy,
                     modifier = Modifier.weight(1f),
-                ) {
-                    Text("编辑")
-                }
-                OutlinedButton(
+                )
+                ProtoSecondaryButton(
+                    text = stringResource(R.string.recording_delete),
                     onClick = onDelete,
                     enabled = !busy,
                     modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.recording_delete))
-                }
+                )
             }
             errorMessage?.let { message ->
                 Text(text = message, color = MaterialTheme.colorScheme.error)

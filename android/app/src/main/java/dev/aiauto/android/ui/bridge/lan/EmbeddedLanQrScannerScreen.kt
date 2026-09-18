@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import dev.aiauto.android.ui.components.ProtoSecondaryButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -66,9 +66,7 @@ fun EmbeddedLanQrScannerScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("等待相机权限；拒绝后仍可返回使用手工邀请码。")
-            Button(onClick = onCancel) {
-                Text("取消扫码")
-            }
+            ProtoSecondaryButton(text = "取消扫码", onClick = onCancel)
         }
         return
     }
@@ -120,12 +118,11 @@ fun EmbeddedLanQrScannerScreen(
                 .fillMaxWidth()
                 .weight(1f),
         )
-        Button(
+        ProtoSecondaryButton(
+            text = "取消扫码",
             onClick = onCancel,
             modifier = Modifier.padding(16.dp),
-        ) {
-            Text("取消扫码")
-        }
+        )
     }
 }
 
