@@ -533,3 +533,15 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - 设备验证 r10-picker2.png：Chrome/Gmail/Maps/YouTube/时钟等真实应用+图标+勾选圈正常显示
 
 ### APK SHA256: F5CD129B1F2BBDCE8D69F484B269AABC3394A47F8334F0111510DB36FD91772D
+
+## ProtoModalSheet bottomBar（2026-09-18）
+
+### 改造
+- ProtoModalSheet加bottomBar可选参数
+- 面板结构：把手+标题固定→weight(1f,fill=false)内容区（短内容自然高度，长内容限制在剩余空间内）→bottomBar固定底部
+
+### 设备验证 r10-picker3.png
+- 把手+标题+X+可滚动应用列表+底部固定"使用所选应用"按钮同屏可见
+- 不滑动即可点到按钮
+
+### APK SHA256: E21629FE4BCF42393F24DE1053564F97C6D038F40FDE3DAE0212910A349F6061
