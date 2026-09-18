@@ -522,3 +522,14 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - testDebugUnitTest + lintDebug + assembleDebug BUILD SUCCESSFUL
 - make comments通过（545文件）
 - APK SHA256: A8D01650DC5832233ECBA7B77ADF16D16F86764580C1261EC519FF671AFED2E6
+
+## P0修复：AppPickerList列表渲染（2026-09-18）
+
+### 问题
+- LazyColumn weight(1f)/fillMaxHeight在ProtoModalSheet verticalScroll里无效，列表分到0高不渲染
+
+### 修复
+- 回退为普通Column forEach，按钮在列表下方随弹窗内容自然滚动
+- 设备验证 r10-picker2.png：Chrome/Gmail/Maps/YouTube/时钟等真实应用+图标+勾选圈正常显示
+
+### APK SHA256: F5CD129B1F2BBDCE8D69F484B269AABC3394A47F8334F0111510DB36FD91772D
