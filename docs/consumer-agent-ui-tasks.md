@@ -337,3 +337,42 @@ adb -s emulator-5554 push provider-config.xml /data/data/dev.aiauto.android/shar
 ### Orange 5.0 模型说明
 
 create_agent schema 无 model 参数，无法显式指定 Orange 5.0，本轮子代理使用默认模型。
+
+## 本轮 P0 修复（2026-09-18，commit 9d79034 + a9cd977）
+
+### P0-A ProtoModalSheet 改 Dialog 承载（commit 9d79034）
+
+根因：ProtoModalSheet 内联 AnimatedVisibility+Box(fillMaxSize) 挂在 ScreenScaffold 的
+垂直 Column 中，弹窗被当作第二个流式子项无法全屏覆盖（助理页正常因根是 Box）。
+
+修复：改用 androidx.compose.ui.window.Dialog 承载，DialogProperties
+(usePlatformDefaultWidth=false, decorFitsSystemWindows=false) 使其成为独立浮层窗口，
+任何页面挂载都能全屏遮罩。visible=false 时先播退出动画(280ms)再 dismiss。
+
+设备验证（verify-round8/）：
+- r8-bridge-modal.png：开启桌面桥后立即弹出配对码弹窗（scrim遮罩+把手+标题"核对电脑邀请"
+  +6位码490672+配对/取消按钮）
+- r8-bridge-closed.png：关闭弹窗后出现"查看配对码"入口
+
+### P0-B 录制新流程页视觉重构（commit a9cd977）
+
+RecordingSessionScreen.kt 重写为原型 #record 设计语言：
+- 大标题"照常操作，剩下的交给我。"+描述（替换原 Material 默认标题）
+- 蓝色 NoticeBar（#EEF4FF/#2563EB）替换原紫色状态卡，诚实标注"语义录制已可用，自动意图归纳为规划中"
+- 脚本名 label 外置 + 自绘 BasicTextField（白底圆角 50dp，无 Material 聚焦蓝框）
+- 目标应用改为"只记录这些应用"卡片 + 右侧"更改>"链接（替换原多行包名输入框）
+- 底部安全说明中性文字（不记录密码/验证码/支付，未知操作标待补充）
+- 开始录制用自绘 ProtoPrimaryButton（48dp 高 14dp 圆角），未满足时灰色禁用态
+- 步骤预览卡片化
+
+设备验证：r8-record.png 确认大标题+蓝色NoticeBar+label外置输入框+应用卡+安全说明+禁用态按钮
+
+### 验证结果
+- :app:testDebugUnitTest + :app:lintDebug + :app:assembleDebug BUILD SUCCESSFUL
+- make comments 通过（543 文件）
+- APK SHA256: 716DBA69BBDCBCEA6929A0C36A21167E79C16B13A2D605F5DCC69324B74AE3A2
+
+### 未验证边界
+- 录制全流程（填名称→选应用→开始录制→捕获步骤→编辑→保存）未在设备走通（需真实无障碍授权）
+- 我的页间距逐元素复核（P1-C）未完成
+- 弹窗动画连续截图（P1-D）未完成
