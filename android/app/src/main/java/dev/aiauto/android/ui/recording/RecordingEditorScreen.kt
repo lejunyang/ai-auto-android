@@ -55,6 +55,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import kotlinx.serialization.json.contentOrNull
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -234,12 +235,33 @@ fun RecordingEditorScreen(
                 }
 
                 // 步骤时间轴列表（原型 .steps / .step-rail）。
+                // 后台查询包名→应用 label 映射，供 StepHumanizer 显示"等待 时钟 打开"。
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val editorPkgNames = remember(state.script) {
+                    state.script.steps.mapNotNull { s ->
+                        val t = s.action.params["target"] as? kotlinx.serialization.json.JsonObject
+                        (t?.get("packageName") as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
+                    }.toSet() + state.script.targetPackages
+                }
+                val editorPkgLabel = androidx.compose.runtime.produceState<Map<String, String>>(
+                    initialValue = emptyMap(), editorPkgNames
+                ) {
+                    value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        editorPkgNames.associateWith { pkg ->
+                            runCatching {
+                                val pm = context.packageManager
+                                pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                            }.getOrDefault(pkg.substringAfterLast('.'))
+                        }
+                    }
+                }
                 state.script.steps.forEachIndexed { index, step ->
                     StepRail(
                         step = step,
                         index = index,
                         isLast = index == state.script.steps.lastIndex,
                         selected = step.id == state.selectedStepId,
+                        packageLabel = editorPkgLabel.value,
                         onOpen = {
                             onSelectStep(step.id)
                             editModalVisible = true
@@ -517,6 +539,7 @@ private fun StepRail(
     index: Int,
     isLast: Boolean,
     selected: Boolean,
+    packageLabel: Map<String, String> = emptyMap(),
     onOpen: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
@@ -581,7 +604,7 @@ private fun StepRail(
         ) {
             Column(modifier = Modifier.alpha(if (step.enabled) 1f else 0.46f)) {
                 Text(
-                    text = dev.aiauto.android.automation.recording.StepHumanizer.humanize(step),
+                    text = dev.aiauto.android.automation.recording.StepHumanizer.humanize(step, packageLabel),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = AppColors.Ink,
