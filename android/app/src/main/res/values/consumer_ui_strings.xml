@@ -309,4 +309,7 @@
     <string name="record_target_empty">未选择应用</string>
     <string name="record_target_change">更改</string>
     <string name="record_privacy_note">不记录密码、验证码或支付内容；未知操作会标为待补充。</string>
+    <string name="record_picker_title">选择目标应用</string>
+    <string name="record_target_count">已选 %1$d 个应用</string>
+    <string name="record_picker_confirm">使用所选应用</string>
 </resources>
