@@ -4,7 +4,11 @@ package dev.aiauto.android.ui.provider
  * 功能用途：实现 ProviderScreen 对应的 AI Provider 配置、调用、动作解析或敏感日志保护。
  */
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,12 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,11 +32,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
 import dev.aiauto.android.R
@@ -324,9 +330,13 @@ fun ProviderScreen(
 
 /**
  * 功能用途：原型风格输入框——固定 50dp 高度（与原型 input token 一致），
- * 辅助文字在框外独立渲染（避免 OutlinedTextField 内置 supportingText 撑高到 78dp）。
+ * 辅助文字在框外独立渲染。
  *
  * 原型结构：label（独立）→ input（371x50dp，13dp 圆角）→ 辅助文字（独立）。
+ *
+ * 为什么不用 OutlinedTextField：M3 输入框自带 label/辅助文字层与最小高度，
+ * 强行 height(50dp) 会把输入文字垂直方向压缩截断；这里用 BasicTextField +
+ * 自绘背景/边框，高度完全由内容（16sp 字体 + 16dp 上下内边距）决定，文字不被裁切。
  */
 @Composable
 private fun ProtoTextField(
@@ -341,22 +351,49 @@ private fun ProtoTextField(
     visualTransformation: androidx.compose.ui.text.input.VisualTransformation =
         androidx.compose.ui.text.input.VisualTransformation.None,
 ) {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(13.dp)
     Column(modifier = modifier) {
-        OutlinedTextField(
+        BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text(placeholder) },
-            isError = isError,
             enabled = enabled,
             singleLine = true,
             keyboardOptions = keyboardOptions,
             visualTransformation = visualTransformation,
-            shape = RoundedCornerShape(13.dp),
+            cursorBrush = SolidColor(AppColors.Primary),
+            textStyle = TextStyle(
+                color = AppColors.Ink,
+                fontSize = 16.sp, // 原型 .phone input 16sp，同时避免系统因字号过小弹出自动缩放
+            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
+                .height(50.dp)
+                .background(AppColors.Surface, shape)
+                .border(BorderStroke(1.dp, if (isError) AppColors.Danger else AppColors.Line), shape),
+            decorationBox = { innerTextField ->
+                // 内容垂直居中、左右 16dp 内边距；占位符与输入文字同基线，不再被裁切。
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = placeholder,
+                                style = TextStyle(
+                                    color = AppColors.ComposerPlaceholder,
+                                    fontSize = 16.sp,
+                                ),
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            },
         )
-        // 辅助文字在框外独立渲染，错误时使用危险色。
+        // 辅助文字在框外独立渲染，与输入框内容左缘（16dp）对齐，错误时使用危险色。
         Text(
             text = hint,
             style = MaterialTheme.typography.bodySmall,

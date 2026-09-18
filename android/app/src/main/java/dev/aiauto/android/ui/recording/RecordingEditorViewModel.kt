@@ -33,6 +33,7 @@ import dev.aiauto.android.automation.recording.editor.language.LanguageGeneratio
 import dev.aiauto.android.automation.recording.editor.language.SkillLanguageGenerator
 import dev.aiauto.android.automation.recording.editor.RecordingScriptStoreSavePort
 import dev.aiauto.android.automation.recording.editor.ReorderStep
+import dev.aiauto.android.automation.recording.editor.RenameScript
 import dev.aiauto.android.automation.recording.editor.ScriptDryRunEngine
 import dev.aiauto.android.automation.recording.editor.ScriptEditorSession
 import dev.aiauto.android.automation.recording.editor.SetStepEnabled
@@ -106,6 +107,11 @@ class RecordingEditorViewModel(
     /** 更新脚本自然语言描述（用户确认 AI 生成建议或手动编辑后调用）。 */
     fun updateDescription(description: String) {
         apply(UpdateDescription(description))
+    }
+
+    /** 重命名技能（用户在"技能名称"弹窗确认后调用，随保存持久化）。 */
+    fun renameScript(name: String) {
+        apply(RenameScript(name))
     }
 
     /**

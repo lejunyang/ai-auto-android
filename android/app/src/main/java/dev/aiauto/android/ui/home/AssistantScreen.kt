@@ -48,6 +48,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,6 +59,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,6 +84,10 @@ import dev.aiauto.android.automation.recording.RecordingScriptStore
 import dev.aiauto.android.ui.components.AppIcons
 import dev.aiauto.android.ui.components.EmptyState
 import dev.aiauto.android.ui.components.IconTile
+import dev.aiauto.android.ui.components.NoteText
+import dev.aiauto.android.ui.components.ProtoModalSheet
+import dev.aiauto.android.ui.components.ProtoPrimaryButton
+import dev.aiauto.android.ui.components.ProtoSecondaryButton
 import dev.aiauto.android.ui.components.ScriptLoadState
 import dev.aiauto.android.ui.components.dashedBorder
 import dev.aiauto.android.ui.components.produceScriptSummaries
@@ -112,6 +118,17 @@ fun AssistantScreen(
     var taskInput by rememberSaveable { mutableStateOf("") }
     // 就绪条件：模型已配置、无障碍已披露且系统服务已启用。
     val ready = providerReady && accessibilityEnabled && accessibilityConfigured
+
+    // 本次任务选用的应用集合：默认选中无障碍已允许的全部目标包。
+    // 与无障碍授权目标包联动：授权集合变化时，把本地选择收敛到新集合内，
+    // 移除已不再被授权的包；不写回系统无障碍配置，仅作用于本次任务。
+    var selectedApps by remember { mutableStateOf(targetPackages) }
+    LaunchedEffect(targetPackages) {
+        selectedApps = (selectedApps intersect targetPackages).ifEmpty { targetPackages }
+    }
+    // 弹窗内草稿：确认前不影响 pill 回显。
+    var showAppSheet by remember { mutableStateOf(false) }
+    var draftApps by remember { mutableStateOf(setOf<String>()) }
 
     // 语音识别状态与处理器。
     var isListening by remember { mutableStateOf(false) }
@@ -167,8 +184,11 @@ fun AssistantScreen(
                 taskInput = taskInput,
                 onTaskInputChange = { if (it.length <= 300) taskInput = it },
                 ready = ready,
-                targetPackages = targetPackages,
-                onChooseApps = onGoToSettings,
+                selectedAppsCount = selectedApps.size,
+                onChooseApps = {
+                    draftApps = selectedApps
+                    showAppSheet = true
+                },
                 onSubmit = { onStartTask(taskInput.trim()) },
                 isListening = isListening,
                 voiceMessage = voiceMessage,
@@ -316,6 +336,63 @@ fun AssistantScreen(
         // 底部安全间距。
         item { Spacer(Modifier.height(8.dp)) }
     }
+
+    // 选择应用底部弹窗：列出无障碍已允许的目标包供本次任务多选。
+    // 不静态假显示——候选来自 targetPackages（真实授权集合），空态引导去配置。
+    ProtoModalSheet(
+        visible = showAppSheet,
+        onDismiss = { showAppSheet = false },
+        title = stringResource(R.string.assistant_apps_sheet_title),
+    ) {
+        NoteText(stringResource(R.string.assistant_apps_sheet_desc))
+        Spacer(Modifier.height(10.dp))
+        if (targetPackages.isEmpty()) {
+            NoteText(stringResource(R.string.assistant_apps_empty_title))
+            NoteText(stringResource(R.string.assistant_apps_empty_desc))
+            Spacer(Modifier.height(12.dp))
+            ProtoSecondaryButton(
+                text = stringResource(R.string.assistant_apps_open_settings),
+                onClick = {
+                    showAppSheet = false
+                    onGoToSettings()
+                },
+            )
+        } else {
+            targetPackages.sorted().forEach { pkg ->
+                val checked = pkg in draftApps
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            draftApps = if (checked) draftApps - pkg else draftApps + pkg
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = checked,
+                        onCheckedChange = {
+                            draftApps = if (it) draftApps + pkg else draftApps - pkg
+                        },
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = pkg,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppColors.Ink,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            ProtoPrimaryButton(
+                text = stringResource(R.string.assistant_apps_confirm),
+                onClick = {
+                    selectedApps = draftApps
+                    showAppSheet = false
+                },
+            )
+        }
+    }
 }
 
 /** App Header：AI Auto 标题 + 副标题 + 就绪徽章。 */
@@ -409,7 +486,7 @@ private fun ComposerCard(
     taskInput: String,
     onTaskInputChange: (String) -> Unit,
     ready: Boolean,
-    targetPackages: Set<String>,
+    selectedAppsCount: Int,
     onChooseApps: () -> Unit,
     onSubmit: () -> Unit,
     isListening: Boolean,
@@ -477,7 +554,11 @@ private fun ComposerCard(
                             tint = AppColors.ComposerPillText,
                         )
                         Text(
-                            text = if (targetPackages.isNotEmpty()) "选择应用 · ${targetPackages.size}" else "选择应用",
+                            text = if (selectedAppsCount > 0) {
+                                stringResource(R.string.assistant_apps_pill_count, selectedAppsCount)
+                            } else {
+                                stringResource(R.string.assistant_choose_apps)
+                            },
                             fontSize = 11.sp,
                             color = AppColors.ComposerPillText,
                         )

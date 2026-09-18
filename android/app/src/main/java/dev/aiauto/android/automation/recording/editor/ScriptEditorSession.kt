@@ -55,6 +55,22 @@ data class UpdateDescription(
         EditResult.Applied(script.copy(description = description))
 }
 
+/** 重命名技能；空名与超长名拒绝，与复制脚本的 128 字上限保持一致。 */
+data class RenameScript(
+    val name: String,
+) : ScriptEditCommand {
+    override fun edit(script: AutomationScript): EditResult {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) {
+            return rejected(EditRejectionCode.INVALID_VALUE, "The script name is empty")
+        }
+        if (trimmed.length > MAX_SCRIPT_NAME_LENGTH) {
+            return rejected(EditRejectionCode.INVALID_VALUE, "The script name is too long")
+        }
+        return EditResult.Applied(script.copy(name = trimmed))
+    }
+}
+
 data class InsertStep(
     val index: Int,
     val step: RecordedStep,
@@ -652,6 +668,7 @@ private fun RecordedPredicate?.isValidPredicate(): Boolean {
 }
 
 private const val MAX_NOTES_LENGTH = 4_096
+private const val MAX_SCRIPT_NAME_LENGTH = 128
 private val LOWERCASE_SHA256 = Regex("^[0-9a-f]{64}$")
 private val OBSERVATION_ID_PATTERN = Regex("^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 private val FAILURE_POLICIES = setOf("stop", "continue", "requestIntervention")

@@ -175,6 +175,7 @@ fun RecordingHost(
                         onDismissDiscard = editor::dismissDiscardConfirmation,
                         onGenerateDescription = { editor.generateDescription() },
                         onUpdateDescription = { description -> editor.updateDescription(description) },
+                        onRename = { name -> editor.renameScript(name) },
                     )
                 }
             }

@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- 悬浮窗：受控悬浮助理，需用户在系统设置中手动授权。 -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- 查询全部已安装应用：Android 11+ 无障碍授权页需要它列出全部可启动应用，
+         用于按应用逐个授权/撤销；低于 API 30 的系统忽略此声明。 -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <!-- 配置用途：无相机设备仍可安装并使用手工邀请码。 -->
     <uses-feature
         android:name="android.hardware.camera.any"

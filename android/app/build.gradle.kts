@@ -19,6 +19,13 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // 配置用途：C 端随身 Agent 需要列出全部可启动应用供用户勾选授权，
+    // 因此使用 QUERY_ALL_PACKAGES；本项目为本地自动化工具，非应用商店分发，
+    // 抑制该 lint 检查。
+    lint {
+        disable += "QueryAllPackagesPermission"
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

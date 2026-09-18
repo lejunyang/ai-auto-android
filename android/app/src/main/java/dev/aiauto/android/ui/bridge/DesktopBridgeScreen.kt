@@ -4,11 +4,14 @@ package dev.aiauto.android.ui.bridge
  * 功能用途：「连接电脑」页面。按原型 #connection 的信息层级重构表现层，
  * 承载真实的桌面桥能力：本机 ADB 转发开关、一次性配对码轮换、LAN 配对入口。
  *
- * 与原型的差异（有意为之，不照搬"演示"字样）：
+ * 与原型的关键差异（有意为之，不照搬"演示"字样）：
  * - 原型是纯演示，按钮文案为「体验配对流程」；本页对接真实 DesktopBridgeController，
  *   因此按钮按真实状态显示「开启桌面桥 / 关闭桌面桥」，不伪装成演示。
  * - 原型底部「二维码、邀请码与连接均为原型演示」的免责声明不适用于真实功能，
  *   替换为真实的安全边界说明（仅绑定回环地址、码与 token 的有效期与不落盘）。
+ * - 原型中「核对电脑邀请」是底部弹窗（pairDemo() → openModal），本页用
+ *   ProtoModalSheet 实现同样的底部弹窗，而非把码值内联在卡片里。
+ *   弹窗自动在码值可用时弹出，用户可关闭后通过「查看配对码」重新打开。
  *
  * 保留的安全文案（不可删）：仅本机回环绑定、不监听 Wi-Fi / 移动网络、
  * 一次性码 2 分钟且用后失效、会话 token 最长 15 分钟且不显示不写日志、
@@ -31,6 +34,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +56,7 @@ import dev.aiauto.android.ui.components.NoticeBar
 import dev.aiauto.android.ui.components.PageDesc
 import dev.aiauto.android.ui.components.PageHeading
 import dev.aiauto.android.ui.components.ProtoCard
+import dev.aiauto.android.ui.components.ProtoModalSheet
 import dev.aiauto.android.ui.components.ProtoPrimaryButton
 import dev.aiauto.android.ui.components.ProtoSecondaryButton
 import dev.aiauto.android.ui.components.ProtoSectionHead
@@ -67,6 +74,11 @@ fun DesktopBridgeScreen(
     onLanPairing: () -> Unit,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
+
+    // 记录用户已主动关闭的配对码；新码值出现时自动弹出弹窗。
+    var dismissedCode by remember { mutableStateOf<String?>(null) }
+    val pairingCode = state.pairingCode
+    val showPairSheet = pairingCode != null && pairingCode != dismissedCode
 
     ScreenScaffold(
         title = stringResource(R.string.bridge_page_title),
@@ -119,28 +131,10 @@ fun DesktopBridgeScreen(
                     textAlign = TextAlign.Center,
                 )
 
-                // 一次性配对码：仅在存在时展示，属真实运行态数据。
-                state.pairingCode?.let { code ->
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = code,
-                        modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = AppColors.Primary,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    NoteText(
-                        text = stringResource(R.string.bridge_code_scope),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-
                 // 一次性码已失效的真实反馈。
                 if (
                     state.status == DesktopBridgeStatus.WAITING_FOR_CODE &&
-                    state.pairingCode == null
+                    pairingCode == null
                 ) {
                     Spacer(Modifier.height(12.dp))
                     NoteText(
@@ -195,6 +189,17 @@ fun DesktopBridgeScreen(
                     }
                 }
 
+                // 弹窗已关闭但码值仍有效时，提供重新查看入口。
+                if (pairingCode != null && dismissedCode == pairingCode) {
+                    Spacer(Modifier.height(8.dp))
+                    ProtoTextButton(
+                        text = stringResource(R.string.bridge_view_pair_code),
+                        onClick = { dismissedCode = null },
+                        modifier = Modifier.fillMaxWidth(),
+                        center = true,
+                    )
+                }
+
                 // 文字按钮：LAN 配对入口（原型对应「输入邀请码演示」的位置，居中）。
                 ProtoTextButton(
                     text = stringResource(R.string.bridge_open_lan),
@@ -216,7 +221,79 @@ fun DesktopBridgeScreen(
             Spacer(Modifier.height(8.dp))
 
             // 4. 底部安全边界提示条：真实约束，不是原型免责声明。
-            NoticeBar(text = stringResource(R.string.bridge_security_notice, BridgeProtocol.LOOPBACK_ADDRESS, BridgeLimits.PORT))
+            NoticeBar(
+                text = stringResource(
+                    R.string.bridge_security_notice,
+                    BridgeProtocol.LOOPBACK_ADDRESS,
+                    BridgeLimits.PORT,
+                ),
+            )
+        }
+
+        // 5.「核对电脑邀请」底部弹窗：对齐原型 pairDemo() ModalBottomSheet。
+        //    码值在弹窗中展示，用户关闭后可通过卡片上的「查看配对码」重新打开。
+        if (pairingCode != null) {
+            ProtoModalSheet(
+                visible = showPairSheet,
+                onDismiss = { dismissedCode = pairingCode },
+                title = stringResource(R.string.bridge_pair_sheet_title),
+            ) {
+                // 副标题：真实状态描述，非"演示"字样。
+                Text(
+                    text = stringResource(R.string.bridge_pair_sheet_subtitle),
+                    fontSize = 14.sp,
+                    lineHeight = 21.sp,
+                    color = AppColors.Muted,
+                )
+                Spacer(Modifier.height(16.dp))
+
+                // 指纹示意卡：白色卡片 + 细描边，展示真实一次性配对码。
+                ProtoCard(
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 18.dp,
+                        vertical = 20.dp,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(R.string.bridge_pair_sheet_code_label),
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = AppColors.Muted,
+                    )
+                    Spacer(Modifier.height(7.dp))
+                    // 码值大字居中、宽字距，与原型指纹示意一致。
+                    Text(
+                        text = pairingCode,
+                        modifier = Modifier.fillMaxWidth(),
+                        fontSize = 23.sp,
+                        lineHeight = 30.sp,
+                        letterSpacing = 2.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.Ink,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // 说明文字：真实有效期与安全边界，非原型"演示"免责。
+                NoteText(text = stringResource(R.string.bridge_pair_sheet_hint))
+
+                Spacer(Modifier.height(20.dp))
+
+                // 蓝色主按钮：确认配对（关闭弹窗，等待电脑端输入码值后自动连接）。
+                ProtoPrimaryButton(
+                    text = stringResource(R.string.bridge_pair_confirm),
+                    onClick = { dismissedCode = pairingCode },
+                )
+                // 文字按钮：取消（关闭弹窗）。
+                ProtoTextButton(
+                    text = stringResource(R.string.bridge_pair_cancel),
+                    onClick = { dismissedCode = pairingCode },
+                    modifier = Modifier.fillMaxWidth(),
+                    center = true,
+                )
+            }
         }
     }
 }

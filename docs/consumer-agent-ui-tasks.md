@@ -295,3 +295,45 @@ adb -s emulator-5554 push provider-config.xml /data/data/dev.aiauto.android/shar
 6. **Provider 类型选择 UI**：我的页 AI 模型行（ProviderScreen）尚未添加 OPENAI/本地演示的类型选择界面，当前只能通过 root 写 SharedPreferences 设置。
 7. **会话页视觉对齐原型**：SessionScreen 功能完整但视觉是 Material 默认风格，原型已有 session-plan/running/paused/failed/done 五个视图，尚未按原型对齐。
 8. **录制编辑器完整流程**：录制→捕获步骤→编辑→语言生成→保存→返回的完整闭环未在设备走通。
+
+## 本轮 P0/P1/P2 全局修复与页面重构（2026-09-18）
+
+### P0 全局修复（已提交并设备验证）
+
+1. **底栏双层涟漪**：AppBottomNavigation 的 tab Column 加 `indication = null`，去掉满格灰涟漪，只保留浅蓝选中胶囊。
+2. **背景色修正**：AppColors.BackgroundArgb 从 `#EEF1F5`（原型桌面 body 背景）改为 `#FAFBFC`（手机屏幕 paper 近白），同步更新 DesignTokenParityTest 断言。设备截图 p2-home2 确认背景近白、不再灰蓝。
+3. **全局输入框失焦**：新建 `ui/components/FocusClear.kt`，提供 `Modifier.clearFocusOnTapOutside()`（detectTapGestures onTap → clearFocus + hideKeyboard），应用到 ScreenScaffold 根 Column 和 AiAutoAndroidApp NavHost。子元素消费点击不触发，不误吞按钮。
+4. **AGENTS.md**：末尾新增"UI 交互规范"三条（失焦/弹窗/背景色）。
+
+### P1 通用底部弹窗组件（已提交并设备验证）
+
+新建 `ui/components/ProtoModalSheet.kt`，完全自绘（不用 Material3 ModalBottomSheet）：
+- scrim 半透明深蓝 `#16233755`，点遮罩关闭
+- 顶部把手 35x4dp 圆角9 `#d1d9e5`
+- 白底 `#FAFBFC` 圆角28dp 底部面板
+- slide up/down + fade in/out 动画（280ms）
+- 标题20sp Bold + 右上关闭 X + imePadding + 内容区 verticalScroll
+
+设备验证：助理页"选择应用"pill 点击弹出"这次使用哪些应用"底部弹窗（scrim+把手+应用列表+蓝色按钮），截图 p2-app-picker.png 确认。
+
+### P2 页面重构（三个子代理并行，目录互斥）
+
+| 页面 | 改动 | 设备验证 |
+|---|---|---|
+| ProviderScreen | BasicTextField 自绘输入框（白底+1dp描边+13dp圆角+50dp高+16sp垂直居中），修复文字截断 | 编译通过 |
+| AccessibilityScreen | 整体重写：删手动包名输入框/撤销按钮，改 PackageManager 应用列表+Switch（每行图标+应用名+包名+Switch），"打开无障碍配置"按钮仅在未开启时显示，琥珀色安全披露 NoticeBar 精简 | p2-accessibility.png 确认应用列表（Chrome/Gmail/Maps等）+Switch+按钮已隐藏 |
+| DesktopBridgeScreen | 配对码改 ProtoModalSheet 底部弹窗（标题"核对电脑邀请"+指纹卡+蓝色配对按钮+取消），新码自动弹出 | p2-bridge6.png 确认手机→电脑图标行+蓝色"开启桌面桥"按钮+USB分区+安全说明卡；p2-pair-modal.png 确认"等待电脑配对"状态切换 |
+| LanPairingScreen | 全面对齐原型设计语言，自绘邀请码输入框，补扫码按钮（"扫码能力规划中"诚实反馈），保留全部真实逻辑 | 编译通过 |
+| RecordingEditorScreen | 整体按原型重构：步骤时间轴rail+点步骤弹ProtoModalSheet「编辑步骤」+技能名称弹窗+AI语言归纳（仅建议用户确认后应用），保留选择器/坐标/等待/重试/失败策略/secret/revision冲突/dirty保护 | 编译通过 |
+| AssistantScreen | "选择应用"pill改弹ProtoModalSheet「这次使用哪些应用」，候选来自真实targetPackages，多选草稿确认后回显 | p2-app-picker.png 确认弹窗正常 |
+
+### 构建环境
+
+- JDK21：`$env:JAVA_HOME="E:\osdk-data\data\installs\java\21.0.12.1+1"`
+- 全量：`:app:testDebugUnitTest :app:lintDebug :app:assembleDebug` BUILD SUCCESSFUL
+- lint 抑制：QUERY_ALL_PACKAGES（AccessibilityScreen 查询全部已安装应用所需）
+- 设备：emulator-5554（ui-visual-35，1080x2400/420dpi/zh-CN）
+
+### Orange 5.0 模型说明
+
+create_agent schema 无 model 参数，无法显式指定 Orange 5.0，本轮子代理使用默认模型。

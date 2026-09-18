@@ -136,6 +136,42 @@
     <string name="bridge_usb_note">USB 调试信任和桌面桥是两层授权，均由你显式建立；会话随时可关闭。</string>
     <string name="bridge_security_notice">服务只绑定 %1$s:%2$d，不会监听 Wi-Fi 或移动网络。一次性码有效 2 分钟且成功使用后立即失效；会话 token 最长有效 15 分钟，不会显示在界面或写入日志。关闭后端口立即停止接受连接。</string>
 
+    <!-- 核对电脑邀请 · 底部弹窗（对齐原型 pairDemo() ModalBottomSheet） -->
+    <string name="bridge_pair_sheet_title">核对电脑邀请</string>
+    <string name="bridge_pair_sheet_subtitle">本机回环 · 一次性配对码</string>
+    <string name="bridge_pair_sheet_code_label">一次性配对码</string>
+    <string name="bridge_pair_sheet_hint">在电脑上输入上方码值。码值 2 分钟内有效，成功使用后立即失效。仅提供给当前通过 USB 调试授权的电脑。</string>
+    <string name="bridge_pair_confirm">配对</string>
+    <string name="bridge_pair_cancel">取消</string>
+    <string name="bridge_view_pair_code">查看配对码</string>
+
+    <!-- LAN 配对页内容（对齐原型 pair-manual 设计语言） -->
+    <string name="lan_heading">手动输入邀请码</string>
+    <string name="lan_desc">从桌面 CLI 获取一次性邀请码，粘贴到下方。</string>
+    <string name="lan_scan_entry">扫码输入</string>
+    <string name="lan_scan_planning">扫码能力规划中，当前请使用手工输入。</string>
+    <string name="lan_manual_label">邀请码</string>
+    <string name="lan_manual_placeholder">粘贴或输入邀请码</string>
+    <string name="lan_manual_submit">检查邀请码</string>
+    <string name="lan_review_title">核对连接信息</string>
+    <string name="lan_review_desktop">桌面网卡</string>
+    <string name="lan_review_desktop_type">网卡类型</string>
+    <string name="lan_review_fingerprint">短指纹</string>
+    <string name="lan_review_expires">邀请过期</string>
+    <string name="lan_select_host">选择桌面地址</string>
+    <string name="lan_select_iface">选择手机网卡</string>
+    <string name="lan_confirm_connect">我已核对指纹并连接</string>
+    <string name="lan_stop">停止 LAN 会话</string>
+    <string name="lan_session_expires">会话过期：%1$s</string>
+    <string name="lan_current_iface">当前手机网卡：%1$s</string>
+    <string name="lan_error_prefix">连接已停止：%1$s</string>
+    <string name="lan_status_input">等待输入邀请码</string>
+    <string name="lan_status_review">核对连接信息</string>
+    <string name="lan_status_connecting">正在连接…</string>
+    <string name="lan_status_connected">LAN 会话已连接</string>
+    <string name="lan_status_failed">连接失败，请重新输入邀请码</string>
+    <string name="lan_status_stopped">会话已停止</string>
+
     <!-- AI 模型页内容（按原型 #provider 信息层级，承载真实 Provider 配置） -->
     <string name="provider_heading">接上你的 AI。</string>
     <string name="provider_desc">支持 OpenAI 兼容接口。\n高级参数收起，不挡住第一次使用。</string>
@@ -163,24 +199,20 @@
     <string name="provider_test_failed">连接失败：%1$s</string>
     <string name="provider_bottom_note">密钥加密与连接测试由本机完成；连接测试只发一次最小请求，用于确认地址与模型可用。</string>
 
-    <!-- 允许操作的应用页内容（按原型 #permissions 信息层级，保留醒目披露全文） -->
+    <!-- 允许操作的应用页内容（按原型 #permissions 信息层级；披露精简，安全红线保留） -->
     <string name="accessibility_heading">只在你允许的范围内。</string>
-    <string name="accessibility_desc">读取界面文字与控件，执行你发起的操作。\n拒绝授权，仍可浏览和编辑技能。</string>
+    <string name="accessibility_desc">从已安装应用中逐个选择，\n授权后才会被观察和操作。</string>
     <string name="accessibility_disclosure_title">无障碍服务可以读取屏幕并代你操作。</string>
-    <string name="accessibility_disclosure_body">这是系统级能力，必须由你在系统设置中亲自开启。启用后，服务会在你填写的目标应用中读取界面文字、控件说明、层级、位置和状态，并可执行点击、长按、输入、滚动、返回、主页和最近任务。</string>
-    <string name="accessibility_disclosure_detail">这些信息可能包含你正在查看或输入的内容。密码字段、验证码和支付相关节点会在快照中清除，且不会记录或上传；受保护页面可能无法观察或操作。</string>
-    <string name="accessibility_disclosure_scope">本应用不是面向残障辅助用途的无障碍工具。你可以随时在系统设置中关闭服务，或在此撤销同意。</string>
+    <string name="accessibility_disclosure_body">只在你开启的应用内读取界面并执行你发起的操作；密码、验证码与支付内容不记录、不上传。你可随时在系统设置中关闭。</string>
     <string name="accessibility_service_state">系统无障碍服务</string>
     <string name="accessibility_service_on">已启用</string>
     <string name="accessibility_service_off">未启用</string>
     <string name="accessibility_apps_section">允许的应用</string>
-    <string name="accessibility_packages_label">允许操作的目标应用包名</string>
-    <string name="accessibility_packages_placeholder">com.example.app</string>
-    <string name="accessibility_packages_hint">每行、空格或逗号分隔，最多 32 个；服务不会处理其他应用。</string>
-    <string name="accessibility_consent">我已了解读取与操作的范围</string>
-    <string name="accessibility_grant">同意并打开系统无障碍设置</string>
-    <string name="accessibility_revoke">撤销同意</string>
-    <string name="accessibility_bottom_note">这里只提供引导，不会自动打开或更改系统设置。模型图像授权每次任务单独选择，默认关闭。</string>
+    <string name="accessibility_apps_loading">正在读取已安装应用…</string>
+    <string name="accessibility_open_settings">打开无障碍配置</string>
+    <string name="accessibility_settings_unavailable">此设备没有可用的无障碍设置页面。</string>
+    <string name="accessibility_save_failed">保存无障碍配置失败，请重试。</string>
+    <string name="accessibility_bottom_note">关闭任一开关即撤销该应用授权；服务是否生效以系统无障碍设置为准。</string>
     <string name="settings_profile_name">我的随身助理</string>
     <string name="settings_profile_desc">本地优先 · 自己掌控</string>
     <string name="settings_status_title">助理状态</string>
@@ -210,4 +242,59 @@
     <string name="settings_control_title">你始终有控制权</string>
     <string name="settings_control_desc">没有任务时不持续看屏。锁屏、权限失效或页面不可验证时暂停。支付、登录与系统安全确认由你处理。</string>
     <string name="settings_target_count">%1$d 个应用</string>
+
+    <!-- 助理页：选择应用底部弹窗（列出无障碍已允许的目标包，本次任务多选） -->
+    <string name="assistant_apps_pill_count">选择应用·%1$d</string>
+    <string name="assistant_apps_sheet_title">这次使用哪些应用</string>
+    <string name="assistant_apps_sheet_desc">只列出无障碍已允许的应用；本次任务只使用你勾选的应用，不改变系统授权范围。</string>
+    <string name="assistant_apps_empty_title">还没有允许的应用</string>
+    <string name="assistant_apps_empty_desc">请先在「我的 → 允许操作的应用」添加目标应用包名，再回来选择本次任务范围。</string>
+    <string name="assistant_apps_open_settings">去添加应用</string>
+    <string name="assistant_apps_confirm">使用所选应用</string>
+    <string name="assistant_apps_select_cd">选择应用 %1$s</string>
+
+    <!-- 技能编排编辑器（录制后整理步骤与语言归纳） -->
+    <string name="editor_title">技能编排</string>
+    <string name="editor_tab_steps">步骤编排</string>
+    <string name="editor_tab_language">用一句话表达</string>
+    <string name="editor_dirty">有未保存更改</string>
+    <string name="editor_saved_revision">已保存 revision %1$d</string>
+    <string name="editor_steps_summary">%1$d 步 · %2$d 步启用</string>
+    <string name="editor_steps_hint">点步骤修改；用箭头调整顺序。等待、失败策略与定位规则收在编辑弹窗里。</string>
+    <string name="editor_undo_cd">撤销</string>
+    <string name="editor_redo_cd">重做</string>
+    <string name="editor_rename_cd">修改技能名称</string>
+    <string name="editor_rename_title">技能名称</string>
+    <string name="editor_rename_hint">以后用这个名字找到它</string>
+    <string name="editor_rename_save">保存名称</string>
+    <string name="editor_step_up_cd">上移</string>
+    <string name="editor_step_down_cd">下移</string>
+    <string name="editor_step_disable">停用</string>
+    <string name="editor_step_enable">启用</string>
+    <string name="editor_step_duplicate_cd">复制</string>
+    <string name="editor_step_delete_cd">删除</string>
+    <string name="editor_step_modal_title">编辑步骤</string>
+    <string name="editor_step_modal_hint">调整选择器、坐标、等待、重试与失败策略；只作用于当前步骤，不覆盖录制证据。</string>
+    <string name="editor_form_submit">保存这一步</string>
+    <string name="editor_lang_title">技能描述</string>
+    <string name="editor_lang_placeholder">用一句话描述这个技能做什么…</string>
+    <string name="editor_lang_generate">AI 生成描述</string>
+    <string name="editor_lang_clear">清空</string>
+    <string name="editor_lang_apply">应用到脚本</string>
+    <string name="editor_lang_confirm_hint">生成的描述仅供参考，不自动修改步骤。确认后点击“应用到脚本”，再点“保存”生效。</string>
+    <string name="editor_lang_result_changed">已生成新描述，与已有描述不同。点击“应用到脚本”确认保存，或继续手动编辑。</string>
+    <string name="editor_lang_result_same">生成结果与已有描述一致。</string>
+    <string name="editor_lang_not_configured">AI 模型未配置，无法生成描述。请先在设置中配置 Provider，或手动编辑描述。</string>
+    <string name="editor_lang_error">生成失败：%1$s。可手动编辑描述后保存。</string>
+    <string name="editor_dry_run">预检</string>
+    <string name="editor_save">保存</string>
+    <string name="editor_copy">复制脚本</string>
+    <string name="editor_back">返回</string>
+    <string name="editor_dry_run_ok">预检可执行</string>
+    <string name="editor_dry_run_failed">预检失败</string>
+    <string name="editor_revision_conflict">revision 冲突：expected=%1$d，current=%2$d</string>
+    <string name="editor_discard_title">丢弃未保存更改？</string>
+    <string name="editor_discard_body">离开会恢复最后保存的 revision。</string>
+    <string name="editor_discard_confirm">丢弃</string>
+    <string name="editor_discard_cancel">继续编辑</string>
 </resources>
