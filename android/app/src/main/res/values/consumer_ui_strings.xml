@@ -297,4 +297,16 @@
     <string name="editor_discard_body">离开会恢复最后保存的 revision。</string>
     <string name="editor_discard_confirm">丢弃</string>
     <string name="editor_discard_cancel">继续编辑</string>
+    <!-- 录制新流程页（原型 #record） -->
+    <string name="record_hero_title">照常操作，剩下的交给我。</string>
+    <string name="record_hero_subtitle">记录你使用的应用和操作，结束后一起整理成可复用的步骤。</string>
+    <string name="record_notice_idle">语义录制已可用，自动意图归纳为规划中。</string>
+    <string name="record_notice_recording">正在录制：操作将被记录，结束后可整理成步骤。</string>
+    <string name="record_notice_paused">已暂停：录制已暂停，可继续或结束。</string>
+    <string name="record_name_label">给这次操作起个名字</string>
+    <string name="record_name_placeholder">例如：整理稍后阅读</string>
+    <string name="record_target_label">只记录这些应用</string>
+    <string name="record_target_empty">未选择应用</string>
+    <string name="record_target_change">更改</string>
+    <string name="record_privacy_note">不记录密码、验证码或支付内容；未知操作会标为待补充。</string>
 </resources>
