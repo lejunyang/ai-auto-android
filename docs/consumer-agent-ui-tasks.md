@@ -401,3 +401,27 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - 录制全流程（填名称→开始录制→捕获步骤→编辑→保存）未在设备走通（需真实无障碍事件捕获）
 - P1-C 我的页间距逐元素复核未完成
 - P1-D 弹窗动画连续截图未完成
+
+## P0 修复：录制中NoticeBar颜色+诚实文案（2026-09-18，commit 56f9d23）
+
+### 问题
+- 录制中NoticeBar为红色危险色调（#FDE8E8/#B63E49），录制是正常进行态不应红色
+- NoticeBar宣称"语义录制已可用"，但实际捕获步骤为裸动作(ui.click/ui.wait)，无控件语义描述，名不副实
+
+### 修复
+- 录制中状态NoticeBar改为蓝色info（#EEF4FF/#2563EB），与录制前同色系
+- 文案改为"动作录制可用，语义识别与意图归纳优化中"，诚实反映当前能力
+
+### 设备验证
+- r9-notice.png：蓝色底+蓝字+"动作录制可用，语义识别与意图归纳优化中"
+
+### 验证结果
+- testDebugUnitTest + lintDebug + assembleDebug BUILD SUCCESSFUL
+- make comments 通过（543文件）
+- APK SHA256: 9BBC82C89C29A1C3C6932B05C52A906CC5E65BD4BCA607179AAB1423F3180E13
+
+### 未验证/未完成边界
+- 语义录制提取控件语义（点击"闹钟"而非裸ui.click）需改录制引擎架构，本轮未做
+- 纯等待噪声抑制/合并相邻wait需改录制引擎，本轮未做
+- P1-C 我的页间距逐元素复核未完成
+- P1-D 弹窗动画连续截图未完成
