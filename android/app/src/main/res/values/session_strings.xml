@@ -29,4 +29,9 @@
     <string name="session_phase_completed">任务已完成</string>
     <string name="session_phase_failed">会话失败</string>
     <string name="session_phase_stopped">会话已停止</string>
+    <!-- 原型七状态标签 -->
+    <string name="session_phase_plan">先看看我准备怎么做</string>
+    <string name="session_phase_running">正在替你处理</string>
+    <string name="session_phase_confirm">保存之前，请你确认</string>
+    <string name="session_phase_done">已经整理好了</string>
 </resources>
