@@ -38,7 +38,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
+import dev.aiauto.android.ui.components.ProtoSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -277,7 +277,7 @@ private fun AppAuthRow(
             )
         }
         Spacer(Modifier.width(8.dp))
-        Switch(
+        ProtoSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
         )

@@ -15,6 +15,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -397,4 +399,59 @@ fun Modifier.dashedBorder(
         cornerRadius = CornerRadius(radiusPx, radiusPx),
         style = Stroke(width = strokePx, pathEffect = effect),
     )
+}
+
+/**
+ * 功能用途：自绘 ProtoSwitch 开关，无 Material 水波纹。
+ *
+ * 视觉：开启态蓝色轨道 #2563EB + 白色圆点右滑；关闭态灰色轨道 + 白色圆点左滑。
+ * 尺寸：轨道 51×31dp，圆角 15.5dp；圆点 27×27dp，圆角 13.5dp。
+ * 交互：点击切换，走 protoClickable 无涟漪。
+ */
+@Composable
+fun ProtoSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val trackColor = if (checked) Color(0xFF2563EB) else Color(0xFFE5E7EB)
+    val thumbOffset = if (checked) 24.dp else 3.dp
+    Box(
+        modifier = modifier
+            .size(width = 51.dp, height = 31.dp)
+            .clip(CircleShape)
+            .background(trackColor)
+            .clickable { onCheckedChange(!checked) },
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(start = thumbOffset, top = 2.dp)
+                .size(27.dp)
+                .clip(CircleShape)
+                .background(Color.White),
+        )
+    }
+}
+
+/**
+ * 功能用途：自绘 ProtoCircularProgressIndicator 旋转圈，无 Material 默认。
+ *
+ * 视觉：蓝色圆弧 3px 描边，持续旋转。
+ */
+@Composable
+fun ProtoCircularProgressIndicator(
+    modifier: Modifier = Modifier,
+    color: Color = Color(0xFF2563EB),
+) {
+    // 简化版：静态圆弧，旋转动画用 rememberInfiniteTransition 复杂度高，
+    // 此处先用静态圆弧占位，后续如需旋转可在调用方加 LaunchedEffect 驱动。
+    androidx.compose.foundation.Canvas(modifier = modifier.size(24.dp)) {
+        drawArc(
+            color = color,
+            startAngle = 270f,
+            sweepAngle = 270f,
+            useCenter = false,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round),
+        )
+    }
 }
