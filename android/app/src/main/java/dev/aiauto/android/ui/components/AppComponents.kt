@@ -150,13 +150,15 @@ fun AppBottomNavigation(
     }
 }
 
-/** 段落标题，右侧可放置操作按钮（如"查看全部"）。 */
+/** 段落标题，右侧可放置操作按钮（如"查看全部"）或自定义 trailing 槽（如标签 chip）。 */
 @Composable
 fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
     onActionClick: (() -> Unit)? = null,
+    // 右侧自定义内容（如"未来概念"标签）；统一在本行内承载，避免外层再包 Row 把标题行异常撑高。
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -167,6 +169,8 @@ fun SectionHeader(
     ) {
         Text(
             text = title,
+            // weight 占满中间空间把 trailing 推到右侧，fill=false 让标题保持内容宽度。
+            modifier = Modifier.weight(1f, fill = false),
             // 原型 .section-head h3：16sp/650/行高24/字距 -0.6（分区小标题，区别于 24sp 的 page-heading）。
             fontSize = 16.sp,
             fontWeight = FontWeight(650),
@@ -174,8 +178,10 @@ fun SectionHeader(
             letterSpacing = (-0.6).sp,
             color = AppColors.Ink,
         )
-        if (actionLabel != null && onActionClick != null) {
-            TextButton(
+        when {
+            // 优先渲染自定义 trailing（标签等），随标题行垂直居中，不额外撑高标题行。
+            trailing != null -> trailing()
+            actionLabel != null && onActionClick != null -> TextButton(
                 onClick = onActionClick,
                 contentPadding = PaddingValues(horizontal = 4.dp),
             ) {

@@ -557,3 +557,53 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - 卡片→区块标题10dp、区块标题→卡片7dp，符合原型
 
 ### APK SHA256: 4A7B31BF161069CDC66E8E68BBA37A0BB75FD5150D52805500FC0BBBB34D27EF
+
+> 注：本节"已达标"结论在 verify-round12 复验时被推翻——"随时唤起"区块因嵌套 Row 仍异常撑高（见下节），其余区块当时已达标。
+
+## C 间距最终修复 + D 弹窗动画设备闭环（2026-09-18，verify-round12，MainAgent 亲手验收）
+
+### C. "我的"页间距——量化复验推翻前结论并修复
+
+**复验方法**：`uiautomator dump` 取宽近全屏容器 bounds，按 1dp=2.625px（420dpi）换算，逐段量化卡片底边到标题顶、标题底到卡片顶的距离。
+
+**发现的遗留缺陷**：上一轮把 SectionHeader padding 改为 10/7、spacedBy 改为 0 后，助理状态卡↔连接与能力、随时唤起卡↔控制权两处已达标（9.9/6.8/9.9dp），但**连接卡底→"随时唤起"标题仍 34.6dp、标题底→随时唤起卡顶仍 31.3dp**（原型 10/7），该标题 item 实占 89.9dp（正常约 41dp），上下为纯空白。
+
+**根因**：SettingsScreen 用嵌套 `Row(SpaceBetween, CenterVertically){ SectionHeader(fillMaxWidth); TagChip }` 包裹"随时唤起"标题行，SectionHeader 自身又是 fillMaxWidth 的 Row，嵌套水平布局测量异常把整行撑高、标题垂直居中后上下各空约 24dp。
+
+**修复**：
+- `AppComponents.kt` SectionHeader 新增 `trailing: (@Composable () -> Unit)? = null` 槽，标题 `Modifier.weight(1f, fill=false)`，右侧统一在本行内承载（trailing 优先，其次 actionLabel），消除嵌套 Row。
+- `SettingsScreen.kt` 删除外层包裹 Row，改为 `SectionHeader(trailing = { TagChip("运行中可用") })`。
+
+**修复后实测（全部对齐原型 10/7）**：
+
+| 相邻元素 | 修前 | 修后 | 原型 |
+|---|---|---|---|
+| 助理状态卡底 → "连接与能力"标题顶 | 9.9 | 9.9 | 10 |
+| "连接与能力"标题底 → 连接卡顶 | 6.8 | 6.8 | 7 |
+| 连接卡底 → "随时唤起"标题顶 | 34.6 | **11.0** | 10 |
+| "随时唤起"标题底 → 随时唤起卡顶 | 31.3 | **7.6** | 7 |
+| 随时唤起卡底 → "你始终有控制权"标题顶 | 9.9 | 9.9 | 10 |
+
+右侧"运行中可用"标签正常显示在"随时唤起"标题同行（x327–383dp）。截图 `verify-round12/r12-settings-final.png`。trailing 默认 null，技能/记录页共用 SectionHeader 布局不受影响。
+
+### D. ProtoModalSheet 弹出/关闭动画 + 三种关闭路径设备闭环
+
+**抽帧方法**：`screenrecord`（12Mbps）录屏 → pull mp4 → OpenCV cv2 按时间戳/逐帧导出 → PIL 拼接触印样目检。
+
+- **弹出动画实证**（`sheet_open.png`，桌面桥配对码弹窗）：点"开启桌面桥"后连续帧显示面板从底部仅露标题 → 接近到位 → 完全展开，scrim 同步从透明淡入到半透明深蓝（slide up + fade in，280ms）。
+- **关闭动画实证**（`sheet_close2.png`，13.65fps 逐帧）：点 scrim 后 1.24s（面板完整+深 scrim）→ 1.39/1.46s（scrim 连续变浅、面板下滑淡出）→ 1.54s（scrim 基本消失、面板不可见）→ 1.61/1.76s（完全回到连接电脑页），即 slide down + fade out，退出动画播完才 dismiss。
+- **三种关闭路径 dump 回读（弹窗"核对电脑邀请"存在性）**：
+
+| 关闭方式 | 打开 | 关闭后 modal | 备注 |
+|---|---|---|---|
+| 右上角 X（content-desc=关闭） | True | False | — |
+| 系统返回键 BACK | True | False | Dialog 拦截返回，**仍停留在连接电脑页**，不退出页面 |
+| 点 scrim 上部空白 | True | False | — |
+
+代码依据：`ProtoModalSheet.kt` 双层 AnimatedVisibility（外层 scrim fadeIn/Out、内层面板 slideInVertically/slideOutVertically，均 280ms tween），`Dialog(onDismissRequest=onDismiss)` 承接返回键，`LaunchedEffect(visible)` 在 visible=false 时延迟 280ms 再 `showDialog=false` 保证退出动画完整。
+
+### 验证结果
+- make comments 通过（545 个手写文件）
+- :app:testDebugUnitTest + :app:lintDebug + :app:assembleDebug BUILD SUCCESSFUL
+- 设备：emulator-5554（ui-visual-35，1080x2400/420dpi/zh-CN），截图/录屏均 pull 后 PIL/cv2 解码目检
+- 验证后已关闭桌面桥复位、清理 /sdcard 临时录屏 mp4

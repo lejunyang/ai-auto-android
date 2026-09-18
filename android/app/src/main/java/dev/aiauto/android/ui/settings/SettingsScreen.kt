@@ -185,18 +185,17 @@ fun SettingsScreen(
         }
 
         // 4. 随时唤起：悬浮入口与运行通知，会话运行期间可在其他应用旁观察和控制。
+        // 右侧"未来概念"标签走 SectionHeader 的 trailing 槽，避免再嵌套 Row 把标题行异常撑高。
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SectionHeader(title = stringResource(R.string.settings_quick_access_title))
-                TagChip(
-                    text = stringResource(R.string.settings_quick_access_tag),
-                    tone = TagTone.NEUTRAL,
-                )
-            }
+            SectionHeader(
+                title = stringResource(R.string.settings_quick_access_title),
+                trailing = {
+                    TagChip(
+                        text = stringResource(R.string.settings_quick_access_tag),
+                        tone = TagTone.NEUTRAL,
+                    )
+                },
+            )
         }
         item {
             Card(
