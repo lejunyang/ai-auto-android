@@ -82,6 +82,12 @@ organizer 交付三页对齐后，MainAgent 不采信"报告完成"，自行装 
 4. **语音外发透明**：使用系统 SpeechRecognizer，如实告知用户识别可能由系统/云端服务处理，不宣称本地离线。权限拒绝后降级为文本输入。
 5. **可观察可停止**：会话运行期间，通知和悬浮窗始终展示状态并提供暂停/停止入口。
 
+## 悬浮窗验证限制（实测）
+
+- Compose 悬浮窗（TYPE_APPLICATION_OVERLAY + 反射 set ViewTree owners）的内容**不出现在 uiautomator dump 中**。
+- 本轮 overlay 各态验证用固定坐标点击 + 图像核对完成，无法用 dump 定位/逐元素比对 overlay 卡片按钮。
+- 未来要自动化 overlay 验证：需修复 overlay 的无障碍语义桥接，或采用固定坐标/图像 diff。
+
 ## 未验证边界（诚实说明）
 
 以下功能代码与单测已验证，但**真实会话运行时在模拟器上尚未完整验证**，不声称已完成：
@@ -285,7 +291,13 @@ adb -s emulator-5554 push provider-config.xml /data/data/dev.aiauto.android/shar
 # 完整会话测试：输入→发送→计划确认→开始安全会话→观察悬浮窗/前台服务/历史
 ```
 
-### 未验证边界（诚实说明）
+### 悬浮窗验证限制（实测）
+
+- Compose 悬浮窗（TYPE_APPLICATION_OVERLAY + 反射 set ViewTree owners）的内容**不出现在 uiautomator dump 中**。
+- 本轮 overlay 各态验证用固定坐标点击 + 图像核对完成，无法用 dump 定位/逐元素比对 overlay 卡片按钮。
+- 未来要自动化 overlay 验证：需修复 overlay 的无障碍语义桥接，或采用固定坐标/图像 diff。
+
+## 未验证边界（诚实说明）
 
 1. **真实 AI Provider 会话**：当前用 LocalDemoProvider 验证流程，真实 OpenAI 兼容 Provider 需用户配置 API key 后验证。
 2. **悬浮窗交互**：悬浮窗已显示（系统通知确认），但收起/展开/暂停/停止/结果的完整交互未在设备上逐项验证。
@@ -372,7 +384,13 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - make comments 通过（543 文件）
 - APK SHA256: 716DBA69BBDCBCEA6929A0C36A21167E79C16B13A2D605F5DCC69324B74AE3A2
 
-### 未验证边界
+### 悬浮窗验证限制（实测）
+
+- Compose 悬浮窗（TYPE_APPLICATION_OVERLAY + 反射 set ViewTree owners）的内容**不出现在 uiautomator dump 中**。
+- 本轮 overlay 各态验证用固定坐标点击 + 图像核对完成，无法用 dump 定位/逐元素比对 overlay 卡片按钮。
+- 未来要自动化 overlay 验证：需修复 overlay 的无障碍语义桥接，或采用固定坐标/图像 diff。
+
+## 未验证边界
 - 录制全流程（填名称→选应用→开始录制→捕获步骤→编辑→保存）未在设备走通（需真实无障碍授权）
 - 我的页间距逐元素复核（P1-C）未完成
 - 弹窗动画连续截图（P1-D）未完成
@@ -397,7 +415,13 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - make comments 通过（543 文件）
 - APK SHA256: 62C6478DB689DA0D25E62C6571BA13D60D1CCD45651D4345A7C144FDE6C996BF
 
-### 未验证边界
+### 悬浮窗验证限制（实测）
+
+- Compose 悬浮窗（TYPE_APPLICATION_OVERLAY + 反射 set ViewTree owners）的内容**不出现在 uiautomator dump 中**。
+- 本轮 overlay 各态验证用固定坐标点击 + 图像核对完成，无法用 dump 定位/逐元素比对 overlay 卡片按钮。
+- 未来要自动化 overlay 验证：需修复 overlay 的无障碍语义桥接，或采用固定坐标/图像 diff。
+
+## 未验证边界
 - 录制全流程（填名称→开始录制→捕获步骤→编辑→保存）未在设备走通（需真实无障碍事件捕获）
 - P1-C 我的页间距逐元素复核未完成
 - P1-D 弹窗动画连续截图未完成
@@ -441,7 +465,13 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - make comments通过（544文件）
 - APK SHA256: 6F7F263439BEC26B81B6F77F99FE5057F6D607DAEBDA4BBEEBE951F0FAC4A8D3
 
-### 未验证边界
+### 悬浮窗验证限制（实测）
+
+- Compose 悬浮窗（TYPE_APPLICATION_OVERLAY + 反射 set ViewTree owners）的内容**不出现在 uiautomator dump 中**。
+- 本轮 overlay 各态验证用固定坐标点击 + 图像核对完成，无法用 dump 定位/逐元素比对 overlay 卡片按钮。
+- 未来要自动化 overlay 验证：需修复 overlay 的无障碍语义桥接，或采用固定坐标/图像 diff。
+
+## 未验证边界
 - 录制全流程设备走通（切到时钟应用点tab→捕获步骤→可读名显示）未在本轮设备走通
 - wait噪声去重（WINDOW_CHANGED映射）未做
 - StepHumanizer单元测试未补

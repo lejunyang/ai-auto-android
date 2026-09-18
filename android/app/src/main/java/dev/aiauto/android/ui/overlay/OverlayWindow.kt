@@ -264,14 +264,16 @@ private fun ActionRow(state: OverlaySessionState, actions: OverlayActions) {
     }
 }
 
-/** body 状态描述：running/paused/result 等状态的简短中文描述。 */
+/** body 状态描述：running/paused/result/stopped 等状态的简短中文描述。 */
 private fun bodyText(state: OverlaySessionState): String = when (state) {
     is OverlaySessionState.Running -> "正在自动处理，请稍候…"
     is OverlaySessionState.Paused -> "已暂停，等你回来"
-    is OverlaySessionState.Completed -> "任务执行完毕"
+    is OverlaySessionState.Completed -> "任务执行完毕"  // 成功完成：蓝色对勾
     is OverlaySessionState.Failed -> "执行遇到问题"
     is OverlaySessionState.Idle -> "待命"
 }
+
+
 
 /**
  * 计算状态对应的图标与着色。
@@ -287,7 +289,11 @@ private fun rememberStatusVisual(state: OverlaySessionState): Pair<ImageVector, 
         is OverlaySessionState.Idle -> Icons.Filled.PlayArrow to onSurfaceVariant
         is OverlaySessionState.Running -> Icons.Filled.Refresh to primary
         is OverlaySessionState.Paused -> Icons.Filled.Pause to primary
-        is OverlaySessionState.Completed -> Icons.Filled.CheckCircle to primary
+        is OverlaySessionState.Completed -> {
+            // 主动停止用中性 stop 图标，成功完成才用蓝色对勾。
+            if (state.summary.contains("停止")) Pair(Icons.Filled.Close, onSurfaceVariant)
+            else Pair(Icons.Filled.CheckCircle, primary)
+        }
         is OverlaySessionState.Failed -> Icons.Filled.ErrorOutline to error
     }
 }
@@ -310,12 +316,15 @@ private fun rotatingDegrees(): Float {
     return degrees
 }
 
-/** 顶部任务标题：空闲态显示默认文案，其余显示任务名。 */
+/** 顶部任务标题：空闲态显示默认文案，其余显示任务名；主动停止与成功完成区分语气。 */
 private fun taskTitle(state: OverlaySessionState): String = when (state) {
     is OverlaySessionState.Idle -> "AI 自动化"
     is OverlaySessionState.Running -> state.task.ifBlank { "正在执行任务" }
     is OverlaySessionState.Paused -> state.task.ifBlank { "任务已暂停" }
-    is OverlaySessionState.Completed -> state.task.ifBlank { "任务完成" }
+    is OverlaySessionState.Completed ->
+        // summary 含"已停止"=主动停止，否则=成功完成。
+        if (state.summary.contains("停止")) "任务已停止"
+        else state.task.ifBlank { "任务完成" }
     is OverlaySessionState.Failed -> state.task.ifBlank { "任务失败" }
 }
 
