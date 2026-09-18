@@ -12,6 +12,12 @@
             android:exported="true"
             android:theme="@android:style/Theme.Material.Light.NoActionBar" />
 
+        <!-- debug-only 悬浮窗演练场：脱离会话端到端验证悬浮窗各状态，release 不包含。 -->
+        <activity
+            android:name="dev.aiauto.android.ui.overlay.debug.OverlayDemoActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+
         <service
             android:name="dev.aiauto.android.accessibility.ScreenshotTestAccessibilityService"
             android:description="@string/test_accessibility_service_description"
