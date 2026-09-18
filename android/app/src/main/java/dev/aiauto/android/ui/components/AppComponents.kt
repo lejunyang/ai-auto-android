@@ -161,7 +161,7 @@ fun SectionHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 20.dp, bottom = 8.dp),
+            .padding(top = 10.dp, bottom = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

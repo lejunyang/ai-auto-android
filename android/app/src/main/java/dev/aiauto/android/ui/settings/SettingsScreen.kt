@@ -98,7 +98,7 @@ fun SettingsScreen(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         // 0. 页头：原型 setHeader('我的','把边界设好，其余交给它。') + 右上 info 按钮。
         item {
@@ -321,7 +321,7 @@ private fun ProfileHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 2.dp),
+            .padding(top = 4.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Surface(
