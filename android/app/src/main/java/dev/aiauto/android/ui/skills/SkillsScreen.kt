@@ -36,7 +36,7 @@ import dev.aiauto.android.ui.components.ProtoIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import dev.aiauto.android.ui.components.ProtoTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -255,9 +255,7 @@ fun SkillsScreen(
             title = { Text(stringResource(R.string.skills_info_dialog_title)) },
             text = { Text(stringResource(R.string.skills_info_dialog_content)) },
             confirmButton = {
-                TextButton(onClick = { showInfoDialog = false }) {
-                    Text(stringResource(android.R.string.ok))
-                }
+                ProtoTextButton(text = stringResource(android.R.string.ok), onClick = { showInfoDialog = false })
             },
         )
     }
@@ -269,9 +267,7 @@ fun SkillsScreen(
             title = { Text(stringResource(R.string.skills_idea_dialog_title)) },
             text = { Text(stringResource(R.string.skills_idea_dialog_content)) },
             confirmButton = {
-                TextButton(onClick = { showIdeaDialog = false }) {
-                    Text(stringResource(android.R.string.ok))
-                }
+                ProtoTextButton(text = stringResource(android.R.string.ok), onClick = { showIdeaDialog = false })
             },
         )
     }

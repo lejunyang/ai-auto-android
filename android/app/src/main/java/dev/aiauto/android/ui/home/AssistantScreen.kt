@@ -56,7 +56,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import dev.aiauto.android.ui.components.ProtoTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -247,9 +247,7 @@ fun AssistantScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
-                TextButton(onClick = onGoToSkills) {
-                    Text("查看全部", fontSize = 13.sp)
-                }
+                ProtoTextButton(text = "查看全部", onClick = onGoToSkills)
             }
         }
         if (scripts.isEmpty()) {

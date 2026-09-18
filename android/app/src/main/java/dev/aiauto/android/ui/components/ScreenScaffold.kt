@@ -31,7 +31,7 @@ import dev.aiauto.android.ui.components.ProtoIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import dev.aiauto.android.ui.components.ProtoTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -159,9 +159,7 @@ private fun ScreenHeader(
             title = { Text(title) },
             text = { Text(infoText) },
             confirmButton = {
-                TextButton(onClick = { showInfo = false }) {
-                    Text(stringResource(R.string.common_got_it))
-                }
+                ProtoTextButton(text = stringResource(R.string.common_got_it), onClick = { showInfo = false })
             },
         )
     }

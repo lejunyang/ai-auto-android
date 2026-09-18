@@ -38,7 +38,7 @@ import dev.aiauto.android.ui.components.ProtoIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import dev.aiauto.android.ui.components.ProtoTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -300,9 +300,7 @@ fun HistoryScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { selectedRecord = null }) {
-                    Text("关闭")
-                }
+                ProtoTextButton(text = "关闭", onClick = { selectedRecord = null })
             },
         )
     }
@@ -314,9 +312,7 @@ fun HistoryScreen(
             title = { Text(stringResource(R.string.history_info_dialog_title)) },
             text = { Text(stringResource(R.string.history_info_dialog_content)) },
             confirmButton = {
-                TextButton(onClick = { showInfoDialog = false }) {
-                    Text(stringResource(android.R.string.ok))
-                }
+                ProtoTextButton(text = stringResource(android.R.string.ok), onClick = { showInfoDialog = false })
             },
         )
     }
