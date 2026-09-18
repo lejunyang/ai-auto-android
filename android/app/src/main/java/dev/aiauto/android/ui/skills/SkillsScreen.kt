@@ -32,7 +32,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import dev.aiauto.android.ui.components.ProtoIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -116,7 +116,7 @@ fun SkillsScreen(
                         lineHeight = 16.sp,
                     )
                 }
-                IconButton(onClick = { showInfoDialog = true }) {
+                ProtoIconButton(onClick = { showInfoDialog = true }) {
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = stringResource(R.string.skills_info_dialog_title),
@@ -141,7 +141,7 @@ fun SkillsScreen(
                     lineHeight = 36.sp,
                     letterSpacing = (-0.8).sp,
                 )
-                IconButton(onClick = onStartRecording) {
+                ProtoIconButton(onClick = onStartRecording) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = stringResource(R.string.skills_new),

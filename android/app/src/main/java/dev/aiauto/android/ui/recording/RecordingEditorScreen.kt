@@ -48,7 +48,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import dev.aiauto.android.ui.components.ProtoCircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import dev.aiauto.android.ui.components.ProtoIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -131,7 +131,7 @@ fun RecordingEditorScreen(
     ) {
         // 顶部栏：返回 + 页面标题。
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
+            ProtoIconButton(onClick = onBack) {
                 Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.editor_back))
             }
             Text(
@@ -154,7 +154,7 @@ fun RecordingEditorScreen(
                 color = AppColors.Ink,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = {
+            ProtoIconButton(onClick = {
                 renameDraft = state.script.name
                 renameModalVisible = true
             }) {
@@ -217,17 +217,15 @@ fun RecordingEditorScreen(
                         color = AppColors.Muted,
                     )
                     Row {
-                        IconButton(
+                        ProtoIconButton(
                             onClick = onUndo,
-                            enabled = state.canUndo,
-                            modifier = Modifier.testTag(RecordingTestTags.EDITOR_UNDO),
+                                modifier = Modifier.testTag(RecordingTestTags.EDITOR_UNDO),
                         ) {
                             Icon(Icons.Default.Undo, contentDescription = stringResource(R.string.editor_undo_cd))
                         }
-                        IconButton(
+                        ProtoIconButton(
                             onClick = onRedo,
-                            enabled = state.canRedo,
-                            modifier = Modifier.testTag(RecordingTestTags.EDITOR_REDO),
+                                modifier = Modifier.testTag(RecordingTestTags.EDITOR_REDO),
                         ) {
                             Icon(Icons.Default.Redo, contentDescription = stringResource(R.string.editor_redo_cd))
                         }
@@ -623,7 +621,7 @@ private fun StepRail(
                 horizontalArrangement = Arrangement.spacedBy(0.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onMoveUp, modifier = Modifier.size(36.dp)) {
+                ProtoIconButton(onClick = onMoveUp, modifier = Modifier.size(36.dp)) {
                     Icon(
                         Icons.Default.KeyboardArrowUp,
                         contentDescription = stringResource(R.string.editor_step_up_cd),
@@ -631,7 +629,7 @@ private fun StepRail(
                         modifier = Modifier.size(16.dp),
                     )
                 }
-                IconButton(onClick = onMoveDown, modifier = Modifier.size(36.dp)) {
+                ProtoIconButton(onClick = onMoveDown, modifier = Modifier.size(36.dp)) {
                     Icon(
                         Icons.Default.KeyboardArrowDown,
                         contentDescription = stringResource(R.string.editor_step_down_cd),
@@ -648,7 +646,7 @@ private fun StepRail(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = onDuplicate, modifier = Modifier.size(36.dp)) {
+                ProtoIconButton(onClick = onDuplicate, modifier = Modifier.size(36.dp)) {
                     Icon(
                         Icons.Default.ContentCopy,
                         contentDescription = stringResource(R.string.editor_step_duplicate_cd),
@@ -656,7 +654,7 @@ private fun StepRail(
                         modifier = Modifier.size(16.dp),
                     )
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                ProtoIconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = stringResource(R.string.editor_step_delete_cd),

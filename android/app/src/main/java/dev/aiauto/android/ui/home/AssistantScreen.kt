@@ -51,7 +51,7 @@ import dev.aiauto.android.ui.components.ProtoCircularProgressIndicator
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import dev.aiauto.android.ui.components.ProtoIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -569,7 +569,7 @@ private fun ComposerCard(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(onClick = onVoiceClick, modifier = Modifier.size(44.dp)) {
+                    ProtoIconButton(onClick = onVoiceClick, modifier = Modifier.size(44.dp)) {
                         Icon(
                             AppIcons.Mic,
                             contentDescription = "语音输入",

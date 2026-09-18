@@ -38,7 +38,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import dev.aiauto.android.ui.components.ProtoIconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -158,7 +158,7 @@ fun ProtoModalSheet(
                                     fontWeight = FontWeight.Bold,
                                     color = AppColors.Ink,
                                 )
-                                IconButton(
+                                ProtoIconButton(
                                     onClick = onDismiss,
                                     modifier = Modifier.size(32.dp),
                                 ) {

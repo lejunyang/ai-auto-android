@@ -35,7 +35,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import dev.aiauto.android.ui.components.ProtoIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -285,7 +285,7 @@ private fun SettingsPageHeader(
                 color = AppColors.Muted,
             )
         }
-        IconButton(
+        ProtoIconButton(
             onClick = { showInfo = true },
             modifier = Modifier.size(AppSpacing.IconButtonSize),
         ) {

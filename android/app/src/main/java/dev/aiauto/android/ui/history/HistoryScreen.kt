@@ -34,7 +34,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import dev.aiauto.android.ui.components.ProtoCircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import dev.aiauto.android.ui.components.ProtoIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -122,7 +122,7 @@ fun HistoryScreen(
                         lineHeight = 16.sp,
                     )
                 }
-                IconButton(onClick = { showInfoDialog = true }) {
+                ProtoIconButton(onClick = { showInfoDialog = true }) {
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = stringResource(R.string.history_info_dialog_title),

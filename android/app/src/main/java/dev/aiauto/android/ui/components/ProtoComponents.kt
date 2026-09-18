@@ -376,6 +376,26 @@ fun ProtoSectionHead(
 }
 
 /**
+ * 功能用途：自绘 ProtoIconButton，无 Material 水波纹。
+ * 44dp 最小点击区，圆形/圆角背景可选。
+ */
+@Composable
+fun ProtoIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .size(44.dp)
+            .protoClickable(onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
+    }
+}
+
+/**
  * 虚线边框修饰符（原型 .teach-card 的 border:1px dashed）。
  * Compose 没有内置虚线 border，用 drawBehind + PathEffect 实现。
  */
