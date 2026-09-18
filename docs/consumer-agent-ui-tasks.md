@@ -425,3 +425,24 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - 纯等待噪声抑制/合并相邻wait需改录制引擎，本轮未做
 - P1-C 我的页间距逐元素复核未完成
 - P1-D 弹窗动画连续截图未完成
+
+## StepHumanizer步骤可读化（2026-09-18）
+
+### 修复
+- 新建 automation/recording/StepHumanizer.kt（纯Kotlin可单测）：
+  从selectorCandidates按contentDescription>text>resourceId提取可读目标名，
+  ui.click→"点击 闹钟"、ui.scroll→"向下滑动"、ui.wait→"等待 应用 打开"
+- RecordingStepCard主标题用humanize()+灰色techBadge小字
+- StepRail(RecordingEditorScreen)主标题用humanize()
+- 录制中NoticeBar蓝色(#EEF4FF/#2563EB)，文案改回"语义录制可用，自动意图归纳规划中"
+
+### 验证结果
+- testDebugUnitTest + lintDebug + assembleDebug BUILD SUCCESSFUL
+- make comments通过（544文件）
+- APK SHA256: 6F7F263439BEC26B81B6F77F99FE5057F6D607DAEBDA4BBEEBE951F0FAC4A8D3
+
+### 未验证边界
+- 录制全流程设备走通（切到时钟应用点tab→捕获步骤→可读名显示）未在本轮设备走通
+- wait噪声去重（WINDOW_CHANGED映射）未做
+- StepHumanizer单元测试未补
+- P1-C我的页间距/P1-D弹窗动画未完成
