@@ -187,6 +187,7 @@ fun NoticeBar(
 
 /**
  * 主按钮（原型 .primary.full）：蓝底白字、15dp 圆角、46dp 高。
+ * 自绘 Box + protoClickable，无 Material 水波纹。
  */
 @Composable
 fun ProtoPrimaryButton(
@@ -195,20 +196,19 @@ fun ProtoPrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    Button(
-        onClick = onClick,
+    val bg = if (enabled) AppColors.Primary else AppColors.Line
+    val fg = if (enabled) AppColors.Surface else AppColors.Muted
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(AppSpacing.PrimaryButtonHeight),
-        enabled = enabled,
-        shape = RoundedCornerShape(15.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = AppColors.Primary,
-            contentColor = AppColors.Surface,
-        ),
+            .height(AppSpacing.PrimaryButtonHeight)
+            .background(bg, RoundedCornerShape(15.dp))
+            .protoClickable(onClick = onClick, enabled = enabled),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
+            color = fg,
             fontSize = AppTypographyTokens.PrimaryButtonFontSize,
             lineHeight = AppTypographyTokens.PrimaryButtonLineHeight,
             fontWeight = FontWeight.SemiBold,
@@ -226,21 +226,20 @@ fun ProtoSecondaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    Button(
-        onClick = onClick,
+    val borderColor = if (enabled) AppColors.Line else AppColors.Line
+    val textColor = if (enabled) AppColors.Primary else AppColors.Muted
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(AppSpacing.PrimaryButtonHeight),
-        enabled = enabled,
-        shape = RoundedCornerShape(15.dp),
-        border = BorderStroke(1.dp, AppColors.Line),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = AppColors.Surface,
-            contentColor = AppColors.Primary,
-        ),
+            .height(AppSpacing.PrimaryButtonHeight)
+            .background(AppColors.Surface, RoundedCornerShape(15.dp))
+            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(15.dp))
+            .protoClickable(onClick = onClick, enabled = enabled),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
+            color = textColor,
             fontSize = AppTypographyTokens.PrimaryButtonFontSize,
             lineHeight = AppTypographyTokens.PrimaryButtonLineHeight,
             fontWeight = FontWeight.SemiBold,
@@ -258,16 +257,18 @@ fun ProtoTextButton(
     modifier: Modifier = Modifier,
     center: Boolean = false,
 ) {
-    TextButton(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = AppSpacing.MinTouchTarget),
+    Box(
+        modifier = modifier
+            .heightIn(min = AppSpacing.MinTouchTarget)
+            .protoClickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
             fontSize = AppTypographyTokens.TextBtnFontSize,
             lineHeight = AppTypographyTokens.TextBtnLineHeight,
             color = AppColors.Primary,
-            textAlign = if (center) androidx.compose.ui.text.style.TextAlign.Center else androidx.compose.ui.text.style.TextAlign.Start,
+            textAlign = if (center) TextAlign.Center else TextAlign.Start,
             modifier = if (center) Modifier.fillMaxWidth() else Modifier,
         )
     }
