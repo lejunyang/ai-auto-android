@@ -62,14 +62,6 @@ fun RecordingHost(
     }
 
     when (uiState.destination) {
-        RecordingDestination.LIST -> RecordingListScreen(
-            scripts = recording.scripts,
-            busy = recording.busy,
-            errorMessage = recording.errorMessage,
-            onStartRecording = viewModel::openNewRecording,
-            onOpenScript = viewModel::openScript,
-            onBack = onBack,
-        )
 
         RecordingDestination.SESSION -> RecordingSessionScreen(
             draft = recording.draft,

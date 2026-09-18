@@ -34,14 +34,13 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
 enum class RecordingDestination {
-    LIST,
     SESSION,
     DETAIL,
     EDITOR,
 }
 
 data class RecordingUiState(
-    val destination: RecordingDestination = RecordingDestination.LIST,
+    val destination: RecordingDestination = RecordingDestination.SESSION,
     val recording: RecordingControllerState = RecordingControllerState(),
     val nameInput: String = "",
     val targetPackagesInput: String = "",
