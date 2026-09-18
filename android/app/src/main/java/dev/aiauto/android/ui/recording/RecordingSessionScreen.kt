@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -429,7 +430,7 @@ private fun SelectedAppsCard(
     }
 }
 
-/** 弹窗内应用多选列表：列表可滚动，确认按钮固定底部不随列表滚动。 */
+/** 弹窗内应用多选列表：普通 Column 在 ProtoModalSheet 的 verticalScroll 里自然滚动，按钮在列表下方。 */
 @Composable
 private fun AppPickerList(
     apps: List<InstalledApp>,
@@ -437,50 +438,40 @@ private fun AppPickerList(
     onToggle: (String) -> Unit,
     onConfirm: () -> Unit,
 ) {
-    // 列布局：上方可滚动应用列表(weight 1f)，下方固定确认按钮。
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // 可滚动应用列表，最大高度 400dp 防止弹窗过高。
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f, fill = false)
-                .heightIn(max = 400.dp)
-                .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            items(apps) { app ->
-                val isChecked = app.packageName in selected
-                Row(
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        apps.forEach { app ->
+            val isChecked = app.packageName in selected
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onToggle(app.packageName) }
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AppIconBitmap(app)
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { onToggle(app.packageName) }
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .weight(1f)
+                        .padding(horizontal = 10.dp),
                 ) {
-                    AppIconBitmap(app)
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 10.dp),
-                    ) {
-                        Text(text = app.label, fontSize = 14.sp, color = AppColors.Ink)
-                        Text(text = app.packageName, fontSize = 10.sp, color = AppColors.Muted)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clip(RoundedCornerShape(11.dp))
-                            .background(if (isChecked) AppColors.Primary else AppColors.Line),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (isChecked) {
-                            Text(text = "✓", fontSize = 14.sp, color = AppColors.Surface)
-                        }
+                    Text(text = app.label, fontSize = 14.sp, color = AppColors.Ink)
+                    Text(text = app.packageName, fontSize = 10.sp, color = AppColors.Muted)
+                }
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(if (isChecked) AppColors.Primary else AppColors.Line),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isChecked) {
+                        Text(text = "✓", fontSize = 14.sp, color = AppColors.Surface)
                     }
                 }
             }
         }
-        // 确认按钮固定在弹窗底部，不随列表滚动。
+        // 确认按钮在列表下方，随弹窗内容自然滚动到底可见。
         PrimaryButton(
             text = stringResource(R.string.record_picker_confirm),
             onClick = onConfirm,
