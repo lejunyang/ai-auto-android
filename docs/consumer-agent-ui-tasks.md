@@ -488,3 +488,22 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - C. 我的页间距逐元素复核未做
 - D. 弹窗动画连续截图未做
 - packageLabel三处UI传入未验证
+
+## label映射接通（2026-09-18）
+
+### 修复
+- RecordingStepCard加packageLabel参数
+- RecordingSessionScreen传installedApps.associate{it.packageName to it.label}
+- RecordingDetailScreen用PackageManager查询script.targetPackages label映射
+- StepHumanizer.humanize(step, packageLabel)显示"等待 时钟 打开"
+
+### 验证结果
+- testDebugUnitTest + lintDebug + assembleDebug BUILD SUCCESSFUL
+- make comments通过（545文件）
+- APK SHA256: B0A1AE03ED80697DE90BC06D2124B9D2B2E58FA186B61A2F23BFCA906C0768BA
+
+### 未完成边界
+- StepRail(RecordingEditorScreen)未传packageLabel
+- C. 我的页间距逐元素复核未做
+- D. 弹窗动画连续截图未做
+- 设备录时钟验证未在本轮执行
