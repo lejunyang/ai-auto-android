@@ -54,7 +54,7 @@ class RecordingViewModelTest {
     val mainDispatcherRule: TestWatcher = RecordingMainDispatcherRule(dispatcher)
 
     @Test
-    fun `recording controls delegate parsed input and return to list BitsUT`() =
+    fun `recording controls delegate parsed input and cancel stays in session BitsUT`() =
         runTest(dispatcher) {
             val coordinator = FakeRecordingCoordinator()
             val viewModel = viewModel(coordinator)
@@ -76,10 +76,12 @@ class RecordingViewModelTest {
             assertEquals(1, coordinator.pauseCalls)
             assertEquals(1, coordinator.resumeCalls)
 
-            viewModel.navigateBack()
+            // SESSION 返回：先停止录制接收，宿主再 pop 回技能页；destination 仍为 SESSION，
+            // 真正退出由导航层 onBack 完成，不再落回冗余 LIST。
+            viewModel.cancelActiveRecording()
 
             assertEquals(1, coordinator.cancelCalls)
-            assertEquals(RecordingDestination.LIST, viewModel.uiState.value.destination)
+            assertEquals(RecordingDestination.SESSION, viewModel.uiState.value.destination)
         }
 
     @Test
@@ -166,7 +168,7 @@ class RecordingViewModelTest {
         }
 
     @Test
-    fun `detail replay rejects missing secret and delete returns to list BitsUT`() =
+    fun `detail replay rejects missing secret and delete keeps detail for nav exit BitsUT`() =
         runTest(dispatcher) {
             val script = secretScript()
             val coordinator = FakeRecordingCoordinator(mapOf(script.id to script))
@@ -182,7 +184,8 @@ class RecordingViewModelTest {
             viewModel.deleteSelected()
 
             assertEquals(script.id, coordinator.deletedId)
-            assertEquals(RecordingDestination.LIST, viewModel.uiState.value.destination)
+            // 删除只做数据操作、destination 仍为 DETAIL，由导航层 pop 回技能页。
+            assertEquals(RecordingDestination.DETAIL, viewModel.uiState.value.destination)
         }
 
     @Test

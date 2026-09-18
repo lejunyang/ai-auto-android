@@ -300,7 +300,7 @@
     <!-- 录制新流程页（原型 #record） -->
     <string name="record_hero_title">照常操作，剩下的交给我。</string>
     <string name="record_hero_subtitle">记录你使用的应用和操作，结束后一起整理成可复用的步骤。</string>
-    <string name="record_notice_idle">语义录制可用，自动意图归纳规划中。</string>
+    <string name="record_notice_idle">动作录制可用；控件语义识别与意图归纳仍在规划中。</string>
     <string name="record_notice_recording">正在录制：操作将被记录，结束后可整理成步骤。</string>
     <string name="record_notice_paused">已暂停：录制已暂停，可继续或结束。</string>
     <string name="record_name_label">给这次操作起个名字</string>

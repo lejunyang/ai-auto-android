@@ -119,6 +119,11 @@ class SessionCoordinator(
     private var startTimeMs: Long = 0L
     private var historyWritten = false
 
+    // 进程恢复闸门：恢复流程开始即置位，阻止 sessionJob 的“未发终态强制清理”路径
+    // 在恢复收尾后又把状态覆盖回 Idle，保证 RecoveredStopped 为最终状态。
+    @Volatile
+    private var recoveryInProgress = false
+
     // 单会话互斥锁：保证 start 的检查-设置是原子的，防止并发请求同时通过检查。
     private val startLock = Any()
 
@@ -177,8 +182,8 @@ class SessionCoordinator(
                 return@launch
             }
             // engine.start 正常返回但可能没有发终态（不合约完成）。
-            // 如果此时仍 Active，视为异常结束，强制清理。
-            if (isActive) {
+            // 如果此时仍 Active 且恢复流程未介入，视为异常结束，强制清理。
+            if (isActive && !recoveryInProgress) {
                 _sessionState.value = AutomationSessionState(phase = SessionPhase.Stopped)
                 writeHistoryIfNeeded(_sessionState.value)
                 cleanupAfterTerminal()
@@ -238,19 +243,33 @@ class SessionCoordinator(
     }
 
     /**
-     * 进程恢复时调用。
-     * 仅当当前为 Active（说明有陈旧会话残留）才 stop engine 并标记 RecoveredStopped；
+     * 进程恢复时调用（挂起）。
+     * 仅当当前为 Active（说明有陈旧会话残留）才停止 engine 并标记 RecoveredStopped；
      * 否则保持 Idle，不产生虚假的恢复状态。
+     *
+     * 确定性保证：先置恢复闸门并取消后台 job，再 join 等待它们完全终止（不再有机会写状态），
+     * 最后才设置 RecoveredStopped，避免并发的强制清理把终态覆盖回 Idle。
      * 生产环境应结合持久化的 active lease marker 判断；本类默认以当前内存状态为准。
      */
-    fun handleProcessRecovery() {
+    suspend fun handleProcessRecovery() {
         if (!isActive) return
+        recoveryInProgress = true
         try {
             activeEngine?.stop()
         } catch (_: Exception) {
-            // 清理失败不影响状态重置。
+            // 停止失败不影响状态重置。
         }
-        cleanupAfterTerminal()
+        // 取消并 join 后台协程，确保其完全终止、杜绝滞后写入覆盖终态。
+        stateCollectionJob?.cancel()
+        sessionJob?.cancel()
+        stateCollectionJob?.join()
+        sessionJob?.join()
+        stateCollectionJob = null
+        sessionJob = null
+        stopTimeoutJob?.cancel()
+        stopTimeoutJob = null
+        currentRequest = null
+        activeEngine = null
         _coordinatorState.value = CoordinatorState.RecoveredStopped
     }
 

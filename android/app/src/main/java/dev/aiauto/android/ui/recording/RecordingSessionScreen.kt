@@ -93,9 +93,11 @@ fun RecordingSessionScreen(
     }
     // 应用多选弹窗是否可见。
     var showAppPicker by remember { mutableStateOf(false) }
-    // 弹窗内草稿勾选集合（确认后才回写 targetPackages）。
-    val selectedPackages = remember(targetPackages) {
-        targetPackages.split(",", "，").map { it.trim() }.filter { it.isNotEmpty() }.toMutableSet()
+    // 弹窗内草稿勾选集合（可观察状态，点选立即刷新勾选指示器；确认后才回写 targetPackages）。
+    var selectedPackages by remember(targetPackages) {
+        mutableStateOf(
+            targetPackages.split(",", "，").map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
+        )
     }
 
     Column(
@@ -292,7 +294,9 @@ fun RecordingSessionScreen(
                 apps = installedApps,
                 selected = selectedPackages,
                 onToggle = { pkg ->
-                    if (!selectedPackages.add(pkg)) selectedPackages.remove(pkg)
+                    // 用不可变副本更新可观察状态，触发重组以即时刷新右侧勾选圈。
+                    selectedPackages =
+                        if (pkg in selectedPackages) selectedPackages - pkg else selectedPackages + pkg
                 },
             )
         },

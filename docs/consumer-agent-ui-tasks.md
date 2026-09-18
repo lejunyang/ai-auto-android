@@ -607,3 +607,30 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - :app:testDebugUnitTest + :app:lintDebug + :app:assembleDebug BUILD SUCCESSFUL
 - 设备：emulator-5554（ui-visual-35，1080x2400/420dpi/zh-CN），截图/录屏均 pull 后 PIL/cv2 解码目检
 - 验证后已关闭桌面桥复位、清理 /sdcard 临时录屏 mp4
+
+---
+
+## 录制勾选态 / 返回栈 / flaky 根治（2026-09-18，verify-round13）
+
+### 问题
+1. 录制页应用多选弹窗：勾选集合是普通 `MutableSet`，add/remove 不触发重组，勾选圈无即时变化（确认退出后才生效）。
+2. 技能 tab 新建 / 点技能后返回，落入未重构的老「操作录制」LIST（`RecordingListScreen.kt`）。
+3. 全量 `testDebugUnitTest` 反复失败于基线 flaky 用例 `process recovery when active...`（coordinator scope 用 `Dispatchers.Default` 真实并发，后台强制清理协程把 `RecoveredStopped` 覆盖回 Idle）。
+
+### 修复
+- `RecordingSessionScreen.kt`：勾选集合改为可观察的 `mutableStateOf<Set<String>>`，onToggle 用不可变副本更新，勾选圈即时变蓝（设备截图 v13-picker-before/after 确认）。
+- `RecordingViewModel.kt`：`cancelActiveRecording()` / `deleteSelected()` 只清理数据、不再内部导航到 LIST，删除 `navigateBack()`；`RecordingHost.kt`：SESSION/DETAIL 返回与删除后直接 `onBack()` 回技能页。设备脚本验证新建→返回、详情→返回均直接回技能页（ALL PASS）。
+- `SessionCoordinator.kt`：`handleProcessRecovery` 改为 `suspend`，新增 `@Volatile recoveryInProgress` 闸门；先置闸门、cancel 后台 job，再 **join 等待其完全终止**，最后才设 `RecoveredStopped`，杜绝并发覆盖；sessionJob 强制清理条件加 `&& !recoveryInProgress`。
+- `consumer_ui_strings.xml`：IDLE 提示改为诚实文案「动作录制可用；控件语义识别与意图归纳仍在规划中。」
+
+### 验证结果
+- make comments 通过（545 个手写文件）
+- :app:testDebugUnitTest + :app:lintDebug + :app:assembleDebug BUILD SUCCESSFUL
+- SessionCoordinatorTest 16 测试确定性通过（恢复用例改用 runBlocking 单线程 scope + join 验证）
+
+### APK
+- SHA256：`EDCB6DEFBE0CD2A53CA9239F617C20C737BE760B5D751D524526D7F02611747F`（77,681,953 bytes）
+
+### 未完成边界
+- 老 `RecordingListScreen.kt`（LIST）保留为无参进入兜底，正常技能页路径不可见；确认无入口后可删除。
+- 悬浮窗收起/展开/暂停交互、会话执行页七状态视觉对齐仍待推进。

@@ -171,11 +171,14 @@ class SessionCoordinatorTest {
 
     @Test
     fun `process recovery when active stops engine and marks recovered stopped`() = runBlocking {
-        val coordinator = createCoordinator()
+        // 用 runBlocking 自身 scope：后台 job 在单线程事件循环里，不与断言真实并发；
+        // handleProcessRecovery 的 cancel/join 保证设终态前后台 job 已完全终止。
+        val coordinator = createCoordinator(scope = this)
         coEvery { engine.start(any()) } just runs
         coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
         assertTrue(coordinator.isActive)
 
+        // 挂起恢复：内部 cancel/join 后台协程后再设终态，结果确定。
         coordinator.handleProcessRecovery()
 
         verify(exactly = 1) { engine.stop() }
@@ -184,7 +187,7 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `process recovery when idle does nothing and stays idle`() {
+    fun `process recovery when idle does nothing and stays idle`() = runBlocking {
         val coordinator = createCoordinator()
         assertFalse(coordinator.isActive)
 

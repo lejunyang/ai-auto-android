@@ -145,15 +145,14 @@ class RecordingViewModel(
         coordinator.finish(mutableUiState.value.nameInput)
     }
 
-    fun cancel() {
+    /**
+     * 功能用途：放弃当前录制草稿并停止底层录制事件接收。
+     * 仅清理录制状态、不做页面跳转；是否退出宿主由导航层决定。新架构下从技能页
+     * 进入的录制子流程，取消后由 Host 直接 pop 回技能页，不再落回冗余的 LIST。
+     */
+    fun cancelActiveRecording() {
         awaitingFinishedScript = false
         coordinator.cancelRecording()
-        mutableUiState.update {
-            it.copy(
-                destination = RecordingDestination.LIST,
-                selectedScriptId = null,
-            )
-        }
     }
 
     fun openScript(id: String) {
@@ -186,15 +185,13 @@ class RecordingViewModel(
         )
     }
 
+    /**
+     * 功能用途：删除当前选中脚本。只执行数据删除、不做页面跳转，
+     * 删除后由导航层 pop 回技能页（技能列表自动刷新，被删脚本消失）。
+     */
     fun deleteSelected() {
         val id = mutableUiState.value.selectedScriptId ?: return
         coordinator.delete(id)
-        mutableUiState.update {
-            it.copy(
-                destination = RecordingDestination.LIST,
-                selectedScriptId = null,
-            )
-        }
     }
 
     fun openEditor() {
@@ -215,20 +212,6 @@ class RecordingViewModel(
 
     fun openSavedCopy(scriptId: String) {
         openScript(scriptId)
-    }
-
-    fun navigateBack() {
-        when (mutableUiState.value.destination) {
-            RecordingDestination.LIST -> Unit
-            RecordingDestination.SESSION -> cancel()
-            RecordingDestination.DETAIL -> mutableUiState.update {
-                it.copy(
-                    destination = RecordingDestination.LIST,
-                    selectedScriptId = null,
-                )
-            }
-            RecordingDestination.EDITOR -> Unit
-        }
     }
 
     override fun onCleared() {

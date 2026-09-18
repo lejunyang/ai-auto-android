@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import dev.aiauto.android.R
+import dev.aiauto.android.automation.recording.RecordingStatus
 import dev.aiauto.android.automation.recording.replay.visual.VisualReplayAuthorizationProvider
 import dev.aiauto.android.ui.components.ScreenScaffold
 
@@ -51,6 +52,15 @@ fun RecordingHost(
         }
     }
 
+    // 录制子流程（新建配置/录制中）退出：非 IDLE 说明已在接收录制事件，先停止接收再退出；
+    // 统一 pop 回技能页，不在宿主内落回冗余的 LIST 列表页（技能页本身即脚本列表）。
+    val exitRecording: () -> Unit = {
+        if (recording.draft.status != RecordingStatus.IDLE) {
+            viewModel.cancelActiveRecording()
+        }
+        onBack()
+    }
+
     when (uiState.destination) {
         RecordingDestination.LIST -> RecordingListScreen(
             scripts = recording.scripts,
@@ -72,8 +82,8 @@ fun RecordingHost(
             onPause = viewModel::pause,
             onResume = viewModel::resume,
             onFinish = viewModel::finish,
-            onCancel = viewModel::cancel,
-            onBack = viewModel::navigateBack,
+            onCancel = exitRecording,
+            onBack = exitRecording,
         )
 
         RecordingDestination.DETAIL -> {
@@ -81,7 +91,7 @@ fun RecordingHost(
             if (script == null) {
                 RecordingDetailLoadingScreen(
                     errorMessage = recording.errorMessage,
-                    onBack = viewModel::navigateBack,
+                    onBack = onBack,
                 )
             } else {
                 key(script.id) {
@@ -104,8 +114,12 @@ fun RecordingHost(
                             )
                         },
                         onEdit = viewModel::openEditor,
-                        onDelete = viewModel::deleteSelected,
-                        onBack = viewModel::navigateBack,
+                        onDelete = {
+                            // 删除脚本后直接退出回技能页，列表自动刷新。
+                            viewModel.deleteSelected()
+                            onBack()
+                        },
+                        onBack = onBack,
                     )
                 }
             }
@@ -116,7 +130,7 @@ fun RecordingHost(
             if (script == null) {
                 RecordingDetailLoadingScreen(
                     errorMessage = recording.errorMessage,
-                    onBack = viewModel::navigateBack,
+                    onBack = onBack,
                 )
             } else {
                 key(script.id) {
