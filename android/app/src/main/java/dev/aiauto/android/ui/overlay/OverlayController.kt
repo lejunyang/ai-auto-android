@@ -95,6 +95,33 @@ class OverlayController(private val context: Context) {
         sessionState.value = state
     }
 
+    /** 公开：展开悬浮窗卡片，供外部（debug 演练场、前台服务）直接控制展开形态。 */
+    fun expand() {
+        expanded.value = true
+        updateWindowSize()
+    }
+
+    /** 公开：收起为边缘小圆/药丸，悬浮窗仍保持挂载；区别于 hide() 的彻底移除。 */
+    fun collapse() {
+        expanded.value = false
+        updateWindowSize()
+    }
+
+    /**
+     * 展开/收起切换时动态更新窗口尺寸：
+     * - 收起态：48dp×48dp 小窗，只挡圆那一小块，不拦截后台触摸。
+     * - 展开态：280dp×200dp 卡片窗，贴合卡片内容。
+     * 用 updateViewLayout 而非重建窗口，避免闪烁。
+     */
+    private fun updateWindowSize() {
+        val view = composeView ?: return
+        val wm = windowManager ?: return
+        val params = buildLayoutParams()
+        runCatching { wm.updateViewLayout(view, params) }
+            .onSuccess { android.util.Log.i("OverlayCtrl", "updateViewLayout to expanded=${expanded.value}") }
+            .onFailure { e -> android.util.Log.e("OverlayCtrl", "updateViewLayout failed: ${e.message}", e) }
+    }
+
     /**
      * 显示悬浮窗。
      * 无权限时触发 [onPermissionRequired] 并直接返回，不抛异常。
@@ -193,20 +220,25 @@ class OverlayController(private val context: Context) {
         // dp 转像素：WindowManager 布局参数的 x/y 单位为 px。
         val marginPx = (OVERLAY_MARGIN_DP * density).toInt()
         val topOffsetPx = (OVERLAY_TOP_OFFSET_DP * density).toInt()
-        // 固定尺寸而非 WRAP_CONTENT：ComposeView 在 WindowManager 下 WRAP_CONTENT
-        // 首次 measure 量出 0 导致悬浮窗不可见。给一个足够大的区域，Compose 内容自己居中。
-        val overlayWidthPx = (OVERLAY_WIDTH_DP * density).toInt()
-        val overlayHeightPx = (OVERLAY_HEIGHT_DP * density).toInt()
+        // 窗口尺寸严格贴合可见内容：
+        // - 收起态：48dp×48dp 小圆，只挡右上角一小块，不拦截后台触摸。
+        // - 展开态：280dp×200dp 卡片窗，贴合 ExpandedCard 内容。
+        // 两态内容尺寸均确定，避免 WRAP_CONTENT 首次 measure 量出 0 的问题。
+        val (w, h) = if (expanded.value) {
+            EXPANDED_WIDTH_DP to EXPANDED_HEIGHT_DP
+        } else {
+            COLLAPSED_SIZE_DP to COLLAPSED_SIZE_DP
+        }
         return WindowManager.LayoutParams(
-            overlayWidthPx,
-            overlayHeightPx,
+            (w * density).toInt(),
+            (h * density).toInt(),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             android.graphics.PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            // 距屏幕右缘与顶部的初始边距，避开状态栏。
             x = marginPx
             y = topOffsetPx
         }
@@ -278,13 +310,15 @@ class OverlayController(private val context: Context) {
     }
 
     companion object {
-        // 距屏幕右缘边距（dp），右上角布局在 WRAP_CONTENT 下观感一致。
+        // 距屏幕右缘边距（dp）。
         private const val OVERLAY_MARGIN_DP = 16
         // 距屏幕顶部初始偏移（dp），避开状态栏。
         private const val OVERLAY_TOP_OFFSET_DP = 96
-        // 悬浮窗固定宽高（dp）：足够容纳展开卡片 280dp，收起态 48dp 居中。
-        private const val OVERLAY_WIDTH_DP = 320
-        private const val OVERLAY_HEIGHT_DP = 400
+        // 收起态窗口尺寸（dp）：48dp 小圆，只挡右上角一小块。
+        private const val COLLAPSED_SIZE_DP = 48
+        // 展开态窗口尺寸（dp）：280dp 宽 × 200dp 高，贴合 ExpandedCard。
+        private const val EXPANDED_WIDTH_DP = 280
+        private const val EXPANDED_HEIGHT_DP = 200
     }
 }
 

@@ -34,15 +34,16 @@ class OverlayDemoActivity : Activity() {
             show()
         }
 
+        // 每个按钮一键设置「会话状态 + 展开/收起形态」，使各状态可被脚本确定性复现与截图。
         val buttons = listOf(
-            "Running 展开" to { setState(OverlaySessionState.Running("演示任务")); expand() },
-            "收起为边缘圆" to { collapse() },
-            "重新展开" to { expand() },
-            "暂停态" to { setState(OverlaySessionState.Paused("演示任务")) },
-            "继续/Running" to { setState(OverlaySessionState.Running("演示任务")) },
-            "停止态" to { setState(OverlaySessionState.Completed("演示任务", "已停止")) },
-            "完成结果态" to { setState(OverlaySessionState.Completed("演示任务", "任务已完成")) },
-            "失败态" to { setState(OverlaySessionState.Failed("演示任务", "模拟失败原因")) },
+            "Running 展开" to { setState(OverlaySessionState.Running("演示任务")); controller?.expand() },
+            "收起为边缘圆" to { controller?.collapse() },
+            "重新展开" to { controller?.expand() },
+            "暂停态" to { setState(OverlaySessionState.Paused("演示任务")); controller?.expand() },
+            "继续/Running" to { setState(OverlaySessionState.Running("演示任务")); controller?.expand() },
+            "停止态" to { setState(OverlaySessionState.Completed("演示任务", "已停止")); controller?.expand() },
+            "完成结果态" to { setState(OverlaySessionState.Completed("演示任务", "任务已完成")); controller?.expand() },
+            "失败态" to { setState(OverlaySessionState.Failed("演示任务", "模拟失败原因")); controller?.expand() },
             "隐藏悬浮窗" to { controller?.hide() },
             "显示悬浮窗" to { controller?.show() },
         )
@@ -63,20 +64,6 @@ class OverlayDemoActivity : Activity() {
 
     private fun setState(state: OverlaySessionState) {
         controller?.updateState(state)
-    }
-
-    private fun expand() {
-        // 直接更新状态触发重组：展开态由 OverlayController 内部 expanded 控制。
-        // 通过反射调用 onExpand 翻转 expanded。
-        controller?.let { c ->
-            // 简单方式：重新 show 并更新状态
-            c.updateState(OverlaySessionState.Running("演示任务"))
-        }
-        Toast.makeText(this, "展开（请点悬浮窗圆）", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun collapse() {
-        Toast.makeText(this, "收起（请点悬浮窗卡片收起按钮）", Toast.LENGTH_SHORT).show()
     }
 
     private fun demoActions() = object : OverlayActions {
