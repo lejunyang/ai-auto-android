@@ -171,8 +171,13 @@ fun LanPairingScreen(
             ) {
                 Spacer(Modifier.height(4.dp))
                 ProtoPrimaryButton(
-                    text = stringResource(R.string.lan_confirm_connect),
+                    text = if (state.phase == LanPairingPhase.CONNECTING) {
+                        stringResource(R.string.lan_status_connecting)
+                    } else {
+                        stringResource(R.string.lan_confirm_connect)
+                    },
                     onClick = onConfirmFingerprintAndConnect,
+                    loading = state.phase == LanPairingPhase.CONNECTING,
                 )
             }
         }

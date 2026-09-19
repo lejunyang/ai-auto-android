@@ -11,11 +11,17 @@ package dev.aiauto.android.ui.components
  * （411x914 视口下 CSS px == Android dp）。
  */
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -195,24 +201,39 @@ fun ProtoPrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    loading: Boolean = false,
 ) {
-    val bg = if (enabled) AppColors.Primary else AppColors.Line
-    val fg = if (enabled) AppColors.Surface else AppColors.Muted
+    // loading 时保持蓝底但屏蔽点击，展示白色旋转圈反馈。
+    val active = enabled || loading
+    val bg = if (active) AppColors.Primary else AppColors.Line
+    val fg = if (active) AppColors.Surface else AppColors.Muted
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(AppSpacing.PrimaryButtonHeight)
             .background(bg, RoundedCornerShape(15.dp))
-            .protoClickable(onClick = onClick, enabled = enabled),
+            .protoClickable(onClick = onClick, enabled = enabled && !loading),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = text,
-            color = fg,
-            fontSize = AppTypographyTokens.PrimaryButtonFontSize,
-            lineHeight = AppTypographyTokens.PrimaryButtonLineHeight,
-            fontWeight = FontWeight.SemiBold,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            if (loading) {
+                ProtoCircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = AppColors.Surface,
+                )
+                Spacer(Modifier.width(10.dp))
+            }
+            Text(
+                text = text,
+                color = fg,
+                fontSize = AppTypographyTokens.PrimaryButtonFontSize,
+                lineHeight = AppTypographyTokens.PrimaryButtonLineHeight,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }
 
@@ -474,9 +495,17 @@ fun ProtoCircularProgressIndicator(
     modifier: Modifier = Modifier,
     color: Color = Color(0xFF2563EB),
 ) {
-    // 简化版：静态圆弧，旋转动画用 rememberInfiniteTransition 复杂度高，
-    // 此处先用静态圆弧占位，后续如需旋转可在调用方加 LaunchedEffect 驱动。
-    androidx.compose.foundation.Canvas(modifier = modifier.size(24.dp)) {
+    // 无限旋转：0→360 线性循环，驱动 270° 圆弧形成转圈反馈。
+    val transition = rememberInfiniteTransition(label = "proto-progress")
+    val angle = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = 800, easing = LinearEasing),
+        ),
+        label = "proto-progress-angle",
+    ).value
+    androidx.compose.foundation.Canvas(modifier = modifier.size(24.dp).rotate(angle)) {
         drawArc(
             color = color,
             startAngle = 270f,

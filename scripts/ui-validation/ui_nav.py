@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 功能用途：模拟器 UI 导航辅助工具。通过 uiautomator dump 按文本查找元素中心坐标，
-支持仅查找（find）与查找后点击（tap），避免在命令行内联 Python 造成引号转义问题。
+支持仅查找（find）与查找后点击（tap）。点击默认命中“包含该文字的最小可点击容器”，
+避免点到不处理手势的文字子节点导致操作不生效。
 
 用法：
   python ui_nav.py find "连接电脑"
@@ -34,35 +35,74 @@ def dump_xml():
         return handle.read()
 
 
+def all_nodes():
+    """解析 dump 为节点字典列表：text、clickable、box(left,top,right,bottom)。"""
+    xml = dump_xml()
+    nodes = []
+    for raw in re.findall(r"<node\b[^>]*>", xml):
+        tm = re.search(r'text="([^"]*)"', raw)
+        bm = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', raw)
+        cm = re.search(r'clickable="(true|false)"', raw)
+        if not bm:
+            continue
+        nodes.append({
+            "text": tm.group(1) if tm else "",
+            "clickable": bool(cm and cm.group(1) == "true"),
+            "box": tuple(map(int, bm.groups())),
+        })
+    return nodes
+
+
 def find_text(text):
     """返回所有文本包含 text 的节点：(完整文本, 中心x, 中心y, left, top, right, bottom)。"""
-    xml = dump_xml()
     results = []
-    # 逐节点解析，属性顺序不固定，分别取 text 与 bounds。
-    for node in re.findall(r"<node\b[^>]*>", xml):
-        tm = re.search(r'text="([^"]*)"', node)
-        bm = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', node)
-        if not tm or not bm or text not in tm.group(1):
+    for node in all_nodes():
+        if text not in node["text"]:
             continue
-        left, top, right, bottom = map(int, bm.groups())
-        results.append((tm.group(1), (left + right) // 2, (top + bottom) // 2,
+        left, top, right, bottom = node["box"]
+        results.append((node["text"], (left + right) // 2, (top + bottom) // 2,
                         left, top, right, bottom))
     return results
 
 
+def clickable_target(text, index=0):
+    """定位包含目标文字的最小可点击容器中心；无则回退到文字节点中心。"""
+    nodes = all_nodes()
+    text_nodes = [node for node in nodes if text in node["text"]]
+    if not text_nodes or index >= len(text_nodes):
+        return None
+    left, top, right, bottom = text_nodes[index]["box"]
+    cx, cy = (left + right) // 2, (top + bottom) // 2
+
+    best = None
+    best_area = None
+    for node in nodes:
+        if not node["clickable"]:
+            continue
+        l, t, r, b = node["box"]
+        if l <= cx <= r and t <= cy <= b:
+            area = (r - l) * (b - t)
+            if best is None or area < best_area:
+                best = node
+                best_area = area
+    target_box = best["box"] if best else text_nodes[index]["box"]
+    l, t, r, b = target_box
+    return (l + r) // 2, (t + b) // 2
+
+
 def main():
-    """命令入口：find 打印匹配；tap 在匹配项中心执行点击。"""
+    """命令入口：find 打印匹配；tap 命中最小可点击容器中心执行点击。"""
     if len(sys.argv) < 3:
         print("用法: ui_nav.py find|tap <文本> [序号]")
         return
     action, text = sys.argv[1], sys.argv[2]
-    matches = find_text(text)
-    for item in matches:
+    for item in find_text(text):
         print(item)
     if action == "tap":
-        idx = int(sys.argv[3]) if len(sys.argv) > 3 else 0
-        if matches:
-            _, cx, cy, *_ = matches[idx]
+        index = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+        target = clickable_target(text, index)
+        if target:
+            cx, cy = target
             adb("shell", "input", "tap", str(cx), str(cy))
             print("TAPPED", cx, cy)
         else:
