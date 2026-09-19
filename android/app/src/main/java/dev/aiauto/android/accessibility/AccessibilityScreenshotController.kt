@@ -140,10 +140,16 @@ internal class AccessibilityScreenshotController(
             is AccessibilityResult.Success -> result.value
         }
 
+        // 截图期间临时隐藏装饰性系统浮层（边缘光效），使其不进入 AI 感知截图。
+        val shutter = ScreenshotOverlayShutterHolder.get()
+        shutter?.suppressForCapture()
         // 截图异步返回时必须重新校验会话代次、前台包和敏感节点，避免授权窗口被竞态复用。
         return suspendCancellableCoroutine { continuation ->
+            // 协程被取消时也要恢复浮层，防止光效永久隐藏。
+            continuation.invokeOnCancellation { shutter?.restoreAfterCapture() }
             platform.capture(root.bounds) callback@{ result ->
                 if (!continuation.isActive) {
+                    shutter?.restoreAfterCapture()
                     if (result is PlatformScreenshotResult.Success) {
                         result.screenshot.close()
                     }
@@ -164,6 +170,8 @@ internal class AccessibilityScreenshotController(
                         resumedResult.value.close()
                     }
                 }
+                // 截图流程已结束，恢复装饰浮层。
+                shutter?.restoreAfterCapture()
             }
         }
     }

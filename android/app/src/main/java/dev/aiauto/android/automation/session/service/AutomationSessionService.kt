@@ -31,6 +31,8 @@ import dev.aiauto.android.R
 import dev.aiauto.android.automation.session.AutomationSessionState
 import dev.aiauto.android.automation.session.SessionPhase
 import dev.aiauto.android.automation.session.coordinator.SessionRuntime
+import dev.aiauto.android.ui.overlay.EdgeLightController
+import dev.aiauto.android.ui.overlay.EdgeLightMode
 import dev.aiauto.android.ui.overlay.OverlayActions
 import dev.aiauto.android.ui.overlay.OverlayController
 import dev.aiauto.android.ui.overlay.OverlaySessionState
@@ -47,6 +49,7 @@ class AutomationSessionService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var stateCollectionJob: Job? = null
     private var overlayController: OverlayController? = null
+    private var edgeLightController: EdgeLightController? = null
     private var screenOffReceiver: ScreenOffReceiver? = null
     private var currentTask: String = ""
 
@@ -153,6 +156,10 @@ class AutomationSessionService : Service() {
             updateState(OverlaySessionState.Running(currentTask))
             show()
         }
+        // 同步开启边缘呼吸光效（执行态蓝色）。
+        edgeLightController = EdgeLightController(this).apply {
+            setMode(EdgeLightMode.ACTIVE)
+        }
 
         // 订阅 coordinator.sessionState，更新通知与悬浮窗。
         stateCollectionJob?.cancel()
@@ -188,17 +195,34 @@ class AutomationSessionService : Service() {
             ?.notify(NOTIFICATION_ID, notification)
     }
 
-    /** 更新悬浮窗状态，与会话状态同步。 */
+    /** 更新悬浮窗与边缘光效，与会话状态同步。 */
     private fun updateOverlay(phase: SessionPhase, task: String, failureMessage: String?) {
-        val controller = overlayController ?: return
-        val state = when (phase) {
-            SessionPhase.Completed -> OverlaySessionState.Completed(task, "任务已完成")
-            SessionPhase.Failed -> OverlaySessionState.Failed(task, failureMessage ?: "执行失败")
-            SessionPhase.Stopped -> OverlaySessionState.Stopped(task)
-            SessionPhase.Paused -> OverlaySessionState.Paused(task)
-            else -> OverlaySessionState.Running(task)
-        }
-        controller.updateState(state)
+        overlayController?.updateState(
+            when (phase) {
+                SessionPhase.Completed -> OverlaySessionState.Completed(task, "任务已完成")
+                SessionPhase.Failed -> OverlaySessionState.Failed(task, failureMessage ?: "执行失败")
+                SessionPhase.Stopped -> OverlaySessionState.Stopped(task)
+                SessionPhase.Paused -> OverlaySessionState.Paused(task)
+                else -> OverlaySessionState.Running(task)
+            },
+        )
+        edgeLightController?.setMode(edgeLightModeFor(phase))
+    }
+
+    /** 会话阶段映射为边缘光效：工作中蓝呼吸、待确认金色、暂停蓝静态、终态/空闲关闭。 */
+    private fun edgeLightModeFor(phase: SessionPhase): EdgeLightMode = when (phase) {
+        SessionPhase.AwaitingConfirmation -> EdgeLightMode.WAITING
+        SessionPhase.Paused -> EdgeLightMode.PAUSED
+        SessionPhase.Observing,
+        SessionPhase.Planning,
+        SessionPhase.Executing,
+        SessionPhase.Verifying,
+        -> EdgeLightMode.ACTIVE
+        SessionPhase.Idle,
+        SessionPhase.Completed,
+        SessionPhase.Failed,
+        SessionPhase.Stopped,
+        -> EdgeLightMode.OFF
     }
 
     /** 构建悬浮窗操作回调：暂停/继续/停止直接操作同一个 engine runtime。 */
@@ -361,6 +385,8 @@ class AutomationSessionService : Service() {
         unregisterScreenOffReceiver()
         overlayController?.destroy()
         overlayController = null
+        edgeLightController?.destroy()
+        edgeLightController = null
         serviceScope.cancel()
         super.onDestroy()
     }

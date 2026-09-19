@@ -5,7 +5,7 @@
 > `.trae/specs/n56-consumer-ui-wave2/`），本文不重复长日志。
 >
 > 状态定义：待做 / 进行中 / 已实现待设备验证 / 已验证（含设备截图证据） / 阻塞
-> 最后更新：2026-09-18
+> 最后更新：2026-09-19
 
 ## 总目标
 
@@ -729,3 +729,51 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 **仍未验证/未完成**：
 - 手工邀请码解析后的候选地址/网卡/指纹确认在弹窗内的交互（表单由原全屏页平移，未逐态重测）。
 - overlay 无障碍语义桥接（悬浮窗不进 uiautomator dump）；前台服务通知/锁屏暂停的真实会话验证；录制端到端；真机兼容性；真实 OpenAI Provider（需用户 key）。
+
+## Edge-light 边缘呼吸光效 + 截图隐私遮挡（2026-09-19，#32/#33）
+
+**1. edge-light 三态实现（`ui/overlay/EdgeLightController.kt`）**
+- 独立全屏 `TYPE_APPLICATION_OVERLAY` 窗口，`FLAG_NOT_TOUCHABLE` 完全触摸穿透、`FLAG_NOT_FOCUSABLE`，不挡任何操作。
+- Canvas 自绘四条内发光渐变带（发光 25→35dp）+ 3dp 内描边，对齐原型 `.edge-light`：
+  - ACTIVE：蓝色，2.2s 呼吸（1.1s 半程 Reverse，颜色 `#5796FA↔#90B7FF`、发光 `#6583ABFA↔#90719AFA`）。
+  - WAITING：金色静态（描边 `#D6A75D`、发光 `#60E2B478`、22dp）。
+  - PAUSED：蓝色静态、动画停止（progress=0）。
+- 接入 `AutomationSessionService`：随会话创建/销毁 edge 控制器，overlay 状态更新时同步 `setMode`。
+
+**2. 不进无障碍语义树（已设备验证）**
+- Compose 根 `clearAndSetSemantics{}` + ComposeView `importantForAccessibility=NO` 双保险。
+- ACTIVE 状态下 uiautomator dump 仅见演练场按钮，**无任何 edge 节点**；去掉 FLAG_SECURE 后仍成立。
+
+**3. 不进 AI 感知截图：放弃 FLAG_SECURE，改用截图遮挡 ScreenshotOverlayShutter**
+- 关键结论：全屏窗口 + `FLAG_SECURE` 方案错误——实测会让普通 `screencap` 整屏变黑，且 AI 使用的
+  `AccessibilityService.takeScreenshot` 命中 secure 窗口直接 `onFailure(ERROR_TAKE_SCREENSHOT_SECURE_WINDOW)`、AI 完全失明。
+- 新增 `accessibility/ScreenshotOverlayShutter.kt`：接口 `suppressForCapture()/restoreAfterCapture()` + 进程内
+  `ScreenshotOverlayShutterHolder`（edge 控制器创建窗口注册、移除注销），解耦无障碍截图层与浮层生命周期。
+- `AccessibilityScreenshotController.capture`：截图前 suppress（edge 窗口 INVISIBLE、不参与合成），
+  截图成功/失败/协程取消均 restore（VISIBLE）；edge 端用计数支持嵌套。
+- 设备验证：suppress 后 screencap 边缘光效完全消失、悬浮卡片（独立窗口）保留；restore 后光效恢复。
+
+**4. 修复一个真实 overlay 窗口 bug**
+- 现象：展开卡片点右上 X 后视觉收起，但物理窗口残留展开尺寸（280x200dp），拦截其区域触摸，导致点「暂停态」等按钮无效。
+- 根因：`OverlayController.wiredActions` 的 onExpand/onCollapse 只改 Compose `expanded` 状态，漏调 `updateWindowSize()`。
+- 修复：两处补 `updateWindowSize()`，日志确认随后 `updateViewLayout to expanded=false`，窗口正确回到 48dp 小圆。
+
+**5. debug 演练场（`OverlayDemoActivity`）**
+- 集成 EdgeLightController，各状态按钮联动 edge 模式；新增「截图隐藏(模拟)/截图恢复(模拟)」按钮用于确定性验证；onDestroy 销毁 edge。
+
+**设备验证**（emulator-5554 / 1080x2400 / 420dpi / zh-CN，screencap→pull→PIL load→Read 看图）：
+- step-1-running.png：ACTIVE 蓝呼吸 + 展开「演示任务/正在自动处理/暂停/停止」。
+- edge-waiting-1.png：WAITING 金色静态边框。
+- step-3-paused.png：PAUSED 展开「Ⅱ演示任务/已暂停等你回来/继续/停止」+ 蓝边。
+- step-2-collapsed.png：点 X 收起卡片后 edge 保持蓝色（会话仍运行，正确）。
+- shutter-hidden.png / shutter-restored.png：截图遮挡隐藏（光效消失、卡片保留）与恢复（光效回来）。
+
+**验证结果**：
+- make comments 通过（549 个手写文件）
+- AccessibilityScreenshotControllerTest 新增 2 个 shutter 测试（成功路径 suppress→restore、失败路径 restore），全量 :app:testDebugUnitTest + :app:lintDebug + :app:assembleDebug BUILD SUCCESSFUL
+- APK SHA256：`15B7BA54F773DFA9F7C6F347D1C79D012A1A088654BF1E95C986D30370ADE408`（76,710,073 bytes）
+
+**仍未验证/未完成**：
+- 真实 AI 会话 accepted 后约 2.5–3.6s 提前 Stopped 的根因未定位（候选：app.launch 目标包在模拟器不存在、UserTouchStopHandler 误判、engine 未发终态被 coordinator 强制 Stopped）；故 shutter 在**真实 AI 截图路径**的设备闭环未做，目前由单测 + 演练场覆盖。
+- PAUSED「停止呼吸」靠代码 progress=0 保证，未做连拍逐帧比对。
+- 前台服务通知/锁屏暂停、录制端到端、真机兼容性、真实 OpenAI Provider（需用户 key）仍未设备验证。

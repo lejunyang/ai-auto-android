@@ -14,6 +14,8 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.Toast
+import dev.aiauto.android.ui.overlay.EdgeLightController
+import dev.aiauto.android.ui.overlay.EdgeLightMode
 import dev.aiauto.android.ui.overlay.OverlayActions
 import dev.aiauto.android.ui.overlay.OverlayController
 import dev.aiauto.android.ui.overlay.OverlaySessionState
@@ -21,6 +23,9 @@ import dev.aiauto.android.ui.overlay.OverlaySessionState
 class OverlayDemoActivity : Activity() {
 
     private var controller: OverlayController? = null
+
+    // edge-light 控制器：与悬浮窗状态联动，便于确定性截图边缘光效。
+    private var edge: EdgeLightController? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,18 +39,24 @@ class OverlayDemoActivity : Activity() {
             show()
         }
 
+        edge = EdgeLightController(this)
+
         // 每个按钮一键设置「会话状态 + 展开/收起形态」，使各状态可被脚本确定性复现与截图。
         val buttons = listOf(
-            "Running 展开" to { setState(OverlaySessionState.Running("演示任务")); controller?.expand() },
+            "Running 展开" to { setState(OverlaySessionState.Running("演示任务")); controller?.expand(); setEdge(EdgeLightMode.ACTIVE) },
+            "等待确认(金边)" to { setEdge(EdgeLightMode.WAITING) },
             "收起为边缘圆" to { controller?.collapse() },
-            "重新展开" to { controller?.expand() },
-            "暂停态" to { setState(OverlaySessionState.Paused("演示任务")); controller?.expand() },
-            "继续/Running" to { setState(OverlaySessionState.Running("演示任务")); controller?.expand() },
-            "停止态" to { setState(OverlaySessionState.Stopped("演示任务")); controller?.expand() },
-            "完成结果态" to { setState(OverlaySessionState.Completed("演示任务", "任务已完成")); controller?.expand() },
-            "失败态" to { setState(OverlaySessionState.Failed("演示任务", "模拟失败原因")); controller?.expand() },
-            "隐藏悬浮窗" to { controller?.hide() },
+            "重新展开" to { controller?.expand(); setEdge(EdgeLightMode.ACTIVE) },
+            "暂停态" to { setState(OverlaySessionState.Paused("演示任务")); controller?.expand(); setEdge(EdgeLightMode.PAUSED) },
+            "继续/Running" to { setState(OverlaySessionState.Running("演示任务")); controller?.expand(); setEdge(EdgeLightMode.ACTIVE) },
+            "停止态" to { setState(OverlaySessionState.Stopped("演示任务")); controller?.expand(); setEdge(EdgeLightMode.OFF) },
+            "完成结果态" to { setState(OverlaySessionState.Completed("演示任务", "任务已完成")); controller?.expand(); setEdge(EdgeLightMode.OFF) },
+            "失败态" to { setState(OverlaySessionState.Failed("演示任务", "模拟失败原因")); controller?.expand(); setEdge(EdgeLightMode.OFF) },
+            "隐藏悬浮窗" to { controller?.hide(); setEdge(EdgeLightMode.OFF) },
             "显示悬浮窗" to { controller?.show() },
+            // 模拟 AI 截图前后的遮挡/恢复，验证光效不进入截图（仅 debug 演练用）。
+            "截图隐藏(模拟)" to { edge?.suppressForCapture() },
+            "截图恢复(模拟)" to { edge?.restoreAfterCapture() },
         )
 
         buttons.forEach { (label, action) ->
@@ -66,6 +77,11 @@ class OverlayDemoActivity : Activity() {
         controller?.updateState(state)
     }
 
+    // 切换 edge-light 模式，与悬浮窗状态保持同一演示口径。
+    private fun setEdge(mode: EdgeLightMode) {
+        edge?.setMode(mode)
+    }
+
     private fun demoActions() = object : OverlayActions {
         override fun onPause() { setState(OverlaySessionState.Paused("演示任务")) }
         override fun onResume() { setState(OverlaySessionState.Running("演示任务")) }
@@ -77,6 +93,8 @@ class OverlayDemoActivity : Activity() {
     override fun onDestroy() {
         controller?.destroy()
         controller = null
+        edge?.destroy()
+        edge = null
         super.onDestroy()
     }
 }

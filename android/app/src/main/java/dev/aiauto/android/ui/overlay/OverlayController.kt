@@ -20,18 +20,10 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.view.Gravity
-import android.view.View
 import android.view.WindowManager
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
 import dev.aiauto.android.ui.theme.AiAutoAndroidTheme
 
 class OverlayController(private val context: Context) {
@@ -149,7 +141,7 @@ class OverlayController(private val context: Context) {
             // 用反射调用 androidx.lifecycle.ViewTreeLifecycleOwner / ViewTreeViewModelStoreOwner
             // 的静态 set 方法——这些类在运行时 classpath 中但不在编译 classpath 中
             // (lifecycle KMP 架构下 api 制品未传递)，反射是最稳的接入方式。
-            setViewTreeOwners(this, overlayLifecycle)
+            attachOverlayViewTreeOwners(overlayLifecycle)
             android.util.Log.i("OverlayCtrl", "setContent called, state=${sessionState.value}, expanded=${expanded.value}")
             setContent {
                 android.util.Log.i("OverlayCtrl", "Compose composition started")
@@ -263,49 +255,16 @@ class OverlayController(private val context: Context) {
 
         override fun onExpand() {
             expanded.value = true
+            // 同步物理窗口尺寸，否则窗口仍为收起小窗、展开内容被裁切。
+            updateWindowSize()
             externalActions?.onExpand()
         }
 
         override fun onCollapse() {
             expanded.value = false
+            // 同步物理窗口尺寸，否则残留展开大窗会拦截下方应用触摸。
+            updateWindowSize()
             externalActions?.onCollapse()
-        }
-    }
-
-    /**
-     * 通过反射为 View 设置 ViewTreeLifecycleOwner 和 ViewTreeViewModelStoreOwner。
-     *
-     * 为什么用反射：androidx.lifecycle.ViewTreeLifecycleOwner / ViewTreeViewModelStoreOwner
-     * 在 lifecycle KMP 架构下位于 api 制品中，编译 classpath 可能不包含，
-     * 但运行时 classpath 一定有（lifecycle-runtime 传递依赖）。反射调用其静态
-     * set(View, Owner) 方法是最稳的接入方式，不依赖具体 Maven 坐标或版本。
-     *
-     * 反射失败时静默降级：ComposeView attach 时会抛 IllegalStateException，
-     * 但至少不会因为类找不到而编译失败。
-     */
-    private fun setViewTreeOwners(view: View, owner: OverlayLifecycleOwner) {
-        try {
-            val lifecycleOwnerClass = Class.forName("androidx.lifecycle.ViewTreeLifecycleOwner")
-            val setLifecycleMethod = lifecycleOwnerClass.getMethod("set", View::class.java, LifecycleOwner::class.java)
-            setLifecycleMethod.invoke(null, view, owner)
-        } catch (_: Exception) {
-            // 反射失败静默降级，运行时 ComposeView attach 会给出明确崩溃信息。
-        }
-        try {
-            val viewModelStoreClass = Class.forName("androidx.lifecycle.ViewTreeViewModelStoreOwner")
-            val setViewModelMethod = viewModelStoreClass.getMethod("set", View::class.java, ViewModelStoreOwner::class.java)
-            setViewModelMethod.invoke(null, view, owner)
-        } catch (_: Exception) {
-            // 同上，静默降级。
-        }
-        try {
-            // ComposeView attach 时还需要 ViewTreeSavedStateRegistryOwner，
-            // 否则抛 "Composed into the View which doesn't propagate ViewTreeSavedStateRegistryOwner!"。
-            val savedStateClass = Class.forName("androidx.savedstate.ViewTreeSavedStateRegistryOwner")
-            val setSavedStateMethod = savedStateClass.getMethod("set", View::class.java, SavedStateRegistryOwner::class.java)
-            setSavedStateMethod.invoke(null, view, owner)
-        } catch (_: Exception) {
-            // 同上，静默降级。
         }
     }
 
@@ -319,49 +278,5 @@ class OverlayController(private val context: Context) {
         // 展开态窗口尺寸（dp）：280dp 宽 × 200dp 高，贴合 ExpandedCard。
         private const val EXPANDED_WIDTH_DP = 280
         private const val EXPANDED_HEIGHT_DP = 200
-    }
-}
-
-/**
- * 悬浮窗专用 LifecycleOwner。
- *
- * 为什么需要：OverlayController 用 applicationContext 创建 ComposeView，
- * applicationContext 不关联任何 Activity，因此 ViewTreeLifecycleOwner /
- * ViewTreeViewModelStoreOwner / SavedStateRegistryOwner 均为空。ComposeView
- * attach 到 WindowManager 时 createLifecycleAwareWindowRecomposer 会抛
- * IllegalStateException: ViewTreeLifecycleOwner not found。
- *
- * 本类提供一个跟随 OverlayController 生命周期的最小实现：
- * - 创建时 performCreate + ON_START + ON_RESUME（悬浮窗始终在前台可见）
- * - destroy() 时 ON_DESTROY 并清理 ViewModelStore
- * - 不保存状态（悬浮窗为临时 UI，进程重启后重新创建）
- */
-private class OverlayLifecycleOwner :
-    LifecycleOwner,
-    ViewModelStoreOwner,
-    SavedStateRegistryOwner {
-
-    private val lifecycleRegistry = LifecycleRegistry(this)
-    private val store = ViewModelStore()
-    private val savedStateController = SavedStateRegistryController.create(this)
-
-    override val lifecycle: Lifecycle get() = lifecycleRegistry
-    override val viewModelStore: ViewModelStore get() = store
-    override val savedStateRegistry: SavedStateRegistry get() =
-        savedStateController.savedStateRegistry
-
-    /** 执行创建流程：attach savedState + restore null + 标记 CREATED。 */
-    fun performCreate() {
-        savedStateController.performAttach()
-        savedStateController.performRestore(null)
-        lifecycleRegistry.currentState = Lifecycle.State.CREATED
-    }
-
-    /** 转发 Lifecycle 事件（ON_START / ON_RESUME / ON_DESTROY）。 */
-    fun handleLifecycleEvent(event: Lifecycle.Event) {
-        lifecycleRegistry.handleLifecycleEvent(event)
-        if (event == Lifecycle.Event.ON_DESTROY) {
-            store.clear()
-        }
     }
 }

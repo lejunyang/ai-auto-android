@@ -181,6 +181,65 @@ class AccessibilityScreenshotControllerTest {
     }
 
     @Test
+    fun `capture suppresses shutter before frame and restores after success BitsUT`() = runTest {
+        val events = mutableListOf<String>()
+        val shutter = object : ScreenshotOverlayShutter {
+            override fun suppressForCapture() { events.add("suppress") }
+            override fun restoreAfterCapture() { events.add("restore") }
+        }
+        ScreenshotOverlayShutterHolder.register(shutter)
+        try {
+            val controller = controller(
+                platform = ScreenshotPlatform { _, callback ->
+                    // 截图帧产生时必须已遮挡、且尚未恢复。
+                    assertEquals(listOf("suppress"), events)
+                    callback(
+                        PlatformScreenshotResult.Success(
+                            AccessibilityScreenshot(byteArrayOf(1, 2, 3), 2, 3, 4),
+                        ),
+                    )
+                },
+            )
+
+            val result = controller.capture(TARGET_PACKAGE)
+
+            assertTrue(result is AccessibilityResult.Success)
+            (result as AccessibilityResult.Success).value.close()
+            assertEquals(listOf("suppress", "restore"), events)
+        } finally {
+            ScreenshotOverlayShutterHolder.unregister(shutter)
+        }
+    }
+
+    @Test
+    fun `capture restores shutter after platform failure BitsUT`() = runTest {
+        val events = mutableListOf<String>()
+        val shutter = object : ScreenshotOverlayShutter {
+            override fun suppressForCapture() { events.add("suppress") }
+            override fun restoreAfterCapture() { events.add("restore") }
+        }
+        ScreenshotOverlayShutterHolder.register(shutter)
+        try {
+            val controller = controller(
+                platform = ScreenshotPlatform { _, callback ->
+                    callback(
+                        PlatformScreenshotResult.Failure(
+                            AccessibilityService.ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR,
+                        ),
+                    )
+                },
+            )
+
+            val result = controller.capture(TARGET_PACKAGE)
+
+            assertFailure(result, AccessibilityErrorCode.SCREENSHOT_FAILED)
+            assertEquals(listOf("suppress", "restore"), events)
+        } finally {
+            ScreenshotOverlayShutterHolder.unregister(shutter)
+        }
+    }
+
+    @Test
     fun `android platform closes hardware buffer when encoder throws BitsUT`() {
         val service = mockk<AccessibilityService>()
         val callbackSlot = slot<AccessibilityService.TakeScreenshotCallback>()
