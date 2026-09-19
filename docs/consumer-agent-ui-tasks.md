@@ -335,7 +335,7 @@ adb -s emulator-5554 push provider-config.xml /data/data/dev.aiauto.android/shar
 | ProviderScreen | BasicTextField 自绘输入框（白底+1dp描边+13dp圆角+50dp高+16sp垂直居中），修复文字截断 | 编译通过 |
 | AccessibilityScreen | 整体重写：删手动包名输入框/撤销按钮，改 PackageManager 应用列表+Switch（每行图标+应用名+包名+Switch），"打开无障碍配置"按钮仅在未开启时显示，琥珀色安全披露 NoticeBar 精简 | p2-accessibility.png 确认应用列表（Chrome/Gmail/Maps等）+Switch+按钮已隐藏 |
 | DesktopBridgeScreen | 配对码改 ProtoModalSheet 底部弹窗（标题"核对电脑邀请"+指纹卡+蓝色配对按钮+取消），新码自动弹出 | p2-bridge6.png 确认手机→电脑图标行+蓝色"开启桌面桥"按钮+USB分区+安全说明卡；p2-pair-modal.png 确认"等待电脑配对"状态切换 |
-| LanPairingScreen | 全面对齐原型设计语言，自绘邀请码输入框，补扫码按钮（"扫码能力规划中"诚实反馈），保留全部真实逻辑 | 编译通过 |
+| LanPairingScreen | 对齐原型设计语言，自绘邀请码输入框；后改为底部弹窗内容（去页头/外层滚动），扫码按钮接通真实相机（见文末 2026-09-19「LAN 弹窗」章节） | 设备验证 |
 | RecordingEditorScreen | 整体按原型重构：步骤时间轴rail+点步骤弹ProtoModalSheet「编辑步骤」+技能名称弹窗+AI语言归纳（仅建议用户确认后应用），保留选择器/坐标/等待/重试/失败策略/secret/revision冲突/dirty保护 | 编译通过 |
 | AssistantScreen | "选择应用"pill改弹ProtoModalSheet「这次使用哪些应用」，候选来自真实targetPackages，多选草稿确认后回显 | p2-app-picker.png 确认弹窗正常 |
 
@@ -696,3 +696,36 @@ RecordingSessionScreen.kt 重写为原型 #record 设计语言：
 - overlay 内容不进 uiautomator dump（反射挂 ViewTree owners 时无障碍语义树未桥接），本轮用固定坐标 + 图像核对；自动化 overlay 验证需先修语义桥接。
 - 前台服务通知暂停/停止、锁屏强制暂停的真实会话运行时设备验证；录制→真实无障碍事件→编辑→语言归纳→保存端到端；真机兼容性；真实 OpenAI Provider（需用户 key）。
 - 老 RecordingListScreen.kt 兜底保留，确认无入口后删除。
+
+## 本批视觉修复：应用选择 / Switch / LAN 弹窗（2026-09-19）
+
+**1. 应用选择弹窗（图标+名称+自绘对勾），commit 0d23ce3**
+- 新增共享 `ui/components/AppPicker.kt`：InstalledApp、loadLaunchableApps（ACTION_MAIN+CATEGORY_LAUNCHER，排除自身）、Drawable.toSafeBitmap、AppPickerRow（应用图标+名称+包名+勾选圈，protoClickable 无涟漪）。
+- 新增 `AppIcons.Check` 自绘对勾 path（stroke 2.4），替换天生不居中的文本字符 `"✓"`。
+- 助理页「选择应用」弹窗与录制页「选择目标应用」统一复用 AppPickerRow；删除录制页私有应用查询/列表/图标实现；已选应用回显内联共享 toSafeBitmap。
+
+**2. ProtoSwitch 缩小并修选中态贴边，commit 3f0bcc5**
+- 视觉轨道 48x28、圆钮 24、四周 inset 2dp；外层透明点击区 heightIn(min44)/widthIn(min48) 保证触控；选中态白圆右缘不再贴边。
+
+**3. LAN 邀请改底部弹窗（删除全屏三级页），本次提交**
+- `DesktopBridgeScreen`：去 onLanPairing、加 pairingViewModel 参数；「改用局域网邀请码连接」打开 ProtoModalSheet「局域网配对」（扫码输入+邀请码输入+检查按钮），关闭即 stop；扫码全屏 EmbeddedLanQrScannerScreen 与相机能力 LaunchedEffect 从 LanPairingHost 迁入。
+- `LanPairingScreen`：去 PageHeading/PageDesc 与外层 verticalScroll/水平内边距（ProtoModalSheet 提供）；扫码按钮由假「规划中」反馈改为真实 onLaunchScanner。
+- `AiAutoAndroidApp`：删除 LAN_PAIRING 全屏路由与 Route 常量；配对 ViewModel 在 BRIDGE composable 内创建。
+- 删除 `LanPairingHost.kt`。
+
+**设备验证**（emulator-5554 / 1080x2400 / 420dpi / zh-CN，screencap→pull→PIL load→Read 看图）：
+- lan-02-sheet.png：点「改用局域网邀请码连接」弹出底部弹窗（scrim+把手+标题+扫码输入+邀请码+检查按钮），非全屏页。
+- lan-03-scanner.png：点扫码进入全屏并真实请求 CAMERA 权限。
+- lan-04-aftergrant.png：pm grant 授权后相机取景器运行（模拟器虚拟相机黑屏正常），可「取消扫码」返回。
+- lan-00-launch.png：首页输入卡/常用技能 2 列网格/虚线教学卡/底栏自定义图标正常。
+
+**新增工具**：`scripts/ui-validation/ui_nav.py`，按文本 dump 查找/点击元素，坐标全部来自当次 dump。
+
+**验证结果**：
+- make comments 通过（546 个手写文件）
+- :app:testDebugUnitTest + :app:lintDebug + :app:assembleDebug BUILD SUCCESSFUL
+- APK SHA256：`9F6DBB56ACBE656EF2B89CE94D0435903E44B09DE6E20E4C48C4E217F3678020`（77,044,329 bytes）
+
+**仍未验证/未完成**：
+- 手工邀请码解析后的候选地址/网卡/指纹确认在弹窗内的交互（表单由原全屏页平移，未逐态重测）。
+- overlay 无障碍语义桥接（悬浮窗不进 uiautomator dump）；前台服务通知/锁屏暂停的真实会话验证；录制端到端；真机兼容性；真实 OpenAI Provider（需用户 key）。

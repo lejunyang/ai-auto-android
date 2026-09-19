@@ -7,8 +7,8 @@ package dev.aiauto.android.ui.bridge.lan
  * 与原型的差异（有意为之）：
  * - 原型是纯演示弹窗，只接受 DEMO；本页对接真实 LanPairingViewModel，
  *   接受真实 LAN 邀请码并驱动真实状态机。
- * - 原型缺扫码按钮，此处补一个扫码入口；点击时给出"扫码能力规划中"的诚实反馈，
- *   不假称已实现。onLaunchScanner 回调仍保留在签名中，供未来接线。
+ * - 原型缺扫码按钮，此处补一个真实扫码入口，点击由外层 DesktopBridgeScreen
+ *   全屏承接扫码；本组件作为底部弹窗内容，滚动与水平内边距由 ProtoModalSheet 提供。
  * - 全部用户可见文本走 stringResource，不硬编码中文。
  */
 
@@ -26,11 +26,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
@@ -54,8 +52,6 @@ import dev.aiauto.android.R
 import dev.aiauto.android.bridge.lan.LanLocalInterface
 import dev.aiauto.android.ui.components.FieldLabel
 import dev.aiauto.android.ui.components.NoteText
-import dev.aiauto.android.ui.components.PageDesc
-import dev.aiauto.android.ui.components.PageHeading
 import dev.aiauto.android.ui.components.ProtoCard
 import dev.aiauto.android.ui.components.ProtoPrimaryButton
 import dev.aiauto.android.ui.components.ProtoSectionHead
@@ -77,30 +73,17 @@ fun LanPairingScreen(
     modifier: Modifier = Modifier,
 ) {
     var manualInvitation by remember { mutableStateOf("") }
-    // 扫码入口的诚实反馈：点击后展示"规划中"提示，不启动假扫码流程。
-    var showScanPlanning by remember { mutableStateOf(false) }
 
+    // 作为底部弹窗内容：滚动与水平内边距由 ProtoModalSheet 提供，此处只排表单。
     Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = AppSpacing.ScreenHorizontal)
-            .padding(bottom = 32.dp),
+        modifier = modifier.padding(bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // 1. 页面大标题与描述（对齐原型 page-heading + page-desc）。
-        PageHeading(text = stringResource(R.string.lan_heading))
-        PageDesc(text = stringResource(R.string.lan_desc))
-
-        Spacer(Modifier.height(4.dp))
-
-        // 2. 扫码入口按钮：原型缺此入口，补充后给诚实反馈。
+        // 1. 扫码入口按钮（原型缺此入口，补充真实扫码能力）。
         ProtoSecondaryButton(
             text = stringResource(R.string.lan_scan_entry),
-            onClick = { showScanPlanning = true },
+            onClick = onLaunchScanner,
         )
-        if (showScanPlanning) {
-            NoteText(text = stringResource(R.string.lan_scan_planning))
-        }
 
         // 3. 手工邀请码输入（对齐原型 pair-manual 弹窗的 label + input）。
         FieldLabel(text = stringResource(R.string.lan_manual_label))
@@ -108,7 +91,6 @@ fun LanPairingScreen(
             value = manualInvitation,
             onValueChange = {
                 manualInvitation = it.take(MAX_MANUAL_INVITATION_INPUT_CHARS)
-                showScanPlanning = false
             },
             placeholder = stringResource(R.string.lan_manual_placeholder),
         )

@@ -33,11 +33,14 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,6 +53,11 @@ import dev.aiauto.android.bridge.BridgeLimits
 import dev.aiauto.android.bridge.BridgeProtocol
 import dev.aiauto.android.bridge.DesktopBridgeController
 import dev.aiauto.android.bridge.DesktopBridgeStatus
+import dev.aiauto.android.ui.bridge.lan.AndroidLanQrScanner
+import dev.aiauto.android.ui.bridge.lan.EmbeddedLanQrScannerScreen
+import dev.aiauto.android.ui.bridge.lan.LanPairingScreen
+import dev.aiauto.android.ui.bridge.lan.LanPairingViewModel
+import dev.aiauto.android.ui.bridge.lan.LanQrScanResult
 import dev.aiauto.android.ui.components.CenteredIconRow
 import dev.aiauto.android.ui.components.NoteText
 import dev.aiauto.android.ui.components.NoticeBar
@@ -70,10 +78,37 @@ import dev.aiauto.android.ui.theme.AppSpacing
 @Composable
 fun DesktopBridgeScreen(
     controller: DesktopBridgeController,
+    pairingViewModel: LanPairingViewModel,
     onBack: () -> Unit,
-    onLanPairing: () -> Unit,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    // LAN 配对：弹窗可见态、扫码全屏态与配对状态收集。
+    val pairingState by pairingViewModel.uiState.collectAsStateWithLifecycle()
+    var showLanSheet by remember { mutableStateOf(false) }
+    var scanning by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(context) {
+        pairingViewModel.updateScannerCapability(
+            hardware = AndroidLanQrScanner.cameraHardware(context),
+            providerAvailable = true,
+        )
+    }
+
+    // 扫码全屏：扫完/取消回到 LAN 弹窗。
+    if (scanning) {
+        EmbeddedLanQrScannerScreen(
+            onResult = { result ->
+                scanning = false
+                pairingViewModel.onQrScanResult(result)
+            },
+            onCancel = {
+                scanning = false
+                pairingViewModel.onQrScanResult(LanQrScanResult.Cancelled)
+            },
+        )
+        return
+    }
 
     // 记录用户已主动关闭的配对码；新码值出现时自动弹出弹窗。
     var dismissedCode by remember { mutableStateOf<String?>(null) }
@@ -203,7 +238,7 @@ fun DesktopBridgeScreen(
                 // 文字按钮：LAN 配对入口（原型对应「输入邀请码演示」的位置，居中）。
                 ProtoTextButton(
                     text = stringResource(R.string.bridge_open_lan),
-                    onClick = onLanPairing,
+                    onClick = { showLanSheet = true },
                     modifier = Modifier.fillMaxWidth(),
                     center = true,
                 )
@@ -297,6 +332,28 @@ fun DesktopBridgeScreen(
             )
         }
     }
+
+    // LAN 配对底部弹窗：对齐原型「输入邀请码」ModalBottomSheet，关闭即停止短期会话。
+    ProtoModalSheet(
+        visible = showLanSheet,
+        onDismiss = {
+            showLanSheet = false
+            pairingViewModel.stop()
+        },
+        title = stringResource(R.string.lan_page_title),
+        content = {
+            LanPairingScreen(
+                state = pairingState.pairing,
+                localInterfaces = pairingState.localInterfaces,
+                onLaunchScanner = { scanning = true },
+                onManualInvitation = pairingViewModel::submitManualInvitation,
+                onSelectCandidate = pairingViewModel::selectCandidate,
+                onSelectLocalInterface = pairingViewModel::selectLocalInterface,
+                onConfirmFingerprintAndConnect = pairingViewModel::confirmFingerprintAndConnect,
+                onStop = pairingViewModel::stop,
+            )
+        },
+    )
 }
 
 /** 把真实桥状态映射为卡片主标题，不硬编码就绪。 */

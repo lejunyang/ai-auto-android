@@ -1,5 +1,10 @@
 package dev.aiauto.android.ui.components
 
+/**
+ * 功能用途：共享应用选择组件。查询设备可启动应用并提供统一的
+ * 图标+名称+包名+勾选行，供助理页任务输入与录制页目标应用选择复用。
+ */
+
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap

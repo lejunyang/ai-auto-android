@@ -36,7 +36,6 @@ import dev.aiauto.android.bridge.DesktopBridgeController
 import dev.aiauto.android.provider.ProviderConfigRepository
 import dev.aiauto.android.ui.accessibility.AccessibilityScreen
 import dev.aiauto.android.ui.bridge.DesktopBridgeScreen
-import dev.aiauto.android.ui.bridge.lan.LanPairingHost
 import dev.aiauto.android.ui.bridge.lan.LanPairingViewModel
 import dev.aiauto.android.ui.components.AppBottomNavigation
 import dev.aiauto.android.ui.components.AppTab
@@ -62,7 +61,6 @@ private object Route {
     const val PROVIDER = "provider"
     const val ACCESSIBILITY = "accessibility"
     const val BRIDGE = "bridge"
-    const val LAN_PAIRING = "lan-pairing"
 
     /**
      * 构造会话路由。任务文本必须 Uri.encode，避免含 &/#/?/中文等字符时
@@ -326,22 +324,14 @@ fun AiAutoAndroidApp(
                 )
             }
 
-            // 连接电脑（现有 DesktopBridgeScreen）。
+            // 连接电脑：LAN 配对以底部弹窗承接，不再单独导航全屏页。
             composable(Route.BRIDGE) {
-                DesktopBridgeScreen(
-                    controller = bridgeController,
-                    onBack = navController::popBackStack,
-                    onLanPairing = { navController.navigate(Route.LAN_PAIRING) },
-                )
-            }
-
-            // LAN 配对（现有 LanPairingHost）。
-            composable(Route.LAN_PAIRING) {
                 val pairingViewModel: LanPairingViewModel = viewModel(
                     factory = LanPairingViewModel.factory(context),
                 )
-                LanPairingHost(
-                    viewModel = pairingViewModel,
+                DesktopBridgeScreen(
+                    controller = bridgeController,
+                    pairingViewModel = pairingViewModel,
                     onBack = navController::popBackStack,
                 )
             }
