@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -422,7 +423,8 @@ fun Modifier.dashedBorder(
  * 功能用途：自绘 ProtoSwitch 开关，无 Material 水波纹。
  *
  * 视觉：开启态蓝色轨道 #2563EB + 白色圆点右滑；关闭态灰色轨道 + 白色圆点左滑。
- * 尺寸：轨道 51×31dp，圆角 15.5dp；圆点 27×27dp，圆角 13.5dp。
+ * 尺寸：视觉轨道 48×28dp，圆角 14dp；圆点 24×24dp，四周内边距 2dp。
+ * 透明点击区不小于 44dp（无障碍最小触控），视觉轨道居中其中。
  * 交互：点击切换，走 protoClickable 无涟漪。
  */
 @Composable
@@ -431,22 +433,34 @@ fun ProtoSwitch(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val trackWidth = 48.dp
+    val trackHeight = 28.dp
+    val thumbSize = 24.dp
+    val inset = 2.dp
     val trackColor = if (checked) Color(0xFF2563EB) else Color(0xFFE5E7EB)
-    val thumbOffset = if (checked) 24.dp else 3.dp
+    // 圆点横向位置：未选中贴左、选中贴右，均留 2dp；垂直上下各 2dp 居中。
+    val thumbStart = if (checked) trackWidth - thumbSize - inset else inset
     Box(
         modifier = modifier
-            .size(width = 51.dp, height = 31.dp)
-            .clip(CircleShape)
-            .background(trackColor)
-            .clickable { onCheckedChange(!checked) },
+            .heightIn(min = 44.dp)
+            .widthIn(min = 48.dp)
+            .protoClickable(onClick = { onCheckedChange(!checked) }),
+        contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .padding(start = thumbOffset, top = 2.dp)
-                .size(27.dp)
+                .size(width = trackWidth, height = trackHeight)
                 .clip(CircleShape)
-                .background(Color.White),
-        )
+                .background(trackColor),
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(start = thumbStart, top = inset)
+                    .size(thumbSize)
+                    .clip(CircleShape)
+                    .background(Color.White),
+            )
+        }
     }
 }
 
