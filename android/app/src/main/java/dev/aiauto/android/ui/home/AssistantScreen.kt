@@ -498,7 +498,7 @@ private fun ComposerCard(
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 7.dp,
+        shadowElevation = 0.dp,
         modifier = Modifier
             .fillMaxWidth()
             .border(
