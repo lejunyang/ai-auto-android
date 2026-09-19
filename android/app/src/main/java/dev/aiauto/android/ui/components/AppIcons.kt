@@ -447,6 +447,29 @@ object AppIcons {
             icon
         }
 
+    /** 勾选圈：对勾（check），stroke 描边，用于应用选择行选中态。 */
+    val Check: ImageVector
+        get() = _check ?: run {
+            val icon = ImageVector.Builder(
+                name = "Check",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f,
+            ).apply {
+                addPath(
+                    pathData = addPathNodes("M5 12.5l4.5 4.5L19 7"),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 2.4f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null,
+                )
+            }.build()
+            _check = icon
+            icon
+        }
+
     /** 图标缓存，避免每次重组重建 ImageVector。 */
     private var _spark: ImageVector? = null
     private var _flow: ImageVector? = null
@@ -460,4 +483,5 @@ object AppIcons {
     private var _auto: ImageVector? = null
     private var _book: ImageVector? = null
     private var _note: ImageVector? = null
+    private var _check: ImageVector? = null
 }

@@ -48,7 +48,6 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import dev.aiauto.android.ui.components.ProtoCircularProgressIndicator
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import dev.aiauto.android.ui.components.ProtoIconButton
@@ -78,11 +77,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 import dev.aiauto.android.R
 import dev.aiauto.android.automation.recording.AutomationScriptSummary
 import dev.aiauto.android.automation.recording.RecordingScriptStore
 import dev.aiauto.android.ui.components.AppIcons
+import dev.aiauto.android.ui.components.AppPickerRow
 import dev.aiauto.android.ui.components.EmptyState
+import dev.aiauto.android.ui.components.InstalledApp
 import dev.aiauto.android.ui.components.IconTile
 import dev.aiauto.android.ui.components.NoteText
 import dev.aiauto.android.ui.components.ProtoModalSheet
@@ -90,6 +94,7 @@ import dev.aiauto.android.ui.components.ProtoPrimaryButton
 import dev.aiauto.android.ui.components.ProtoSecondaryButton
 import dev.aiauto.android.ui.components.ScriptLoadState
 import dev.aiauto.android.ui.components.dashedBorder
+import dev.aiauto.android.ui.components.loadLaunchableApps
 import dev.aiauto.android.ui.components.produceScriptSummaries
 import dev.aiauto.android.ui.theme.AppColors
 import dev.aiauto.android.ui.theme.AppShapes
@@ -129,6 +134,11 @@ fun AssistantScreen(
     // 弹窗内草稿：确认前不影响 pill 回显。
     var showAppSheet by remember { mutableStateOf(false) }
     var draftApps by remember { mutableStateOf(setOf<String>()) }
+    // 全部可启动应用：弹窗展示 icon+名称+包名，与录制页共用同一数据源。
+    var installedApps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        installedApps = withContext(Dispatchers.IO) { loadLaunchableApps(context) }
+    }
 
     // 语音识别状态与处理器。
     var isListening by remember { mutableStateOf(false) }
@@ -335,55 +345,28 @@ fun AssistantScreen(
         item { Spacer(Modifier.height(8.dp)) }
     }
 
-    // 选择应用底部弹窗：列出无障碍已允许的目标包供本次任务多选。
-    // 不静态假显示——候选来自 targetPackages（真实授权集合），空态引导去配置。
+    // 选择应用底部弹窗：列出全部可启动应用（icon+名称+包名）供本次任务多选。
     ProtoModalSheet(
         visible = showAppSheet,
         onDismiss = { showAppSheet = false },
         title = stringResource(R.string.assistant_apps_sheet_title),
         content = {
-        NoteText(stringResource(R.string.assistant_apps_sheet_desc))
-        Spacer(Modifier.height(10.dp))
-        if (targetPackages.isEmpty()) {
-            NoteText(stringResource(R.string.assistant_apps_empty_title))
-            NoteText(stringResource(R.string.assistant_apps_empty_desc))
-            Spacer(Modifier.height(12.dp))
-            ProtoSecondaryButton(
-                text = stringResource(R.string.assistant_apps_open_settings),
-                onClick = {
-                    showAppSheet = false
-                    onGoToSettings()
-                },
-            )
-        } else {
-            targetPackages.sorted().forEach { pkg ->
-                val checked = pkg in draftApps
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            draftApps = if (checked) draftApps - pkg else draftApps + pkg
-                        },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(
-                        checked = checked,
-                        onCheckedChange = {
-                            draftApps = if (it) draftApps + pkg else draftApps - pkg
-                        },
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = pkg,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AppColors.Ink,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+            NoteText(stringResource(R.string.assistant_apps_sheet_desc))
+            Spacer(Modifier.height(10.dp))
+            installedApps.forEach { app ->
+                AppPickerRow(
+                    app = app,
+                    checked = app.packageName in draftApps,
+                    onToggle = {
+                        draftApps = if (app.packageName in draftApps) {
+                            draftApps - app.packageName
+                        } else {
+                            draftApps + app.packageName
+                        }
+                    },
+                )
             }
-        }
-        }
-        ,
+        },
         bottomBar = {
             ProtoPrimaryButton(
                 text = stringResource(R.string.assistant_apps_confirm),

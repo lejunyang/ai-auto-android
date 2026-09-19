@@ -7,11 +7,7 @@ package dev.aiauto.android.ui.recording
  */
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -61,15 +57,12 @@ import dev.aiauto.android.R
 import dev.aiauto.android.automation.recording.RecordedStep
 import dev.aiauto.android.automation.recording.RecordingDraft
 import dev.aiauto.android.automation.recording.RecordingStatus
+import dev.aiauto.android.ui.components.AppPickerRow
+import dev.aiauto.android.ui.components.InstalledApp
 import dev.aiauto.android.ui.components.ProtoModalSheet
+import dev.aiauto.android.ui.components.loadLaunchableApps
+import dev.aiauto.android.ui.components.toSafeBitmap
 import dev.aiauto.android.ui.theme.AppColors
-
-/** 已安装应用条目：图标在渲染行时才转 Bitmap，避免预解码拖慢首帧。 */
-private data class InstalledApp(
-    val packageName: String,
-    val label: String,
-    val icon: Drawable,
-)
 
 @Composable
 fun RecordingSessionScreen(
@@ -290,15 +283,21 @@ fun RecordingSessionScreen(
         onDismiss = { showAppPicker = false },
         title = stringResource(R.string.record_picker_title),
         content = {
-            AppPickerList(
-                apps = installedApps,
-                selected = selectedPackages,
-                onToggle = { pkg ->
-                    // 用不可变副本更新可观察状态，触发重组以即时刷新右侧勾选圈。
-                    selectedPackages =
-                        if (pkg in selectedPackages) selectedPackages - pkg else selectedPackages + pkg
-                },
-            )
+            installedApps.forEach { app ->
+                AppPickerRow(
+                    app = app,
+                    checked = app.packageName in selectedPackages,
+                    onToggle = {
+                        // 不可变副本更新，触发重组即时刷新勾选圈。
+                        selectedPackages =
+                            if (app.packageName in selectedPackages) {
+                                selectedPackages - app.packageName
+                            } else {
+                                selectedPackages + app.packageName
+                            }
+                    },
+                )
+            }
         },
         bottomBar = {
             PrimaryButton(
@@ -428,7 +427,24 @@ private fun SelectedAppsCard(
             // 已选应用图标+名称列表。
             selectedApps.forEach { app ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppIconBitmap(app)
+                    // 已选应用图标（共享 toSafeBitmap），失败留占位块。
+                    val bmp = remember(app.packageName) {
+                        runCatching { app.icon.toSafeBitmap() }.getOrNull()
+                    }
+                    if (bmp != null) {
+                        Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = app.label,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(AppColors.PrimaryContainer),
+                        )
+                    }
                     Text(
                         text = app.label,
                         fontSize = 13.sp,
@@ -438,69 +454,6 @@ private fun SelectedAppsCard(
                 }
             }
         }
-    }
-}
-
-/** 弹窗内应用多选列表：只放应用行，确认按钮由 ProtoModalSheet bottomBar 固定底部。 */
-@Composable
-private fun AppPickerList(
-    apps: List<InstalledApp>,
-    selected: Set<String>,
-    onToggle: (String) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        apps.forEach { app ->
-            val isChecked = app.packageName in selected
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { onToggle(app.packageName) }
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AppIconBitmap(app)
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 10.dp),
-                ) {
-                    Text(text = app.label, fontSize = 14.sp, color = AppColors.Ink)
-                    Text(text = app.packageName, fontSize = 10.sp, color = AppColors.Muted)
-                }
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(RoundedCornerShape(11.dp))
-                        .background(if (isChecked) AppColors.Primary else AppColors.Line),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isChecked) {
-                        Text(text = "✓", fontSize = 14.sp, color = AppColors.Surface)
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** 应用图标 Drawable → Bitmap → Image（渲染时才转，失败留空位）。 */
-@Composable
-private fun AppIconBitmap(app: InstalledApp) {
-    val bitmap = remember(app.packageName) { runCatching { app.icon.toSafeBitmap() }.getOrNull() }
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = app.label,
-            modifier = Modifier.size(36.dp),
-        )
-    } else {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(AppColors.PrimaryContainer),
-        )
     }
 }
 
@@ -595,36 +548,6 @@ internal fun RecordingStepCard(
             }
         }
     }
-}
-
-/** 查询全部可启动应用：复用无障碍页同款逻辑（ACTION_MAIN+CATEGORY_LAUNCHER，排除自身）。 */
-private fun loadLaunchableApps(context: Context): List<InstalledApp> {
-    val pm = context.packageManager
-    val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-    return pm.queryIntentActivities(launcher, 0)
-        .mapNotNull { resolve ->
-            val activity = resolve.activityInfo ?: return@mapNotNull null
-            if (activity.packageName == context.packageName) return@mapNotNull null
-            InstalledApp(
-                packageName = activity.packageName,
-                label = activity.loadLabel(pm).toString(),
-                icon = activity.loadIcon(pm),
-            )
-        }
-        .distinctBy { it.packageName }
-        .sortedBy { it.label.lowercase() }
-}
-
-/** Drawable → Bitmap：手写实现，不依赖 core-ktx 扩展。 */
-private fun Drawable.toSafeBitmap(): Bitmap {
-    (this as? BitmapDrawable)?.bitmap?.let { return it }
-    val width = intrinsicWidth.takeIf { it > 0 } ?: 48
-    val height = intrinsicHeight.takeIf { it > 0 } ?: 48
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    setBounds(0, 0, canvas.width, canvas.height)
-    draw(canvas)
-    return bitmap
 }
 
 private const val MAX_PREVIEW_STEPS = 20
