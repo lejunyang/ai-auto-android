@@ -155,6 +155,8 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 		return a.executeAction(ctx, a.directAutomation(client), args[1:])
 	case "check":
 		return a.executeCheck(ctx, a.directAutomation(client), args[1:])
+	case "file":
+		return a.executeFile(ctx, a.directAutomation(client), args[1:])
 	case "recording":
 		automation, err := a.automationService(client)
 		if err != nil {
@@ -170,7 +172,7 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 	case "mcp":
 		return nil, usageError("Usage: aactl mcp serve")
 	default:
-		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, check, recording, bridge, mcp.")
+		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, check, file, recording, bridge, mcp.")
 	}
 }
 
@@ -274,6 +276,44 @@ func (a *App) executeDevice(
 		return nil, err
 	}
 	return automation.GetDevice(ctx, serial)
+}
+
+// executeFile 处理 file push / file pull 两个子命令。
+//
+// 语义严格限定为「只新增」：不覆盖已存在的目标，也不提供任何删除能力。
+// 刻意不提供 --force / --overwrite 逃生口——要开放覆盖必须走独立决策，
+// 而不是让调用方用一个参数就绕过保护。真正的拦截在 internal/adb 层，
+// 这里只负责解析参数，因此其它调用方接出口时同样受保护。
+func (a *App) executeFile(
+	ctx context.Context,
+	automation service.Automation,
+	args []string,
+) (any, error) {
+	usage := "Usage: aactl file push|pull --device SERIAL --local PATH --remote PATH [--json]"
+	if len(args) == 0 {
+		return nil, usageError(usage)
+	}
+	switch args[0] {
+	case "push", "pull":
+	default:
+		return nil, usageError(usage)
+	}
+	options, err := parseNamedOptions(args[1:], optionSpec{
+		allowed:  optionSet("device", "local", "remote"),
+		required: []string{"device", "local", "remote"},
+	})
+	if err != nil {
+		return nil, err
+	}
+	request := service.FileTransferRequest{
+		Device:     options["device"],
+		LocalPath:  options["local"],
+		RemotePath: options["remote"],
+	}
+	if args[0] == "push" {
+		return automation.PushFile(ctx, request)
+	}
+	return automation.PullFile(ctx, request)
 }
 
 func (a *App) directAutomation(client *adb.Client) service.Automation {

@@ -19,8 +19,11 @@ package adb
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
+	"os"
 	"path"
 	"regexp"
 	"strings"
@@ -73,6 +76,13 @@ var (
 	// 允许引号、分号、反引号或 $ 会让调用方能拼出任意命令。
 	remotePathPattern = regexp.MustCompile(`^[A-Za-z0-9 ._\-/]+$`)
 )
+
+// remoteExistsMarker 是远端存在性探测命中时打印的标记。
+//
+// 用显式标记而不是只看退出码：`adb shell` 的退出码在部分实现上反映的是 adb
+// 自身而非远端命令，只看退出码会把「探测没跑成」误读成「文件不存在」，
+// 而那个方向的误判会放行覆盖。
+const remoteExistsMarker = "AACTL_REMOTE_EXISTS"
 
 // ScreenState 描述屏幕当前的点亮状态。
 type ScreenState struct {
@@ -326,6 +336,23 @@ func (c *Client) PushFile(
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return FileTransfer{}, err
 	}
+	// 推送前必须确认远端为空位：adb push 会直接覆盖，一旦发出就无法挽回。
+	exists, err := c.remotePathExists(ctx, serial, remotePath)
+	if err != nil {
+		return FileTransfer{}, err
+	}
+	if exists {
+		return FileTransfer{}, apperr.New(
+			apperr.CodeActionNotAllowed,
+			fmt.Sprintf(
+				"The device path %s already exists; file push only creates new files "+
+					"and never overwrites or deletes. Choose another remote path.",
+				remotePath,
+			),
+			false,
+			map[string]any{"remotePath": remotePath},
+		)
+	}
 	if err := c.runAction(ctx, serial, []string{
 		"-s", serial, "push", localPath, remotePath,
 	}, process.Options{Timeout: 120 * time.Second}); err != nil {
@@ -353,6 +380,28 @@ func (c *Client) PullFile(
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return FileTransfer{}, err
 	}
+	// 拉取前确认本地为空位。adb pull 由外部进程写文件，Go 无法用 O_EXCL 原子创建，
+	// 只能先检查后执行；这个窗口无法消除，见 remotePathExists 的竞态说明。
+	if _, statErr := os.Stat(localPath); statErr == nil {
+		return FileTransfer{}, apperr.New(
+			apperr.CodeActionNotAllowed,
+			fmt.Sprintf(
+				"The local path %s already exists; file pull only creates new files "+
+					"and never overwrites or deletes. Choose another local path.",
+				localPath,
+			),
+			false,
+			map[string]any{"localPath": localPath},
+		)
+	} else if !errors.Is(statErr, fs.ErrNotExist) {
+		// 既不是「存在」也不是「不存在」：权限或路径异常。此时不能假定为空位。
+		return FileTransfer{}, apperr.Wrap(
+			apperr.CodeActionNotAllowed,
+			fmt.Sprintf("Cannot determine whether the local path %s is free.", localPath),
+			false,
+			statErr,
+		)
+	}
 	if err := c.runAction(ctx, serial, []string{
 		"-s", serial, "pull", remotePath, localPath,
 	}, process.Options{Timeout: 120 * time.Second, MaxOutput: maxPullOutput}); err != nil {
@@ -374,6 +423,42 @@ func (c *Client) putSetting(ctx context.Context, serial, key, value string) erro
 	return c.runAction(ctx, serial, []string{
 		"-s", serial, "shell", "settings", "put", "system", key, value,
 	}, process.Options{Timeout: 15 * time.Second})
+}
+
+// remotePathExists 判断设备上是否已存在该路径。
+//
+// 为什么要单引号包裹：validateRemotePath 的字符集允许空格（`/sdcard/a b.txt`
+// 是合法路径），裸拼进 shell 会被拆成两个参数，`test -e` 只看前半段，对已存在的
+// 文件误判为不存在——那不是注入漏洞，而是覆盖保护静默失效。单引号在这里是完备的：
+// 白名单已排除单引号本身，路径中不可能出现能闭合引号的字符。因此白名单与本函数
+// 必须一起维护，放宽字符集前要先回来看这里。
+//
+// 竞态（TOCTOU）：本函数返回「不存在」之后、adb push 落盘之前，设备上可能有其它
+// 进程创建同名文件，此时仍会被覆盖。adb 协议层没有 O_EXCL 语义，这个窗口无法消除。
+// 因此调用方的错误信息只表述为「已检查该路径当时不存在」，不表述为「保证不覆盖」。
+func (c *Client) remotePathExists(
+	ctx context.Context,
+	serial, remotePath string,
+) (bool, error) {
+	result, err := c.run(ctx, []string{
+		"-s", serial, "shell",
+		fmt.Sprintf("test -e '%s' && echo %s", remotePath, remoteExistsMarker),
+	}, process.Options{Timeout: 20 * time.Second, MaxOutput: 4 * 1024})
+	if err != nil {
+		// 探测没跑成时必须拒绝传输，不能「测不出来就当作不存在」——
+		// 那会让设备临时不可达时保护退化成允许覆盖。
+		return false, apperr.Wrap(
+			apperr.CodeActionNotAllowed,
+			fmt.Sprintf(
+				"Cannot determine whether the device path %s is free; "+
+					"refusing the transfer instead of risking an overwrite.",
+				remotePath,
+			),
+			false,
+			err,
+		)
+	}
+	return strings.Contains(string(result.Stdout), remoteExistsMarker), nil
 }
 
 // validateRemotePath 校验设备端路径。

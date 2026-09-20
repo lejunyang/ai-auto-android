@@ -10,9 +10,11 @@ package cli
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/lejunyang/ai-auto-android/internal/adb"
+	"github.com/lejunyang/ai-auto-android/internal/mcpserver"
 	"github.com/lejunyang/ai-auto-android/internal/service"
 )
 
@@ -224,26 +226,78 @@ func TestObserveInputMethodsUsesSharedService(t *testing.T) {
 	}
 }
 
-// TestFileTransferHasNoCLIEntryPoint 锁定一个有意的缺口：Service.PushFile /
-// PullFile 已实现，但本轮不给 CLI 出口。暴露远端路径读写前必须先定义路径白名单
-// 与确认策略（change spec 的待决项 T4）。这条测试防止有人顺手接线。
-func TestFileTransferHasNoCLIEntryPoint(t *testing.T) {
-	for _, subcommand := range []string{"push", "pull", "file-push", "file-pull"} {
-		t.Run(subcommand, func(t *testing.T) {
+// TestFileTransferRefusesToOverwriteOrDelete 接替原先的
+// TestFileTransferHasNoCLIEntryPoint。
+//
+// 原测试锁定「file.push / file.pull 没有 CLI 出口」。出口现已开放，但锁定测试
+// 不取消、只换目标：现在锁定的是出口开放后必须成立的新不变量——只新增、
+// 不覆盖、不删除。任何日后把覆盖或删除顺手放开的改动都会在这里失败。
+func TestFileTransferRefusesToOverwriteOrDelete(t *testing.T) {
+	// 不存在任何删除类子命令，也不存在覆盖开关。
+	t.Run("no delete or force subcommands", func(t *testing.T) {
+		for _, args := range [][]string{
+			{"file", "delete", "--device", "SERIAL", "--remote", "/sdcard/a"},
+			{"file", "rm", "--device", "SERIAL", "--remote", "/sdcard/a"},
+			{"file", "remove", "--device", "SERIAL", "--remote", "/sdcard/a"},
+			// --force / --overwrite 必须是「未知选项」。这里带上值：
+			// 不带值时 parseNamedOptions 会先以「缺少值」失败，那样即使选项被
+			// 加进白名单测试也照样通过——断言就成了空的。带值才真正测到白名单。
+			{
+				"file", "push", "--device", "SERIAL", "--local", "a",
+				"--remote", "/sdcard/b", "--force", "true",
+			},
+			{
+				"file", "push", "--device", "SERIAL", "--local", "a",
+				"--remote", "/sdcard/b", "--overwrite", "true",
+			},
+		} {
+			automation := &actionCapturingAutomation{}
+			app, _ := testApp(&commandExecutor{}, "")
+			app.Automation = automation
+
+			exitCode := app.Run(context.Background(), append(args, "--json"))
+
+			if exitCode == 0 {
+				t.Fatalf("%v was accepted; delete and overwrite must not exist", args)
+			}
+			if len(automation.fileTransfers) != 0 {
+				t.Fatalf("%v reached the service: %#v", args, automation.fileTransfers)
+			}
+		}
+	})
+
+	// MCP 本轮仍无文件传输出口：文件读写是可持久化副作用，模型自主发起的风险档位
+	// 与人在 CLI 显式调用不同，留待单独决策。这里把该边界钉住。
+	t.Run("mcp has no file transfer tool", func(t *testing.T) {
+		for _, name := range mcpserver.ToolNames {
+			if strings.Contains(name, "file") ||
+				strings.Contains(name, "push") ||
+				strings.Contains(name, "pull") {
+				t.Fatalf("MCP exposes a file transfer tool %q without a risk decision", name)
+			}
+		}
+	})
+
+	// push / pull 的正常出口确实存在且能把请求送到服务层——否则上面的否定断言
+	// 会因为「命令根本不存在」而空洞通过。
+	t.Run("push and pull entry points exist", func(t *testing.T) {
+		for _, subcommand := range []string{"push", "pull"} {
 			automation := &actionCapturingAutomation{}
 			app, _ := testApp(&commandExecutor{}, "")
 			app.Automation = automation
 
 			exitCode := app.Run(context.Background(), []string{
-				"action", subcommand, "--device", "SERIAL",
+				"file", subcommand, "--device", "SERIAL",
 				"--local", "a", "--remote", "/sdcard/b", "--json",
 			})
-			if exitCode == 0 {
-				t.Fatalf("%q is wired without the path allowlist decision", subcommand)
+
+			if exitCode != 0 {
+				t.Fatalf("file %s exited %d", subcommand, exitCode)
 			}
-			if len(automation.fileTransfers) != 0 {
-				t.Fatalf("file transfer reached the service: %#v", automation.fileTransfers)
+			if len(automation.fileTransfers) != 1 {
+				t.Fatalf("file %s did not reach the service: %#v",
+					subcommand, automation.fileTransfers)
 			}
-		})
-	}
+		}
+	})
 }
