@@ -1104,6 +1104,7 @@
     },
     "imeShow": {
       "type": "object",
+      "description": "Focuses the current editable control so the system can bring up the keyboard. This is not a guaranteed IME visibility switch: Android has no counterpart to the KEYCODE_BACK used by ime.hide, and the accessibility channel cannot query whether the keyboard is actually visible. A success result means the input control was focused, not that the keyboard is shown.",
       "required": ["type", "params"],
       "properties": {
         "type": {
