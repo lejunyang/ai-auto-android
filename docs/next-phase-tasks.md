@@ -1424,12 +1424,20 @@ Sub-Agent 30-60 秒无输出时先查询状态；确认卡死后再停止。Agen
 
 ### 结论先行
 
-**从 UIAutomator 能力对齐角度看，已无影响实际可用性的硬缺口。**
+**能力覆盖上已无硬缺口，但有一处一致性缺陷会影响实际可用性，建议优先修。**
 
-判断依据：UIAutomator 的核心工作流是「按选择器定位 → 执行元素级动作 → 等待条件
-成立」。三个环节现在三通道都走得通——选择器定位有 6 种策略且 MCP 有
+能力覆盖：UIAutomator 的核心工作流「按选择器定位 → 执行元素级动作 → 等待条件
+成立」三个环节三通道都走得通——选择器定位有 6 种策略且 MCP 有
 `android_bridge_action`，元素级动作有 29 个桥侧分支，等待有 `wait` / `assert`
-判据。剩余条目都是**表达力增量**（更多选择器维度、更多窗口信息、可组合等待），
+判据，多窗口与瞬时提示也已过线。单看「能不能做到」，没有常见场景做不了。
+
+**但 C10/C12 调研发现一处此前未记录的缺陷**（见下方 C12 行）：同一个 `text`
+维度，动作侧是精确匹配而判据侧是包含匹配。调用方会遇到「`check wait` 等到了、
+`ui.click` 点不到」，且失败只报 `SELECTOR_NOT_FOUND`，指不出真实原因。
+这不是表达力增量，是两条路径对同一概念给出矛盾结果，属于会浪费排查时间的
+真实可用性问题。修它的改动很小（C12 第 1、2 步）。
+
+除此之外，剩余条目确实都是表达力增量（更多选择器维度、可组合等待），
 不是「某个常见场景做不了」。
 
 ### 已收口，无剩余
@@ -1445,16 +1453,32 @@ Sub-Agent 30-60 秒无输出时先查询状态；确认卡死后再停止。Agen
 - `ui.setText` 非 ASCII 引导（C16）：schema description 已指向
   `android_bridge_set_text`。
 
+- C4 多窗口、C5 瞬时消息、C11 事件型判据：已实施，见
+  `.trae/specs/window-toast-event-clipboard/`。
+- C6 的**写入一半**（`clipboard.set`）：已实施。读取见下方「有意不做」。
+
 ### 仍剩余：`可补充`（与信任边界兼容）
 
 | ID | 缺口 | 当前状态证据 | 为何还没做 | 前置条件 | 成本 |
 | --- | --- | --- | --- | --- | --- |
-| C4 | 多窗口集合不过线 | `protocol/schema/v1` 无 `windows` 字段（grep 0 命中）；`WindowSnapshotter.kt` 已枚举、`AndroidAccessibilityBackend` 已用于查找 | 要扩协议 + 三侧协同，需单一 owner 串行 | 协议波次先行 | **代码已在，只差过线**（Android 侧已有实现，缺协议字段与序列化） |
-| C5 | Toast / 瞬时消息不可读 | `bridge-request.schema.json` 无 `transientMessages`（grep 0）；`TransientMessageCapture` 已在服务侧缓冲 | 同上，需扩协议 | 协议波次先行 | **代码已在，只差过线** |
-| C6 | `clipboard.set` / `clipboard.get` 无桥侧执行 | parser 无 `clipboard.` 分支（grep 0）；`ClipboardGateway.kt` 无生产调用方 | 剪贴板读取涉及隐私数据，与文件传输同属需独立安全决策的一类 | 需先定隐私策略（读取内容是否入日志、是否需确认） | 代码已在，但**不只是接线**——要先决策 |
-| C10 | 无 `scrollUntil(predicate)` 可组合原语 | `action.schema.json` 无 `scrollUntil`（grep 0） | 需扩协议并在桥侧与直连各实现一次 | C4/C5 之后（同一协议 owner） | 需扩协议 |
-| C11 | 判据无事件型条件 | 判据 kind 仅 `node/text/package/window/uiStable` | 对应 UIAutomator 仅有的 2 个 `EventCondition`，属表达力增量 | C10 同波次 | 需扩协议 |
-| C12 | 选择器维度窄于 UIAutomator | 现 6 种：`resourceId,contentDescription,text,role,ancestor,fingerprint`；UIAutomator `By` 有 31 个工厂 | 缺 `clazz`、`hint*`、`depth`、`startsWith/endsWith` 等 | C7 波次之后 | 需扩协议 + 匹配器 |
+| C6-read | `clipboard.get` 无出口 | parser 无 `clipboard.get` 分支，有锁定测试钉住 | 不是「补权限就行」：Android 无 READ_CLIPBOARD 权限，API 29+ 靠「持有输入焦点或是默认输入法」限制，与「读别的 App 剪贴板」互斥 | 需先决策走 IME 路线（权限档位高于无障碍）还是前台夺焦（打断被自动化界面） | 代码已在（`ClipboardGateway.read()` 三态完整），但**不是接线问题** |
+| C10 | 无 `scrollUntil(predicate)` 可组合原语 | `action.schema.json` 无 `scrollUntil`（grep 0） | 需扩协议，且要先重构判据求值 | 见下方详细方案 | **已有完整实施方案**，见 `artifacts/uiautomator-gap/c10-c12-implementation-study.md` |
+| C12 | 选择器维度与匹配方式 | 动作侧 6 维度全精确匹配；判据侧 5 字段中 text/description 是**包含**匹配——两侧对同一 `text` 语义不一致 | 需扩协议与匹配器 | 见下方详细方案 | **已有完整实施方案**，同上文档 |
+
+**C10 与 C12 的详细实施方案**见
+`artifacts/uiautomator-gap/c10-c12-implementation-study.md`，含逐文件改动清单、
+字段设计草案、兼容性逐条核对、工作量拆分与不做的具体代价。三条结论要点：
+
+- C10 推荐**新增 `ui.scrollUntil` 动作**而非给 `scrollIntoView` 加参数——后者会把
+  一个语义确定的动作变成「行为取决于传了哪个参数」，且触及
+  `change-field-semantics`。主要工作量不在加动作，而在把判据求值从
+  `AwaitPredicate` 的轮询循环里抽出来（C11 刚在那里加了两个依赖循环状态的分支）。
+- C12 调研中发现一处**本项目自己的语义分叉**：同一个 `text` 维度，动作侧是精确
+  匹配（`SelectorMatcher.kt:197`），判据侧是包含匹配（`predicate.go:398`）。
+  调用方会遇到「wait 等到了、click 点不到」且错误只报 SELECTOR_NOT_FOUND。
+  这比对齐 UIAutomator 的 31 个工厂更值得先修。
+- 两项均**不触发** `requiresNewMajor`，前提是 C12 的 `match` 字段默认 `exact`。
+  若为对齐判据侧而把动作侧默认改成 contains，那就是 `change-default-behavior`。
 
 ### 仍剩余：`需权衡`（触及安全 / 授权 / 确定性边界）
 
