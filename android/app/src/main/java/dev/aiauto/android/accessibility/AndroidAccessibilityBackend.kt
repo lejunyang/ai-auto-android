@@ -36,6 +36,7 @@ import dev.aiauto.android.accessibility.settings.AccessibilitySettings
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.accessibility.snapshot.AccessibilitySnapshotter
 import dev.aiauto.android.accessibility.snapshot.WindowSnapshotter
+import dev.aiauto.android.bridge.ClipboardGateway
 import dev.aiauto.android.accessibility.snapshot.recycleSafely
 import dev.aiauto.android.automation.recording.RecordingRuntime
 
@@ -46,6 +47,16 @@ internal class AndroidAccessibilityBackend(
     private val userTouchMonitor: UserTouchMonitor? = null,
     private val windowSnapshotter: WindowSnapshotter = WindowSnapshotter(snapshotter),
 ) : AccessibilityActionBackend {
+    /**
+     * 剪贴板网关延迟构造。
+     *
+     * 不在构造参数里直接 new：ClipboardGateway 的构造会调用
+     * service.applicationContext，而 AndroidAccessibilityBackend 在大量只关心
+     * 手势与节点动作的测试里被构造，那些测试的 service 替身没有桩接该方法。
+     * 让不碰剪贴板的路径不必为剪贴板付出代价。
+     */
+    private val clipboard: ClipboardGateway by lazy { ClipboardGateway(service) }
+
     override fun validateTarget(expectedPackage: String?): AccessibilityResult<Unit> {
         val settings = settingsRepository.load()
         readinessFailure(settings)?.let { return it }
@@ -649,6 +660,15 @@ internal class AndroidAccessibilityBackend(
             focused.recycleSafely()
         }
     }
+
+    /**
+     * 写入系统剪贴板。
+     *
+     * 只实现写入。读取在 ClipboardGateway 里仍然保留（且正确区分 Empty 与
+     * Unavailable），但不经由本接口开放出口——读取需要本 App 持有输入焦点或
+     * 成为默认输入法，与「读别的 App 的剪贴板」这一目的互斥。
+     */
+    override fun writeClipboard(text: String): Boolean = clipboard.write(text)
 
     /** 找当前获得输入焦点的可编辑节点，跨窗口查找。 */
     private fun focusedInputNode(): AccessibilityNodeInfo? {

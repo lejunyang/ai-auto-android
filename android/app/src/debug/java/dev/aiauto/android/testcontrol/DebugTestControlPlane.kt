@@ -9,11 +9,13 @@ import android.content.Context
 
 import dev.aiauto.android.BuildConfig
 import dev.aiauto.android.accessibility.ScreenshotTestAccessibilityService
+import dev.aiauto.android.accessibility.TransientMessage
 import dev.aiauto.android.accessibility.model.AccessibilityCommand
 import dev.aiauto.android.accessibility.model.AccessibilityErrorCode
 import dev.aiauto.android.accessibility.model.AccessibilityResult
 import dev.aiauto.android.accessibility.model.ActionExecution
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
+import dev.aiauto.android.accessibility.model.UiWindowSnapshot
 import dev.aiauto.android.automation.recording.AutomationScript
 import dev.aiauto.android.automation.recording.RecordedAction
 import dev.aiauto.android.automation.recording.RecordedStep
@@ -161,6 +163,24 @@ class DebugTestControlPlane(
                 val targetPackage = expectedPackage ?: applicationContext.packageName
                 return service.snapshot(targetPackage)
             }
+
+            // 调试测试面只用于截图取证，不提供多窗口与瞬时消息：
+            // 两者都依赖真实的无障碍事件流与窗口枚举，测试面没有那个上下文。
+            override fun windows(
+                expectedPackage: String?,
+            ): AccessibilityResult<List<UiWindowSnapshot>> =
+                AccessibilityResult.Failure(
+                    AccessibilityErrorCode.ACTION_NOT_SUPPORTED,
+                    "The debug test control plane does not enumerate windows",
+                )
+
+            override fun transientMessages(
+                toastsOnly: Boolean,
+            ): AccessibilityResult<List<TransientMessage>> =
+                AccessibilityResult.Failure(
+                    AccessibilityErrorCode.ACTION_NOT_SUPPORTED,
+                    "The debug test control plane does not capture transient messages",
+                )
 
             override fun execute(
                 command: AccessibilityCommand,

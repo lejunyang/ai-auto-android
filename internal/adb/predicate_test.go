@@ -287,3 +287,143 @@ func indexOf(text, sub string) int {
 	}
 	return -1
 }
+
+// changedHierarchyXML 与 realHierarchyXML 结构相同但包名与文本不同，
+// 用于模拟「界面变了」。
+const changedHierarchyXML = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node index="0" text="" resource-id="" class="android.widget.FrameLayout" package="com.example.next" content-desc="" bounds="[0,0][320,640]">
+    <node index="0" text="Second screen" resource-id="android:id/title" class="android.widget.TextView" package="com.example.next" content-desc="" bounds="[20,100][300,140]" />
+  </node>
+</hierarchy>`
+
+// scriptedPredicateClient 按给定的层级序列逐轮返回，用于模拟界面随时间变化。
+//
+// 与 predicateClient 的区别：那个每轮都回同一份层级，无法表达「第 N 轮之后变了」，
+// 而事件型判据的全部语义都建立在「与基线相比是否变化」上。
+func scriptedPredicateClient(hierarchies []string) (*Client, *fakeADB) {
+	results := []process.Result{{Stdout: []byte(twoOnlineDevices)}}
+	errors := []error{nil}
+	for _, xml := range hierarchies {
+		results = append(results,
+			process.Result{Stdout: []byte(twoOnlineDevices)},
+			process.Result{Stdout: []byte("")},
+			process.Result{Stdout: []byte(xml)},
+			process.Result{Stdout: []byte("")},
+		)
+		errors = append(errors, nil, nil, nil, nil)
+	}
+	fake := &fakeADB{results: results, errors: errors}
+	return NewClient("/fake/adb", fake), fake
+}
+
+// newWindow 在界面始终不变时不得成立。
+//
+// 这条是事件型判据最容易写错的方向：若第一轮就判定成立，调用方会以为已经
+// 跳转到新界面，实际还停在原地。
+func TestAwaitNewWindowDoesNotFireWithoutAChange(t *testing.T) {
+	client, _ := predicateClient(6)
+
+	result, err := client.AwaitPredicate(context.Background(), "FIRST", Predicate{
+		Kind:      PredicateNewWindow,
+		Operator:  OperatorOccurred,
+		TimeoutMS: 1200,
+	})
+
+	if err != nil {
+		t.Fatalf("AwaitPredicate() error = %v", err)
+	}
+	if result.Satisfied {
+		t.Fatalf("newWindow fired without any change: %#v", result)
+	}
+}
+
+// 界面确实换掉之后，newWindow 必须成立。
+func TestAwaitNewWindowFiresAfterTheScreenChanges(t *testing.T) {
+	client, _ := scriptedPredicateClient([]string{
+		realHierarchyXML,
+		changedHierarchyXML,
+		changedHierarchyXML,
+	})
+
+	result, err := client.AwaitPredicate(context.Background(), "FIRST", Predicate{
+		Kind:      PredicateNewWindow,
+		Operator:  OperatorOccurred,
+		TimeoutMS: 3000,
+	})
+
+	if err != nil {
+		t.Fatalf("AwaitPredicate() error = %v", err)
+	}
+	if !result.Satisfied {
+		t.Fatalf("newWindow did not fire after the screen changed: %#v", result)
+	}
+	if result.ActualPackage != "com.example.next" {
+		t.Fatalf("actualPackage = %q", result.ActualPackage)
+	}
+}
+
+// scrollFinished 在界面从未变化时不得成立。
+//
+// 这是与 uiStable 的关键区别：uiStable 一开始就稳定即成立，而 scrollFinished
+// 必须先观察到滚动确实发生过。否则在滚动开始前调用会立刻返回成立，
+// 调用方以为滚完了，实际一行都没动。
+func TestAwaitScrollFinishedRequiresMotionFirst(t *testing.T) {
+	client, _ := predicateClient(6)
+
+	result, err := client.AwaitPredicate(context.Background(), "FIRST", Predicate{
+		Kind:             PredicateScrollFinished,
+		Operator:         OperatorOccurred,
+		StableDurationMS: 100,
+		TimeoutMS:        1200,
+	})
+
+	if err != nil {
+		t.Fatalf("AwaitPredicate() error = %v", err)
+	}
+	if result.Satisfied {
+		t.Fatalf("scrollFinished fired although nothing ever moved: %#v", result)
+	}
+}
+
+// 先变化再静止时，scrollFinished 必须成立。
+func TestAwaitScrollFinishedFiresAfterMotionSettles(t *testing.T) {
+	client, _ := scriptedPredicateClient([]string{
+		realHierarchyXML,
+		changedHierarchyXML,
+		changedHierarchyXML,
+		changedHierarchyXML,
+		changedHierarchyXML,
+	})
+
+	result, err := client.AwaitPredicate(context.Background(), "FIRST", Predicate{
+		Kind:             PredicateScrollFinished,
+		Operator:         OperatorOccurred,
+		StableDurationMS: 100,
+		TimeoutMS:        4000,
+	})
+
+	if err != nil {
+		t.Fatalf("AwaitPredicate() error = %v", err)
+	}
+	if !result.Satisfied {
+		t.Fatalf("scrollFinished did not fire after motion settled: %#v", result)
+	}
+}
+
+// 事件型判据只接受 occurred，且不接受 expected。
+func TestEventPredicatesRejectOtherOperatorsAndExpected(t *testing.T) {
+	client, _ := predicateClient(2)
+
+	for _, predicate := range []Predicate{
+		{Kind: PredicateNewWindow, Operator: OperatorExists},
+		{Kind: PredicateScrollFinished, Operator: OperatorStable},
+		{Kind: PredicateNewWindow, Operator: OperatorOccurred, Expected: "anything"},
+	} {
+		if _, err := client.AwaitPredicate(
+			context.Background(), "FIRST", predicate,
+		); err == nil {
+			t.Fatalf("AwaitPredicate(%#v) = nil, want error", predicate)
+		}
+	}
+}

@@ -213,13 +213,14 @@
       "required": ["kind", "operator"],
       "properties": {
         "kind": {
-          "enum": ["node", "text", "package", "window", "uiStable"]
+          "enum": ["node", "text", "package", "window", "uiStable", "newWindow", "scrollFinished"],
+          "description": "newWindow and scrollFinished mirror the only two UIAutomator EventConditions. Note the semantic gap: UIAutomator observes real accessibility events, whereas this protocol polls. A change that starts and finishes between two polls is not observed, so these are not event-level guarantees."
         },
         "target": {
           "$ref": "#/$defs/target"
         },
         "operator": {
-          "enum": ["exists", "notExists", "equals", "contains", "matches", "stable"]
+          "enum": ["exists", "notExists", "equals", "contains", "matches", "stable", "occurred"]
         },
         "expected": {
           "type": ["string", "number", "integer", "boolean", "null"]

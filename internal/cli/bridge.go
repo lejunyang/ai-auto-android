@@ -22,7 +22,7 @@ func (a *App) executeBridge(
 ) (any, error) {
 	if len(args) == 0 {
 		return nil, usageError(
-			"Usage: aactl bridge open|info|foreground|snapshot|set-text|ime-show|action|close [options]",
+			"Usage: aactl bridge open|info|foreground|snapshot|windows|messages|set-text|ime-show|action|close [options]",
 		)
 	}
 	service, err := a.bridgeService(client)
@@ -105,6 +105,42 @@ func (a *App) executeBridge(
 			},
 			options["text"],
 		)
+	case "windows":
+		// 枚举可见窗口。对话框、输入法、分屏与画中画在多数场景下都不是活动窗口，
+		// 只看 snapshot 的单根时它们的节点根本不在候选集合里。
+		options, err := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "package", "max-depth"),
+			required: []string{"device"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		targetPackage := options["package"]
+		if targetPackage != "" {
+			if err := adb.ValidatePackageName(targetPackage); err != nil {
+				return nil, err
+			}
+		}
+		maxDepth := 0
+		if _, present := options["max-depth"]; present {
+			maxDepth, err = parseIntegerOption(options, "max-depth")
+			if err != nil {
+				return nil, err
+			}
+		}
+		return automation.BridgeWindows(ctx, options["device"], targetPackage, maxDepth)
+	case "messages":
+		// 读取已捕获的 Toast 与通知。每条带 eventTimeMs——没有时间戳就无法区分
+		// 「这是刚才那次操作触发的」还是「十分钟前遗留的」。
+		options, err := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "toasts-only"),
+			required: []string{"device"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		toastsOnly := options["toasts-only"] == "true"
+		return automation.BridgeTransientMessages(ctx, options["device"], toastsOnly)
 	case "ime-show":
 		// 聚焦当前输入控件。归桥通道而非 action 子命令：action 走直连，
 		// 而 Android 没有「打开键盘」的 keycode，ime.show 只能走无障碍。

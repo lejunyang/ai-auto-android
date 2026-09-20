@@ -80,6 +80,27 @@ func observeSchema() json.RawMessage {
 					"withDetails":{"type":"boolean"}
 				},
 				"additionalProperties":false
+			},
+			{
+				"type":"object",
+				"required":["device","kind"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"kind":{"const":"windows"},
+					"targetPackage":` + packageSchema() + `,
+					"maxDepth":{"type":"integer","minimum":1,"maximum":100}
+				},
+				"additionalProperties":false
+			},
+			{
+				"type":"object",
+				"required":["device","kind"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"kind":{"const":"transientMessages"},
+					"toastsOnly":{"type":"boolean"}
+				},
+				"additionalProperties":false
 			}
 		]
 	}`)
@@ -145,6 +166,18 @@ func predicateSchema() json.RawMessage {
 					"timeoutMs":{"type":"integer","minimum":1,"maximum":60000}
 				},
 				"additionalProperties":false
+			},
+			{
+				"type":"object",
+				"required":["device","kind","operator"],
+				"properties":{
+					"device":` + deviceSchema() + `,
+					"kind":{"enum":["newWindow","scrollFinished"]},
+					"operator":{"const":"occurred"},
+					"stableDurationMs":{"type":"integer","minimum":100,"maximum":30000},
+					"timeoutMs":{"type":"integer","minimum":1,"maximum":60000}
+				},
+				"additionalProperties":false
 			}
 		]
 	}`)
@@ -161,8 +194,8 @@ func predicateOutputSchema() json.RawMessage {
 		"required":["device","kind","operator","satisfied","waitedMs","polls"],
 		"properties":{
 			"device":` + deviceSchema() + `,
-			"kind":{"enum":["node","text","package","window","uiStable"]},
-			"operator":{"enum":["exists","notExists","equals","contains","matches","stable"]},
+			"kind":{"enum":["node","text","package","window","uiStable","newWindow","scrollFinished"]},
+			"operator":{"enum":["exists","notExists","equals","contains","matches","stable","occurred"]},
 			"satisfied":{"type":"boolean"},
 			"waitedMs":{"type":"integer","minimum":0},
 			"polls":{"type":"integer","minimum":0},
@@ -347,8 +380,8 @@ func observeOutputSchema() json.RawMessage {
 		"required":["device","kind","format"],
 		"properties":{
 			"device":` + deviceSchema() + `,
-			"kind":{"enum":["screenshot","hierarchy","semantic","recordings","foreground","apps"]},
-			"format":{"enum":["png","uiautomator-xml","accessibility-tree","recording-list","foreground","app-list"]},
+			"kind":{"enum":["screenshot","hierarchy","semantic","recordings","foreground","apps","windows","transientMessages"]},
+			"format":{"enum":["png","uiautomator-xml","accessibility-tree","recording-list","foreground","app-list","window-list","transient-message-list"]},
 			"sizeBytes":{"type":"integer","minimum":1},
 			"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},
 			"xml":{"type":"string"},
@@ -358,7 +391,9 @@ func observeOutputSchema() json.RawMessage {
 			"foreground":{"$ref":"#/$defs/foreground"},
 			"apps":{"type":"array","items":{"$ref":"#/$defs/app"}},
 			"includesSystem":{"type":"boolean"},
-			"detailsIncluded":{"type":"boolean"}
+			"detailsIncluded":{"type":"boolean"},
+			"windows":{"type":"object"},
+			"messages":{"type":"object"}
 		},
 		"additionalProperties":false,
 		"$defs":{

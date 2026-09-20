@@ -9,6 +9,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -341,4 +342,69 @@ func TestBridgeImeShowRoutesThroughTheBridgeChannel(t *testing.T) {
 	if rejected == 0 {
 		t.Fatal("ime-show accepted a selector option")
 	}
+}
+
+// TestBridgeWindowsAndMessagesRouteThroughTheBridge 锁定 C4/C5 的通道归属与参数映射。
+//
+// 两者都只能走桥：窗口枚举依赖 flagRetrieveInteractiveWindows，Toast 捕获依赖
+// typeNotificationStateChanged，都是无障碍事件流的能力，直连通道拿不到。
+func TestBridgeWindowsAndMessagesRouteThroughTheBridge(t *testing.T) {
+	automation := &actionCapturingAutomation{}
+	app, _ := testApp(&commandExecutor{}, "")
+	app.Automation = automation
+
+	if code := app.Run(context.Background(), []string{
+		"bridge", "windows", "--device", "SERIAL",
+		"--package", "com.example.app", "--max-depth", "5", "--json",
+	}); code != 0 {
+		t.Fatalf("bridge windows exit = %d", code)
+	}
+	if len(automation.windowQueries) != 1 ||
+		automation.windowQueries[0] != "SERIAL|com.example.app|5" {
+		t.Fatalf("window queries = %#v", automation.windowQueries)
+	}
+
+	if code := app.Run(context.Background(), []string{
+		"bridge", "messages", "--device", "SERIAL", "--toasts-only", "true", "--json",
+	}); code != 0 {
+		t.Fatalf("bridge messages exit = %d", code)
+	}
+	if len(automation.messageQueries) != 1 || automation.messageQueries[0] != "SERIAL|true" {
+		t.Fatalf("message queries = %#v", automation.messageQueries)
+	}
+}
+
+// 瞬时消息的时间戳必须一路透传到 CLI 输出。
+//
+// 没有 eventTimeMs 就无法区分「这是刚才那次操作触发的」还是「十分钟前遗留的」，
+// 缓冲本身就失去判断价值。这条防止有人在序列化时把它当冗余字段省掉。
+func TestBridgeMessagesPreserveEventTimestamps(t *testing.T) {
+	automation := &timestampAutomation{}
+	app, stdout := testApp(&commandExecutor{}, "")
+	app.Automation = automation
+
+	if code := app.Run(context.Background(), []string{
+		"bridge", "messages", "--device", "SERIAL", "--json",
+	}); code != 0 {
+		t.Fatalf("exit = %d, output = %s", code, stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "eventTimeMs") {
+		t.Fatalf("eventTimeMs was dropped from the CLI output: %s", stdout.String())
+	}
+}
+
+// timestampAutomation 回一条带时间戳的真实形状消息。
+type timestampAutomation struct {
+	actionCapturingAutomation
+}
+
+func (t *timestampAutomation) BridgeTransientMessages(
+	_ context.Context,
+	_ string,
+	_ bool,
+) (json.RawMessage, error) {
+	return json.RawMessage(
+		`{"messages":[{"text":"Saved","toast":true,"eventTimeMs":1730000000000}],` +
+			`"toastsOnly":false}`,
+	), nil
 }

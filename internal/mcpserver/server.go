@@ -42,6 +42,10 @@ const (
 	observeKindRecordings = "recordings"
 	observeKindForeground = "foreground"
 	observeKindApps       = "apps"
+	// observeKindWindows 与 observeKindMessages 走桥：窗口枚举与 Toast 捕获
+	// 都依赖无障碍事件流，直连通道拿不到。
+	observeKindWindows  = "windows"
+	observeKindMessages = "transientMessages"
 )
 
 // ToolNames 列出服务器允许暴露的完整工具集合。
@@ -88,6 +92,9 @@ type observeInput struct {
 	MaxDepth      int    `json:"maxDepth,omitempty"`
 	IncludeSystem bool   `json:"includeSystem,omitempty"`
 	WithDetails   bool   `json:"withDetails,omitempty"`
+	// ToastsOnly 只在 kind=transientMessages 时有意义：Toast 几乎总是当前操作的
+	// 直接反馈，而通知可能来自任何后台应用，混在一起会让判据不可靠。
+	ToastsOnly bool `json:"toastsOnly,omitempty"`
 }
 
 type observeOutput struct {
@@ -106,6 +113,10 @@ type observeOutput struct {
 	Apps            *[]adb.InstalledApp `json:"apps,omitempty"`
 	IncludesSystem  *bool               `json:"includesSystem,omitempty"`
 	DetailsIncluded *bool               `json:"detailsIncluded,omitempty"`
+	// Windows 与 Messages 原样透传 App 侧应答：窗口的 layer/active/focused 与
+	// 消息的 eventTimeMs 都是调用方判断所必需的，二次封装容易丢字段。
+	Windows  json.RawMessage `json:"windows,omitempty"`
+	Messages json.RawMessage `json:"messages,omitempty"`
 }
 
 // foregroundPayload 是前台观察的返回体。
@@ -337,6 +348,34 @@ func newServer(
 				Count:           &count,
 				IncludesSystem:  &includesSystem,
 				DetailsIncluded: &detailsIncluded,
+			}, nil
+		}
+		if input.Kind == observeKindWindows {
+			raw, err := automation.BridgeWindows(
+				ctx, input.Device, input.TargetPackage, input.MaxDepth,
+			)
+			if err != nil {
+				return nil, observeOutput{}, err
+			}
+			return nil, observeOutput{
+				Device:  input.Device,
+				Kind:    observeKindWindows,
+				Format:  "window-list",
+				Windows: raw,
+			}, nil
+		}
+		if input.Kind == observeKindMessages {
+			raw, err := automation.BridgeTransientMessages(
+				ctx, input.Device, input.ToastsOnly,
+			)
+			if err != nil {
+				return nil, observeOutput{}, err
+			}
+			return nil, observeOutput{
+				Device:   input.Device,
+				Kind:     observeKindMessages,
+				Format:   "transient-message-list",
+				Messages: raw,
 			}, nil
 		}
 		result, err := automation.Observe(ctx, service.ObserveRequest{

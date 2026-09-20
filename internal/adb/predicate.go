@@ -27,6 +27,15 @@ const (
 	PredicatePackage  = "package"
 	PredicateWindow   = "window"
 	PredicateUIStable = "uiStable"
+	// PredicateNewWindow 与 PredicateScrollFinished 对应 UIAutomator 仅有的两个
+	// EventCondition（Until.newWindow / Until.scrollFinished）。
+	//
+	// 语义落差必须明确：UIAutomator 那两个是**事件驱动**的，在
+	// performActionAndWait 里监听真实 AccessibilityEvent；本通道是**轮询**结构，
+	// 只能观察到「窗口已经变了」「滚动已经停了」这个事实，而不是捕获到事件本身。
+	// 两次轮询之间发生又结束的变化会被漏掉。调用方不应据此假设事件级保证。
+	PredicateNewWindow      = "newWindow"
+	PredicateScrollFinished = "scrollFinished"
 
 	// 判据运算符。与协议 predicate.operator 枚举一致。
 	OperatorExists    = "exists"
@@ -35,6 +44,9 @@ const (
 	OperatorContains  = "contains"
 	OperatorMatches   = "matches"
 	OperatorStable    = "stable"
+	// OperatorOccurred 表示「等待该事件对应的状态出现」，是两个事件型判据的
+	// 唯一合法运算符：它们没有可比较的文本，exists/equals 之类都无从谈起。
+	OperatorOccurred = "occurred"
 
 	// defaultPredicateTimeoutMS 是未指定超时时的等待上限。
 	defaultPredicateTimeoutMS = 5000
@@ -148,6 +160,11 @@ func (c *Client) AwaitPredicate(
 
 	var stableSince time.Time
 	previousFingerprint := ""
+	// 事件型判据需要一个基线：第一轮采样只记录起点，不判定成立。
+	// 否则「窗口是否变了」在第一轮就无从比较——没有「变之前」可对照。
+	baselineCaptured := false
+	baselinePackage := ""
+	baselineFingerprint := ""
 
 	for {
 		hierarchy, err := c.Hierarchy(ctx, serial)
@@ -176,6 +193,47 @@ func (c *Client) AwaitPredicate(
 			actual := rootPackage(root)
 			result.ActualPackage = actual
 			satisfied = evaluateTextComparison(actual, predicate.Operator, predicate.Expected)
+
+		case PredicateNewWindow:
+			// 观察到前台包名或界面指纹与基线不同即认为进入了新窗口。
+			//
+			// 用「包名或指纹」而不是只看包名：同一应用内跳转 Activity 时包名不变，
+			// 但那确实是一个新窗口；只看包名会让应用内跳转永远等不到。
+			current := fingerprint(root)
+			actual := rootPackage(root)
+			result.ActualPackage = actual
+			if !baselineCaptured {
+				baselinePackage = actual
+				baselineFingerprint = current
+				baselineCaptured = true
+			} else {
+				satisfied = actual != baselinePackage || current != baselineFingerprint
+			}
+
+		case PredicateScrollFinished:
+			// 滚动结束的可观察形式是「界面指纹不再变化」。
+			//
+			// 与 uiStable 的区别：uiStable 从一开始就要求稳定，而这里必须先观察到
+			// 至少一次变化（滚动确实在进行），再等它停下来。否则在滚动开始前调用
+			// 会立刻返回成立，调用方以为滚完了，实际一行都没动。
+			current := fingerprint(root)
+			if !baselineCaptured {
+				baselineFingerprint = current
+				baselineCaptured = true
+				previousFingerprint = current
+			} else {
+				if current != previousFingerprint {
+					// 仍在变化：重置稳定计时。
+					stableSince = time.Time{}
+				} else if baselineFingerprint != current && stableSince.IsZero() {
+					// 已经动过且这一轮没再变，开始计稳定时长。
+					stableSince = time.Now()
+				}
+				previousFingerprint = current
+				if !stableSince.IsZero() {
+					satisfied = time.Since(stableSince).Milliseconds() >= int64(stableDuration)
+				}
+			}
 
 		case PredicateUIStable:
 			current := fingerprint(root)
@@ -226,17 +284,18 @@ func (c *Client) AwaitPredicate(
 // validatePredicate 校验判据的种类、运算符与必填组合。
 func validatePredicate(predicate Predicate) error {
 	switch predicate.Kind {
-	case PredicateNode, PredicateText, PredicatePackage, PredicateWindow, PredicateUIStable:
+	case PredicateNode, PredicateText, PredicatePackage, PredicateWindow, PredicateUIStable,
+		PredicateNewWindow, PredicateScrollFinished:
 	default:
 		return invalidField("kind",
-			"must be node, text, package, window, or uiStable")
+			"must be node, text, package, window, uiStable, newWindow, or scrollFinished")
 	}
 	switch predicate.Operator {
 	case OperatorExists, OperatorNotExists, OperatorEquals,
-		OperatorContains, OperatorMatches, OperatorStable:
+		OperatorContains, OperatorMatches, OperatorStable, OperatorOccurred:
 	default:
 		return invalidField("operator",
-			"must be exists, notExists, equals, contains, matches, or stable")
+			"must be exists, notExists, equals, contains, matches, stable, or occurred")
 	}
 	if predicate.TimeoutMS < 0 || predicate.TimeoutMS > maxPredicateTimeoutMS {
 		return invalidField("timeoutMs", "must be between 0 and 60000")
@@ -270,6 +329,16 @@ func validatePredicate(predicate Predicate) error {
 	case PredicateUIStable:
 		if predicate.Operator != OperatorStable {
 			return invalidField("operator", "uiStable predicates require the stable operator")
+		}
+	case PredicateNewWindow, PredicateScrollFinished:
+		// 事件型判据没有可比较的文本，只接受 occurred。
+		if predicate.Operator != OperatorOccurred {
+			return invalidField("operator",
+				"newWindow and scrollFinished predicates require the occurred operator")
+		}
+		if predicate.Expected != "" {
+			return invalidField("expected",
+				"is not accepted by event predicates; they observe a state change, not text")
 		}
 	}
 

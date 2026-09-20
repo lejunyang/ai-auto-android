@@ -188,6 +188,12 @@ class AccessibilityCommandJsonParser(
             // 语义是「聚焦输入控件」，键盘是否弹出由输入法决定，桥侧不作承诺。
             "ime.show" -> AccessibilityCommand.ImeShow
 
+            // clipboard.set 无 target：写的是系统剪贴板而非某个节点。
+            // 对应的 clipboard.get 刻意不接线，平台原因见 ClipboardGateway 注释。
+            "clipboard.set" -> AccessibilityCommand.ClipboardSet(
+                text = params.getValue("text").jsonPrimitive.content,
+            )
+
             else -> throw BridgeException(
                 code = BridgeErrorCode.CAPABILITY_UNAVAILABLE,
                 message = "The action is valid but is not implemented by the accessibility bridge.",

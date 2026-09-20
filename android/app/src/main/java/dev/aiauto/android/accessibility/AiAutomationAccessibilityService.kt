@@ -19,6 +19,7 @@ import dev.aiauto.android.accessibility.model.AccessibilityResult
 import dev.aiauto.android.accessibility.model.AccessibilityScreenshot
 import dev.aiauto.android.accessibility.model.ActionExecution
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
+import dev.aiauto.android.accessibility.model.UiWindowSnapshot
 import dev.aiauto.android.accessibility.selector.SelectorMatcher
 import dev.aiauto.android.accessibility.settings.AccessibilitySettingsRepository
 import dev.aiauto.android.accessibility.snapshot.AccessibilitySnapshotter
@@ -157,6 +158,29 @@ class AiAutomationAccessibilityService :
         return actionRouter.execute(command)
     }
 
+    /**
+     * 枚举当前可见窗口的快照，按 z 序从上到下。
+     *
+     * 与 snapshot() 只回活动窗口单根不同：对话框、输入法候选栏、分屏对端与
+     * 画中画在多数场景下都不是活动窗口，只看单根时这些界面上的节点根本不在
+     * 候选集合里。窗口数量由 WindowSnapshotter 有界限制（上限 12），
+     * 不会因异常设备上的窗口膨胀而失控。
+     */
+    internal fun windowSnapshots(
+        expectedPackage: String? = null,
+    ): AccessibilityResult<List<UiWindowSnapshot>> {
+        when (val validation = backend.validateTarget(expectedPackage)) {
+            is AccessibilityResult.Failure -> return validation
+            is AccessibilityResult.Success -> Unit
+        }
+        return when (val opened = backend.openNodeSession(expectedPackage)) {
+            is AccessibilityResult.Failure -> opened
+            is AccessibilityResult.Success -> opened.value.use { session ->
+                AccessibilityResult.Success(session.windows)
+            }
+        }
+    }
+
     internal suspend fun captureScreenshot(
         expectedPackage: String,
     ): AccessibilityResult<AccessibilityScreenshot> =
@@ -250,6 +274,12 @@ object AccessibilityRuntime {
         expectedPackage: String? = null,
     ): AccessibilityResult<ActionExecution> =
         service?.execute(command, expectedPackage) ?: serviceDisabled()
+
+    /** 枚举当前可见窗口的快照，用于定位弹窗、输入法、分屏与画中画里的节点。 */
+    fun windowSnapshots(
+        expectedPackage: String? = null,
+    ): AccessibilityResult<List<UiWindowSnapshot>> =
+        service?.windowSnapshots(expectedPackage) ?: serviceDisabled()
 
     suspend fun captureScreenshot(
         expectedPackage: String,

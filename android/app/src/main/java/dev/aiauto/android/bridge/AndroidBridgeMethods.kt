@@ -9,6 +9,7 @@ import android.os.Build
 
 import dev.aiauto.android.BuildConfig
 import dev.aiauto.android.accessibility.AccessibilityRuntime
+import dev.aiauto.android.accessibility.TransientMessage
 import dev.aiauto.android.accessibility.model.AccessibilityCommand
 import dev.aiauto.android.accessibility.model.AccessibilityError
 import dev.aiauto.android.accessibility.model.AccessibilityErrorCode
@@ -17,6 +18,7 @@ import dev.aiauto.android.accessibility.model.ActionExecution
 import dev.aiauto.android.accessibility.model.ActionRoute
 import dev.aiauto.android.accessibility.model.NodeAction
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
+import dev.aiauto.android.accessibility.model.UiWindowSnapshot
 import dev.aiauto.android.automation.recording.AndroidReplayGateway
 import dev.aiauto.android.automation.recording.AutomationScriptSummary
 import dev.aiauto.android.automation.recording.RecordingScriptStore
@@ -29,6 +31,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -38,6 +41,12 @@ interface AccessibilityBridgeGateway {
 
     fun snapshot(expectedPackage: String?): AccessibilityResult<UiNodeSnapshot>
 
+    /** 多窗口快照，用于定位对话框、输入法、分屏与画中画里的节点。 */
+    fun windows(expectedPackage: String?): AccessibilityResult<List<UiWindowSnapshot>>
+
+    /** 已捕获的 Toast 与通知文本。 */
+    fun transientMessages(toastsOnly: Boolean): AccessibilityResult<List<TransientMessage>>
+
     fun execute(command: AccessibilityCommand): AccessibilityResult<ActionExecution>
 }
 
@@ -46,6 +55,16 @@ object RuntimeAccessibilityBridgeGateway : AccessibilityBridgeGateway {
 
     override fun snapshot(expectedPackage: String?): AccessibilityResult<UiNodeSnapshot> =
         AccessibilityRuntime.snapshot(expectedPackage)
+
+    override fun windows(
+        expectedPackage: String?,
+    ): AccessibilityResult<List<UiWindowSnapshot>> =
+        AccessibilityRuntime.windowSnapshots(expectedPackage)
+
+    override fun transientMessages(
+        toastsOnly: Boolean,
+    ): AccessibilityResult<List<TransientMessage>> =
+        AccessibilityRuntime.transientMessages(toastsOnly)
 
     override fun execute(
         command: AccessibilityCommand,
@@ -223,6 +242,8 @@ class AndroidBridgeMethods(
         "device.info" -> deviceInfo(params)
         "ui.snapshot" -> snapshot(params)
         "ui.foreground" -> foreground(params)
+        "ui.windows" -> windows(params)
+        "ui.transientMessages" -> transientMessages(params)
         "action.execute" -> execute(params)
         "visual.action.execute" -> attestedVisual.execute(params)
         "recording.replay" -> replay(params)
@@ -232,6 +253,81 @@ class AndroidBridgeMethods(
             code = BridgeErrorCode.PROTOCOL_ERROR,
             message = "The requested bridge method is not supported.",
         )
+    }
+
+    /**
+     * 枚举可见窗口，供调用方定位对话框、输入法、分屏与画中画里的节点。
+     *
+     * 每个窗口都带 maxDepth 截断的节点树：不截断时深层界面单窗口就可能上千节点，
+     * 多窗口相乘会让响应体积失控。窗口数量本身由 WindowSnapshotter 有界限制
+     * （上限 12），此处不再放开——那个上限是防止异常设备上窗口膨胀的。
+     */
+    private fun windows(params: JsonObject): JsonObject {
+        requireKeys(
+            params,
+            required = emptySet(),
+            optional = setOf("targetPackage", "maxDepth"),
+        )
+        requireAccessibility()
+        val targetPackage = params.optionalString("targetPackage")
+        if (
+            targetPackage != null &&
+            (targetPackage.length !in 3..255 || !PACKAGE_NAME.matches(targetPackage))
+        ) {
+            throw invalidArgument("targetPackage has an invalid Android package name.")
+        }
+        val maxDepth = params["maxDepth"]?.jsonPrimitive?.intOrNull ?: DEFAULT_SNAPSHOT_DEPTH
+        if (maxDepth !in 1..100) {
+            throw invalidArgument("maxDepth must be between 1 and 100.")
+        }
+        return when (val result = accessibility.windows(targetPackage)) {
+            is AccessibilityResult.Failure -> throw result.error.toBridgeException()
+            is AccessibilityResult.Success -> buildJsonObject {
+                put(
+                    "windows",
+                    buildJsonArray {
+                        result.value.forEach { window ->
+                            add(window.toJson(maxDepth))
+                        }
+                    },
+                )
+                put("maxDepth", maxDepth)
+            }
+        }
+    }
+
+    /**
+     * 返回已捕获的 Toast 与通知文本。
+     *
+     * 必须带 eventTimeMs：没有时间戳就无法区分「这是刚才那次操作触发的」还是
+     * 「十分钟前遗留的」，缓冲本身就失去判断价值。清空缓冲请在操作前调用方自行
+     * 决定——本方法只读，不隐式清空，否则两个调用方会互相吃掉对方的消息。
+     */
+    private fun transientMessages(params: JsonObject): JsonObject {
+        requireKeys(params, required = emptySet(), optional = setOf("toastsOnly"))
+        requireAccessibility()
+        val toastsOnly = params["toastsOnly"]?.jsonPrimitive?.booleanOrNull ?: false
+        return when (val result = accessibility.transientMessages(toastsOnly)) {
+            is AccessibilityResult.Failure -> throw result.error.toBridgeException()
+            is AccessibilityResult.Success -> buildJsonObject {
+                put(
+                    "messages",
+                    buildJsonArray {
+                        result.value.forEach { message ->
+                            add(
+                                buildJsonObject {
+                                    put("text", message.text)
+                                    message.packageName?.let { put("package", it) }
+                                    put("toast", message.toast)
+                                    put("eventTimeMs", message.eventTimeMs)
+                                },
+                            )
+                        }
+                    },
+                )
+                put("toastsOnly", toastsOnly)
+            }
+        }
     }
 
     private fun deviceInfo(params: JsonObject): JsonObject {
@@ -391,7 +487,31 @@ class AndroidBridgeMethods(
         }
     }
 
-    private fun ActionExecution.toJson(): JsonObject = buildJsonObject {
+    /**
+ * 把单个窗口快照序列化。
+ *
+ * layer 与 active/focused 一并给出：坐标动作必须命中最上层窗口，调用方需要这些
+ * 字段才能判断哪个窗口在上面，只给节点树会丢掉 z 序信息。
+ */
+private fun UiWindowSnapshot.toJson(maxDepth: Int): JsonObject = buildJsonObject {
+    put("windowId", windowId)
+    put("kind", kind.name.lowercase())
+    put("layer", layer)
+    put("active", active)
+    put("focused", focused)
+    put(
+        "bounds",
+        buildJsonObject {
+            put("left", bounds.left)
+            put("top", bounds.top)
+            put("right", bounds.right)
+            put("bottom", bounds.bottom)
+        },
+    )
+    put("root", root.toJson(depth = 1, maxDepth = maxDepth))
+}
+
+private fun ActionExecution.toJson(): JsonObject = buildJsonObject {
         put("route", route.toProtocolName())
         matchedPath?.let { path ->
             put(

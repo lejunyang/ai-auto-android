@@ -267,6 +267,59 @@ class AccessibilityActionRouterTest {
         assertEquals(null, execution.matchScore)
     }
 
+    @Test
+    fun `clipboard set writes text through the backend`() {
+        val backend = FakeActionBackend()
+        val router = router(backend)
+
+        val result = router.execute(AccessibilityCommand.ClipboardSet("hello 中文"))
+
+        // route 是全局动作：写的是系统剪贴板，不是某个节点。
+        assertEquals(ActionRoute.GLOBAL_ACTION, result.execution().route)
+        assertEquals("hello 中文", backend.writtenClipboard)
+        assertTrue(backend.performedNodeActions.isEmpty())
+    }
+
+    @Test
+    fun `clipboard set fails when the backend cannot write`() {
+        val backend = FakeActionBackend()
+        backend.clipboardWriteResult = false
+
+        val result = router(backend).execute(AccessibilityCommand.ClipboardSet("x"))
+
+        assertTrue(result is AccessibilityResult.Failure)
+        result as AccessibilityResult.Failure
+        assertEquals(AccessibilityErrorCode.ACTION_NOT_SUPPORTED, result.error.code)
+    }
+
+    // 超长文本必须在写入前被拒，且上限与协议声明一致。
+    @Test
+    fun `clipboard set rejects text beyond the protocol limit`() {
+        val backend = FakeActionBackend()
+
+        val result = router(backend).execute(
+            AccessibilityCommand.ClipboardSet("x".repeat(10_001)),
+        )
+
+        assertTrue(result is AccessibilityResult.Failure)
+        result as AccessibilityResult.Failure
+        assertEquals(AccessibilityErrorCode.INVALID_ACTION, result.error.code)
+        // 关键：拒绝必须发生在写入之前，不能先写进去再报错。
+        assertEquals(null, backend.writtenClipboard)
+    }
+
+    // 上限边界内的文本必须放行，否则上面那条可能只是「什么都写不进去」。
+    @Test
+    fun `clipboard set accepts text at the protocol limit`() {
+        val backend = FakeActionBackend()
+        val text = "x".repeat(10_000)
+
+        val result = router(backend).execute(AccessibilityCommand.ClipboardSet(text))
+
+        assertEquals(ActionRoute.GLOBAL_ACTION, result.execution().route)
+        assertEquals(text, backend.writtenClipboard)
+    }
+
     private fun router(backend: FakeActionBackend) = AccessibilityActionRouter(
         backend = backend,
         selectorMatcher = SelectorMatcher(minimumScore = 0.70, uniquenessMargin = 0.15),
@@ -332,6 +385,10 @@ class AccessibilityActionRouterTest {
         // focusInput* 记录 ime.show 的聚焦调用：无障碍侧只能聚焦输入控件，
         // 无法查询键盘是否真的弹出，因此这里只断言聚焦本身。
         var focusInputResult = false
+        // 剪贴板只记录写入：读取没有出口，fake 也不提供，否则测试会给人
+        // 「读取可用」的错觉。
+        var clipboardWriteResult = true
+        var writtenClipboard: String? = null
         var focusInputCalls = 0
         val gestureResults = ArrayDeque<Boolean>()
         val performedNodeActions = mutableListOf<NodeAction>()
@@ -397,6 +454,11 @@ class AccessibilityActionRouterTest {
         override fun focusInputControl(): Boolean {
             focusInputCalls += 1
             return focusInputResult
+        }
+
+        override fun writeClipboard(text: String): Boolean {
+            writtenClipboard = text
+            return clipboardWriteResult
         }
 
         override fun screenBounds(): ScreenBounds =
