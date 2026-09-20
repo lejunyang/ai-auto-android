@@ -1317,9 +1317,15 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
    开放全局注入延迟会破坏确定性与可复现基线。
 7. **多元素批量操作**：UIAutomator 2.4 的 `onElements`。判据现在只回
    `matchCount`，返回元素列表会让「对 N 个元素循环点击」成为可能，需要每步确认策略。
-8. **`ime.show` 与 `task.finish` 的归属**：前者在协议内但无任何执行实现，后者只在
-   App 会话内有语义、桥侧 parser 不接受。补执行还是标注为「仅 App 会话内语义」
-   需产品决策。
+8. **`task.finish` 的归属：已明确，非缺口。** 它是 App AI 的会话终止信号，
+   职责清楚且被 App 侧 25 处引用——`AutomationSessionEngine.kt:202` 据它判定会话
+   结束、`AutomationRiskPolicy.kt:138` 在风险白名单内、`OpenAICompatibleProvider.kt:218`
+   写进给大模型的动作清单、`LocalDemoProvider.kt:42` 是演示序列终点，录制回放与
+   中文化同样认它。电脑侧没有「会话」可结束，因此它本就不该有 CLI 或 MCP 出口，
+   `docs/protocol.md` 的「仅 App AI 会话终止信号」定位准确。此条不需要产品决策。
+
+   （`ime.show` 原与本条并列，现已按「聚焦输入控件」语义在桥侧实现，见
+   `.trae/specs/ime-show-focus/`，故从待决清单移除。）
 
 ## UI 产品体验探索（不改变既有验收）
 

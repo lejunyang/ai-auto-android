@@ -358,6 +358,15 @@ sealed interface AccessibilityCommand {
         val key: DeviceKey,
         val repeatCount: Int = 1,
     ) : AccessibilityCommand
+
+    /**
+     * 聚焦当前输入控件，对应协议的 ime.show。
+     *
+     * 无参数：聚焦的是系统当前的输入焦点节点，不接受选择器。
+     * 语义是「聚焦输入控件」而非「显示键盘」——键盘通常随焦点出现，
+     * 但无障碍侧无法查询也无法保证键盘可见性。
+     */
+    data object ImeShow : AccessibilityCommand
 }
 
 /** 拖拽端点：选择器或坐标二选一。 */

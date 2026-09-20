@@ -184,6 +184,10 @@ class AccessibilityCommandJsonParser(
                 repeatCount = params["repeatCount"]?.jsonPrimitive?.int ?: 1,
             )
 
+            // ime.show 无参数：聚焦的是系统当前输入焦点，不接受选择器。
+            // 语义是「聚焦输入控件」，键盘是否弹出由输入法决定，桥侧不作承诺。
+            "ime.show" -> AccessibilityCommand.ImeShow
+
             else -> throw BridgeException(
                 code = BridgeErrorCode.CAPABILITY_UNAVAILABLE,
                 message = "The action is valid but is not implemented by the accessibility bridge.",

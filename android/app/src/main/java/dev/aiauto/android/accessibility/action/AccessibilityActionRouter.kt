@@ -78,6 +78,17 @@ interface AccessibilityActionBackend {
      */
     fun pressKey(key: DeviceKey): Boolean = false
 
+    /**
+     * 把输入焦点放到当前可编辑控件上，供 ime.show 使用。
+     *
+     * 刻意只做「聚焦」：Android 没有与 KEYCODE_BACK 收起键盘对称的
+     * 「打开键盘」keycode，无障碍侧也无法查询键盘当前是否可见。系统通常会在
+     * 输入控件获得焦点时顺带弹出键盘，但那取决于输入法实现与当前焦点状态。
+     * 返回值只表示聚焦是否成功，不表示键盘已经显示。
+     * 默认 false 表示本实现不支持，调用方据此报 ACTION_NOT_SUPPORTED。
+     */
+    fun focusInputControl(): Boolean = false
+
     fun screenBounds(): ScreenBounds
 }
 
@@ -117,6 +128,7 @@ class AccessibilityActionRouter(
             is AccessibilityCommand.SetProgress -> command.target.packageName
             is AccessibilityCommand.ScrollToPosition -> command.target.packageName
             is AccessibilityCommand.PressKey -> null
+            is AccessibilityCommand.ImeShow -> null
         }
         when (val validation = backend.validateTarget(expectedPackage)) {
             is AccessibilityResult.Failure -> return validation
@@ -157,6 +169,7 @@ class AccessibilityActionRouter(
             is AccessibilityCommand.SetProgress -> executeSetProgress(command)
             is AccessibilityCommand.ScrollToPosition -> executeScrollToPosition(command)
             is AccessibilityCommand.PressKey -> executePressKey(command)
+            is AccessibilityCommand.ImeShow -> executeImeShow()
         }
     }
 
@@ -900,6 +913,30 @@ class AccessibilityActionRouter(
             }
         }
         return AccessibilityResult.Success(ActionExecution(route = ActionRoute.GLOBAL_ACTION))
+    }
+
+    /**
+     * 执行 ime.show：把焦点放到当前可编辑控件上。
+     *
+     * 能力上限：这不是「显示键盘」的确定开关。Android 没有与 ime.hide 所用
+     * KEYCODE_BACK 对称的打开键盘 keycode，无障碍通道也无法查询键盘可见性。
+     * 本实现只保证「已聚焦输入控件」，键盘是否随之弹出由输入法决定。
+     * 因此成功结果的语义是「已聚焦」，调用方不应据此断定键盘已经可见。
+     *
+     * 聚焦失败时明确返回 ACTION_NOT_SUPPORTED，不返回假成功——否则调用方会
+     * 以为焦点已就绪而继续写文本，文本会落到不可预期的位置。
+     */
+    private fun executeImeShow(): AccessibilityResult<ActionExecution> {
+        if (!backend.focusInputControl()) {
+            return failure(
+                code = AccessibilityErrorCode.ACTION_NOT_SUPPORTED,
+                message = "No editable control could be focused for ime.show",
+                retryable = true,
+            )
+        }
+        // route 记为节点动作：实际做的是对焦点节点执行 ACTION_FOCUS。
+        // 不带 matchedPath/matchScore——聚焦的是当前焦点节点，没有选择器匹配证据。
+        return AccessibilityResult.Success(ActionExecution(route = ActionRoute.NODE_ACTION))
     }
 
     /** 只走节点动作、无坐标降级的能力（复制、聚焦、展开等）。 */

@@ -155,6 +155,21 @@ class AndroidBridgeMethods(
                 permission = if (accessibilityAvailable) "granted" else "denied",
                 reason = accessibilityReason,
             ),
+            // ime.show 单独声明，因为它的语义弱于名字的字面含义：实际做的是对当前
+            // 输入焦点节点执行 ACTION_FOCUS，键盘是否弹出由输入法决定。无障碍侧既没有
+            // 打开键盘的 API，也无法查询键盘可见性，所以这里必须让调用方在发命令前就
+            // 知道拿到的是「聚焦」而不是一个确定的键盘开关。
+            BridgeCapability(
+                name = "action.ime.show",
+                available = accessibilityAvailable,
+                permission = if (accessibilityAvailable) "granted" else "denied",
+                reason = if (accessibilityAvailable) {
+                    "Focuses the editable control; keyboard visibility is not guaranteed " +
+                        "and cannot be verified."
+                } else {
+                    accessibilityReason
+                },
+            ),
             BridgeCapability(
                 name = "action.text.editing",
                 available = accessibilityAvailable,

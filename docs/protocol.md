@@ -153,7 +153,7 @@ token 过期、错误或被 App 撤销时，本地记录会在相应错误后清
 
 ## 动作
 
-Schema v1 可表达 14 种动作，但不同入口只实现其子集：
+Schema v1 共声明 45 种动作类型，但不同入口只实现其子集。下表列出常用动作的入口分布，未列出的动作类型以各入口的实际实现为准：
 
 | 动作 | 直接 CLI/MCP | Bridge `action.execute` | App AI / 录制回放 |
 | --- | --- | --- | --- |
@@ -165,7 +165,16 @@ Schema v1 可表达 14 种动作，但不同入口只实现其子集：
 | `ui.scroll` | 否 | 是 | 是 |
 | `ui.back`、`ui.home`、`ui.recents` | 通过白名单 key | 是 | App AI 中 home/recents 被风险策略阻断 |
 | `ui.wait`、`ui.assert` | 否 | 否 | 回放引擎可作为条件步骤处理 |
+| `ime.show` | 否 | 是（聚焦语义） | 未接入 |
+| `ime.hide` | 是 | 否 | 未接入 |
 | `task.finish` | 否 | 否 | 仅 App AI 会话终止信号 |
+
+`ime.show` 的实际语义是**聚焦当前输入控件**，不是确定的键盘可见性开关。
+`ime.hide` 能走直连 ADB 是因为 `KEYCODE_BACK` 可收起键盘，而 Android 没有对称的
+「打开键盘」keycode，无障碍通道也无法查询键盘当前是否可见。因此 `ime.show`
+只走桥侧无障碍，对输入焦点节点执行 `ACTION_FOCUS`：键盘通常随焦点出现，但这取决于
+输入法实现与当前焦点状态。成功结果表示**已聚焦**，不表示键盘已显示；当前没有可聚焦的
+可编辑控件时返回 `ACTION_NOT_SUPPORTED`，而不是报告假成功。
 
 一个可执行的 Bridge 返回动作示例：
 

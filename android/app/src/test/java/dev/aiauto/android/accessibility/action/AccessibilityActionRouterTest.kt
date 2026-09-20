@@ -206,6 +206,67 @@ class AccessibilityActionRouterTest {
         assertTrue(backend.dispatchedGestures.isEmpty())
     }
 
+    /**
+     * ime.show 的语义是「聚焦输入控件」，不是确定的键盘可见性开关。
+     * 成功时 route 必须落在节点动作上，表示做的是聚焦而非某种键盘控制。
+     */
+    @Test
+    fun `ime show focuses the input control through a node action`() {
+        val backend = FakeActionBackend()
+        backend.focusInputResult = true
+        val router = router(backend)
+
+        val result = router.execute(AccessibilityCommand.ImeShow)
+
+        assertEquals(ActionRoute.NODE_ACTION, result.execution().route)
+        assertEquals(1, backend.focusInputCalls)
+        // 聚焦走专用后端方法，不应顺带发出手势或全局动作。
+        assertTrue(backend.dispatchedGestures.isEmpty())
+        assertTrue(backend.performedGlobalActions.isEmpty())
+    }
+
+    /**
+     * 当前没有可聚焦的输入控件时必须明确失败。
+     *
+     * 刻意不返回「成功但键盘可能没弹出」：无障碍无法查询键盘可见性，
+     * 若把聚焦失败也算成功，调用方会以为焦点已就绪而继续写入文本，
+     * 文本将落到不可预期的位置。
+     */
+    @Test
+    fun `ime show fails when no input control can be focused`() {
+        val backend = FakeActionBackend()
+        backend.focusInputResult = false
+        val router = router(backend)
+
+        val result = router.execute(AccessibilityCommand.ImeShow)
+
+        assertTrue(result is AccessibilityResult.Failure)
+        result as AccessibilityResult.Failure
+        assertEquals(AccessibilityErrorCode.ACTION_NOT_SUPPORTED, result.error.code)
+        assertEquals(1, backend.focusInputCalls)
+        assertTrue(backend.dispatchedGestures.isEmpty())
+    }
+
+    /**
+     * 能力上限断言：结果不得声称键盘已显示。
+     *
+     * ActionExecution 只有 route / matchedPath / matchScore 三个字段，没有任何
+     * 「键盘可见」的表达位。这条测试把该约束钉住——若将来有人给 ime.show 加一个
+     * keyboardVisible 之类的字段并填 true，那就是在承诺一个无法验证的事实。
+     */
+    @Test
+    fun `ime show result does not claim keyboard visibility`() {
+        val backend = FakeActionBackend()
+        backend.focusInputResult = true
+        val router = router(backend)
+
+        val execution = router.execute(AccessibilityCommand.ImeShow).execution()
+
+        // matchedPath 与 matchScore 是选择器匹配证据，聚焦当前焦点节点时无从谈起。
+        assertEquals(null, execution.matchedPath)
+        assertEquals(null, execution.matchScore)
+    }
+
     private fun router(backend: FakeActionBackend) = AccessibilityActionRouter(
         backend = backend,
         selectorMatcher = SelectorMatcher(minimumScore = 0.70, uniquenessMargin = 0.15),
@@ -268,6 +329,10 @@ class AccessibilityActionRouterTest {
         var lastArguments: Bundle? = null
         var lastExpectedPackage: String? = null
         var lastExpectedEventBudgets: Map<Int, Int> = emptyMap()
+        // focusInput* 记录 ime.show 的聚焦调用：无障碍侧只能聚焦输入控件，
+        // 无法查询键盘是否真的弹出，因此这里只断言聚焦本身。
+        var focusInputResult = false
+        var focusInputCalls = 0
         val gestureResults = ArrayDeque<Boolean>()
         val performedNodeActions = mutableListOf<NodeAction>()
         val performedGlobalActions = mutableListOf<GlobalAction>()
@@ -327,6 +392,11 @@ class AccessibilityActionRouterTest {
         override fun performGlobal(action: GlobalAction): Boolean {
             performedGlobalActions += action
             return globalActionResult
+        }
+
+        override fun focusInputControl(): Boolean {
+            focusInputCalls += 1
+            return focusInputResult
         }
 
         override fun screenBounds(): ScreenBounds =

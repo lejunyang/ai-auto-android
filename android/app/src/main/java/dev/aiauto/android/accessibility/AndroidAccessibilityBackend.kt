@@ -634,6 +634,22 @@ internal class AndroidAccessibilityBackend(
         return performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, arguments)
     }
 
+    /**
+     * 聚焦当前可编辑控件，供 ime.show 使用。
+     *
+     * 只对已持有输入焦点的可编辑节点执行 ACTION_FOCUS。键盘通常会随之出现，
+     * 但这里无法验证——无障碍服务拿不到键盘可见性。返回 true 只代表聚焦成功。
+     * 没有可编辑焦点节点时返回 false，由调用方报 ACTION_NOT_SUPPORTED。
+     */
+    override fun focusInputControl(): Boolean {
+        val focused = focusedInputNode() ?: return false
+        return try {
+            focused.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+        } finally {
+            focused.recycleSafely()
+        }
+    }
+
     /** 找当前获得输入焦点的可编辑节点，跨窗口查找。 */
     private fun focusedInputNode(): AccessibilityNodeInfo? {
         runCatching { service.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) }
