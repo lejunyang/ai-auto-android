@@ -27,7 +27,8 @@ func (a *App) executeObserve(
 ) (any, error) {
 	if len(args) == 0 {
 		return nil, usageError(
-			"Usage: aactl observe screenshot|hierarchy|foreground|apps|recording [options]")
+			"Usage: aactl observe screenshot|hierarchy|foreground|apps|recording|" +
+				"screen-state|input-methods [options]")
 	}
 	// 新增的三个观察子命令先行处理；未命中时落回下面的既有分支。
 	if result, handled, err := a.executeObserveExtra(ctx, automation, args); handled {
@@ -84,7 +85,8 @@ func (a *App) executeObserve(
 		}, nil
 	default:
 		return nil, usageError(
-			"Unknown observe command. Supported commands: screenshot, hierarchy, foreground, apps, recording.")
+			"Unknown observe command. Supported commands: screenshot, hierarchy, " +
+				"foreground, apps, recording, screen-state, input-methods.")
 	}
 }
 
@@ -187,6 +189,38 @@ func (a *App) executeObserveExtra(
 			"height":          recording.Height,
 			"bitRate":         recording.BitRate,
 		}, true, nil
+
+	// screen-state 与 input-methods 的服务层实现早已存在（见
+	// internal/service/device_state.go），但此前没有任何通道引用它们。
+	// 这两个观察不走 ExecuteAction：返回值不是 adb.ActionResult，
+	// 硬塞进那个签名会让调用方拿不到亮屏状态与输入法列表本身。
+	case "screen-state":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device"),
+			required: []string{"device"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		state, observeErr := automation.ScreenState(ctx, options["device"])
+		if observeErr != nil {
+			return nil, true, observeErr
+		}
+		return state, true, nil
+
+	case "input-methods":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device"),
+			required: []string{"device"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		methods, observeErr := automation.InputMethods(ctx, options["device"])
+		if observeErr != nil {
+			return nil, true, observeErr
+		}
+		return methods, true, nil
 	}
 	return nil, false, nil
 }
@@ -222,7 +256,10 @@ func (a *App) executeAction(
 	args []string,
 ) (any, error) {
 	if len(args) == 0 {
-		return nil, usageError("Usage: aactl action tap|swipe|long-press|scroll|text|key|launch|stop [options]")
+		return nil, usageError(
+			"Usage: aactl action tap|swipe|long-press|scroll|text|key|launch|stop|" +
+				"drag|multi-tap|path-gesture|rotate|wake|unlock|ime-hide|ime-select|" +
+				"deeplink [options]")
 	}
 	switch args[0] {
 	case "tap":
@@ -390,8 +427,260 @@ func (a *App) executeAction(
 			Package: options["package"],
 		})
 	default:
-		return nil, usageError("Unknown action. Supported actions: tap, swipe, text, key, launch, stop.")
+		// 动作面扩展子命令单独成函数：它们各有自己的选项集，
+		// 挤进本 switch 会让参数校验难以逐项核对。
+		if result, handled, extraErr := a.executeActionExtra(ctx, automation, args); handled {
+			return result, extraErr
+		}
+		return nil, usageError(
+			"Unknown action. Supported actions: tap, swipe, long-press, scroll, text, key, " +
+				"launch, stop, drag, multi-tap, path-gesture, rotate, wake, unlock, " +
+				"ime-hide, ime-select, deeplink.")
 	}
+}
+
+// executeActionExtra 处理动作面扩展的九个子命令。
+//
+// 这些动作在 internal/service 早已分派，此前只缺 CLI 出口。返回 handled=false
+// 表示不是这九个，交回原分派继续处理，避免两处都要维护子命令名单。
+//
+// 刻意不包含 file.push / file.pull：暴露远端路径读写前需要先定义路径白名单与
+// 确认策略，属于独立的安全决策（见 change spec 的待决项 T4）。
+func (a *App) executeActionExtra(
+	ctx context.Context,
+	automation service.Automation,
+	args []string,
+) (result any, handled bool, err error) {
+	switch args[0] {
+	case "drag":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "x1", "y1", "x2", "y2", "duration"),
+			required: []string{"device", "x1", "y1", "x2", "y2"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		values := make(map[string]int, 4)
+		for _, name := range []string{"x1", "y1", "x2", "y2"} {
+			value, intErr := parseIntegerOption(options, name)
+			if intErr != nil {
+				return nil, true, intErr
+			}
+			values[name] = value
+		}
+		request := service.ActionRequest{
+			Device: options["device"],
+			Action: service.ActionDrag,
+			StartX: values["x1"],
+			StartY: values["y1"],
+			EndX:   values["x2"],
+			EndY:   values["y2"],
+		}
+		if _, present := options["duration"]; present {
+			duration, intErr := parseIntegerOption(options, "duration")
+			if intErr != nil {
+				return nil, true, intErr
+			}
+			request.DurationMS = duration
+		}
+		actionResult, actionErr := automation.ExecuteAction(ctx, request)
+		return actionResult, true, actionErr
+
+	case "multi-tap":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "x", "y", "taps"),
+			required: []string{"device", "x", "y"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		x, intErr := parseIntegerOption(options, "x")
+		if intErr != nil {
+			return nil, true, intErr
+		}
+		y, intErr := parseIntegerOption(options, "y")
+		if intErr != nil {
+			return nil, true, intErr
+		}
+		request := service.ActionRequest{
+			Device: options["device"],
+			Action: service.ActionMultiTap,
+			X:      x,
+			Y:      y,
+		}
+		if _, present := options["taps"]; present {
+			taps, tapErr := parseIntegerOption(options, "taps")
+			if tapErr != nil {
+				return nil, true, tapErr
+			}
+			request.Taps = taps
+		}
+		actionResult, actionErr := automation.ExecuteAction(ctx, request)
+		return actionResult, true, actionErr
+
+	case "path-gesture":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "points", "duration"),
+			required: []string{"device", "points"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		points, pointsErr := parsePointList(options["points"])
+		if pointsErr != nil {
+			return nil, true, pointsErr
+		}
+		request := service.ActionRequest{
+			Device: options["device"],
+			Action: service.ActionPathGesture,
+			Points: points,
+		}
+		if _, present := options["duration"]; present {
+			duration, intErr := parseIntegerOption(options, "duration")
+			if intErr != nil {
+				return nil, true, intErr
+			}
+			request.DurationMS = duration
+		}
+		actionResult, actionErr := automation.ExecuteAction(ctx, request)
+		return actionResult, true, actionErr
+
+	case "rotate":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "orientation"),
+			required: []string{"device", "orientation"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		orientation := options["orientation"]
+		// 在这里就校验取值而不是交给服务层：错误的方向名落到 ADB 会变成一条
+		// 静默无效的 settings 写入，调用方看不出哪一步出了问题。
+		switch orientation {
+		case "portrait", "landscape", "auto":
+		default:
+			return nil, true, apperr.New(
+				apperr.CodeInvalidArgument,
+				"orientation must be portrait, landscape, or auto.",
+				false,
+				map[string]any{"field": "orientation"},
+			)
+		}
+		actionResult, actionErr := automation.ExecuteAction(ctx, service.ActionRequest{
+			Device:      options["device"],
+			Action:      service.ActionDeviceRotate,
+			Orientation: orientation,
+		})
+		return actionResult, true, actionErr
+
+	case "wake", "unlock", "ime-hide":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device"),
+			required: []string{"device"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		action := map[string]string{
+			"wake":     service.ActionDeviceWake,
+			"unlock":   service.ActionDeviceUnlock,
+			"ime-hide": service.ActionImeHide,
+		}[args[0]]
+		actionResult, actionErr := automation.ExecuteAction(ctx, service.ActionRequest{
+			Device: options["device"],
+			Action: action,
+		})
+		return actionResult, true, actionErr
+
+	case "ime-select":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "ime"),
+			required: []string{"device", "ime"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		actionResult, actionErr := automation.ExecuteAction(ctx, service.ActionRequest{
+			Device:      options["device"],
+			Action:      service.ActionImeSelect,
+			InputMethod: options["ime"],
+		})
+		return actionResult, true, actionErr
+
+	case "deeplink":
+		options, parseErr := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device", "uri", "package"),
+			required: []string{"device", "uri"},
+		})
+		if parseErr != nil {
+			return nil, true, parseErr
+		}
+		targetPackage := options["package"]
+		if targetPackage != "" {
+			if validationErr := adb.ValidatePackageName(targetPackage); validationErr != nil {
+				return nil, true, validationErr
+			}
+		}
+		actionResult, actionErr := automation.ExecuteAction(ctx, service.ActionRequest{
+			Device:  options["device"],
+			Action:  service.ActionDeeplink,
+			URI:     options["uri"],
+			Package: targetPackage,
+		})
+		return actionResult, true, actionErr
+	}
+	return nil, false, nil
+}
+
+// parsePointList 解析 `x,y x,y ...` 形式的折线点列。
+//
+// 用空格分隔点、逗号分隔坐标，而不是让调用方重复传 --point：
+// parseNamedOptions 对同名选项会报「provided more than once」，
+// 改造它会影响所有其它命令的既有约定。
+//
+// 至少两个点：单点不构成手势。服务层同样会拒绝，但在这里失败能给出准确字段名。
+func parsePointList(raw string) ([]adb.Point, error) {
+	fields := strings.Fields(raw)
+	if len(fields) < 2 {
+		return nil, apperr.New(
+			apperr.CodeInvalidArgument,
+			"points must contain at least two `x,y` pairs separated by spaces.",
+			false,
+			map[string]any{"field": "points"},
+		)
+	}
+	points := make([]adb.Point, 0, len(fields))
+	for _, field := range fields {
+		rawX, rawY, found := strings.Cut(field, ",")
+		if !found {
+			return nil, apperr.New(
+				apperr.CodeInvalidArgument,
+				"points must use the `x,y` form for every pair.",
+				false,
+				map[string]any{"field": "points"},
+			)
+		}
+		x, convErr := strconv.Atoi(strings.TrimSpace(rawX))
+		if convErr != nil {
+			return nil, apperr.New(
+				apperr.CodeInvalidArgument,
+				"points must contain integer coordinates.",
+				false,
+				map[string]any{"field": "points"},
+			)
+		}
+		y, convErr := strconv.Atoi(strings.TrimSpace(rawY))
+		if convErr != nil {
+			return nil, apperr.New(
+				apperr.CodeInvalidArgument,
+				"points must contain integer coordinates.",
+				false,
+				map[string]any{"field": "points"},
+			)
+		}
+		points = append(points, adb.Point{X: x, Y: y})
+	}
+	return points, nil
 }
 
 func parseNamedOptions(args []string, spec optionSpec) (map[string]string, error) {
