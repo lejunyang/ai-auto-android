@@ -38,6 +38,15 @@ var (
 	directText     = regexp.MustCompile(`^[A-Za-z0-9 @._+\-,:/]*$`)
 )
 
+// allowedKeys 是直连 ADB 允许发出的按键白名单。
+//
+// 键集合以 protocol/schema/v1/action.schema.json 的 uiPressKey.params.key 为单一
+// 权威来源。此前这里少了 MOVE_HOME / MOVE_END / PAGE_UP / PAGE_DOWN 四个光标与
+// 翻页键，导致协议允许的键在直连通道上被拒，而错误只说「不在白名单」，
+// 调用方无从判断该信哪一份枚举。
+//
+// 仍然是白名单而不是任意 keycode：开放任意值会引入 POWER、CALL、系统设置等键，
+// 那需要独立的安全决策，不属于本次对齐。
 var allowedKeys = map[string]string{
 	"BACK":        "KEYCODE_BACK",
 	"HOME":        "KEYCODE_HOME",
@@ -53,9 +62,25 @@ var allowedKeys = map[string]string{
 	"DPAD_LEFT":   "KEYCODE_DPAD_LEFT",
 	"DPAD_RIGHT":  "KEYCODE_DPAD_RIGHT",
 	"DPAD_CENTER": "KEYCODE_DPAD_CENTER",
+	"MOVE_HOME":   "KEYCODE_MOVE_HOME",
+	"MOVE_END":    "KEYCODE_MOVE_END",
+	"PAGE_UP":     "KEYCODE_PAGE_UP",
+	"PAGE_DOWN":   "KEYCODE_PAGE_DOWN",
 	"VOLUME_UP":   "KEYCODE_VOLUME_UP",
 	"VOLUME_DOWN": "KEYCODE_VOLUME_DOWN",
 	"VOLUME_MUTE": "KEYCODE_VOLUME_MUTE",
+}
+
+// SupportedKeys 返回直连通道接受的按键名称，供跨实现一致性测试比对。
+//
+// 返回副本而不是直接暴露 map：白名单是安全边界，拿到 map 的调用方可以改写它，
+// 因此只给出快照。
+func SupportedKeys() []string {
+	keys := make([]string, 0, len(allowedKeys))
+	for key := range allowedKeys {
+		keys = append(keys, key)
+	}
+	return keys
 }
 
 // Screenshot 保存已验证 PNG 的原始字节和内容摘要。
