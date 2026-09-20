@@ -1417,6 +1417,79 @@ Sub-Agent 30-60 秒无输出时先查询状态；确认卡死后再停止。Agen
 模拟器自动通过不得描述为真机授权可绕过。真实 App 场景仅使用未登录、非敏感、
 无发送、无购买、无外部副作用的流程。
 
+## UIAutomator 能力对齐收口清单
+
+本节回答「三通道对齐还剩什么」。基线为 `artifacts/uiautomator-gap/`
+的 C1–C16 / T1–T8 / N1–N10 编号，状态逐条回代码核对，不沿用当时的结论。
+
+### 结论先行
+
+**从 UIAutomator 能力对齐角度看，已无影响实际可用性的硬缺口。**
+
+判断依据：UIAutomator 的核心工作流是「按选择器定位 → 执行元素级动作 → 等待条件
+成立」。三个环节现在三通道都走得通——选择器定位有 6 种策略且 MCP 有
+`android_bridge_action`，元素级动作有 29 个桥侧分支，等待有 `wait` / `assert`
+判据。剩余条目都是**表达力增量**（更多选择器维度、更多窗口信息、可组合等待），
+不是「某个常见场景做不了」。
+
+### 已收口，无剩余
+
+- 协议与文档一致性（C7 键枚举、C13 README 计数、C14 `visual.action.execute`、
+  C9 `app.stop`、C8 scroll 方向）：已对齐，并有防漂移测试
+  （`readme_toolcount_test.go`、`presskey_consistency_test.go`）。
+- CLI 动作面（C1、C2）：11 个动作与 2 个观察子命令全部有出口。
+- MCP 语义动作（C3）：`android_bridge_action` 已提供按选择器操作。
+- `ime.show`（C15 前半）：已按聚焦语义实现，CLI 与 MCP 均有出口。
+- `task.finish`（C15 后半）：归属明确，非缺口。
+- 文件传输（原 T4）：CLI 与 MCP 出口均已开放，走只新增语义与独立风险门。
+- `ui.setText` 非 ASCII 引导（C16）：schema description 已指向
+  `android_bridge_set_text`。
+
+### 仍剩余：`可补充`（与信任边界兼容）
+
+| ID | 缺口 | 当前状态证据 | 为何还没做 | 前置条件 | 成本 |
+| --- | --- | --- | --- | --- | --- |
+| C4 | 多窗口集合不过线 | `protocol/schema/v1` 无 `windows` 字段（grep 0 命中）；`WindowSnapshotter.kt` 已枚举、`AndroidAccessibilityBackend` 已用于查找 | 要扩协议 + 三侧协同，需单一 owner 串行 | 协议波次先行 | **代码已在，只差过线**（Android 侧已有实现，缺协议字段与序列化） |
+| C5 | Toast / 瞬时消息不可读 | `bridge-request.schema.json` 无 `transientMessages`（grep 0）；`TransientMessageCapture` 已在服务侧缓冲 | 同上，需扩协议 | 协议波次先行 | **代码已在，只差过线** |
+| C6 | `clipboard.set` / `clipboard.get` 无桥侧执行 | parser 无 `clipboard.` 分支（grep 0）；`ClipboardGateway.kt` 无生产调用方 | 剪贴板读取涉及隐私数据，与文件传输同属需独立安全决策的一类 | 需先定隐私策略（读取内容是否入日志、是否需确认） | 代码已在，但**不只是接线**——要先决策 |
+| C10 | 无 `scrollUntil(predicate)` 可组合原语 | `action.schema.json` 无 `scrollUntil`（grep 0） | 需扩协议并在桥侧与直连各实现一次 | C4/C5 之后（同一协议 owner） | 需扩协议 |
+| C11 | 判据无事件型条件 | 判据 kind 仅 `node/text/package/window/uiStable` | 对应 UIAutomator 仅有的 2 个 `EventCondition`，属表达力增量 | C10 同波次 | 需扩协议 |
+| C12 | 选择器维度窄于 UIAutomator | 现 6 种：`resourceId,contentDescription,text,role,ancestor,fingerprint`；UIAutomator `By` 有 31 个工厂 | 缺 `clazz`、`hint*`、`depth`、`startsWith/endsWith` 等 | C7 波次之后 | 需扩协议 + 匹配器 |
+
+### 仍剩余：`需权衡`（触及安全 / 授权 / 确定性边界）
+
+T1 任意 keycode、T2 组合键、T3 多显示屏、T5 层级压缩与超时调优、
+T6 视觉动作类型扩展、T7 OCR、T8 多元素批量操作。
+
+七项均**未实施且不建议顺手实施**：它们各自的权衡点见
+`artifacts/uiautomator-gap/` 第 5.2 节。共同特征是「技术上都做得到」，
+因此更需要先有决策再动手，而不是因为能做就做。原 T4（文件传输）已决策并实施，
+不再属于本类。
+
+### 仍剩余：`有意不做`（不计入缺口）
+
+N1–N10 十项维持不做：任意 shell、Instrumentation 进程内能力、`UiWatcher`
+自动关弹窗、安装卸载、模型触发回放、原始触摸注入、Bridge 传截图、
+Root/Shizuku/Device Owner、CLI 编辑录制脚本、MCP 做配对与授权。
+理由见 README 与 `artifacts/uiautomator-gap/` 第 5.3 节，均为 MVP 边界。
+
+### 待设备验证（缺证据，不是缺口）
+
+以下均已实现并有单测，但缺真机 / 模拟器实证。需要的设备条件：一台 API 30+
+且已手动启用无障碍服务、已配置目标包白名单的设备（`ime.show` 另需一个含输入框
+的前台界面；文件传输另需对目标路径可写）。
+
+| 项 | 需要验的事 | 所在 spec |
+| --- | --- | --- |
+| `ime.show` | 聚焦后键盘的实际弹出行为（**不作为契约承诺**，取决于输入法实现） | `.trae/specs/ime-show-focus/` |
+| `ime.show` | 无可聚焦控件时 `ACTION_NOT_SUPPORTED` 的真机表现 | 同上 |
+| 文件传输 | 真机上 push 到已存在路径的拒绝表现 | `.trae/specs/file-transfer-no-overwrite/` |
+| 文件传输 | 含空格远端路径的探测与往返 | 同上 |
+| Wave B 动作 | 9 个新增 CLI 动作的真机行为 | `.trae/specs/uiautomator-gap-alignment/` |
+
+TOCTOU 窗口不列为待验项：它无法消除，只能如实标注，见
+`internal/adb/device_state.go` 的 `remotePathExists` 注释。
+
 ## 完成定义
 
 一项任务只有同时满足以下条件才能勾选：

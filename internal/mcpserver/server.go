@@ -35,6 +35,10 @@ const (
 	// 但要求桥已连接。模型应按文本内容与桥状态选择。
 	ToolBridgeSetText = "android_bridge_set_text"
 
+	// ToolImeShow 聚焦当前输入控件。名字用 ime_show 与协议动作对齐，
+	// 但语义是「聚焦」而非「显示键盘」，见工具 description。
+	ToolImeShow = "android_ime_show"
+
 	observeKindRecordings = "recordings"
 	observeKindForeground = "foreground"
 	observeKindApps       = "apps"
@@ -54,12 +58,27 @@ var ToolNames = []string{
 	ToolWait,
 	ToolAssert,
 	ToolBridgeSetText,
+	ToolImeShow,
+	ToolFilePush,
+	ToolFilePull,
 }
 
 type devicesListInput struct{}
 
 type deviceGetInput struct {
 	Device string `json:"device"`
+}
+
+// imeShowInput 只需要设备：聚焦的是系统当前输入焦点，不接受选择器。
+type imeShowInput struct {
+	Device string `json:"device"`
+}
+
+// bridgeImeShowOutput 只回执行路径。
+//
+// 不含任何键盘可见性字段——那是无障碍无法验证的事实，声明即是虚假承诺。
+type bridgeImeShowOutput struct {
+	Route string `json:"route,omitempty"`
 }
 
 type observeInput struct {
@@ -501,6 +520,39 @@ func newServer(
 		_ = json.Unmarshal(raw, &output)
 		return nil, output, nil
 	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: ToolImeShow,
+		Description: "Move input focus to the currently focused editable control on one " +
+			"explicitly selected Android device. This focuses a control; it is not a keyboard " +
+			"visibility switch. The soft keyboard usually appears once a control takes focus, " +
+			"but that depends on the input method and cannot be queried or guaranteed. " +
+			"A success result means the control was focused, not that a keyboard is visible. " +
+			"Returns ACTION_NOT_SUPPORTED when no editable control can be focused.",
+		InputSchema:  imeShowSchema(),
+		OutputSchema: bridgeImeShowOutputSchema(),
+		Annotations:  actionAnnotations(),
+	}, func(
+		ctx context.Context,
+		_ *mcp.CallToolRequest,
+		input imeShowInput,
+	) (*mcp.CallToolResult, bridgeImeShowOutput, error) {
+		// ime.show 只改变焦点归属，不改变应用生命周期也不写入数据，
+		// 符合 risk.go 白名单注释的既有标准，因此走同一道门而非独立门。
+		if err := requireModelActionAllowed(service.ActionImeShow); err != nil {
+			return nil, bridgeImeShowOutput{}, err
+		}
+		raw, err := automation.BridgeImeShow(ctx, input.Device)
+		if err != nil {
+			return nil, bridgeImeShowOutput{}, err
+		}
+		var output bridgeImeShowOutput
+		// 与 BridgeSetText 同理：证据解析失败不应让已成功的聚焦变成错误。
+		_ = json.Unmarshal(raw, &output)
+		return nil, output, nil
+	})
+
+	registerFileTransferTools(server, automation)
 
 	return server
 }

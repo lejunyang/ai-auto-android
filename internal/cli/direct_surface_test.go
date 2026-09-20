@@ -266,15 +266,27 @@ func TestFileTransferRefusesToOverwriteOrDelete(t *testing.T) {
 		}
 	})
 
-	// MCP 本轮仍无文件传输出口：文件读写是可持久化副作用，模型自主发起的风险档位
-	// 与人在 CLI 显式调用不同，留待单独决策。这里把该边界钉住。
-	t.Run("mcp has no file transfer tool", func(t *testing.T) {
+	// MCP 出口已开放（见 internal/mcpserver/file_transfer.go 的独立风险门）。
+	// 原先这里锁的是「MCP 无出口」，该条已不成立；换锁新不变量：出口存在，
+	// 但仍不得出现任何删除类工具。覆盖与不覆盖的实证在 mcpserver 侧用真实服务层验证。
+	t.Run("mcp exposes transfer but never deletion", func(t *testing.T) {
+		var hasPush, hasPull bool
 		for _, name := range mcpserver.ToolNames {
-			if strings.Contains(name, "file") ||
-				strings.Contains(name, "push") ||
-				strings.Contains(name, "pull") {
-				t.Fatalf("MCP exposes a file transfer tool %q without a risk decision", name)
+			lowered := strings.ToLower(name)
+			for _, banned := range []string{"delete", "remove", "unlink"} {
+				if strings.Contains(lowered, banned) {
+					t.Fatalf("MCP exposes a deletion tool %q", name)
+				}
 			}
+			switch name {
+			case mcpserver.ToolFilePush:
+				hasPush = true
+			case mcpserver.ToolFilePull:
+				hasPull = true
+			}
+		}
+		if !hasPush || !hasPull {
+			t.Fatalf("file transfer tools missing: push=%v pull=%v", hasPush, hasPull)
 		}
 	})
 
@@ -300,4 +312,33 @@ func TestFileTransferRefusesToOverwriteOrDelete(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestBridgeImeShowRoutesThroughTheBridgeChannel 锁定 ime.show 的通道归属。
+//
+// 它必须挂在 bridge 子命令下而不是 action：action 走直连，而 Android 没有
+// 「打开键盘」的 keycode，ime.show 只能走无障碍。若有人把它挪到 action 下，
+// 命令会因 bridge 为 nil 永远返回 unavailable——那种失败在编译期看不出来。
+func TestBridgeImeShowRoutesThroughTheBridgeChannel(t *testing.T) {
+	automation := &actionCapturingAutomation{}
+	app, _ := testApp(&commandExecutor{}, "")
+	app.Automation = automation
+
+	exitCode := app.Run(context.Background(), []string{
+		"bridge", "ime-show", "--device", "SERIAL", "--json",
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d", exitCode)
+	}
+	if len(automation.imeShowDevices) != 1 || automation.imeShowDevices[0] != "SERIAL" {
+		t.Fatalf("ime show calls = %#v", automation.imeShowDevices)
+	}
+	// 不接受选择器类参数：聚焦的是系统当前输入焦点。
+	rejected := app.Run(context.Background(), []string{
+		"bridge", "ime-show", "--device", "SERIAL", "--resource-id", "x", "--json",
+	})
+	if rejected == 0 {
+		t.Fatal("ime-show accepted a selector option")
+	}
 }

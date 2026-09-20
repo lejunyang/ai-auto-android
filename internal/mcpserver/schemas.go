@@ -529,3 +529,79 @@ func packageSchema() string {
 func coordinateSchema() string {
 	return `{"type":"integer","minimum":0,"maximum":100000}`
 }
+
+// filePushSchema 描述推送入参。
+//
+// 没有 force / overwrite 字段，且 additionalProperties:false——覆盖不是可以用
+// 参数打开的选项，等价字段在 schema 层就被拒绝。
+func filePushSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"required":["device","localPath","remotePath"],
+		"properties":{
+			"device":` + deviceSchema() + `,
+			"localPath":{"type":"string","minLength":1,"maxLength":4096,
+				"description":"Path on the machine running this MCP server."},
+			"remotePath":{"type":"string","minLength":1,"maxLength":1024,
+				"description":"Absolute device path. Must not already exist; the transfer fails instead of overwriting."}
+		},
+		"additionalProperties":false
+	}`)
+}
+
+// filePullSchema 描述拉取入参。
+//
+// localPath 的 description 必须点明落盘位置：模型容易误以为文件回到自己的环境，
+// 实际写在运行 MCP 服务的那台机器上。
+func filePullSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"required":["device","remotePath","localPath"],
+		"properties":{
+			"device":` + deviceSchema() + `,
+			"remotePath":{"type":"string","minLength":1,"maxLength":1024,
+				"description":"Absolute device path to read."},
+			"localPath":{"type":"string","minLength":1,"maxLength":4096,
+				"description":"Destination on the machine running this MCP server, not the caller environment. Must not already exist; the transfer fails instead of overwriting."}
+		},
+		"additionalProperties":false
+	}`)
+}
+
+// fileTransferOutputSchema 描述传输结果。
+func fileTransferOutputSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"properties":{
+			"device":{"type":"string","maxLength":255},
+			"action":{"type":"string","maxLength":64},
+			"localPath":{"type":"string","maxLength":4096},
+			"remotePath":{"type":"string","maxLength":1024}
+		},
+		"additionalProperties":false
+	}`)
+}
+
+// imeShowSchema 描述聚焦输入控件的入参。
+//
+// 只有 device：聚焦的是系统当前输入焦点，不接受选择器。
+func imeShowSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"required":["device"],
+		"properties":{"device":` + deviceSchema() + `},
+		"additionalProperties":false
+	}`)
+}
+
+// bridgeImeShowOutputSchema 描述聚焦结果。
+//
+// 刻意只有 route 一个字段，没有 keyboardVisible 之类的布尔：无障碍查不到键盘
+// 状态，声明一个那样的字段就是在承诺一个无法验证的事实。
+func bridgeImeShowOutputSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"properties":{"route":{"type":"string","maxLength":128}},
+		"additionalProperties":false
+	}`)
+}
