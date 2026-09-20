@@ -22,6 +22,9 @@
       "$ref": "#/$defs/actionExecute"
     },
     {
+      "$ref": "#/$defs/visualActionExecute"
+    },
+    {
       "$ref": "#/$defs/recordingList"
     },
     {
@@ -56,6 +59,7 @@
             "ui.snapshot",
             "ui.foreground",
             "action.execute",
+            "visual.action.execute",
             "recording.list",
             "recording.replay",
             "session.close"
@@ -267,6 +271,99 @@
           }
         }
       ]
+    },
+    "visualActionExecute": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "$ref": "#/$defs/authorized"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "visual.action.execute"
+            },
+            "params": {
+              "type": "object",
+              "required": [
+                "deviceSerial",
+                "deviceFingerprint",
+                "targetPackage",
+                "hierarchySha256",
+                "observation",
+                "candidate",
+                "action",
+                "capturedAt",
+                "expiresAt",
+                "pngBase64"
+              ],
+              "properties": {
+                "deviceSerial": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "deviceFingerprint": {
+                  "$ref": "#/$defs/sha256Hex"
+                },
+                "targetPackage": {
+                  "$ref": "common.schema.json#/$defs/packageName"
+                },
+                "hierarchySha256": {
+                  "$ref": "#/$defs/sha256Hex"
+                },
+                "observation": {
+                  "$ref": "https://aiauto.dev/schema/v1/visual-observation-proposal.schema.json#/$defs/observation"
+                },
+                "candidate": {
+                  "$ref": "https://aiauto.dev/schema/v1/visual-observation-proposal.schema.json#/$defs/candidate"
+                },
+                "action": {
+                  "$ref": "#/$defs/visualAction"
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "pngBase64": {
+                  "type": "string",
+                  "minLength": 12
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "sha256Hex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "visualAction": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["tap", "long-click", "swipe"]
+        },
+        "direction": {
+          "enum": ["up", "down", "left", "right"]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        }
+      },
+      "additionalProperties": false
     },
     "recordingList": {
       "allOf": [

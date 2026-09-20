@@ -282,13 +282,19 @@ func TestServerRiskGateRejectsPairTrustShellStopAndReplayBeforeService(t *testin
 			},
 		},
 		{
+			// app.stop 现在在 schema 层就被拒绝：动作 schema 不再声明该分支，
+			// 因为它永远会被 risk.go 的白名单拒绝，声明它只会让模型靠试错才发现
+			// 此路不通。这里不再断言 ACTION_NOT_ALLOWED——那是风险门的错误码，
+			// 而现在请求根本到不了风险门。
+			//
+			// 风险门本身仍然拒绝 ActionStop，由 risk_test.go 的
+			// TestModelRiskGateUsesExplicitAllowlist 独立守护，两层防御都还在。
 			name: ToolActionExecute,
 			arguments: map[string]any{
 				"device":  "SERIAL",
 				"action":  "app.stop",
 				"package": "com.example.app",
 			},
-			code: "ACTION_NOT_ALLOWED",
 		},
 		{
 			name: ToolRecordingReplay,

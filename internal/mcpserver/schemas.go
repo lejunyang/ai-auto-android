@@ -238,6 +238,16 @@ func screenRecordSchema() json.RawMessage {
 	}`)
 }
 
+// actionSchema 描述模型可发起的直连 ADB 动作。
+//
+// 分支集合必须与 risk.go 的 requireModelActionAllowed 白名单一致。此前这里多声明
+// 了 app.stop：schema 允许模型构造该调用，运行时却必然被风险门拒绝，
+// 模型只能靠试错发现这条路不通。声明面与执行面不一致本身就是缺陷，
+// 因此移除该分支而不是放宽风险门——风险门是安全权威，
+// 放宽它等于扩大模型可发起的动作面。需要停止应用时走 CLI 的 `aactl action stop`。
+//
+// ui.pressKey 的键枚举以 protocol/schema/v1/action.schema.json 为单一权威来源，
+// 与 internal/adb 的 allowedKeys 逐项一致，由 presskey_consistency_test.go 守护。
 func actionSchema() json.RawMessage {
 	return json.RawMessage(`{
 		"type":"object",
@@ -285,7 +295,7 @@ func actionSchema() json.RawMessage {
 				"properties":{
 					"device":` + deviceSchema() + `,
 					"action":{"const":"ui.scroll"},
-					"direction":{"enum":["up","down","left","right"]},
+					"direction":{"enum":["up","down","left","right","forward","backward"]},
 					"amount":{"type":"number","minimum":0.05,"maximum":0.9}
 				},
 				"additionalProperties":false
@@ -296,7 +306,13 @@ func actionSchema() json.RawMessage {
 				"properties":{
 					"device":` + deviceSchema() + `,
 					"action":{"const":"ui.setText"},
-					"text":{"type":"string","minLength":1,"maxLength":10000,"pattern":"^[-A-Za-z0-9 @._+,:/]*$"}
+					"text":{
+						"type":"string",
+						"minLength":1,
+						"maxLength":10000,
+						"pattern":"^[-A-Za-z0-9 @._+,:/]*$",
+						"description":"ASCII only, because this action goes through adb shell input text whose escaping is reliable for ASCII alone. For Chinese or any other non-ASCII text call android_bridge_set_text instead: it writes through the accessibility service and accepts any Unicode."
+					}
 				},
 				"additionalProperties":false
 			},
@@ -306,7 +322,7 @@ func actionSchema() json.RawMessage {
 				"properties":{
 					"device":` + deviceSchema() + `,
 					"action":{"const":"ui.pressKey"},
-					"key":{"enum":["BACK","HOME","RECENTS","ENTER","TAB","ESCAPE","SPACE","DELETE","FORWARD_DEL","DPAD_UP","DPAD_DOWN","DPAD_LEFT","DPAD_RIGHT","DPAD_CENTER","VOLUME_UP","VOLUME_DOWN","VOLUME_MUTE"]}
+					"key":{"enum":["BACK","HOME","RECENTS","ENTER","TAB","ESCAPE","SPACE","DELETE","FORWARD_DEL","DPAD_UP","DPAD_DOWN","DPAD_LEFT","DPAD_RIGHT","DPAD_CENTER","MOVE_HOME","MOVE_END","PAGE_UP","PAGE_DOWN","VOLUME_UP","VOLUME_DOWN","VOLUME_MUTE"]}
 				},
 				"additionalProperties":false
 			},
@@ -318,16 +334,6 @@ func actionSchema() json.RawMessage {
 					"action":{"const":"app.launch"},
 					"package":` + packageSchema() + `,
 					"activity":{"type":"string","minLength":1,"maxLength":512,"pattern":"^[A-Za-z0-9_./]+$"}
-				},
-				"additionalProperties":false
-			},
-			{
-				"type":"object",
-				"required":["device","action","package"],
-				"properties":{
-					"device":` + deviceSchema() + `,
-					"action":{"const":"app.stop"},
-					"package":` + packageSchema() + `
 				},
 				"additionalProperties":false
 			}

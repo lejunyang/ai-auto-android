@@ -347,6 +347,85 @@
           }
         }
       }
+    },
+    {
+      "name": "authorized attested visual action request",
+      "schema": "bridge-request.schema.json",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "b2871513-42bd-4a8f-af93-fa0ee8fc4b02",
+        "requestId": "b2871513-42bd-4a8f-af93-fa0ee8fc4b02",
+        "protocolVersion": "1.0",
+        "method": "visual.action.execute",
+        "params": {
+          "deviceSerial": "emulator-5554",
+          "deviceFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "targetPackage": "com.example.notes",
+          "hierarchySha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "observation": {
+            "schemaVersion": "visual-observation/1.0",
+            "id": "123e4567-e89b-42d3-a456-426614174044",
+            "foregroundPackage": "com.example.notes",
+            "screen": {
+              "width": 1000,
+              "height": 2000,
+              "rotation": 90
+            },
+            "crop": {
+              "left": 200,
+              "top": 100,
+              "right": 1200,
+              "bottom": 900
+            },
+            "capturedAt": "2026-07-26T01:00:00Z",
+            "expiresAt": "2026-07-26T01:00:10Z",
+            "png": {
+              "format": "png",
+              "sizeBytes": 68,
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "verification": "trusted-context"
+            },
+            "hierarchy": [
+              {
+                "role": "button",
+                "label": "Save",
+                "bounds": {
+                  "left": 0.3,
+                  "top": 0.6,
+                  "right": 0.7,
+                  "bottom": 0.8
+                },
+                "sensitive": false,
+                "children": []
+              }
+            ]
+          },
+          "candidate": {
+            "id": "123e4567-e89b-42d3-a456-426614174102",
+            "observationId": "123e4567-e89b-42d3-a456-426614174044",
+            "source": "template",
+            "point": {
+              "x": 0.5,
+              "y": 0.65
+            },
+            "bounds": {
+              "left": 0.3,
+              "top": 0.6,
+              "right": 0.7,
+              "bottom": 0.8
+            },
+            "confidence": 0.9
+          },
+          "action": {
+            "type": "tap"
+          },
+          "capturedAt": "2026-07-26T01:00:00Z",
+          "expiresAt": "2026-07-26T01:00:10Z",
+          "pngBase64": "aVZCT1J3MEtHZ29BQUE="
+        },
+        "deadlineMs": 15000,
+        "token": "4GJw5tzL7-Wa_gP8xUiVN6eC2zS7hHdx"
+      }
     }
   ],
   "invalid": [
@@ -704,6 +783,249 @@
             "retryable": false
           }
         }
+      }
+    },
+    {
+      "name": "attested visual action requires token",
+      "schema": "bridge-request.schema.json",
+      "expectedError": "token",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "b2871513-42bd-4a8f-af93-fa0ee8fc4b02",
+        "requestId": "b2871513-42bd-4a8f-af93-fa0ee8fc4b02",
+        "protocolVersion": "1.0",
+        "method": "visual.action.execute",
+        "params": {
+          "deviceSerial": "emulator-5554",
+          "deviceFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "targetPackage": "com.example.notes",
+          "hierarchySha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "observation": {
+            "schemaVersion": "visual-observation/1.0",
+            "id": "123e4567-e89b-42d3-a456-426614174044",
+            "foregroundPackage": "com.example.notes",
+            "screen": {
+              "width": 1000,
+              "height": 2000,
+              "rotation": 90
+            },
+            "crop": {
+              "left": 200,
+              "top": 100,
+              "right": 1200,
+              "bottom": 900
+            },
+            "capturedAt": "2026-07-26T01:00:00Z",
+            "expiresAt": "2026-07-26T01:00:10Z",
+            "png": {
+              "format": "png",
+              "sizeBytes": 68,
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "verification": "trusted-context"
+            },
+            "hierarchy": [
+              {
+                "role": "button",
+                "label": "Save",
+                "bounds": {
+                  "left": 0.3,
+                  "top": 0.6,
+                  "right": 0.7,
+                  "bottom": 0.8
+                },
+                "sensitive": false,
+                "children": []
+              }
+            ]
+          },
+          "candidate": {
+            "id": "123e4567-e89b-42d3-a456-426614174102",
+            "observationId": "123e4567-e89b-42d3-a456-426614174044",
+            "source": "template",
+            "point": {
+              "x": 0.5,
+              "y": 0.65
+            },
+            "bounds": {
+              "left": 0.3,
+              "top": 0.6,
+              "right": 0.7,
+              "bottom": 0.8
+            },
+            "confidence": 0.9
+          },
+          "action": {
+            "type": "tap"
+          },
+          "capturedAt": "2026-07-26T01:00:00Z",
+          "expiresAt": "2026-07-26T01:00:10Z",
+          "pngBase64": "aVZCT1J3MEtHZ29BQUE="
+        },
+        "deadlineMs": 15000
+      }
+    },
+    {
+      "name": "attested visual action rejects raw coordinate payload",
+      "schema": "bridge-request.schema.json",
+      "expectedError": "additionalProperties",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "b2871513-42bd-4a8f-af93-fa0ee8fc4b02",
+        "requestId": "b2871513-42bd-4a8f-af93-fa0ee8fc4b02",
+        "protocolVersion": "1.0",
+        "method": "visual.action.execute",
+        "params": {
+          "deviceSerial": "emulator-5554",
+          "deviceFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "targetPackage": "com.example.notes",
+          "hierarchySha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "observation": {
+            "schemaVersion": "visual-observation/1.0",
+            "id": "123e4567-e89b-42d3-a456-426614174044",
+            "foregroundPackage": "com.example.notes",
+            "screen": {
+              "width": 1000,
+              "height": 2000,
+              "rotation": 90
+            },
+            "crop": {
+              "left": 200,
+              "top": 100,
+              "right": 1200,
+              "bottom": 900
+            },
+            "capturedAt": "2026-07-26T01:00:00Z",
+            "expiresAt": "2026-07-26T01:00:10Z",
+            "png": {
+              "format": "png",
+              "sizeBytes": 68,
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "verification": "trusted-context"
+            },
+            "hierarchy": [
+              {
+                "role": "button",
+                "label": "Save",
+                "bounds": {
+                  "left": 0.3,
+                  "top": 0.6,
+                  "right": 0.7,
+                  "bottom": 0.8
+                },
+                "sensitive": false,
+                "children": []
+              }
+            ]
+          },
+          "candidate": {
+            "id": "123e4567-e89b-42d3-a456-426614174102",
+            "observationId": "123e4567-e89b-42d3-a456-426614174044",
+            "source": "template",
+            "point": {
+              "x": 0.5,
+              "y": 0.65
+            },
+            "bounds": {
+              "left": 0.3,
+              "top": 0.6,
+              "right": 0.7,
+              "bottom": 0.8
+            },
+            "confidence": 0.9
+          },
+          "action": {
+            "type": "tap"
+          },
+          "capturedAt": "2026-07-26T01:00:00Z",
+          "expiresAt": "2026-07-26T01:00:10Z",
+          "pngBase64": "aVZCT1J3MEtHZ29BQUE=",
+          "rawCoordinates": {
+            "x": 12,
+            "y": 34
+          }
+        },
+        "deadlineMs": 15000,
+        "token": "4GJw5tzL7-Wa_gP8xUiVN6eC2zS7hHdx"
+      }
+    },
+    {
+      "name": "attested visual action rejects unlisted action type",
+      "schema": "bridge-request.schema.json",
+      "expectedError": "enum",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": "b2871513-42bd-4a8f-af93-fa0ee8fc4b02",
+        "requestId": "b2871513-42bd-4a8f-af93-fa0ee8fc4b02",
+        "protocolVersion": "1.0",
+        "method": "visual.action.execute",
+        "params": {
+          "deviceSerial": "emulator-5554",
+          "deviceFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "targetPackage": "com.example.notes",
+          "hierarchySha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "observation": {
+            "schemaVersion": "visual-observation/1.0",
+            "id": "123e4567-e89b-42d3-a456-426614174044",
+            "foregroundPackage": "com.example.notes",
+            "screen": {
+              "width": 1000,
+              "height": 2000,
+              "rotation": 90
+            },
+            "crop": {
+              "left": 200,
+              "top": 100,
+              "right": 1200,
+              "bottom": 900
+            },
+            "capturedAt": "2026-07-26T01:00:00Z",
+            "expiresAt": "2026-07-26T01:00:10Z",
+            "png": {
+              "format": "png",
+              "sizeBytes": 68,
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "verification": "trusted-context"
+            },
+            "hierarchy": [
+              {
+                "role": "button",
+                "label": "Save",
+                "bounds": {
+                  "left": 0.3,
+                  "top": 0.6,
+                  "right": 0.7,
+                  "bottom": 0.8
+                },
+                "sensitive": false,
+                "children": []
+              }
+            ]
+          },
+          "candidate": {
+            "id": "123e4567-e89b-42d3-a456-426614174102",
+            "observationId": "123e4567-e89b-42d3-a456-426614174044",
+            "source": "template",
+            "point": {
+              "x": 0.5,
+              "y": 0.65
+            },
+            "bounds": {
+              "left": 0.3,
+              "top": 0.6,
+              "right": 0.7,
+              "bottom": 0.8
+            },
+            "confidence": 0.9
+          },
+          "action": {
+            "type": "double-tap"
+          },
+          "capturedAt": "2026-07-26T01:00:00Z",
+          "expiresAt": "2026-07-26T01:00:10Z",
+          "pngBase64": "aVZCT1J3MEtHZ29BQUE="
+        },
+        "deadlineMs": 15000,
+        "token": "4GJw5tzL7-Wa_gP8xUiVN6eC2zS7hHdx"
       }
     }
   ],
