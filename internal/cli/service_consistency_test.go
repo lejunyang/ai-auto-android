@@ -5,6 +5,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -198,6 +199,8 @@ type actionCapturingAutomation struct {
 	predicateRequests  []service.PredicateRequest
 	bridgeTexts        []service.BridgeTextRequest
 	imeShowDevices     []string
+	windowQueries      []string
+	messageQueries     []string
 	screenStates       []string
 	inputMethodQueries []string
 	fileTransfers      []service.FileTransferRequest
@@ -399,4 +402,30 @@ func (a *actionCapturingAutomation) PullFile(
 		LocalPath:  request.LocalPath,
 		RemotePath: request.RemotePath,
 	}, nil
+}
+
+// BridgeWindows 与 BridgeTransientMessages 记录调用参数，供断言 CLI 出口映射正确。
+func (a *actionCapturingAutomation) BridgeWindows(
+	_ context.Context,
+	device string,
+	targetPackage string,
+	maxDepth int,
+) (json.RawMessage, error) {
+	a.windowQueries = append(
+		a.windowQueries,
+		fmt.Sprintf("%s|%s|%d", device, targetPackage, maxDepth),
+	)
+	return json.RawMessage(`{"windows":[],"maxDepth":10}`), nil
+}
+
+func (a *actionCapturingAutomation) BridgeTransientMessages(
+	_ context.Context,
+	device string,
+	toastsOnly bool,
+) (json.RawMessage, error) {
+	a.messageQueries = append(
+		a.messageQueries,
+		fmt.Sprintf("%s|%t", device, toastsOnly),
+	)
+	return json.RawMessage(`{"messages":[],"toastsOnly":false}`), nil
 }

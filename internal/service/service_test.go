@@ -572,3 +572,25 @@ func assertCode(t *testing.T, err error, code string) {
 		t.Fatalf("error code = %q, want %q", appError.Code, code)
 	}
 }
+
+// Windows 与 TransientMessages 补齐 BridgeBackend 的多窗口与瞬时提示能力。
+// 这里只回可预期的最小结果：相关语义的真实验证在 App 侧单测里。
+func (f *fakeBridge) Windows(
+	_ context.Context,
+	_ string,
+	_ string,
+	_ int,
+) (json.RawMessage, error) {
+	return json.RawMessage(`{"windows":[],"maxDepth":10}`), nil
+}
+
+func (f *fakeBridge) TransientMessages(
+	_ context.Context,
+	_ string,
+	toastsOnly bool,
+) (json.RawMessage, error) {
+	if toastsOnly {
+		return json.RawMessage(`{"messages":[],"toastsOnly":true}`), nil
+	}
+	return json.RawMessage(`{"messages":[],"toastsOnly":false}`), nil
+}

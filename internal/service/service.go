@@ -127,6 +127,10 @@ type DirectBackend interface {
 // BridgeBackend 只包含已建立会话后的操作；配对和信任管理有意留在接口之外。
 type BridgeBackend interface {
 	Snapshot(context.Context, string, string, int) (json.RawMessage, error)
+	// Windows 枚举可见窗口，覆盖对话框、输入法、分屏与画中画。
+	Windows(context.Context, string, string, int) (json.RawMessage, error)
+	// TransientMessages 读取 Toast 与通知文本，每条带时间戳。
+	TransientMessages(context.Context, string, bool) (json.RawMessage, error)
 	// Foreground 读活动界面的包名与类名，不返回节点树。
 	Foreground(context.Context, string, string) (json.RawMessage, error)
 	// SetText 走无障碍写入任意 Unicode，绕开 ADB input text 的 ASCII 限制。
@@ -159,6 +163,10 @@ type Automation interface {
 	// BridgeImeShow 聚焦当前输入控件。归桥通道而非 ExecuteAction：
 	// Android 没有「打开键盘」的 keycode，直连侧无法实现。
 	BridgeImeShow(context.Context, string) (json.RawMessage, error)
+	// BridgeWindows 与 BridgeTransientMessages 是多窗口与瞬时提示的观察出口。
+	// 两者都只走桥：窗口枚举与 Toast 捕获都依赖无障碍事件流，直连拿不到。
+	BridgeWindows(context.Context, string, string, int) (json.RawMessage, error)
+	BridgeTransientMessages(context.Context, string, bool) (json.RawMessage, error)
 	// ScreenState、InputMethods 与文件传输是动作面扩展的观察与传输能力。
 	// 它们不走 ExecuteAction：返回值不是 adb.ActionResult，
 	// 硬塞进那个签名会让调用方拿不到实际结果（亮屏状态、输入法列表、传输字节数）。

@@ -367,6 +367,18 @@ sealed interface AccessibilityCommand {
      * 但无障碍侧无法查询也无法保证键盘可见性。
      */
     data object ImeShow : AccessibilityCommand
+
+    /**
+     * 写入剪贴板文本，对应协议的 clipboard.set。
+     *
+     * 无 target：写的是系统剪贴板，不是某个节点。与 ui.copy / ui.cut / ui.paste
+     * 不同——那三个是对焦点节点执行节点动作，本项直接走 ClipboardManager。
+     *
+     * 刻意没有对应的读取命令：Android 无 READ_CLIPBOARD 权限，API 29+ 要求应用
+     * 持有输入焦点或是默认输入法才能读，而自动化要读的正是别的 App 的剪贴板，
+     * 两个条件互斥。详见 spec 与 ClipboardGateway 的注释。
+     */
+    data class ClipboardSet(val text: String) : AccessibilityCommand
 }
 
 /** 拖拽端点：选择器或坐标二选一。 */

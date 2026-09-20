@@ -39,3 +39,45 @@ func (s *Service) BridgeImeShow(
 	}
 	return s.bridge.Action(ctx, device, json.RawMessage(imeShowAction))
 }
+
+// BridgeWindows 枚举设备上的可见窗口。
+//
+// maxDepth 沿用 snapshot 的语义：每个窗口的节点树都按该深度截断。不截断时
+// 深层界面单窗口就可能上千节点，多窗口相乘会让响应体积失控。
+func (s *Service) BridgeWindows(
+	ctx context.Context,
+	device string,
+	targetPackage string,
+	maxDepth int,
+) (json.RawMessage, error) {
+	if err := adb.ValidateSerial(device); err != nil {
+		return nil, err
+	}
+	if targetPackage != "" {
+		if err := adb.ValidatePackageName(targetPackage); err != nil {
+			return nil, err
+		}
+	}
+	if s.bridge == nil {
+		return nil, unavailable("bridge window enumeration")
+	}
+	return s.bridge.Windows(ctx, device, targetPackage, maxDepth)
+}
+
+// BridgeTransientMessages 读取已捕获的 Toast 与通知文本。
+//
+// 只读不清空：隐式清空会让两个调用方互相吃掉对方的消息。需要只看某次操作的
+// 提示时，由调用方在操作前自行决定是否清空。
+func (s *Service) BridgeTransientMessages(
+	ctx context.Context,
+	device string,
+	toastsOnly bool,
+) (json.RawMessage, error) {
+	if err := adb.ValidateSerial(device); err != nil {
+		return nil, err
+	}
+	if s.bridge == nil {
+		return nil, unavailable("bridge transient messages")
+	}
+	return s.bridge.TransientMessages(ctx, device, toastsOnly)
+}

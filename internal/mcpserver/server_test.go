@@ -604,3 +604,23 @@ func (f *fakeAutomation) Assert(
 	f.calls++
 	return f.predicate, nil
 }
+
+// BridgeWindows 与 BridgeTransientMessages 补齐多窗口与瞬时提示出口。
+func (f *fakeAutomation) BridgeWindows(
+	context.Context,
+	string,
+	string,
+	int,
+) (json.RawMessage, error) {
+	f.calls++
+	return json.RawMessage(`{"windows":[],"maxDepth":10}`), nil
+}
+
+func (f *fakeAutomation) BridgeTransientMessages(
+	context.Context,
+	string,
+	bool,
+) (json.RawMessage, error) {
+	f.calls++
+	return json.RawMessage(`{"messages":[],"toastsOnly":false}`), nil
+}

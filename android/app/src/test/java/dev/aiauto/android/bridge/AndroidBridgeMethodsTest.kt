@@ -6,10 +6,12 @@ package dev.aiauto.android.bridge
 
 import android.content.Context
 
+import dev.aiauto.android.accessibility.TransientMessage
 import dev.aiauto.android.accessibility.model.AccessibilityCommand
 import dev.aiauto.android.accessibility.model.AccessibilityResult
 import dev.aiauto.android.accessibility.model.ActionExecution
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
+import dev.aiauto.android.accessibility.model.UiWindowSnapshot
 import dev.aiauto.android.automation.recording.AutomationScript
 import dev.aiauto.android.automation.recording.AutomationScriptSummary
 import dev.aiauto.android.automation.recording.RecordedAction
@@ -262,6 +264,18 @@ class AndroidBridgeMethodsTest {
             snapshotCalls += 1
             error("snapshot must not run")
         }
+
+        // 多窗口与瞬时消息在本 fake 中不提供：相关用例不覆盖这两条路径，
+        // 返回明确失败比返回空列表好——空列表会被误读成「确实没有窗口」。
+        override fun windows(
+            expectedPackage: String?,
+        ): AccessibilityResult<List<UiWindowSnapshot>> =
+            error("windows must not run")
+
+        override fun transientMessages(
+            toastsOnly: Boolean,
+        ): AccessibilityResult<List<TransientMessage>> =
+            error("transientMessages must not run")
 
         override fun execute(
             command: AccessibilityCommand,

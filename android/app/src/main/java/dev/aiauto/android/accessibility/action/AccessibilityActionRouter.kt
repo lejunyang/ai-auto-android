@@ -89,6 +89,16 @@ interface AccessibilityActionBackend {
      */
     fun focusInputControl(): Boolean = false
 
+    /**
+     * 写入系统剪贴板，供 clipboard.set 使用。
+     *
+     * 只有写没有读：Android 不存在 READ_CLIPBOARD 权限，API 29+ 要求读取方持有
+     * 输入焦点或是默认输入法，而自动化要读的正是别的 App 的剪贴板——两个条件
+     * 互斥。写入不受该限制，因此只开放写入这一半。
+     * 默认 false 表示本实现不支持，调用方据此报 ACTION_NOT_SUPPORTED。
+     */
+    fun writeClipboard(text: String): Boolean = false
+
     fun screenBounds(): ScreenBounds
 }
 
@@ -129,6 +139,7 @@ class AccessibilityActionRouter(
             is AccessibilityCommand.ScrollToPosition -> command.target.packageName
             is AccessibilityCommand.PressKey -> null
             is AccessibilityCommand.ImeShow -> null
+            is AccessibilityCommand.ClipboardSet -> null
         }
         when (val validation = backend.validateTarget(expectedPackage)) {
             is AccessibilityResult.Failure -> return validation
@@ -170,6 +181,7 @@ class AccessibilityActionRouter(
             is AccessibilityCommand.ScrollToPosition -> executeScrollToPosition(command)
             is AccessibilityCommand.PressKey -> executePressKey(command)
             is AccessibilityCommand.ImeShow -> executeImeShow()
+            is AccessibilityCommand.ClipboardSet -> executeClipboardSet(command)
         }
     }
 
@@ -939,6 +951,28 @@ class AccessibilityActionRouter(
         return AccessibilityResult.Success(ActionExecution(route = ActionRoute.NODE_ACTION))
     }
 
+    /**
+     * 执行 clipboard.set：把文本写入系统剪贴板。
+     *
+     * route 记为 GLOBAL_ACTION：写的是系统级剪贴板而非某个节点，
+     * 没有 matchedPath/matchScore 可言。
+     */
+    private fun executeClipboardSet(
+        command: AccessibilityCommand.ClipboardSet,
+    ): AccessibilityResult<ActionExecution> {
+        if (command.text.length > MAX_CLIPBOARD_TEXT) {
+            return invalidAction("Clipboard text must not exceed $MAX_CLIPBOARD_TEXT characters")
+        }
+        if (!backend.writeClipboard(command.text)) {
+            return failure(
+                code = AccessibilityErrorCode.ACTION_NOT_SUPPORTED,
+                message = "The clipboard could not be written",
+                retryable = true,
+            )
+        }
+        return AccessibilityResult.Success(ActionExecution(route = ActionRoute.GLOBAL_ACTION))
+    }
+
     /** 只走节点动作、无坐标降级的能力（复制、聚焦、展开等）。 */
     private fun executeNodeOnlyAction(
         target: NodeTarget,
@@ -1541,6 +1575,10 @@ class AccessibilityActionRouter(
 
         /** 按键重复上限，防止一次调用打出上千次按键。 */
         const val MAX_KEY_REPEAT = 64
+
+        // 与 action.schema.json 的 clipboardSet.params.text.maxLength 一致。
+        // 两处必须同步：协议放行而这里拒绝会让调用方拿到无法预期的失败。
+        const val MAX_CLIPBOARD_TEXT = 10_000
 
         /** 必须走专用命令携带参数的动作，不允许通过通用节点动作入口执行。 */
         val ARGUMENT_REQUIRED_ACTIONS = setOf(

@@ -208,6 +208,42 @@ func (s *Service) Snapshot(
 	return s.call(ctx, device, "ui.snapshot", params)
 }
 
+// Windows 枚举可见窗口，用于定位对话框、输入法、分屏与画中画里的节点。
+//
+// 与 Snapshot 只回活动窗口单根不同：那些界面在多数场景下不是活动窗口，
+// 只看单根时它们的节点根本不在候选集合里。窗口数量由 App 侧有界限制。
+func (s *Service) Windows(
+	ctx context.Context,
+	device string,
+	targetPackage string,
+	maxDepth int,
+) (json.RawMessage, error) {
+	params := make(map[string]any)
+	if targetPackage != "" {
+		params["targetPackage"] = targetPackage
+	}
+	if maxDepth != 0 {
+		params["maxDepth"] = maxDepth
+	}
+	return s.call(ctx, device, "ui.windows", params)
+}
+
+// TransientMessages 读取已捕获的 Toast 与通知文本。
+//
+// 每条都带 eventTimeMs：没有时间戳就无法区分「这是刚才那次操作触发的」还是
+// 「十分钟前遗留的」，缓冲本身就失去判断价值。
+func (s *Service) TransientMessages(
+	ctx context.Context,
+	device string,
+	toastsOnly bool,
+) (json.RawMessage, error) {
+	params := make(map[string]any)
+	if toastsOnly {
+		params["toastsOnly"] = true
+	}
+	return s.call(ctx, device, "ui.transientMessages", params)
+}
+
 // Foreground 读取当前活动界面的包名与窗口类名。
 //
 // 与 Snapshot 分开而不是让调用方自行裁剪快照：自愈判断只需要"现在在哪"这一个事实，
