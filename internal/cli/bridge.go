@@ -22,7 +22,7 @@ func (a *App) executeBridge(
 ) (any, error) {
 	if len(args) == 0 {
 		return nil, usageError(
-			"Usage: aactl bridge open|info|foreground|snapshot|set-text|action|close [options]",
+			"Usage: aactl bridge open|info|foreground|snapshot|set-text|ime-show|action|close [options]",
 		)
 	}
 	service, err := a.bridgeService(client)
@@ -105,6 +105,21 @@ func (a *App) executeBridge(
 			},
 			options["text"],
 		)
+	case "ime-show":
+		// 聚焦当前输入控件。归桥通道而非 action 子命令：action 走直连，
+		// 而 Android 没有「打开键盘」的 keycode，ime.show 只能走无障碍。
+		//
+		// 语义上限：成功只表示「已聚焦输入控件」，不表示键盘已显示。
+		// 键盘通常随焦点出现，但那取决于输入法实现与当前焦点状态，
+		// 无障碍侧既无法控制也无法查询。
+		options, err := parseNamedOptions(args[1:], optionSpec{
+			allowed:  optionSet("device"),
+			required: []string{"device"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		return automation.BridgeImeShow(ctx, options["device"])
 	case "snapshot":
 		options, err := parseNamedOptions(args[1:], optionSpec{
 			allowed:  optionSet("device", "package", "max-depth"),

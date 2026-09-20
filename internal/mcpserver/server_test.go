@@ -535,6 +535,16 @@ func (f *fakeAutomation) BridgeSetText(
 	return json.RawMessage(`{"route":"nodeAction","matchScore":1}`), nil
 }
 
+// BridgeImeShow 聚焦当前输入控件。返回里刻意没有任何键盘可见性字段——
+// 无障碍查不到键盘状态，fake 也不该凭空造一个。
+func (f *fakeAutomation) BridgeImeShow(
+	context.Context,
+	string,
+) (json.RawMessage, error) {
+	f.calls++
+	return json.RawMessage(`{"route":"nodeAction"}`), nil
+}
+
 // ScreenState、InputMethods 与文件传输补齐动作面扩展的观察与传输能力。
 // 与本 fake 的其它方法一致：只计数并回可预期的最小结果。
 func (f *fakeAutomation) ScreenState(

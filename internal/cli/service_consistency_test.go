@@ -197,6 +197,7 @@ type actionCapturingAutomation struct {
 	recordRequests     []service.RecordingRequest
 	predicateRequests  []service.PredicateRequest
 	bridgeTexts        []service.BridgeTextRequest
+	imeShowDevices     []string
 	screenStates       []string
 	inputMethodQueries []string
 	fileTransfers      []service.FileTransferRequest
@@ -296,6 +297,15 @@ func (a *actionCapturingAutomation) BridgeSetText(
 ) (json.RawMessage, error) {
 	a.bridgeTexts = append(a.bridgeTexts, request)
 	return json.RawMessage(`{"route":"nodeAction","matchScore":1}`), nil
+}
+
+// BridgeImeShow 记录聚焦调用的目标设备，供断言 CLI 出口确实接到桥通道。
+func (a *actionCapturingAutomation) BridgeImeShow(
+	_ context.Context,
+	device string,
+) (json.RawMessage, error) {
+	a.imeShowDevices = append(a.imeShowDevices, device)
+	return json.RawMessage(`{"route":"nodeAction"}`), nil
 }
 
 func (a *actionCapturingAutomation) Wait(

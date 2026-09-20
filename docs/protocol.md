@@ -165,9 +165,9 @@ Schema v1 共声明 45 种动作类型，但不同入口只实现其子集。下
 | `ui.scroll` | 否 | 是 | 是 |
 | `ui.back`、`ui.home`、`ui.recents` | 通过白名单 key | 是 | App AI 中 home/recents 被风险策略阻断 |
 | `ui.wait`、`ui.assert` | 否 | 否 | 回放引擎可作为条件步骤处理 |
-| `ime.show` | 否 | 是（聚焦语义） | 未接入 |
+| `ime.show` | MCP 是；直连否 | 是（聚焦语义） | 未接入 |
 | `ime.hide` | 是 | 否 | 未接入 |
-| `file.push`、`file.pull` | 是（只新增） | 否 | 未接入 |
+| `file.push`、`file.pull` | 是（只新增，CLI 与 MCP） | 否 | 未接入 |
 | `task.finish` | 否 | 否 | 仅 App AI 会话终止信号 |
 
 `ime.show` 的实际语义是**聚焦当前输入控件**，不是确定的键盘可见性开关。
@@ -190,8 +190,18 @@ Schema v1 共声明 45 种动作类型，但不同入口只实现其子集。下
 保证的准确表述是「已检查该路径当时不存在」，而不是「保证不覆盖」。本地侧同理——
 `adb pull` 由外部进程写文件，Go 无法用 `O_EXCL`。
 
-MCP 侧**不提供**文件传输出口：文件读写是可持久化副作用，模型自主发起的风险档位
-与人在 CLI 显式调用不同，留待单独决策。
+MCP 侧提供 `android_file_push` / `android_file_pull`，但走**独立的风险门**
+（`internal/mcpserver/file_transfer.go` 的 `requireFileTransferAllowed`），不并入
+`risk.go` 的直连白名单。原因是那份白名单的准入标准写着「只产生指针事件，不改变
+应用生命周期也不写入任何数据」，而文件传输恰恰写数据；并进去等于废掉该标准，
+日后审计无从判断某项为何在列。三道门（直连白名单、语义桥白名单、文件传输门）
+各守自己的动作面，任一层都不能成为绕过另一层的旁路。
+
+`android_file_pull` 的落盘位置需要特别注意：文件写在**运行 MCP 服务的那台机器**上，
+不是调用方或模型所在的环境。该事实已写进工具 description 与入参 schema 的字段说明。
+
+CLI 侧 `ime.show` 的出口是 `aactl bridge ime-show`，不在 `action` 子命令下——
+`action` 走直连通道，而 `ime.show` 没有直连实现，挂在那里会永远返回 unavailable。
 
 一个可执行的 Bridge 返回动作示例：
 

@@ -60,6 +60,7 @@ const (
 	ActionDeviceWake   = "device.wake"
 	ActionDeviceUnlock = "device.unlock"
 
+	ActionImeShow   = "ime.show"
 	ActionImeHide   = "ime.hide"
 	ActionImeSelect = "ime.select"
 
@@ -155,6 +156,9 @@ type Automation interface {
 	Assert(context.Context, PredicateRequest) (PredicateOutcome, error)
 	// BridgeSetText 是唯一能写入中文等非 ASCII 文本的通道。
 	BridgeSetText(context.Context, BridgeTextRequest) (json.RawMessage, error)
+	// BridgeImeShow 聚焦当前输入控件。归桥通道而非 ExecuteAction：
+	// Android 没有「打开键盘」的 keycode，直连侧无法实现。
+	BridgeImeShow(context.Context, string) (json.RawMessage, error)
 	// ScreenState、InputMethods 与文件传输是动作面扩展的观察与传输能力。
 	// 它们不走 ExecuteAction：返回值不是 adb.ActionResult，
 	// 硬塞进那个签名会让调用方拿不到实际结果（亮屏状态、输入法列表、传输字节数）。
