@@ -1227,6 +1227,100 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
 **建议提交：** `docs(camera): record linux v4l2loopback feed verdict`
 （若判据通过并落地能力，另起 `feat(camera): add virtual camera frame feed`）
 
+## UIAutomator 能力缺口（Wave A/B/C 已落地，余项待办）
+
+> 来源：`artifacts/uiautomator-gap/uiautomator-capability-gap.md` 的三通道对比。
+> Wave A（协议与文档一致性）、Wave B（CLI 表面补齐）、Wave C（MCP 语义动作）
+> 已实现并合入，change spec 见 `.trae/specs/uiautomator-gap-alignment/`。
+> 本节只登记**尚未实施**的部分，不回写已完成 MVP 结论。
+
+### [ ] Task N57：Bridge 观察面扩展（多窗口、瞬时消息、剪贴板）
+
+**目标：** 把三处「已实现但不过线」的桥侧观察与动作能力接到协议与调用方。
+
+**具体步骤：**
+
+1. `WindowSnapshotter.snapshotWindows` 已枚举多窗口并用于节点查找，但
+   `ui.snapshot` 只序列化单个 root，窗口集合不过线。协议新增 `windows` 数组，
+   字段参照 UIAutomator 2.4.0 的 `UiWindow`：id、layer、type、package、title、
+   bounds、active、focused。
+2. `TransientMessageCapture` 已在无障碍服务内缓冲 Toast 与通知，但
+   `AndroidBridgeMethods.handle` 没有对应方法。新增 `ui.transientMessages`，
+   复用敏感节点脱敏策略，返回文本与时间戳。
+3. `clipboard.set` / `clipboard.get` 在协议与 App 内校验里都存在，桥侧 parser
+   的 29 个分支却没有映射，`ClipboardGateway` 在 `android/app/src/main` 下零
+   生产调用方。接线到 `AccessibilityActionRouter`，剪贴板内容不得进日志。
+
+**依赖与并行：** 依赖已合入的 Wave A 协议对齐。三项都要动
+`AccessibilityCommandJsonParser.kt` 与 `AndroidBridgeMethods.kt`，必须串行或
+明确切分函数，不得两个 Agent 并行修改同一文件。
+
+**允许修改范围：** `protocol/schema/v1/`、`android/app/src/main/.../bridge/`、
+`android/app/src/main/.../accessibility/snapshot/`、`internal/bridge/`、
+`internal/service/`。
+
+**验收证据：** Android 单测与 Go round-trip fixture；模拟器上对话框或输入法场景
+能定位到非活动窗口节点；Toast 文本带时间戳且已脱敏；剪贴板写入后读回一致。
+
+**建议提交：** `feat(bridge): expose multi-window snapshot and transient messages`
+
+### [ ] Task N58：可组合等待原语与选择器维度
+
+**目标：** 补齐两个结构性缺失的判据能力，并扩展选择器维度。
+
+**具体步骤：**
+
+1. 新增 `ui.scrollUntil`：现状是 `ui.scrollIntoView`（按 target）与
+   `check wait`（按判据）两件分开的事，无法表达「滚动直到判据成立」。
+   对应 UIAutomator 的 `UiObject2.scrollUntil(Direction, Condition)`。
+2. 判据增加事件型条件。签名级核对确认 UIAutomator 的 `EventCondition` 一共只有
+   `newWindow()` 与 `scrollFinished(Direction)` 两个，因此范围明确有限。
+   现有 `window` 判据是文本比较而非「出现了新窗口」事件。
+3. 选择器维度扩展。`selectorCandidate.strategy` 只有 6 种，而 UIAutomator 2.3.0
+   的 `By` 有 31 个工厂。缺 `clazz`、`hint` 四件套（hint / hintContains /
+   hintStartsWith / hintEndsWith）、`hasParent`、`depth` / `minDepth` / `maxDepth`，
+   以及 text/desc 的 StartsWith / EndsWith 变体。
+
+**依赖与并行：** 依赖 N57。第 1、2 项与第 3 项都会动
+`internal/adb/predicate.go`，必须串行或交同一 owner。
+
+**允许修改范围：** `protocol/schema/v1/`、`internal/adb/predicate.go`、
+`android/.../recording/ReplayEngine.kt` 的 await 路径、
+`android/.../accessibility/action/AccessibilityActionRouter.kt`、
+`android/.../accessibility/selector/SelectorMatcher.kt`。
+
+**验收证据：** 长列表目标在第 N 屏时命中，`maxScrolls` 耗尽时零提交失败关闭；
+跨 Activity 跳转时新窗口出现前不误判成立；选择器匹配单测覆盖新增维度。
+
+**建议提交：** `feat(protocol): add scroll-until and event predicates`
+
+### [ ] Task N59：需安全决策的能力（决策前置，不得直接实施）
+
+以下能力技术可行，但都触及安全、授权或确定性边界，**必须先在独立 change spec
+里落决策**，不得在实现其它任务时顺手引入：
+
+1. **文件传输出口**：`Service.PushFile` / `PullFile` 已实现且在 `Automation`
+   接口内，但没有任何通道出口。暴露前需定义远端路径白名单、是否要求当次确认、
+   本地写入边界。当前由 `internal/cli/direct_surface_test.go` 的
+   `TestFileTransferHasNoCLIEntryPoint` 锁定该缺口不被顺手填上。
+2. **任意 keycode 与组合键**：`pressKeyCode(int)` 与 `pressKeyCodes`。本轮只把
+   协议、直连与 MCP 三处枚举对齐到既有 21 键白名单，未开放任意值。开放会引入
+   POWER、CALL、系统设置等键。
+3. **多显示屏**：`By.displayId`、`getDisplayWidth(int)`、
+   `Configurator#setDefaultDisplayId`。MVP 是单屏假设，无障碍跨 display 取节点
+   在 API 30 上能力不一致，会引入版本分叉。
+4. **视觉动作类型扩展**：`android_visual_action_execute` 目前只允许
+   tap / long-click / swipe，是刻意收窄。
+5. **OCR**：`visual-observation-proposal.schema.json` 的 `source` 已预留 `ocr`，
+   但 README 明确排除 OCR。要实现必须先修改 MVP 边界。
+6. **层级压缩与超时调优**：`setCompressedLayoutHierarchy`、`Configurator`。
+   开放全局注入延迟会破坏确定性与可复现基线。
+7. **多元素批量操作**：UIAutomator 2.4 的 `onElements`。判据现在只回
+   `matchCount`，返回元素列表会让「对 N 个元素循环点击」成为可能，需要每步确认策略。
+8. **`ime.show` 与 `task.finish` 的归属**：前者在协议内但无任何执行实现，后者只在
+   App 会话内有语义、桥侧 parser 不接受。补执行还是标注为「仅 App 会话内语义」
+   需产品决策。
+
 ## UI 产品体验探索（不改变既有验收）
 
 ### [ ] Task N56：将 C 端 Agent 概念转为 Android 用户体验
