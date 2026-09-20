@@ -427,3 +427,206 @@ func successfulAttestedBackend(
 func intPointer(value int) *int {
 	return &value
 }
+
+// 锁定三种视觉动作类型都能走完校验并抵达执行端口。
+//
+// 背景：曾有人把 validDesktopVisualAction 的 case VisualActionTap 误读成执行分支，
+// 据此认为 long-click 与 swipe 只能过校验、进不了执行。实际上 Go 侧不按类型分支，
+// ProposeAndExecute 把 Action 整体转发给端口，类型分派在 Kotlin 侧网关完成。
+// 这条测试把该现状钉住：任何一种类型若将来被挡在端口之前，这里会立刻失败。
+func TestDesktopAttestedActionForwardsEveryActionTypeToThePort(t *testing.T) {
+	tests := []struct {
+		name   string
+		action DesktopVisualAction
+	}{
+		{name: "tap", action: DesktopVisualAction{Type: VisualActionTap}},
+		{
+			name:   "long-click default duration",
+			action: DesktopVisualAction{Type: VisualActionLongClick},
+		},
+		{
+			name: "long-click lower bound",
+			action: DesktopVisualAction{
+				Type:       VisualActionLongClick,
+				DurationMS: 1,
+			},
+		},
+		{
+			name: "long-click upper bound",
+			action: DesktopVisualAction{
+				Type:       VisualActionLongClick,
+				DurationMS: 10_000,
+			},
+		},
+	}
+	// swipe 四个方向都必须可执行，方向是 swipe 唯一的必填参数。
+	for _, direction := range []VisualSwipeDirection{
+		VisualSwipeUp, VisualSwipeDown, VisualSwipeLeft, VisualSwipeRight,
+	} {
+		tests = append(tests, struct {
+			name   string
+			action DesktopVisualAction
+		}{
+			name: "swipe " + string(direction),
+			action: DesktopVisualAction{
+				Type:      VisualActionSwipe,
+				Direction: direction,
+			},
+		})
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			backend, _ := successfulAttestedBackend(t)
+			port := &attestedActionPort{
+				result: AttestedActionPortResult{
+					CommitStatus:  ActionCommitCommitted,
+					ActionCommits: intPointer(1),
+					Verified:      true,
+					Route:         "gesture",
+					Screen: AttestedScreenEvidence{
+						NaturalWidth:  100,
+						NaturalHeight: 200,
+						DensityDPI:    420,
+						Rotation:      0,
+						Window: PixelBounds{
+							Left: 0, Top: 0, Right: 100, Bottom: 200,
+						},
+						Insets: AttestedInsets{},
+					},
+				},
+			}
+			service := NewDesktopAttestedActionService(
+				backend,
+				port,
+				DesktopAttestedActionOptions{
+					Now: func() time.Time {
+						return desktopTime("2026-08-01T09:00:00Z")
+					},
+					ObservationID: func() string {
+						return "019fbcaa-0000-7000-8000-000000000047"
+					},
+				},
+			)
+
+			result := service.ProposeAndExecute(
+				context.Background(),
+				DesktopAttestedActionRequest{
+					Device:          "SERIAL",
+					ExpectedPackage: "com.example.notes",
+					Target:          DesktopTarget{Role: "button", Label: "Save"},
+					Action:          test.action,
+				},
+			)
+
+			if !result.Succeeded ||
+				result.CommitStatus != ActionCommitCommitted {
+				t.Fatalf("result = %#v", result)
+			}
+			if port.calls != 1 {
+				t.Fatalf("port calls = %d, want 1", port.calls)
+			}
+			// 动作必须逐字转发：端口收到的类型、方向与时长不得被改写。
+			if got := port.requests[0].Action; got != test.action {
+				t.Fatalf("forwarded action = %#v, want %#v", got, test.action)
+			}
+		})
+	}
+}
+
+// 越界或自相矛盾的参数必须在调用端口之前被拒绝。
+func TestDesktopAttestedActionRejectsOutOfRangeActionParameters(t *testing.T) {
+	tests := []struct {
+		name   string
+		action DesktopVisualAction
+	}{
+		{
+			name: "long-click below range",
+			action: DesktopVisualAction{
+				Type:       VisualActionLongClick,
+				DurationMS: -1,
+			},
+		},
+		{
+			name: "long-click above range",
+			action: DesktopVisualAction{
+				Type:       VisualActionLongClick,
+				DurationMS: 10_001,
+			},
+		},
+		{
+			name: "swipe above range",
+			action: DesktopVisualAction{
+				Type:       VisualActionSwipe,
+				Direction:  VisualSwipeUp,
+				DurationMS: 10_001,
+			},
+		},
+		{
+			name:   "swipe without direction",
+			action: DesktopVisualAction{Type: VisualActionSwipe},
+		},
+		{
+			name: "swipe with unknown direction",
+			action: DesktopVisualAction{
+				Type:      VisualActionSwipe,
+				Direction: "diagonal",
+			},
+		},
+		{
+			name: "tap does not accept a duration",
+			action: DesktopVisualAction{
+				Type:       VisualActionTap,
+				DurationMS: 100,
+			},
+		},
+		{
+			name: "tap does not accept a direction",
+			action: DesktopVisualAction{
+				Type:      VisualActionTap,
+				Direction: VisualSwipeUp,
+			},
+		},
+		{
+			name:   "unknown action type",
+			action: DesktopVisualAction{Type: "double-tap"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			backend, _ := successfulAttestedBackend(t)
+			port := &attestedActionPort{}
+			service := NewDesktopAttestedActionService(
+				backend,
+				port,
+				DesktopAttestedActionOptions{
+					Now: func() time.Time {
+						return desktopTime("2026-08-01T09:00:00Z")
+					},
+					ObservationID: func() string {
+						return "019fbcaa-0000-7000-8000-000000000047"
+					},
+				},
+			)
+
+			result := service.ProposeAndExecute(
+				context.Background(),
+				DesktopAttestedActionRequest{
+					Device:          "SERIAL",
+					ExpectedPackage: "com.example.notes",
+					Target:          DesktopTarget{Role: "button", Label: "Save"},
+					Action:          test.action,
+				},
+			)
+
+			// 参数非法时绝不能触达端口，否则等于把未校验的动作投到设备上。
+			if port.calls != 0 {
+				t.Fatalf("port calls = %d, want 0", port.calls)
+			}
+			if result.Succeeded || result.CommitStatus != ActionCommitNotCommitted {
+				t.Fatalf("result = %#v", result)
+			}
+		})
+	}
+}
