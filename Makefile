@@ -75,9 +75,21 @@ go-vet:
 
 test: protocol-test skills-check go-fmt go-test go-vet
 
+# 产物名按平台带扩展名。Windows 下若把 -o 指向已存在的同名无扩展名文件，go build 会以
+# 「build output already exists and is not an object file」失败，使该目标首次成功、
+# 第二次必失败；区分 aactl / aactl.exe 是让 build 可重复执行的前提。
+ifeq ($(OS),Windows_NT)
+AACTL_BIN ?= bin/aactl.exe
+else
+AACTL_BIN ?= bin/aactl
+endif
+
+# 构建前先删本目标自己的旧产物：go build 不覆盖非 object 文件，残留二进制会直接让
+# 构建失败。只删这一个文件而不清空 bin/，避免动到使用者放在同目录的其他可执行文件。
 build:
 	@mkdir -p bin
-	@$(GO) build -trimpath -ldflags "-s -w -X github.com/lejunyang/ai-auto-android/internal/cli.Version=$(VERSION)" -o bin/aactl ./cmd/aactl
+	@rm -f "$(AACTL_BIN)"
+	@$(GO) build -trimpath -ldflags "-s -w -X github.com/lejunyang/ai-auto-android/internal/cli.Version=$(VERSION)" -o "$(AACTL_BIN)" ./cmd/aactl
 
 android-test:
 	@$(OSDK_EXEC_ANDROID) "$(ANDROID_GRADLEW_LAUNCHER)" -p android $(ANDROID_GRADLE_FLAGS) testDebugUnitTest
