@@ -48,6 +48,7 @@ var ToolNames = []string{
 	ToolVisualTargetPropose,
 	ToolVisualActionExecute,
 	ToolActionExecute,
+	ToolBridgeAction,
 	ToolRecordingReplay,
 	ToolScreenRecord,
 	ToolWait,
@@ -222,6 +223,7 @@ func newServer(
 		attestedExecutor = attestedVisual[0]
 	}
 	addDesktopAttestedActionTool(server, attestedExecutor)
+	addBridgeActionTool(server, automation)
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        ToolDevicesList,
