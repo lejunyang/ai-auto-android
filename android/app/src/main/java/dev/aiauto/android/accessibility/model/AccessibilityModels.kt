@@ -199,7 +199,19 @@ data class SelectorCandidate(
     val value: String,
     val weight: Double,
     val required: Boolean = false,
+    // 匹配方式，默认精确。只对 text 与 contentDescription 生效；
+    // resourceId/className/package 是标识符，部分匹配会命中意外元素，始终精确。
+    val match: SelectorMatchMode = SelectorMatchMode.EXACT,
 )
+
+// SelectorMatchMode 是选择器候选的匹配方式。刻意不含 regex——评估为可不做，
+// 且 java.util.regex 有回溯（ReDoS）风险需额外防护，留待单独决策。
+enum class SelectorMatchMode {
+    EXACT,
+    CONTAINS,
+    STARTS_WITH,
+    ENDS_WITH,
+}
 
 data class NodeTarget(
     val packageName: String? = null,
