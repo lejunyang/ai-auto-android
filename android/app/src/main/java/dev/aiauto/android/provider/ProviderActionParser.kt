@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
@@ -504,7 +505,7 @@ class ProviderActionParser(
             requireExactKeys(
                 candidate,
                 required = setOf("strategy", "value", "weight"),
-                optional = setOf("required"),
+                optional = setOf("required", "match"),
             )
             val strategy = candidate.string("strategy")
             if (strategy !in SELECTOR_STRATEGIES) {
@@ -513,6 +514,20 @@ class ProviderActionParser(
             candidate.string("value").requireLength("value", 1, 1_024)
             candidate.double("weight").requireRange("weight", 0.0, 1.0)
             candidate.optionalBoolean("required")
+            val match = candidate["match"]?.let { (it as? JsonPrimitive)?.contentOrNull }
+            if (match != null) {
+                if (match !in SELECTOR_MATCH_MODES) {
+                    throw ProviderActionParseException("Unsupported selector match mode: $match")
+                }
+                // 非精确匹配只对文本维度有意义，与下游守卫同一判据；两处一致才不会
+                // 出现「schema 层放行、匹配器层拒绝」的错位。
+                val textual = strategy == "text" || strategy == "contentDescription"
+                if (!textual && match != "exact") {
+                    throw ProviderActionParseException(
+                        "match applies only to text and contentDescription selectors",
+                    )
+                }
+            }
         }
     }
 
@@ -658,6 +673,9 @@ class ProviderActionParser(
         val SHA256 = Regex("^[0-9a-f]{64}$")
         val PACKAGE_NAME = Regex("^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+$")
         val SECRET_REF = Regex("^[A-Za-z][A-Za-z0-9._-]*$")
+        // 与 SelectorStrategy 枚举保持一致。此前 className/package 加进了枚举与
+        // SelectorMatcher，却漏了这层 schema 校验，导致带这两维的 ui.click 在
+        // 到达匹配器前就被 ProviderActionParser 挡下。本次补齐。
         val SELECTOR_STRATEGIES = setOf(
             "resourceId",
             "contentDescription",
@@ -665,6 +683,18 @@ class ProviderActionParser(
             "role",
             "ancestor",
             "fingerprint",
+            "className",
+            "package",
+        )
+
+        // 选择器匹配方式。regex 的长度与合法性由下游 AccessibilityCommandJsonParser
+        // 深度校验；这里只认枚举值。
+        val SELECTOR_MATCH_MODES = setOf(
+            "exact",
+            "contains",
+            "startsWith",
+            "endsWith",
+            "regex",
         )
         val SCROLL_DIRECTIONS = setOf("up", "down", "left", "right", "forward", "backward")
         val PREDICATE_KINDS = setOf("node", "text", "package", "window", "uiStable")

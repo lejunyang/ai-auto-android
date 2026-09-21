@@ -211,6 +211,9 @@ enum class SelectorMatchMode {
     CONTAINS,
     STARTS_WITH,
     ENDS_WITH,
+    // REGEX 用 java.util.regex，有回溯（ReDoS）风险，因此在解析处限长并编译校验，
+    // 在匹配处加执行超时兜底。只作用于文本维度，标识符维度由 parser 守卫拒绝。
+    REGEX,
 }
 
 data class NodeTarget(

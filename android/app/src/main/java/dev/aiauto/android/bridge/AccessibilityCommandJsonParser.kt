@@ -294,6 +294,7 @@ class AccessibilityCommandJsonParser(
             "contains" -> SelectorMatchMode.CONTAINS
             "startsWith" -> SelectorMatchMode.STARTS_WITH
             "endsWith" -> SelectorMatchMode.ENDS_WITH
+            "regex" -> SelectorMatchMode.REGEX
             else -> throw BridgeException(
                 code = BridgeErrorCode.INVALID_ARGUMENT,
                 message = "The selector match mode is not supported.",
@@ -310,9 +311,28 @@ class AccessibilityCommandJsonParser(
                 message = "match applies only to text and contentDescription selectors.",
             )
         }
+        val value = getValue("value").jsonPrimitive.content
+        // regex 的 pattern 在入口就限长并编译校验：超长直接拒绝，非法 pattern 报
+        // 明确错误而非留到运行时静默失配。编译成功不代表匹配安全——java.util.regex
+        // 有回溯，灾难性 pattern 的兜底在匹配处的执行超时（见 SelectorMatcher）。
+        if (match == SelectorMatchMode.REGEX) {
+            if (value.length > MAX_REGEX_PATTERN_LENGTH) {
+                throw BridgeException(
+                    code = BridgeErrorCode.INVALID_ARGUMENT,
+                    message = "The regex pattern must not exceed " +
+                        "$MAX_REGEX_PATTERN_LENGTH characters.",
+                )
+            }
+            runCatching { java.util.regex.Pattern.compile(value) }.onFailure {
+                throw BridgeException(
+                    code = BridgeErrorCode.INVALID_ARGUMENT,
+                    message = "The regex pattern is not a valid regular expression.",
+                )
+            }
+        }
         return SelectorCandidate(
             strategy = strategy,
-            value = getValue("value").jsonPrimitive.content,
+            value = value,
             weight = getValue("weight").jsonPrimitive.double,
             required = this["required"]?.jsonPrimitive?.boolean ?: false,
             match = match,
@@ -333,5 +353,12 @@ class AccessibilityCommandJsonParser(
         JsonNull -> null
         is JsonPrimitive -> content
         else -> null
+    }
+
+    private companion object {
+        // regex pattern 长度上限，与 selectorCandidate.value 的 maxLength 一致。
+        // 限长是 ReDoS 的第一道防线：短 pattern 也能灾难性回溯，但长度上限能挡住
+        // 一大类堆叠量词的构造，配合匹配处的执行超时形成两层。
+        const val MAX_REGEX_PATTERN_LENGTH = 512
     }
 }

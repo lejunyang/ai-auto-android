@@ -164,9 +164,9 @@
           "type": "boolean"
         },
         "match": {
-          "enum": ["exact", "contains", "startsWith", "endsWith"],
+          "enum": ["exact", "contains", "startsWith", "endsWith", "regex"],
           "default": "exact",
-          "description": "Match mode for text and contentDescription only. Defaults to exact; omitting it is equivalent to exact. resourceId, className and package are identifiers and always match exactly regardless of this field. regex is intentionally not offered."
+          "description": "Match mode for text and contentDescription only. Defaults to exact; omitting it is equivalent to exact. resourceId, className and package are identifiers and always match exactly regardless of this field. regex is evaluated by the accessibility service with a length cap and an execution timeout to bound ReDoS; a pattern that times out is treated as no match."
         }
       },
       "additionalProperties": false

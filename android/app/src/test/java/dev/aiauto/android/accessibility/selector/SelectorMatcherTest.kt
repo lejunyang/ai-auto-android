@@ -281,6 +281,66 @@ class SelectorMatcherTest {
         }
     }
 
+    // regex 命中：normalize 后（lowercase）用正则匹配。
+    @Test
+    fun `regex match hits and misses`() {
+        val root = node(
+            className = "android.widget.FrameLayout",
+            children = listOf(
+                node(resourceId = "id/x", text = "订单编号 A1234", actions = setOf(NodeAction.CLICK)),
+            ),
+        )
+        val hit = NodeTarget(
+            packageName = "com.example",
+            selectorCandidates = listOf(
+                candidate(
+                    SelectorStrategy.TEXT, "订单编号 a\\d+", 1.0,
+                    required = true, match = SelectorMatchMode.REGEX,
+                ),
+            ),
+        )
+        assertTrue(matcher.match(root, hit) is SelectorMatch.Found)
+
+        val miss = NodeTarget(
+            packageName = "com.example",
+            selectorCandidates = listOf(
+                candidate(
+                    SelectorStrategy.TEXT, "^b\\d+$", 1.0,
+                    required = true, match = SelectorMatchMode.REGEX,
+                ),
+            ),
+        )
+        assertTrue(matcher.match(root, miss) is SelectorMatch.NotFound)
+    }
+
+    // ReDoS 防护：灾难性回溯 pattern 配长文本，匹配必须被超时打断而非挂起。
+    // JUnit4 的 timeout=5000 保证防护失效时测试因超时变红，而非静默拖垮 CI。
+    // 有 100ms 的 DeadlineCharSequence 兜底时，本用例远快于 5 秒完成。
+    @Test(timeout = 5000)
+    fun `regex match does not hang on catastrophic backtracking`() {
+        // 实测：JDK 21 会优化 (a+)+$，不会灾难性回溯；(.*a){15}$ 才真正指数级。
+        // 用后者才能证明防护有效——否则无防护时也秒回，测试形同虚设。
+        val evil = "(.*a){15}$"
+        val longText = "a".repeat(40) + "!"
+        val root = node(
+            className = "android.widget.FrameLayout",
+            children = listOf(
+                node(resourceId = "id/x", text = longText, actions = setOf(NodeAction.CLICK)),
+            ),
+        )
+        val target = NodeTarget(
+            packageName = "com.example",
+            selectorCandidates = listOf(
+                candidate(
+                    SelectorStrategy.TEXT, evil, 1.0,
+                    required = true, match = SelectorMatchMode.REGEX,
+                ),
+            ),
+        )
+        // 超时判不匹配，因此应为 NotFound。
+        assertTrue(matcher.match(root, target) is SelectorMatch.NotFound)
+    }
+
     private fun candidate(
         strategy: SelectorStrategy,
         value: String,

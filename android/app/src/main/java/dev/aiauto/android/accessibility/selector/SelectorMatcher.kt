@@ -232,6 +232,31 @@ class SelectorMatcher(
             SelectorMatchMode.CONTAINS -> normalizedActual.contains(expected)
             SelectorMatchMode.STARTS_WITH -> normalizedActual.startsWith(expected)
             SelectorMatchMode.ENDS_WITH -> normalizedActual.endsWith(expected)
+            SelectorMatchMode.REGEX -> regexMatches(expected, normalizedActual)
+        }
+    }
+
+    /**
+     * 用带执行超时的正则匹配，兜底 ReDoS。
+     *
+     * java.util.regex 有回溯，灾难性 pattern（如 (a+)+$ 配长文本）会指数级耗时。
+     * pattern 已在 parser 入口限长并编译校验，这里再加最后一道：把输入包成一个
+     * 每次 charAt 都检查截止时间的 CharSequence。回溯引擎在字符上疯狂来回读取，
+     * 超时后 charAt 抛出，匹配被打断并判为不匹配——而不是让线程挂起。
+     *
+     * 不新起线程：per-match 起线程开销大，且线程无法安全强杀；deadline-charAt
+     * 是 java.util.regex ReDoS 的标准缓解手段，在当前线程内即可打断。
+     */
+    private fun regexMatches(pattern: String, actual: String): Boolean {
+        val compiled = runCatching { java.util.regex.Pattern.compile(pattern) }
+            .getOrNull() ?: return false
+        val deadline = System.nanoTime() + REGEX_TIMEOUT_MS * 1_000_000L
+        val guarded = DeadlineCharSequence(actual, deadline)
+        return try {
+            compiled.matcher(guarded).find()
+        } catch (_: RegexTimeoutException) {
+            // 超时视为不匹配：与「pattern 不成立」对调用方语义一致，且不挂起。
+            false
         }
     }
 
@@ -333,6 +358,10 @@ class SelectorMatcher(
     private companion object {
         const val DEFAULT_MINIMUM_SCORE = 0.70
         const val DEFAULT_UNIQUENESS_MARGIN = 0.15
+
+        // regex 匹配的执行超时。取 100ms：正常 pattern 在几十字符文本上远低于此，
+        // 灾难性回溯则会迅速撞上截止时间被打断。这是 ReDoS 的最后一道防线。
+        const val REGEX_TIMEOUT_MS = 100L
     }
 }
 
@@ -351,4 +380,31 @@ object NodeFingerprint {
             .digest(canonical.toByteArray(StandardCharsets.UTF_8))
             .joinToString(separator = "") { byte -> "%02x".format(byte) }
     }
+}
+
+// RegexTimeoutException 在正则匹配超过截止时间时抛出，用于打断灾难性回溯。
+private class RegexTimeoutException : RuntimeException()
+
+// DeadlineCharSequence 包装文本，在每次 charAt 检查截止时间。
+//
+// java.util.regex 的回溯引擎在匹配时大量读取字符；把 deadline 检查放在 charAt 上，
+// 一旦超时就抛 RegexTimeoutException，从而在当前线程内打断匹配，无需新起线程或
+// 强杀线程（后者在 JVM 上不安全）。这是 java.util.regex ReDoS 的标准缓解手段。
+private class DeadlineCharSequence(
+    private val delegate: CharSequence,
+    private val deadlineNanos: Long,
+) : CharSequence {
+    override val length: Int get() = delegate.length
+
+    override fun get(index: Int): Char {
+        if (System.nanoTime() > deadlineNanos) {
+            throw RegexTimeoutException()
+        }
+        return delegate[index]
+    }
+
+    override fun subSequence(startIndex: Int, endIndex: Int): CharSequence =
+        DeadlineCharSequence(delegate.subSequence(startIndex, endIndex), deadlineNanos)
+
+    override fun toString(): String = delegate.toString()
 }
