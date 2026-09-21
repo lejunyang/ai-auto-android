@@ -15,6 +15,7 @@ import dev.aiauto.android.accessibility.model.NormalizedPoint
 import dev.aiauto.android.accessibility.model.ScreenPoint
 import dev.aiauto.android.accessibility.model.ScrollDirection
 import dev.aiauto.android.accessibility.model.SelectorCandidate
+import dev.aiauto.android.accessibility.model.SelectorMatchMode
 import dev.aiauto.android.accessibility.model.SelectorStrategy
 import dev.aiauto.android.accessibility.model.UiBounds
 import dev.aiauto.android.provider.ProviderAction
@@ -273,23 +274,50 @@ class AccessibilityCommandJsonParser(
             ?.toNormalizedPoint(),
     )
 
-    private fun JsonObject.toSelectorCandidate(): SelectorCandidate = SelectorCandidate(
-        strategy = when (getValue("strategy").jsonPrimitive.content) {
+    private fun JsonObject.toSelectorCandidate(): SelectorCandidate {
+        val strategy = when (getValue("strategy").jsonPrimitive.content) {
             "resourceId" -> SelectorStrategy.RESOURCE_ID
             "contentDescription" -> SelectorStrategy.CONTENT_DESCRIPTION
             "text" -> SelectorStrategy.TEXT
             "role" -> SelectorStrategy.ROLE
             "ancestor" -> SelectorStrategy.ANCESTOR
             "fingerprint" -> SelectorStrategy.FINGERPRINT
+            "className" -> SelectorStrategy.CLASS_NAME
+            "package" -> SelectorStrategy.PACKAGE
             else -> throw BridgeException(
                 code = BridgeErrorCode.INVALID_ARGUMENT,
                 message = "The selector strategy is not supported.",
             )
-        },
-        value = getValue("value").jsonPrimitive.content,
-        weight = getValue("weight").jsonPrimitive.double,
-        required = this["required"]?.jsonPrimitive?.boolean ?: false,
-    )
+        }
+        val match = when (this["match"]?.jsonPrimitive?.content) {
+            null, "exact" -> SelectorMatchMode.EXACT
+            "contains" -> SelectorMatchMode.CONTAINS
+            "startsWith" -> SelectorMatchMode.STARTS_WITH
+            "endsWith" -> SelectorMatchMode.ENDS_WITH
+            else -> throw BridgeException(
+                code = BridgeErrorCode.INVALID_ARGUMENT,
+                message = "The selector match mode is not supported.",
+            )
+        }
+        // match 只对 text/contentDescription 有意义。标识符维度上用非精确匹配会
+        // 命中意外元素（btn_ok 与 btn_ok_cancel），schema 无法表达这条跨字段约束，
+        // 在此运行时拒绝。
+        val textual = strategy == SelectorStrategy.TEXT ||
+            strategy == SelectorStrategy.CONTENT_DESCRIPTION
+        if (!textual && match != SelectorMatchMode.EXACT) {
+            throw BridgeException(
+                code = BridgeErrorCode.INVALID_ARGUMENT,
+                message = "match applies only to text and contentDescription selectors.",
+            )
+        }
+        return SelectorCandidate(
+            strategy = strategy,
+            value = getValue("value").jsonPrimitive.content,
+            weight = getValue("weight").jsonPrimitive.double,
+            required = this["required"]?.jsonPrimitive?.boolean ?: false,
+            match = match,
+        )
+    }
 
     private fun JsonObject.toScreenPoint(): ScreenPoint = ScreenPoint(
         x = getValue("x").jsonPrimitive.int,

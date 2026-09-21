@@ -158,6 +158,8 @@ type Automation interface {
 	// Assert 视为错误。两者共用同一个求值器，只在失败语义上不同。
 	Wait(context.Context, PredicateRequest) (PredicateOutcome, error)
 	Assert(context.Context, PredicateRequest) (PredicateOutcome, error)
+	// ScrollUntil 沿一个方向滚动直到判据成立，复用 Wait/Assert 的判据语义。
+	ScrollUntil(context.Context, ScrollUntilRequest) (PredicateOutcome, error)
 	// BridgeSetText 是唯一能写入中文等非 ASCII 文本的通道。
 	BridgeSetText(context.Context, BridgeTextRequest) (json.RawMessage, error)
 	// BridgeImeShow 聚焦当前输入控件。归桥通道而非 ExecuteAction：

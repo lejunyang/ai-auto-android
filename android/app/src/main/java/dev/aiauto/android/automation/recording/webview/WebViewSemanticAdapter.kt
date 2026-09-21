@@ -318,4 +318,6 @@ private fun SelectorStrategy.protocolName(): String = when (this) {
     SelectorStrategy.ROLE -> "role"
     SelectorStrategy.ANCESTOR -> "ancestor"
     SelectorStrategy.FINGERPRINT -> "fingerprint"
+    SelectorStrategy.CLASS_NAME -> "className"
+    SelectorStrategy.PACKAGE -> "package"
 }

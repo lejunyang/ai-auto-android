@@ -8,6 +8,7 @@ import dev.aiauto.android.accessibility.model.NodeAction
 import dev.aiauto.android.accessibility.model.NodePath
 import dev.aiauto.android.accessibility.model.NodeTarget
 import dev.aiauto.android.accessibility.model.SelectorCandidate
+import dev.aiauto.android.accessibility.model.SelectorMatchMode
 import dev.aiauto.android.accessibility.model.SelectorStrategy
 import dev.aiauto.android.accessibility.model.UiBounds
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
@@ -179,16 +180,119 @@ class SelectorMatcherTest {
         assertTrue(result.score > 0.70)
     }
 
+    // className 与 package 是新补的维度，与判据侧对齐，精确匹配（normalize 后）。
+    @Test
+    fun `matches by className and package dimensions`() {
+        val root = node(
+            className = "android.widget.FrameLayout",
+            children = listOf(
+                node(
+                    resourceId = "com.example:id/ok",
+                    text = "OK",
+                    className = "android.widget.Button",
+                    actions = setOf(NodeAction.CLICK),
+                ),
+            ),
+        )
+        val target = NodeTarget(
+            packageName = "com.example",
+            selectorCandidates = listOf(
+                candidate(SelectorStrategy.CLASS_NAME, "android.widget.Button", 0.6),
+                candidate(SelectorStrategy.PACKAGE, "com.example", 0.4),
+            ),
+        )
+
+        val result = matcher.match(root, target)
+
+        assertTrue(result is SelectorMatch.Found)
+        result as SelectorMatch.Found
+        assertEquals(NodePath(listOf(0)), result.path)
+    }
+
+    // className 精确匹配：前缀不命中，与 resourceId 口径一致。
+    @Test
+    fun `className matches exactly not by prefix`() {
+        val root = node(
+            className = "android.widget.FrameLayout",
+            children = listOf(
+                node(
+                    resourceId = "com.example:id/ok",
+                    className = "android.widget.Button",
+                    actions = setOf(NodeAction.CLICK),
+                ),
+            ),
+        )
+        val target = NodeTarget(
+            packageName = "com.example",
+            selectorCandidates = listOf(
+                candidate(SelectorStrategy.CLASS_NAME, "android.widget", 1.0, required = true),
+            ),
+        )
+
+        assertTrue(matcher.match(root, target) is SelectorMatch.NotFound)
+    }
+
+    // 不传 match 时等价于 exact——现有脚本行为不变，这是 C 的兼容前提。
+    @Test
+    fun `default match is equivalent to exact`() {
+        val root = node(
+            className = "android.widget.FrameLayout",
+            children = listOf(
+                node(resourceId = "id/x", text = "Submit Order", actions = setOf(NodeAction.CLICK)),
+            ),
+        )
+        val partial = NodeTarget(
+            packageName = "com.example",
+            selectorCandidates = listOf(candidate(SelectorStrategy.TEXT, "Submit", 1.0, required = true)),
+        )
+        assertTrue(matcher.match(root, partial) is SelectorMatch.NotFound)
+        val exact = NodeTarget(
+            packageName = "com.example",
+            selectorCandidates = listOf(candidate(SelectorStrategy.TEXT, "Submit Order", 1.0, required = true)),
+        )
+        assertTrue(matcher.match(root, exact) is SelectorMatch.Found)
+    }
+
+    // match=contains / startsWith / endsWith 对 text 生效。
+    @Test
+    fun `text match modes locate partial text`() {
+        val root = node(
+            className = "android.widget.FrameLayout",
+            children = listOf(
+                node(resourceId = "id/x", text = "共 12 条，全部删除", actions = setOf(NodeAction.CLICK)),
+            ),
+        )
+        val cases = listOf(
+            SelectorMatchMode.CONTAINS to "全部删除",
+            SelectorMatchMode.STARTS_WITH to "共 12",
+            SelectorMatchMode.ENDS_WITH to "全部删除",
+        )
+        for (c in cases) {
+            val target = NodeTarget(
+                packageName = "com.example",
+                selectorCandidates = listOf(
+                    candidate(SelectorStrategy.TEXT, c.second, 1.0, required = true, match = c.first),
+                ),
+            )
+            assertTrue(
+                "mode ${c.first} value ${c.second} should match",
+                matcher.match(root, target) is SelectorMatch.Found,
+            )
+        }
+    }
+
     private fun candidate(
         strategy: SelectorStrategy,
         value: String,
         weight: Double,
         required: Boolean = false,
+        match: SelectorMatchMode = SelectorMatchMode.EXACT,
     ) = SelectorCandidate(
         strategy = strategy,
         value = value,
         weight = weight,
         required = required,
+        match = match,
     )
 
     private fun node(

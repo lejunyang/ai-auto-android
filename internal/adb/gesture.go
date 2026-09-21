@@ -45,6 +45,10 @@ const (
 	// 取 300ms：过快会被识别为 fling 而产生不可预期的惯性滚动，
 	// 使后续 uiStable 判据难以成立；过慢则整体耗时增加。
 	scrollDurationMS = 300
+
+	// maxScrollUntilRounds 是 ui.scrollUntil 的滚动次数硬上限，与 scrollIntoView 的
+	// maxScrolls 上限一致。防止判据永不成立时无限滚动。
+	maxScrollUntilRounds = 50
 )
 
 // ScrollDirection 是受支持的滚动方向。
@@ -190,4 +194,85 @@ func (c *Client) Scroll(
 		strconv.Itoa(endX), strconv.Itoa(endY),
 		strconv.Itoa(scrollDurationMS),
 	)
+}
+
+// ScrollUntil 沿一个方向反复滚动，直到判据成立或达到 maxScrolls。
+//
+// 对应 UIAutomator 的 UiObject2.scrollUntil(Direction, Condition)。语义落差与
+// AwaitPredicate 一致：这是轮询实现，只能观察到「判据已成立」而非捕获事件；
+// 每滚一次后采样一次界面求值。fraction 与 Scroll 同义（轴长占比）。
+//
+// maxScrolls 是硬上限：到达后即使判据未成立也停止返回 satisfied=false，
+// 不无限滚动。与 AwaitPredicate 一样，dump 失败才返回 error，判据不成立不是错误。
+func (c *Client) ScrollUntil(
+	ctx context.Context,
+	serial string,
+	direction ScrollDirection,
+	fraction float64,
+	maxScrolls int,
+	predicate Predicate,
+) (PredicateResult, error) {
+	switch direction {
+	case ScrollUp, ScrollDown, ScrollLeft, ScrollRight:
+	default:
+		return PredicateResult{}, invalidField(
+			"direction", "must be up, down, left, or right",
+		)
+	}
+	if maxScrolls < 1 || maxScrolls > maxScrollUntilRounds {
+		return PredicateResult{}, invalidField(
+			"maxScrolls",
+			fmt.Sprintf("must be between 1 and %d", maxScrollUntilRounds),
+		)
+	}
+	if err := validatePredicate(predicate); err != nil {
+		return PredicateResult{}, err
+	}
+	if err := c.requireOnlineDevice(ctx, serial); err != nil {
+		return PredicateResult{}, err
+	}
+
+	stableDuration := predicate.StableDurationMS
+	if stableDuration == 0 {
+		stableDuration = defaultStableDurationMS
+	}
+	// 复用与 AwaitPredicate 相同的求值器：滚动前先采一次基线，
+	// 让 scrollFinished/newWindow 这类依赖「变化」的判据有对照。
+	evaluator := newPredicateEvaluator(predicate, stableDuration)
+	result := PredicateResult{Device: serial, Kind: predicate.Kind}
+
+	baseline, err := c.Hierarchy(ctx, serial)
+	if err != nil {
+		return PredicateResult{}, err
+	}
+	baseRoot, parseErr := parseHierarchy(baseline.XML)
+	if parseErr != nil {
+		return PredicateResult{}, parseErr
+	}
+	result.Polls++
+	if evaluator.evaluate(baseRoot, &result) {
+		result.Satisfied = true
+		return result, nil
+	}
+
+	for round := 0; round < maxScrolls; round++ {
+		if _, scrollErr := c.Scroll(ctx, serial, direction, fraction); scrollErr != nil {
+			return PredicateResult{}, scrollErr
+		}
+		hierarchy, obsErr := c.Hierarchy(ctx, serial)
+		if obsErr != nil {
+			return PredicateResult{}, obsErr
+		}
+		root, err := parseHierarchy(hierarchy.XML)
+		if err != nil {
+			return PredicateResult{}, err
+		}
+		result.Polls++
+		if evaluator.evaluate(root, &result) {
+			result.Satisfied = true
+			return result, nil
+		}
+	}
+	// 滚完 maxScrolls 仍未成立：如实返回未成立，不报错。
+	return result, nil
 }

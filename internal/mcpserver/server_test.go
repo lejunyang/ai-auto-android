@@ -624,3 +624,11 @@ func (f *fakeAutomation) BridgeTransientMessages(
 	f.calls++
 	return json.RawMessage(`{"messages":[],"toastsOnly":false}`), nil
 }
+
+func (f *fakeAutomation) ScrollUntil(
+	context.Context,
+	service.ScrollUntilRequest,
+) (service.PredicateOutcome, error) {
+	f.calls++
+	return service.PredicateOutcome{Satisfied: true}, nil
+}

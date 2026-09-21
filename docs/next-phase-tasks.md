@@ -1424,21 +1424,22 @@ Sub-Agent 30-60 秒无输出时先查询状态；确认卡死后再停止。Agen
 
 ### 结论先行
 
-**能力覆盖上已无硬缺口，但有一处一致性缺陷会影响实际可用性，建议优先修。**
+**从 UIAutomator 能力对齐角度看，已无影响实际可用性的硬缺口，此前发现的一致性
+缺陷也已修复。**
 
 能力覆盖：UIAutomator 的核心工作流「按选择器定位 → 执行元素级动作 → 等待条件
-成立」三个环节三通道都走得通——选择器定位有 6 种策略且 MCP 有
-`android_bridge_action`，元素级动作有 29 个桥侧分支，等待有 `wait` / `assert`
-判据，多窗口与瞬时提示也已过线。单看「能不能做到」，没有常见场景做不了。
+成立」三个环节三通道都走得通——选择器定位有 8 种策略（含新补的 className/
+package）且支持 exact/contains/startsWith/endsWith 匹配方式，MCP 有
+`android_bridge_action`，元素级动作有 29 个桥侧分支，等待有 `wait` / `assert` /
+`scrollUntil` 判据，多窗口与瞬时提示也已过线。
 
-**但 C10/C12 调研发现一处此前未记录的缺陷**（见下方 C12 行）：同一个 `text`
-维度，动作侧是精确匹配而判据侧是包含匹配。调用方会遇到「`check wait` 等到了、
-`ui.click` 点不到」，且失败只报 `SELECTOR_NOT_FOUND`，指不出真实原因。
-这不是表达力增量，是两条路径对同一概念给出矛盾结果，属于会浪费排查时间的
-真实可用性问题。修它的改动很小（C12 第 1、2 步）。
+**此前发现的 `text` 维度一致性缺陷已修复**：动作侧与判据侧现在都对选择器字段
+走 normalize 后精确匹配（`predicate.go` 的 `normalizeSelectorValue` 与
+`SelectorMatcher.normalized()` 同口径），并有跨侧一致性测试 + 变异验证钉住。
+需要部分匹配的场景改由显式 `match` 字段表达。
 
-除此之外，剩余条目确实都是表达力增量（更多选择器维度、可组合等待），
-不是「某个常见场景做不了」。
+剩余条目（C5 已在前一波实施、C6 读取、C11 已实施）里，真正待办的只有 C6 剪贴板
+读取——它不是表达力增量而是需独立安全决策的项，见下方。其余都已收口。
 
 ### 已收口，无剩余
 
@@ -1462,8 +1463,8 @@ Sub-Agent 30-60 秒无输出时先查询状态；确认卡死后再停止。Agen
 | ID | 缺口 | 当前状态证据 | 为何还没做 | 前置条件 | 成本 |
 | --- | --- | --- | --- | --- | --- |
 | C6-read | `clipboard.get` 无出口 | parser 无 `clipboard.get` 分支，有锁定测试钉住 | 不是「补权限就行」：Android 无 READ_CLIPBOARD 权限，API 29+ 靠「持有输入焦点或是默认输入法」限制，与「读别的 App 剪贴板」互斥 | 需先决策走 IME 路线（权限档位高于无障碍）还是前台夺焦（打断被自动化界面） | 代码已在（`ClipboardGateway.read()` 三态完整），但**不是接线问题** |
-| C10 | 无 `scrollUntil(predicate)` 可组合原语 | `action.schema.json` 无 `scrollUntil`（grep 0） | 需扩协议，且要先重构判据求值 | 见下方详细方案 | **已有完整实施方案**，见 `artifacts/uiautomator-gap/c10-c12-implementation-study.md` |
-| C12 | 选择器维度与匹配方式 | 动作侧 6 维度全精确匹配；判据侧 5 字段中 text/description 是**包含**匹配——两侧对同一 `text` 语义不一致 | 需扩协议与匹配器 | 见下方详细方案 | **已有完整实施方案**，同上文档 |
+| ~~C10~~ | ~~无 scrollUntil~~ | **已实施** | 新增 ui.scrollUntil 动作，判据求值已从轮询循环抽出复用 | — | 见 .trae/specs/selector-consistency-c12-c10 |
+| ~~C12~~ | ~~选择器维度与匹配不一致~~ | **已实施** | 补 className/package 两维；text/description 两侧统一精确匹配；加 match 字段（默认 exact，含 contains/startsWith/endsWith，不含 regex） | — | text 分叉已修，见同一 spec；regex 仍留待单独决策 |
 
 **C10 与 C12 的详细实施方案**见
 `artifacts/uiautomator-gap/c10-c12-implementation-study.md`，含逐文件改动清单、

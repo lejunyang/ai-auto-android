@@ -64,6 +64,9 @@
       "$ref": "#/$defs/uiScrollIntoView"
     },
     {
+      "$ref": "#/$defs/uiScrollUntil"
+    },
+    {
       "$ref": "#/$defs/uiSelectText"
     },
     {
@@ -145,7 +148,7 @@
       "required": ["strategy", "value", "weight"],
       "properties": {
         "strategy": {
-          "enum": ["resourceId", "contentDescription", "text", "role", "ancestor", "fingerprint"]
+          "enum": ["resourceId", "contentDescription", "text", "role", "ancestor", "fingerprint", "className", "package"]
         },
         "value": {
           "type": "string",
@@ -159,6 +162,11 @@
         },
         "required": {
           "type": "boolean"
+        },
+        "match": {
+          "enum": ["exact", "contains", "startsWith", "endsWith"],
+          "default": "exact",
+          "description": "Match mode for text and contentDescription only. Defaults to exact; omitting it is equivalent to exact. resourceId, className and package are identifiers and always match exactly regardless of this field. regex is intentionally not offered."
         }
       },
       "additionalProperties": false
@@ -739,6 +747,43 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 10000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiScrollUntil": {
+      "type": "object",
+      "required": ["type", "params"],
+      "description": "Scroll one direction repeatedly until a predicate holds or maxScrolls is reached. Unlike ui.scrollIntoView whose stop condition is fixed to target visibility, the stop condition here is any predicate. Note the polling semantics: like check wait, this observes that the predicate became true rather than capturing an event.",
+      "properties": {
+        "type": {
+          "const": "ui.scrollUntil"
+        },
+        "params": {
+          "type": "object",
+          "required": ["direction", "until"],
+          "properties": {
+            "container": {
+              "$ref": "#/$defs/target"
+            },
+            "direction": {
+              "enum": ["up", "down", "left", "right", "forward", "backward"]
+            },
+            "until": {
+              "$ref": "#/$defs/predicate"
+            },
+            "maxScrolls": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "amount": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
             }
           },
           "additionalProperties": false

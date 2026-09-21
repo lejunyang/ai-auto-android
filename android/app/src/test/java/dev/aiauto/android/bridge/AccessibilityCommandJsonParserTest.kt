@@ -71,6 +71,45 @@ class AccessibilityCommandJsonParserTest {
         )
     }
 
+    // 不传 match 时选择器候选默认精确匹配——现有脚本行为不变。
+    @Test
+    fun `selector candidate defaults to exact match`() {
+        val command = parser.parse(
+            action(
+                """{"type":"ui.click","params":{"target":{"selectorCandidates":""" +
+                    """[{"strategy":"text","value":"OK","weight":1.0}]}}}""",
+            ),
+        )
+
+        val click = command as AccessibilityCommand.Click
+        assertEquals(
+            dev.aiauto.android.accessibility.model.SelectorMatchMode.EXACT,
+            click.target.selectorCandidates.first().match,
+        )
+    }
+
+    // match 只对 text/contentDescription 生效；标识符维度上用非精确匹配必须被拒。
+    @Test
+    fun `rejects match mode on identifier dimensions`() {
+        for (strategy in listOf("resourceId", "className", "package")) {
+            val error = runCatching {
+                parser.parse(
+                    action(
+                        """{"type":"ui.click","params":{"target":{"selectorCandidates":""" +
+                            """[{"strategy":"$strategy","value":"x","weight":1.0,""" +
+                            """"match":"contains"}]}}}""",
+                    ),
+                )
+            }.exceptionOrNull()
+
+            assertTrue("$strategy should reject non-exact match", error is BridgeException)
+            assertEquals(
+                BridgeErrorCode.INVALID_ARGUMENT,
+                (error as BridgeException).code,
+            )
+        }
+    }
+
     private fun action(raw: String): JsonObject =
         Json.parseToJsonElement(raw) as JsonObject
 }

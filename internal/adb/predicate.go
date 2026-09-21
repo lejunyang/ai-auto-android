@@ -158,13 +158,9 @@ func (c *Client) AwaitPredicate(
 	deadline := started.Add(time.Duration(timeout) * time.Millisecond)
 	result := PredicateResult{Device: serial, Kind: predicate.Kind}
 
-	var stableSince time.Time
-	previousFingerprint := ""
-	// 事件型判据需要一个基线：第一轮采样只记录起点，不判定成立。
-	// 否则「窗口是否变了」在第一轮就无从比较——没有「变之前」可对照。
-	baselineCaptured := false
-	baselinePackage := ""
-	baselineFingerprint := ""
+	// 判据求值的逐轮状态外置到 evaluator：ui.scrollUntil 复用同一套求值逻辑，
+	// 各自持有独立的 evaluator 实例，状态不串。stableDuration 已按默认值补齐。
+	evaluator := newPredicateEvaluator(predicate, stableDuration)
 
 	for {
 		hierarchy, err := c.Hierarchy(ctx, serial)
@@ -179,77 +175,7 @@ func (c *Client) AwaitPredicate(
 			return PredicateResult{}, parseErr
 		}
 
-		satisfied := false
-		switch predicate.Kind {
-		case PredicateNode, PredicateText:
-			matches := matchNodes(root, predicate.Selector)
-			result.MatchCount = len(matches)
-			if len(matches) > 0 {
-				result.ActualText = matches[0].Text
-			}
-			satisfied = evaluateNodePredicate(matches, predicate)
-
-		case PredicatePackage, PredicateWindow:
-			actual := rootPackage(root)
-			result.ActualPackage = actual
-			satisfied = evaluateTextComparison(actual, predicate.Operator, predicate.Expected)
-
-		case PredicateNewWindow:
-			// 观察到前台包名或界面指纹与基线不同即认为进入了新窗口。
-			//
-			// 用「包名或指纹」而不是只看包名：同一应用内跳转 Activity 时包名不变，
-			// 但那确实是一个新窗口；只看包名会让应用内跳转永远等不到。
-			current := fingerprint(root)
-			actual := rootPackage(root)
-			result.ActualPackage = actual
-			if !baselineCaptured {
-				baselinePackage = actual
-				baselineFingerprint = current
-				baselineCaptured = true
-			} else {
-				satisfied = actual != baselinePackage || current != baselineFingerprint
-			}
-
-		case PredicateScrollFinished:
-			// 滚动结束的可观察形式是「界面指纹不再变化」。
-			//
-			// 与 uiStable 的区别：uiStable 从一开始就要求稳定，而这里必须先观察到
-			// 至少一次变化（滚动确实在进行），再等它停下来。否则在滚动开始前调用
-			// 会立刻返回成立，调用方以为滚完了，实际一行都没动。
-			current := fingerprint(root)
-			if !baselineCaptured {
-				baselineFingerprint = current
-				baselineCaptured = true
-				previousFingerprint = current
-			} else {
-				if current != previousFingerprint {
-					// 仍在变化：重置稳定计时。
-					stableSince = time.Time{}
-				} else if baselineFingerprint != current && stableSince.IsZero() {
-					// 已经动过且这一轮没再变，开始计稳定时长。
-					stableSince = time.Now()
-				}
-				previousFingerprint = current
-				if !stableSince.IsZero() {
-					satisfied = time.Since(stableSince).Milliseconds() >= int64(stableDuration)
-				}
-			}
-
-		case PredicateUIStable:
-			current := fingerprint(root)
-			if current == previousFingerprint {
-				if stableSince.IsZero() {
-					stableSince = time.Now()
-				}
-			} else {
-				stableSince = time.Time{}
-			}
-			previousFingerprint = current
-			if !stableSince.IsZero() {
-				elapsed := time.Since(stableSince).Milliseconds()
-				satisfied = elapsed >= int64(stableDuration)
-			}
-		}
+		satisfied := evaluator.evaluate(root, &result)
 
 		if satisfied {
 			result.Satisfied = true
@@ -279,6 +205,98 @@ func (c *Client) AwaitPredicate(
 			}
 		}
 	}
+}
+
+// predicateEvaluator 持有判据逐轮求值所需的状态。
+//
+// 从 AwaitPredicate 的轮询循环里抽出来，让 ui.scrollUntil 复用同一套求值逻辑：
+// 两者各持一个独立实例，事件型判据（newWindow/scrollFinished）与 uiStable 依赖的
+// 基线与稳定计时互不干扰。抽取前这些状态是循环内的局部变量，无法在两个动作间共享。
+type predicateEvaluator struct {
+	predicate      Predicate
+	stableDuration int
+	stableSince    time.Time
+	prevFinger     string
+	baselineOK     bool
+	baselinePkg    string
+	baselineFinger string
+}
+
+func newPredicateEvaluator(predicate Predicate, stableDuration int) *predicateEvaluator {
+	return &predicateEvaluator{predicate: predicate, stableDuration: stableDuration}
+}
+
+// evaluate 对一次采样求值，并把观察到的实际值写回 result。
+//
+// 语义与抽取前逐字一致：这是纯搬迁，不改行为。C11 的 newWindow/scrollFinished
+// 回归测试确认这一点。
+func (e *predicateEvaluator) evaluate(root uiHierarchy, result *PredicateResult) bool {
+	satisfied := false
+	switch e.predicate.Kind {
+	case PredicateNode, PredicateText:
+		matches := matchNodes(root, e.predicate.Selector)
+		result.MatchCount = len(matches)
+		if len(matches) > 0 {
+			result.ActualText = matches[0].Text
+		}
+		satisfied = evaluateNodePredicate(matches, e.predicate)
+
+	case PredicatePackage, PredicateWindow:
+		actual := rootPackage(root)
+		result.ActualPackage = actual
+		satisfied = evaluateTextComparison(actual, e.predicate.Operator, e.predicate.Expected)
+
+	case PredicateNewWindow:
+		// 观察到前台包名或界面指纹与基线不同即认为进入了新窗口。
+		// 用「包名或指纹」而不是只看包名：同一应用内跳转 Activity 时包名不变，
+		// 但那确实是一个新窗口；只看包名会让应用内跳转永远等不到。
+		current := fingerprint(root)
+		actual := rootPackage(root)
+		result.ActualPackage = actual
+		if !e.baselineOK {
+			e.baselinePkg = actual
+			e.baselineFinger = current
+			e.baselineOK = true
+		} else {
+			satisfied = actual != e.baselinePkg || current != e.baselineFinger
+		}
+
+	case PredicateScrollFinished:
+		// 滚动结束的可观察形式是「界面指纹不再变化」。
+		// 与 uiStable 的区别：uiStable 从一开始就要求稳定，而这里必须先观察到
+		// 至少一次变化（滚动确实在进行），再等它停下来。
+		current := fingerprint(root)
+		if !e.baselineOK {
+			e.baselineFinger = current
+			e.baselineOK = true
+			e.prevFinger = current
+		} else {
+			if current != e.prevFinger {
+				e.stableSince = time.Time{}
+			} else if e.baselineFinger != current && e.stableSince.IsZero() {
+				e.stableSince = time.Now()
+			}
+			e.prevFinger = current
+			if !e.stableSince.IsZero() {
+				satisfied = time.Since(e.stableSince).Milliseconds() >= int64(e.stableDuration)
+			}
+		}
+
+	case PredicateUIStable:
+		current := fingerprint(root)
+		if current == e.prevFinger {
+			if e.stableSince.IsZero() {
+				e.stableSince = time.Now()
+			}
+		} else {
+			e.stableSince = time.Time{}
+		}
+		e.prevFinger = current
+		if !e.stableSince.IsZero() {
+			satisfied = time.Since(e.stableSince).Milliseconds() >= int64(e.stableDuration)
+		}
+	}
+	return satisfied
 }
 
 // validatePredicate 校验判据的种类、运算符与必填组合。
@@ -386,23 +404,39 @@ func matchNodes(hierarchy uiHierarchy, selector NodeSelector) []uiNode {
 // 要求精确相等会让大量本该命中的元素落空。resourceId 与 className 用相等，
 // 它们是结构性标识，不应模糊匹配。
 func selectorMatches(node uiNode, selector NodeSelector) bool {
-	if selector.ResourceID != "" && node.ResourceID != selector.ResourceID {
+	// 所有维度统一 normalize 后精确比较，与动作侧 SelectorMatcher 对齐。
+	// 曾经 text/description 走 strings.Contains 部分匹配，而动作侧是精确相等，
+	// 导致 check wait 等到了、ui.click 却点不到的分叉。统一到精确后两条路径一致。
+	//
+	// 必须 normalize：动作侧用 trim+lowercase 后比较；若这里只改成 == 而不 normalize，
+	// 带首尾空白的文本仍会两侧分叉——那只是把匹配方式的分叉换成 normalize 的分叉。
+	if selector.ResourceID != "" &&
+		normalizeSelectorValue(node.ResourceID) != normalizeSelectorValue(selector.ResourceID) {
 		return false
 	}
-	if selector.ClassName != "" && node.Class != selector.ClassName {
+	if selector.ClassName != "" &&
+		normalizeSelectorValue(node.Class) != normalizeSelectorValue(selector.ClassName) {
 		return false
 	}
-	if selector.Package != "" && node.Package != selector.Package {
+	if selector.Package != "" &&
+		normalizeSelectorValue(node.Package) != normalizeSelectorValue(selector.Package) {
 		return false
 	}
-	if selector.Text != "" && !strings.Contains(node.Text, selector.Text) {
+	if selector.Text != "" &&
+		normalizeSelectorValue(node.Text) != normalizeSelectorValue(selector.Text) {
 		return false
 	}
 	if selector.Description != "" &&
-		!strings.Contains(node.Description, selector.Description) {
+		normalizeSelectorValue(node.Description) != normalizeSelectorValue(selector.Description) {
 		return false
 	}
 	return true
+}
+
+// normalizeSelectorValue 与动作侧 SelectorMatcher.normalized() 同口径：
+// trim 首尾空白后转小写。两侧口径一致是选择器定位结果一致的前提。
+func normalizeSelectorValue(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 // evaluateNodePredicate 按运算符判断节点类判据。

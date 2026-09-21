@@ -11,6 +11,7 @@ import java.util.Locale
 import dev.aiauto.android.accessibility.model.NodePath
 import dev.aiauto.android.accessibility.model.NodeTarget
 import dev.aiauto.android.accessibility.model.SelectorCandidate
+import dev.aiauto.android.accessibility.model.SelectorMatchMode
 import dev.aiauto.android.accessibility.model.SelectorStrategy
 import dev.aiauto.android.accessibility.model.UiNodeSnapshot
 import dev.aiauto.android.accessibility.model.UiWindowSnapshot
@@ -192,9 +193,9 @@ class SelectorMatcher(
         return when (candidate.strategy) {
             SelectorStrategy.RESOURCE_ID -> node.resourceId.normalized() == expected
             SelectorStrategy.CONTENT_DESCRIPTION ->
-                node.contentDescription.normalized() == expected
+                matchesText(node.contentDescription, expected, candidate.match)
 
-            SelectorStrategy.TEXT -> node.text.normalized() == expected
+            SelectorStrategy.TEXT -> matchesText(node.text, expected, candidate.match)
             SelectorStrategy.ROLE -> roleOf(node) == expected
             SelectorStrategy.ANCESTOR -> ancestors.any { ancestor ->
                 listOf(
@@ -206,8 +207,31 @@ class SelectorMatcher(
                 ).any { it.normalized() == expected }
             }
 
+            SelectorStrategy.CLASS_NAME -> node.className.normalized() == expected
+            SelectorStrategy.PACKAGE -> node.packageName.normalized() == expected
             SelectorStrategy.FINGERPRINT ->
                 NodeFingerprint.create(node).equals(candidate.value, ignoreCase = true)
+        }
+    }
+
+    /**
+     * 按匹配方式比较 text / contentDescription。
+     *
+     * expected 已在调用处 normalized；这里对 actual 也 normalize 后再比，
+     * 与精确匹配同口径（trim+lowercase）。只有这两个维度支持非精确匹配，
+     * 标识符维度在别处始终精确相等。
+     */
+    private fun matchesText(
+        actual: String?,
+        expected: String,
+        mode: SelectorMatchMode,
+    ): Boolean {
+        val normalizedActual = actual.normalized()
+        return when (mode) {
+            SelectorMatchMode.EXACT -> normalizedActual == expected
+            SelectorMatchMode.CONTAINS -> normalizedActual.contains(expected)
+            SelectorMatchMode.STARTS_WITH -> normalizedActual.startsWith(expected)
+            SelectorMatchMode.ENDS_WITH -> normalizedActual.endsWith(expected)
         }
     }
 

@@ -732,7 +732,10 @@ class RecordingScriptStore private constructor(
         private val SELECTOR_KEYS = setOf("strategy", "value", "weight", "required")
         private val SELECTOR_REQUIRED_KEYS = setOf("strategy", "value", "weight")
         private val SELECTOR_STRATEGIES =
-            setOf("resourceId", "contentDescription", "text", "role", "ancestor", "fingerprint")
+            setOf(
+        "resourceId", "contentDescription", "text", "role", "ancestor",
+        "fingerprint", "className", "package",
+    )
         private val PREDICATE_KEYS =
             setOf("kind", "target", "operator", "expected", "stableDurationMs", "timeoutMs")
         private val ACTION_PARAMETER_KEYS = mapOf(

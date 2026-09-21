@@ -674,7 +674,10 @@ private val OBSERVATION_ID_PATTERN = Regex("^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
 private val FAILURE_POLICIES = setOf("stop", "continue", "requestIntervention")
 private val SELECTOR_KEYS = setOf("strategy", "value", "weight", "required")
 private val SELECTOR_STRATEGIES =
-    setOf("resourceId", "contentDescription", "text", "role", "ancestor", "fingerprint")
+    setOf(
+            "resourceId", "contentDescription", "text", "role", "ancestor",
+            "fingerprint", "className", "package",
+        )
 private val PREDICATE_KINDS = setOf("node", "text", "package", "window", "uiStable")
 private val PREDICATE_OPERATORS =
     setOf("exists", "notExists", "equals", "contains", "matches", "stable")
