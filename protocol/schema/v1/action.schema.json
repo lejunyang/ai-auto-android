@@ -145,7 +145,7 @@
       "required": ["strategy", "value", "weight"],
       "properties": {
         "strategy": {
-          "enum": ["resourceId", "contentDescription", "text", "role", "ancestor", "fingerprint"]
+          "enum": ["resourceId", "contentDescription", "text", "role", "ancestor", "fingerprint", "className", "package"]
         },
         "value": {
           "type": "string",

@@ -189,6 +189,9 @@ enum class SelectorStrategy {
     ROLE,
     ANCESTOR,
     FINGERPRINT,
+    // className/package 与判据侧对齐；精确匹配，用于「点第 3 个 Button」这类定位。
+    CLASS_NAME,
+    PACKAGE,
 }
 
 data class SelectorCandidate(

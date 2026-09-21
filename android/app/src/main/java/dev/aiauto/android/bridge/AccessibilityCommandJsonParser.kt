@@ -281,6 +281,8 @@ class AccessibilityCommandJsonParser(
             "role" -> SelectorStrategy.ROLE
             "ancestor" -> SelectorStrategy.ANCESTOR
             "fingerprint" -> SelectorStrategy.FINGERPRINT
+            "className" -> SelectorStrategy.CLASS_NAME
+            "package" -> SelectorStrategy.PACKAGE
             else -> throw BridgeException(
                 code = BridgeErrorCode.INVALID_ARGUMENT,
                 message = "The selector strategy is not supported.",

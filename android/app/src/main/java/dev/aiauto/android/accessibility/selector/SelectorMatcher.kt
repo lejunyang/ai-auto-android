@@ -206,6 +206,8 @@ class SelectorMatcher(
                 ).any { it.normalized() == expected }
             }
 
+            SelectorStrategy.CLASS_NAME -> node.className.normalized() == expected
+            SelectorStrategy.PACKAGE -> node.packageName.normalized() == expected
             SelectorStrategy.FINGERPRINT ->
                 NodeFingerprint.create(node).equals(candidate.value, ignoreCase = true)
         }

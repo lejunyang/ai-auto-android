@@ -179,6 +179,58 @@ class SelectorMatcherTest {
         assertTrue(result.score > 0.70)
     }
 
+    // className 与 package 是新补的维度，与判据侧对齐，精确匹配（normalize 后）。
+    @Test
+    fun `matches by className and package dimensions`() {
+        val root = node(
+            className = "android.widget.FrameLayout",
+            children = listOf(
+                node(
+                    resourceId = "com.example:id/ok",
+                    text = "OK",
+                    className = "android.widget.Button",
+                    actions = setOf(NodeAction.CLICK),
+                ),
+            ),
+        )
+        val target = NodeTarget(
+            packageName = "com.example",
+            selectorCandidates = listOf(
+                candidate(SelectorStrategy.CLASS_NAME, "android.widget.Button", 0.6),
+                candidate(SelectorStrategy.PACKAGE, "com.example", 0.4),
+            ),
+        )
+
+        val result = matcher.match(root, target)
+
+        assertTrue(result is SelectorMatch.Found)
+        result as SelectorMatch.Found
+        assertEquals(NodePath(listOf(0)), result.path)
+    }
+
+    // className 精确匹配：前缀不命中，与 resourceId 口径一致。
+    @Test
+    fun `className matches exactly not by prefix`() {
+        val root = node(
+            className = "android.widget.FrameLayout",
+            children = listOf(
+                node(
+                    resourceId = "com.example:id/ok",
+                    className = "android.widget.Button",
+                    actions = setOf(NodeAction.CLICK),
+                ),
+            ),
+        )
+        val target = NodeTarget(
+            packageName = "com.example",
+            selectorCandidates = listOf(
+                candidate(SelectorStrategy.CLASS_NAME, "android.widget", 1.0, required = true),
+            ),
+        )
+
+        assertTrue(matcher.match(root, target) is SelectorMatch.NotFound)
+    }
+
     private fun candidate(
         strategy: SelectorStrategy,
         value: String,
