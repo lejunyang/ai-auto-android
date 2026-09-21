@@ -386,23 +386,39 @@ func matchNodes(hierarchy uiHierarchy, selector NodeSelector) []uiNode {
 // 要求精确相等会让大量本该命中的元素落空。resourceId 与 className 用相等，
 // 它们是结构性标识，不应模糊匹配。
 func selectorMatches(node uiNode, selector NodeSelector) bool {
-	if selector.ResourceID != "" && node.ResourceID != selector.ResourceID {
+	// 所有维度统一 normalize 后精确比较，与动作侧 SelectorMatcher 对齐。
+	// 曾经 text/description 走 strings.Contains 部分匹配，而动作侧是精确相等，
+	// 导致 check wait 等到了、ui.click 却点不到的分叉。统一到精确后两条路径一致。
+	//
+	// 必须 normalize：动作侧用 trim+lowercase 后比较；若这里只改成 == 而不 normalize，
+	// 带首尾空白的文本仍会两侧分叉——那只是把匹配方式的分叉换成 normalize 的分叉。
+	if selector.ResourceID != "" &&
+		normalizeSelectorValue(node.ResourceID) != normalizeSelectorValue(selector.ResourceID) {
 		return false
 	}
-	if selector.ClassName != "" && node.Class != selector.ClassName {
+	if selector.ClassName != "" &&
+		normalizeSelectorValue(node.Class) != normalizeSelectorValue(selector.ClassName) {
 		return false
 	}
-	if selector.Package != "" && node.Package != selector.Package {
+	if selector.Package != "" &&
+		normalizeSelectorValue(node.Package) != normalizeSelectorValue(selector.Package) {
 		return false
 	}
-	if selector.Text != "" && !strings.Contains(node.Text, selector.Text) {
+	if selector.Text != "" &&
+		normalizeSelectorValue(node.Text) != normalizeSelectorValue(selector.Text) {
 		return false
 	}
 	if selector.Description != "" &&
-		!strings.Contains(node.Description, selector.Description) {
+		normalizeSelectorValue(node.Description) != normalizeSelectorValue(selector.Description) {
 		return false
 	}
 	return true
+}
+
+// normalizeSelectorValue 与动作侧 SelectorMatcher.normalized() 同口径：
+// trim 首尾空白后转小写。两侧口径一致是选择器定位结果一致的前提。
+func normalizeSelectorValue(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 // evaluateNodePredicate 按运算符判断节点类判据。
