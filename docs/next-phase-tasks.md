@@ -1464,7 +1464,7 @@ package）且支持 exact/contains/startsWith/endsWith 匹配方式，MCP 有
 | --- | --- | --- | --- | --- | --- |
 | C6-read | `clipboard.get` 无出口 | parser 无 `clipboard.get` 分支，有锁定测试钉住 | 不是「补权限就行」：Android 无 READ_CLIPBOARD 权限，API 29+ 靠「持有输入焦点或是默认输入法」限制，与「读别的 App 剪贴板」互斥 | 需先决策走 IME 路线（权限档位高于无障碍）还是前台夺焦（打断被自动化界面） | 代码已在（`ClipboardGateway.read()` 三态完整），但**不是接线问题** |
 | ~~C10~~ | ~~无 scrollUntil~~ | **已实施** | 新增 ui.scrollUntil 动作，判据求值已从轮询循环抽出复用 | — | 见 .trae/specs/selector-consistency-c12-c10 |
-| ~~C12~~ | ~~选择器维度与匹配不一致~~ | **已实施** | 补 className/package 两维；text/description 两侧统一精确匹配；加 match 字段（默认 exact，含 contains/startsWith/endsWith，不含 regex） | — | text 分叉已修，见同一 spec；regex 仍留待单独决策 |
+| ~~C12~~ | ~~选择器维度与匹配不一致~~ | **已全部完成** | 补 className/package 两维；text/description 两侧统一精确匹配；match 字段默认 exact，含 contains/startsWith/endsWith 与 **regex**（限长 512 + 编译校验 + 100ms 执行超时兜底 ReDoS） | — | text 分叉已修；regex 已实施，见 .trae/specs/selector-regex-match；一并修复 ProviderActionParser 漏校验 className/package/match 的潜伏缺陷 |
 
 **C10 与 C12 的详细实施方案**见
 `artifacts/uiautomator-gap/c10-c12-implementation-study.md`，含逐文件改动清单、

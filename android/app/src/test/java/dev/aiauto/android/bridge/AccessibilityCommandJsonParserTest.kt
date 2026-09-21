@@ -110,6 +110,70 @@ class AccessibilityCommandJsonParserTest {
         }
     }
 
+    // regex 是合法 match 值，能解析成 REGEX 模式。
+    @Test
+    fun `parses regex match mode`() {
+        val command = parser.parse(
+            action(
+                """{"type":"ui.click","params":{"target":{"selectorCandidates":""" +
+                    """[{"strategy":"text","value":"a\\d+","weight":1.0,"match":"regex"}]}}}""",
+            ),
+        )
+        val click = command as AccessibilityCommand.Click
+        assertEquals(
+            dev.aiauto.android.accessibility.model.SelectorMatchMode.REGEX,
+            click.target.selectorCandidates.first().match,
+        )
+    }
+
+    // 非法 pattern 在入口校验阶段就报错，不留到运行时静默失配。
+    @Test
+    fun `rejects an invalid regex pattern at parse time`() {
+        val error = runCatching {
+            parser.parse(
+                action(
+                    """{"type":"ui.click","params":{"target":{"selectorCandidates":""" +
+                        """[{"strategy":"text","value":"(unclosed","weight":1.0,"match":"regex"}]}}}""",
+                ),
+            )
+        }.exceptionOrNull()
+        assertTrue(error is BridgeException)
+        assertEquals(BridgeErrorCode.INVALID_ARGUMENT, (error as BridgeException).code)
+    }
+
+    // 超长 pattern 被限长拒绝——这是 ReDoS 的第一道防线。
+    @Test
+    fun `rejects an over-length regex pattern`() {
+        val huge = "a".repeat(513)
+        val error = runCatching {
+            parser.parse(
+                action(
+                    """{"type":"ui.click","params":{"target":{"selectorCandidates":""" +
+                        """[{"strategy":"text","value":"$huge","weight":1.0,"match":"regex"}]}}}""",
+                ),
+            )
+        }.exceptionOrNull()
+        assertTrue(error is BridgeException)
+        assertEquals(BridgeErrorCode.INVALID_ARGUMENT, (error as BridgeException).code)
+    }
+
+    // regex 是非精确匹配，在标识符维度上照样被守卫拒绝。
+    @Test
+    fun `rejects regex on identifier dimensions`() {
+        for (strategy in listOf("resourceId", "className", "package")) {
+            val error = runCatching {
+                parser.parse(
+                    action(
+                        """{"type":"ui.click","params":{"target":{"selectorCandidates":""" +
+                            """[{"strategy":"$strategy","value":"x","weight":1.0,"match":"regex"}]}}}""",
+                    ),
+                )
+            }.exceptionOrNull()
+            assertTrue("$strategy should reject regex", error is BridgeException)
+            assertEquals(BridgeErrorCode.INVALID_ARGUMENT, (error as BridgeException).code)
+        }
+    }
+
     private fun action(raw: String): JsonObject =
         Json.parseToJsonElement(raw) as JsonObject
 }
