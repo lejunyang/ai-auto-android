@@ -640,3 +640,31 @@ func bridgeImeShowOutputSchema() json.RawMessage {
 		"additionalProperties":false
 	}`)
 }
+
+// scrollUntilSchema 描述 ui.scrollUntil 的入参。
+//
+// 选择器与运算符字段与 predicateSchema 一致；direction 必填，amount 与 maxScrolls
+// 可选。不引入坐标——与判据一样只按可描述属性匹配。
+func scrollUntilSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type":"object",
+		"required":["device","kind","operator","direction"],
+		"properties":{
+			"device":` + deviceSchema() + `,
+			"kind":{"enum":["node","text","package","window","uiStable","newWindow","scrollFinished"]},
+			"operator":{"enum":["exists","notExists","equals","contains","matches","stable","occurred"]},
+			"direction":{"enum":["up","down","left","right","forward","backward"]},
+			"resourceId":{"type":"string","minLength":1,"maxLength":512},
+			"text":{"type":"string","minLength":1,"maxLength":1024},
+			"description":{"type":"string","minLength":1,"maxLength":1024},
+			"className":{"type":"string","minLength":1,"maxLength":512},
+			"package":` + packageSchema() + `,
+			"expected":{"type":"string","maxLength":1024},
+			"timeoutMs":{"type":"integer","minimum":1,"maximum":60000},
+			"stableDurationMs":{"type":"integer","minimum":100,"maximum":30000},
+			"amount":{"type":"number","exclusiveMinimum":0,"maximum":1},
+			"maxScrolls":{"type":"integer","minimum":1,"maximum":50}
+		},
+		"additionalProperties":false
+	}`)
+}

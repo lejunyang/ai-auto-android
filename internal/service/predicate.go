@@ -19,8 +19,22 @@ import (
 //
 // 与 ObserveExtraBackend 分开的理由相同：只有 adb 直连后端能提供该能力，
 // 分开后可以在缺失时给出明确的"能力不可用"错误。
+// defaultScrollUntilRounds 是 scrollUntil 未指定次数时的滚动上限。
+// 取 20：足够多数长列表，同时远低于协议上限 50。滚动占比复用已有的
+// defaultScrollFraction（见 service.go）。
+const defaultScrollUntilRounds = 20
+
 type PredicateBackend interface {
 	AwaitPredicate(context.Context, string, adb.Predicate) (adb.PredicateResult, error)
+	// ScrollUntil 沿一个方向反复滚动直到判据成立或达到 maxScrolls。
+	ScrollUntil(
+		ctx context.Context,
+		serial string,
+		direction adb.ScrollDirection,
+		fraction float64,
+		maxScrolls int,
+		predicate adb.Predicate,
+	) (adb.PredicateResult, error)
 }
 
 // PredicateRequest 描述一次等待或断言。
@@ -158,4 +172,62 @@ func (s *Service) Assert(
 		true,
 		details,
 	)
+}
+
+// ScrollUntilRequest 描述一次「滚动直到判据成立」。
+//
+// 内嵌 PredicateRequest：until 判据复用与 Wait/Assert 完全相同的选择器与运算符
+// 语义，不另立一套。Direction/Amount/MaxScrolls 是滚动侧参数。
+type ScrollUntilRequest struct {
+	Until      PredicateRequest `json:"until"`
+	Direction  string           `json:"direction"`
+	Amount     float64          `json:"amount,omitempty"`
+	MaxScrolls int              `json:"maxScrolls,omitempty"`
+}
+
+// ScrollUntil 沿一个方向滚动直到 until 判据成立或滚够 maxScrolls。
+//
+// 与 Wait 一样，判据未成立返回 Satisfied=false 而非错误——调用方需要区分
+// 「滚完还没出现」与「无法观察界面」。
+func (s *Service) ScrollUntil(
+	ctx context.Context,
+	request ScrollUntilRequest,
+) (PredicateOutcome, error) {
+	if err := adb.ValidateSerial(request.Until.Device); err != nil {
+		return PredicateOutcome{}, err
+	}
+	backend, err := s.predicateBackend()
+	if err != nil {
+		return PredicateOutcome{}, err
+	}
+	fraction := request.Amount
+	if fraction == 0 {
+		fraction = defaultScrollFraction
+	}
+	maxScrolls := request.MaxScrolls
+	if maxScrolls == 0 {
+		maxScrolls = defaultScrollUntilRounds
+	}
+	result, err := backend.ScrollUntil(
+		ctx,
+		request.Until.Device,
+		adb.ScrollDirection(request.Direction),
+		fraction,
+		maxScrolls,
+		request.Until.toPredicate(),
+	)
+	if err != nil {
+		return PredicateOutcome{}, err
+	}
+	return PredicateOutcome{
+		Device:        result.Device,
+		Kind:          result.Kind,
+		Operator:      request.Until.Operator,
+		Satisfied:     result.Satisfied,
+		WaitedMS:      result.WaitedMS,
+		Polls:         result.Polls,
+		MatchCount:    result.MatchCount,
+		ActualText:    result.ActualText,
+		ActualPackage: result.ActualPackage,
+	}, nil
 }

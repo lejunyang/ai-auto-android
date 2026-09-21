@@ -5,6 +5,7 @@ package adb
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/lejunyang/ai-auto-android/internal/process"
@@ -479,5 +480,123 @@ func TestSelectorMatchingIsConsistentWithActionSideSemantics(t *testing.T) {
 				)
 			}
 		})
+	}
+}
+
+// scrollUntilFakeADB 按命令内容而非调用顺序应答，用于 ScrollUntil 测试。
+//
+// ScrollUntil 每滚一次会穿插 devices / wm size / input swipe / uiautomator dump
+// 多种调用，用定位式脚本极易备错料。这里按 args 内容分派：hierarchy dump 在
+// 滚动 scrollsBeforeMatch 次后才返回含目标文本的层级。
+type scrollUntilFakeADB struct {
+	scrollsBeforeMatch int
+	swipes             int
+	matchXML           string
+	noMatchXML         string
+}
+
+func (f *scrollUntilFakeADB) Run(
+	_ context.Context,
+	_ string,
+	args []string,
+	_ process.Options,
+) (process.Result, error) {
+	joined := strings.Join(args, " ")
+	switch {
+	case strings.Contains(joined, "wm size"):
+		return process.Result{Stdout: []byte("Physical size: 1080x1920\n")}, nil
+	case strings.Contains(joined, "input swipe"):
+		f.swipes++
+		return process.Result{}, nil
+	case strings.Contains(joined, "uiautomator dump"):
+		return process.Result{}, nil
+	case strings.Contains(joined, "exec-out") || strings.Contains(joined, "cat "):
+		if f.swipes >= f.scrollsBeforeMatch {
+			return process.Result{Stdout: []byte(f.matchXML)}, nil
+		}
+		return process.Result{Stdout: []byte(f.noMatchXML)}, nil
+	case strings.Contains(joined, "rm -f"):
+		return process.Result{}, nil
+	default:
+		// devices 查询等：回两台在线设备。
+		return process.Result{Stdout: []byte(twoOnlineDevices)}, nil
+	}
+}
+
+// scrollUntil 找到目标文本时应停止滚动并返回成立。
+func TestScrollUntilStopsWhenPredicateHolds(t *testing.T) {
+	targetXML := `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node index="0" text="已送达" resource-id="android:id/status" class="android.widget.TextView" package="com.example" content-desc="" bounds="[0,0][320,80]" />
+</hierarchy>`
+	fake := &scrollUntilFakeADB{
+		scrollsBeforeMatch: 2,
+		matchXML:           targetXML,
+		noMatchXML:         realHierarchyXML,
+	}
+	client := NewClient("/fake/adb", fake)
+
+	result, err := client.ScrollUntil(
+		context.Background(), "FIRST", ScrollDown, 0.5, 10,
+		Predicate{
+			Kind:     PredicateText,
+			Operator: OperatorContains,
+			Selector: NodeSelector{Text: "已送达"},
+			Expected: "已送达",
+		},
+	)
+
+	if err != nil {
+		t.Fatalf("ScrollUntil() error = %v", err)
+	}
+	if !result.Satisfied {
+		t.Fatalf("predicate should hold after scrolling: %#v", result)
+	}
+	// 命中后必须停下：滚动次数不应用满 maxScrolls。
+	if fake.swipes > 3 {
+		t.Fatalf("kept scrolling after the target appeared: swipes=%d", fake.swipes)
+	}
+}
+
+// scrollUntil 目标始终不出现时，滚满 maxScrolls 后返回未成立，不报错也不越界。
+func TestScrollUntilStopsAtMaxScrolls(t *testing.T) {
+	fake := &scrollUntilFakeADB{
+		scrollsBeforeMatch: 999,
+		matchXML:           realHierarchyXML,
+		noMatchXML:         realHierarchyXML,
+	}
+	client := NewClient("/fake/adb", fake)
+
+	result, err := client.ScrollUntil(
+		context.Background(), "FIRST", ScrollDown, 0.5, 3,
+		Predicate{
+			Kind:     PredicateText,
+			Operator: OperatorExists,
+			Selector: NodeSelector{Text: "never appears here"},
+		},
+	)
+
+	if err != nil {
+		t.Fatalf("ScrollUntil() error = %v", err)
+	}
+	if result.Satisfied {
+		t.Fatalf("predicate should not hold: %#v", result)
+	}
+	if fake.swipes != 3 {
+		t.Fatalf("swipes = %d, want exactly maxScrolls=3", fake.swipes)
+	}
+}
+
+// maxScrolls 越界必须在滚动前被拒。
+func TestScrollUntilRejectsOutOfRangeMaxScrolls(t *testing.T) {
+	client, _ := predicateClient(1)
+	for _, maxScrolls := range []int{0, 51} {
+		_, err := client.ScrollUntil(
+			context.Background(), "FIRST", ScrollDown, 0.5, maxScrolls,
+			Predicate{Kind: PredicateText, Operator: OperatorExists, Selector: NodeSelector{Text: "x"}},
+		)
+		if err == nil {
+			t.Fatalf("ScrollUntil(maxScrolls=%d) = nil, want error", maxScrolls)
+		}
 	}
 }

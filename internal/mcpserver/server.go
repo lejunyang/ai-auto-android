@@ -39,6 +39,9 @@ const (
 	// 但语义是「聚焦」而非「显示键盘」，见工具 description。
 	ToolImeShow = "android_ime_show"
 
+	// ToolScrollUntil 沿一个方向滚动直到判据成立，是 C10 的语义原语。
+	ToolScrollUntil = "android_scroll_until"
+
 	observeKindRecordings = "recordings"
 	observeKindForeground = "foreground"
 	observeKindApps       = "apps"
@@ -65,6 +68,7 @@ var ToolNames = []string{
 	ToolImeShow,
 	ToolFilePush,
 	ToolFilePull,
+	ToolScrollUntil,
 }
 
 type devicesListInput struct{}
@@ -201,6 +205,48 @@ func (input predicateInput) toRequest() service.PredicateRequest {
 		Expected:         input.Expected,
 		TimeoutMS:        input.TimeoutMS,
 		StableDurationMS: input.StableDurationMS,
+	}
+}
+
+// scrollUntilInput 是 ui.scrollUntil 的 MCP 入参。
+//
+// 内嵌选择器/运算符字段与 predicateInput 一致：until 判据复用同一套语义。
+// direction 必填；amount 与 maxScrolls 可选。
+type scrollUntilInput struct {
+	Device           string  `json:"device"`
+	Kind             string  `json:"kind"`
+	Operator         string  `json:"operator"`
+	Direction        string  `json:"direction"`
+	ResourceID       string  `json:"resourceId,omitempty"`
+	Text             string  `json:"text,omitempty"`
+	Description      string  `json:"description,omitempty"`
+	ClassName        string  `json:"className,omitempty"`
+	Package          string  `json:"package,omitempty"`
+	Expected         string  `json:"expected,omitempty"`
+	TimeoutMS        int     `json:"timeoutMs,omitempty"`
+	StableDurationMS int     `json:"stableDurationMs,omitempty"`
+	Amount           float64 `json:"amount,omitempty"`
+	MaxScrolls       int     `json:"maxScrolls,omitempty"`
+}
+
+func (input scrollUntilInput) toRequest() service.ScrollUntilRequest {
+	return service.ScrollUntilRequest{
+		Until: service.PredicateRequest{
+			Device:           input.Device,
+			Kind:             input.Kind,
+			Operator:         input.Operator,
+			ResourceID:       input.ResourceID,
+			Text:             input.Text,
+			Description:      input.Description,
+			ClassName:        input.ClassName,
+			Package:          input.Package,
+			Expected:         input.Expected,
+			TimeoutMS:        input.TimeoutMS,
+			StableDurationMS: input.StableDurationMS,
+		},
+		Direction:  input.Direction,
+		Amount:     input.Amount,
+		MaxScrolls: input.MaxScrolls,
 	}
 }
 
@@ -589,6 +635,32 @@ func newServer(
 		// 与 BridgeSetText 同理：证据解析失败不应让已成功的聚焦变成错误。
 		_ = json.Unmarshal(raw, &output)
 		return nil, output, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: ToolScrollUntil,
+		Description: "Scroll one direction on an explicitly selected Android device until an " +
+			"interface predicate holds or maxScrolls is reached. Unlike android_action_execute " +
+			"ui.scroll which scrolls once, this repeats until the predicate becomes true. Returns " +
+			"satisfied=false when the predicate never holds within maxScrolls, so the caller can " +
+			"try another path. The predicate is observed by polling between scrolls, not captured " +
+			"as an event.",
+		InputSchema:  scrollUntilSchema(),
+		OutputSchema: predicateOutputSchema(),
+		Annotations:  actionAnnotations(),
+	}, func(
+		ctx context.Context,
+		_ *mcp.CallToolRequest,
+		input scrollUntilInput,
+	) (*mcp.CallToolResult, service.PredicateOutcome, error) {
+		// 滚动改变界面状态，属可产生副作用的动作，走 requireModelActionAllowed 的
+		// 同档判断——但 scroll 本身已在白名单，这里不额外设门，与 android_action_execute
+		// 的 ui.scroll 风险档一致。
+		result, err := automation.ScrollUntil(ctx, input.toRequest())
+		if err != nil {
+			return nil, service.PredicateOutcome{}, err
+		}
+		return nil, result, nil
 	})
 
 	registerFileTransferTools(server, automation)

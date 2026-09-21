@@ -190,20 +190,21 @@ func TestRecordingListCLIUsesSharedServiceWithExplicitDevice(t *testing.T) {
 }
 
 type actionCapturingAutomation struct {
-	actions            []service.ActionRequest
-	recordingLists     []string
-	replays            []service.ReplayRecordingRequest
-	foregrounds        []service.ForegroundRequest
-	appQueries         []service.AppsRequest
-	recordRequests     []service.RecordingRequest
-	predicateRequests  []service.PredicateRequest
-	bridgeTexts        []service.BridgeTextRequest
-	imeShowDevices     []string
-	windowQueries      []string
-	messageQueries     []string
-	screenStates       []string
-	inputMethodQueries []string
-	fileTransfers      []service.FileTransferRequest
+	actions             []service.ActionRequest
+	recordingLists      []string
+	replays             []service.ReplayRecordingRequest
+	foregrounds         []service.ForegroundRequest
+	appQueries          []service.AppsRequest
+	recordRequests      []service.RecordingRequest
+	predicateRequests   []service.PredicateRequest
+	bridgeTexts         []service.BridgeTextRequest
+	imeShowDevices      []string
+	windowQueries       []string
+	messageQueries      []string
+	scrollUntilRequests []service.ScrollUntilRequest
+	screenStates        []string
+	inputMethodQueries  []string
+	fileTransfers       []service.FileTransferRequest
 }
 
 func (a *actionCapturingAutomation) ListDevices(context.Context) (service.DeviceListResult, error) {
@@ -428,4 +429,17 @@ func (a *actionCapturingAutomation) BridgeTransientMessages(
 		fmt.Sprintf("%s|%t", device, toastsOnly),
 	)
 	return json.RawMessage(`{"messages":[],"toastsOnly":false}`), nil
+}
+
+func (a *actionCapturingAutomation) ScrollUntil(
+	_ context.Context,
+	request service.ScrollUntilRequest,
+) (service.PredicateOutcome, error) {
+	a.scrollUntilRequests = append(a.scrollUntilRequests, request)
+	return service.PredicateOutcome{
+		Device:    request.Until.Device,
+		Kind:      request.Until.Kind,
+		Operator:  request.Until.Operator,
+		Satisfied: true,
+	}, nil
 }
