@@ -78,15 +78,17 @@ func (pending *PendingListener) performHandshake(
 			return nil, wrap(CodeConnectionClosed, "handshake deadline could not be set", err)
 		}
 	}
-	stopCloser := make(chan struct{})
-	go func() {
-		select {
-		case <-handshakeContext.Done():
-			_ = connection.Close()
-		case <-stopCloser:
+	// 成功交接前撤销回调，再 cancel 临时握手 context，防止延迟调度误关新会话。
+	stopped := make(chan struct{})
+	stopCloser := context.AfterFunc(handshakeContext, func() {
+		_ = connection.Close()
+		close(stopped)
+	})
+	defer func() {
+		if !stopCloser() {
+			<-stopped
 		}
 	}()
-	defer close(stopCloser)
 
 	reader := bufio.NewReaderSize(connection, maxHandshakeBytes)
 	var hello ClientHello
