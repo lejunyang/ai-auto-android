@@ -28,6 +28,7 @@ README 的 MVP 描述落后于 LAN/视觉等实现，不能据此声称完全没
 | P1 | 握手使用 bufio 预读后丢弃 reader，首个加密 frame 可能随交接丢失 | 交接同一 reader；`handshake_buffer_test.go` 真实 transcript/密钥派生，单次 Write 合并确认与首帧 |
 | P1 | UI hierarchy 所有调用共用 `/data/local/tmp/aactl-window.xml`；dump 失败不清理，可能留下敏感 XML | 每次观察 UUID 路径，dump 前注册有界清理；路径隔离与失败清理回归 |
 | P1 | Actions Android 安装缺少显式许可证参数 | 用发布版 osdk 0.0.6 原样复现错误；CI/release 限定安装构建工具并显式指定许可证，不移除测试 |
+| P2 | 历史 artifact/matrix Windows job 的 19 个安全用例因相对路径分隔符断言失败；开发 Node 20 不满足 test-lab engines >=24 | 断言使用 path.join，仍严格检查只留下 summary；Node pin 对齐 24.19.0 |
 | P2 | Windows POSIX 包没有平台限定；普通安装下载仅设备测试需要的镜像 | released osdk 的 `when` / `lazy`；固定 CI 的 osdk installer+binary 为 v0.0.6，避免漂移 |
 
 原失败日志：[Android job 117460500882](https://github.com/lejunyang/ai-auto-android/actions/runs/39054809364/job/117460500882)。

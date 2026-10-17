@@ -25,7 +25,8 @@
 # 改动请用 osdk 命令而非手工编辑（`with` 参与安装 identity，手改会指向另一个
 # prefix）。
 go = "1.26.5"
-node = "20.11.1"
+# test-lab/* 的 engines 要求 Node >=24，与 CI 的 Node 24 保持一致。
+node = "24.19.0"
 "conda:m2-base" = { version = "2022.6.1", with = "m2-make,m2-diffutils", when = { os = "windows" } }
 java = "21.0.12.1+1"
 
