@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
+	"github.com/lejunyang/ai-auto-android/internal/output"
 	"github.com/lejunyang/ai-auto-android/internal/process"
 )
 
@@ -28,7 +29,6 @@ const (
 	maxTextLength       = 10000
 	maxScreenshotOutput = 32 * 1024 * 1024
 	maxHierarchyOutput  = 8 * 1024 * 1024
-	hierarchyRemotePath = "/data/local/tmp/aactl-window.xml"
 )
 
 var (
@@ -126,23 +126,28 @@ func (c *Client) Screenshot(ctx context.Context, serial string) (Screenshot, err
 	return Screenshot{Bytes: result.Stdout, SHA256: hex.EncodeToString(sum[:])}, nil
 }
 
-// Hierarchy 使用固定远端路径读取 UIAutomator 层级，并始终尝试清理临时文件。
+// Hierarchy 使用每次调用独立的远端路径，并在 dump 失败或取消后也尝试清理。
 func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierarchy, returnErr error) {
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return Hierarchy{}, err
 	}
-	_, err := c.run(ctx, []string{
+	requestID, err := output.RequestID()
+	if err != nil {
+		return Hierarchy{}, apperr.Wrap(apperr.CodeInternal, "Could not allocate a UI hierarchy path.", false, err)
+	}
+	// 仅由固定前缀和随机 UUID 组成，不接受调用方路径；隔离同设备的并发观察。
+	hierarchyRemotePath := "/data/local/tmp/aactl-window-" + requestID + ".xml"
+	defer func() {
+		_, _ = c.run(context.WithoutCancel(ctx), []string{
+			"-s", serial, "shell", "rm", "-f", hierarchyRemotePath,
+		}, process.Options{Timeout: 5 * time.Second})
+	}()
+	_, err = c.run(ctx, []string{
 		"-s", serial, "shell", "uiautomator", "dump", hierarchyRemotePath,
 	}, process.Options{Timeout: 20 * time.Second})
 	if err != nil {
 		return Hierarchy{}, err
 	}
-	defer func() {
-		// 路径和命令均为固定常量，调用方无法向远端 Shell 注入输入。
-		_, _ = c.run(context.WithoutCancel(ctx), []string{
-			"-s", serial, "shell", "rm", "-f", hierarchyRemotePath,
-		}, process.Options{Timeout: 5 * time.Second})
-	}()
 
 	result, err := c.run(ctx, []string{
 		"-s", serial, "exec-out", "cat", hierarchyRemotePath,

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"image"
 	"image/png"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -60,7 +61,7 @@ func TestScreenshotRejectsInvalidOrTruncatedPNG(t *testing.T) {
 	}
 }
 
-func TestHierarchyUsesFixedRemotePathAndCleansUp(t *testing.T) {
+func TestHierarchyUsesIsolatedRemotePathAndCleansUp(t *testing.T) {
 	xmlData := []byte(`<?xml version="1.0"?><hierarchy rotation="0"><node text="Settings"/></hierarchy>`)
 	fake := &fakeADB{
 		results: []process.Result{
@@ -77,6 +78,10 @@ func TestHierarchyUsesFixedRemotePathAndCleansUp(t *testing.T) {
 	}
 	if hierarchy.XML != string(xmlData) || hierarchy.Bytes != len(xmlData) || len(hierarchy.SHA256) != 64 {
 		t.Fatalf("hierarchy = %#v", hierarchy)
+	}
+	hierarchyRemotePath := fake.calls[1][len(fake.calls[1])-1]
+	if !regexp.MustCompile(`^/data/local/tmp/aactl-window-[0-9a-f-]{36}\.xml$`).MatchString(hierarchyRemotePath) {
+		t.Fatalf("unsafe dump path = %q", hierarchyRemotePath)
 	}
 	assertArgs(t, fake.calls[1], "-s", "FIRST", "shell", "uiautomator", "dump", hierarchyRemotePath)
 	assertArgs(t, fake.calls[2], "-s", "FIRST", "exec-out", "cat", hierarchyRemotePath)
@@ -294,4 +299,27 @@ func validPNG(t *testing.T) []byte {
 		t.Fatalf("encode PNG: %v", err)
 	}
 	return output.Bytes()
+}
+
+// 并发客户端也会复用同一设备：不同观察不能覆盖或删除对方的 XML。
+func TestHierarchyAllocatesDifferentPathsAndCleansFailedDump(t *testing.T) {
+	var paths []string
+	for iteration := 0; iteration < 2; iteration++ {
+		fake := &fakeADB{results: []process.Result{
+			{Stdout: []byte(twoOnlineDevices)}, {}, {},
+		}, errors: []error{nil, errors.New("dump failed"), nil}}
+		_, err := NewClient("/fake/adb", fake).Hierarchy(context.Background(), "FIRST")
+		if err == nil {
+			t.Fatal("dump failure reported success")
+		}
+		if len(fake.calls) != 3 {
+			t.Fatalf("failed dump not cleaned: %v", fake.calls)
+		}
+		path := fake.calls[1][len(fake.calls[1])-1]
+		assertArgs(t, fake.calls[2], "-s", "FIRST", "shell", "rm", "-f", path)
+		paths = append(paths, path)
+	}
+	if paths[0] == paths[1] {
+		t.Fatal("independent observations share a remote file")
+	}
 }
