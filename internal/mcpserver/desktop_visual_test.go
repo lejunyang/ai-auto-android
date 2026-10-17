@@ -61,7 +61,7 @@ func TestSharedServerPublishesReadOnlyDesktopVisualTool(t *testing.T) {
 func TestSharedServerVisualCallReturnsSameObservationAndCleansAfterWrite(t *testing.T) {
 	service, screenshotBytes := desktopVisualServiceWithBytes(t)
 	runtime := newDesktopVisualRuntime(service)
-	session := connectVisualClient(t, &fakeAutomation{}, runtime)
+	session, written := connectVisualClientWithWrites(t, &fakeAutomation{}, runtime)
 
 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
 		Name: ToolVisualTargetPropose,
@@ -103,6 +103,7 @@ func TestSharedServerVisualCallReturnsSameObservationAndCleansAfterWrite(t *test
 	if !allVisualZero(screenshotBytes) {
 		t.Fatal("backend screenshot buffer was not cleared")
 	}
+	waitForVisualWrite(t, written)
 	if runtime.pendingCount() != 0 {
 		t.Fatalf("pending visual cleanups = %d", runtime.pendingCount())
 	}
@@ -320,10 +321,22 @@ func connectVisualClient(
 	runtime *desktopVisualRuntime,
 ) *mcp.ClientSession {
 	t.Helper()
+	session, _ := connectVisualClientWithWrites(t, automation, runtime)
+	return session
+}
+
+func connectVisualClientWithWrites(
+	t *testing.T,
+	automation service.Automation,
+	runtime *desktopVisualRuntime,
+) (*mcp.ClientSession, <-chan struct{}) {
+	t.Helper()
 	ctx := context.Background()
 	server := newServer(automation, "test", runtime)
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
-	serverSession, err := server.Connect(ctx, runtime.wrapTransport(serverTransport), nil)
+	written := make(chan struct{}, 1)
+	transport := &completedVisualWriteTransport{Transport: runtime.wrapTransport(serverTransport), written: written}
+	serverSession, err := server.Connect(ctx, transport, nil)
 	if err != nil {
 		t.Fatalf("server.Connect() error = %v", err)
 	}
@@ -341,7 +354,46 @@ func connectVisualClient(
 		_ = serverSession.Close()
 		runtime.close()
 	})
-	return clientSession
+	return clientSession, written
+}
+
+// 客户端收到 response 与服务端 Write 返回之间没有 happens-before；测试显式等写后清理完成。
+type completedVisualWriteTransport struct {
+	mcp.Transport
+	written chan<- struct{}
+}
+
+func (transport *completedVisualWriteTransport) Connect(ctx context.Context) (mcp.Connection, error) {
+	connection, err := transport.Transport.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &completedVisualWriteConnection{Connection: connection, written: transport.written}, nil
+}
+
+type completedVisualWriteConnection struct {
+	mcp.Connection
+	written chan<- struct{}
+}
+
+func (connection *completedVisualWriteConnection) Write(ctx context.Context, message jsonrpc.Message) error {
+	err := connection.Connection.Write(ctx, message)
+	if visualResponseObservationID(message) != "" {
+		select {
+		case connection.written <- struct{}{}:
+		default:
+		}
+	}
+	return err
+}
+
+func waitForVisualWrite(t *testing.T, written <-chan struct{}) {
+	t.Helper()
+	select {
+	case <-written:
+	case <-time.After(time.Second):
+		t.Fatal("server did not finish visual response write and cleanup")
+	}
 }
 
 func errorText(err error) string {
