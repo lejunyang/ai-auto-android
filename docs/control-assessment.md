@@ -33,6 +33,7 @@ README 的 MVP 描述落后于 LAN/视觉等实现，不能据此声称完全没
 | P1 | SessionCoordinator 异步历史写入读取可变 startTimeMs，下一会话可污染时间并使上一会话历史因时间校验失败而丢失 | 排队前捕获开始时间；双虚拟调度器回归稳定复现历史记录缺失，再验证旧会话 1000..1500 时间不受新会话 2000 影响 |
 | P2 | Android CI 的 SessionCoordinatorTest 把活跃 engine mock 为立即返回，后台终态清理与断言竞态 | 改为长期挂起 mock 与虚拟协程调度；保留无终态返回测试，停止超时推进精确 5 秒验证 |
 | P2 | MCP 视觉测试把客户端收包当成服务端写后清理已完成，断言竞态 | test-only transport 发出 Write 返回后的完成事件，原有图片清零和 pending=0 断言保持严格；设备 smoke 共用同步 |
+| P1 | Android loopback Bridge 逐字节 read/设置 timeout，1 MiB 消息在 Actions 上拒绝超时 | 每连接固定 8 KiB 缓冲、只在底层读取时设置剩余 deadline，保留上限/关闭语义并清零缓冲；增加精确预算和流水帧测试 |
 | P2 | Windows POSIX 包没有平台限定；普通安装下载仅设备测试需要的镜像 | 已验证的 `when` / `lazy`；CI 使用官方 `lejunyang/one-sdk@main` Action、`version: latest`；仅项目工具链版本固定 |
 
 原失败日志：[Android job 117460500882](https://github.com/lejunyang/ai-auto-android/actions/runs/39054809364/job/117460500882)。

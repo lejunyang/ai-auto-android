@@ -68,6 +68,43 @@ class NdjsonBridgeServerTest {
     }
 
     @Test
+    fun `accepts a message exactly at the byte budget including newline`() {
+        server.start()
+        Socket("127.0.0.1", server.localPort).use { socket ->
+            socket.soTimeout = 3_000
+            val hello = request("rpc.hello", helloParams()).toByteArray(StandardCharsets.UTF_8)
+            val padding = ByteArray(BridgeLimits.MAX_MESSAGE_BYTES - hello.size - 1) { ' '.code.toByte() }
+            socket.getOutputStream().apply {
+                write(hello)
+                write(padding)
+                write('\n'.code)
+                flush()
+            }
+            assertEquals("1.0", readLine(socket).result()["selectedProtocolVersion"]?.jsonPrimitive?.content)
+        }
+    }
+
+    @Test
+    fun `preserves a following frame prefetched with the first frame`() {
+        server.start()
+        Socket("127.0.0.1", server.localPort).use { socket ->
+            socket.soTimeout = 3_000
+            val hello = request("rpc.hello", helloParams())
+            val unauthenticated = request("device.info", buildJsonObject {})
+            socket.getOutputStream().apply {
+                write((hello + "\n" + unauthenticated + "\n").toByteArray(StandardCharsets.UTF_8))
+                flush()
+            }
+            // 客户端同样复用 reader，不能在两次响应间丢弃自己的预读字节。
+            val reader = socket.getInputStream().bufferedReader(StandardCharsets.UTF_8)
+            val first = Json.parseToJsonElement(reader.readLine()).jsonObject
+            val second = Json.parseToJsonElement(reader.readLine()).jsonObject
+            assertEquals("1.0", first.result()["selectedProtocolVersion"]?.jsonPrimitive?.content)
+            assertEquals("AUTH_REQUIRED", second.errorCode())
+        }
+    }
+
+    @Test
     fun `rejects a valid JSON object without an NDJSON newline`() {
         server.start()
 
