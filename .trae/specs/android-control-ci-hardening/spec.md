@@ -6,7 +6,7 @@
 
 ## 顺序、范围与验收
 
-1. CI：修改 verify/release workflow、osdk.toml、工作流回归测试和 README；仅安装编译所需工具，显式限定 Android SDK 许可证，Windows POSIX 包使用 when，模拟器依赖 lazy。原失败以发布版 osdk 0.0.6 复现；按用户后续要求改用官方 `lejunyang/one-sdk@main` Action + `version: latest`，不再固定 osdk 本体或手写安装器。Action 的 install-tools/install-deps 关闭，后续只安装项目需要的工具；不依赖 one-sdk 草稿 PR。独立提交。
+1. CI：修改 verify/release workflow、osdk.toml、工作流回归测试和 README；仅安装编译所需工具，显式限定 Android SDK 许可证，Windows POSIX 包使用 when，模拟器依赖 lazy。原失败以发布版 osdk 0.0.6 复现；按用户后续要求改用官方 `lejunyang/one-sdk@main` Action + `version: latest`，不再固定 osdk 本体或手写安装器。Action 的 install-tools/install-deps 关闭，后续按 job 安装项目需要的工具，release 的 CLI/校验同时显式安装和注入 Go/Node；不依赖 one-sdk 草稿 PR。独立提交。
 2. LAN：修改 internal/bridge/lan 读取、握手和 session 生命周期；使用 net.Pipe 和内存 fixture 覆盖未换行超长输入、已取消及运行中取消、缓冲 frame 交接，保持 wire format。独立提交。
 3. ADB：internal/adb/direct.go 与回归测试隔离 UI hierarchy 临时文件，dump 失败也清理；不同调用不得覆盖或删除对方产物。独立提交。
 4. 历史 CI：test-lab/artifacts/test/collector.test.mjs 的严格单文件断言使用原生路径分隔符，保留全部防泄漏检查；Node pin 满足现有 engines >=24。验证 artifacts/matrix smoke 与三平台 Actions。新 CI 暴露的 Windows stat.mode 断言拆成 POSIX 专项，Linux/macOS 继续检查 0600，所有平台仍检查原子发布与清理；Windows ACL 未验收。

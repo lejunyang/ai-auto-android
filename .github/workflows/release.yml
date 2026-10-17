@@ -77,9 +77,9 @@ jobs:
         run: osdk --yes trust .
 
       - name: Install the pinned toolchain
-        # 仅安装 Android 构建所需工具；--yes 不代表接受 Android SDK 许可证。
+        # 发布校验和 CLI 构建也需要项目 pin 的 Go/Node；--yes 不代表接受 Android SDK 许可证。
         # 将许可证同意限定到本请求的 android-sdk-license，避免隐式接受其它协议。
-        run: osdk --yes install java android-platforms android-build-tools android-platform-tools -o accept-license=android-sdk-license
+        run: osdk --yes install go node java android-platforms android-build-tools android-platform-tools -o accept-license=android-sdk-license
 
       # gradle 仍由 wrapper 自身的 distributionUrl 加 distributionSha256Sum 锁定；
       # 这里保留 setup-gradle 仅为使用它的依赖缓存。
@@ -98,7 +98,7 @@ jobs:
       - name: Build release bundle
         env:
           VERSION: ${{ steps.release.outputs.version }}
-        run: osdk exec -t java -t android-platforms -t android-build-tools -t android-platform-tools -- make release VERSION="$VERSION"
+        run: osdk exec -t go -t node -t java -t android-platforms -t android-build-tools -t android-platform-tools -- make release VERSION="$VERSION"
 
       - name: Verify release checksums
         run: cd dist && sha256sum -c SHA256SUMS

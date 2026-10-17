@@ -41,8 +41,9 @@ test("需要 JDK 与 Android SDK 的 job 从 osdk.toml 取版本", async () => {
     );
 
     assert.equal(workflow.includes("osdk --yes trust ."), true, name);
+    const buildTools = name === "release.yml" ? "go node java" : "java";
     assert.equal(
-      workflow.includes("osdk --yes install java android-platforms android-build-tools android-platform-tools -o accept-license=android-sdk-license"),
+      workflow.includes(`osdk --yes install ${buildTools} android-platforms android-build-tools android-platform-tools -o accept-license=android-sdk-license`),
       true,
       name,
     );
@@ -67,6 +68,9 @@ test("需要 JDK 与 Android SDK 的 job 从 osdk.toml 取版本", async () => {
     // setup-gradle 仅用于依赖缓存。
     assert.equal(workflow.includes("gradle/actions/setup-gradle"), true, name);
     assert.match(workflow, /osdk\.toml/u, name);
+    if (name === "release.yml") {
+      assert.equal(workflow.includes("osdk exec -t go -t node -t java"), true);
+    }
   }
 });
 
