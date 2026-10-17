@@ -114,7 +114,7 @@ func (session *Session) WriteFrame(
 		_ = session.Close()
 		return fail(CodeCancelled, "LAN operation was cancelled")
 	}
-	stopCancellation := context.AfterFunc(ctx, func() { _ = session.Close() })
+	stopCancellation := session.closeOnCancellation(ctx)
 	defer stopCancellation()
 	if err := setConnectionDeadline(connection, ctx, expiresAt, true); err != nil {
 		_ = session.Close()
@@ -158,7 +158,7 @@ func (session *Session) ReadFrame(ctx context.Context) (string, []byte, error) {
 		_ = session.Close()
 		return "", nil, fail(CodeCancelled, "LAN operation was cancelled")
 	}
-	stopCancellation := context.AfterFunc(ctx, func() { _ = session.Close() })
+	stopCancellation := session.closeOnCancellation(ctx)
 	defer stopCancellation()
 	if err := setConnectionDeadline(connection, ctx, expiresAt, false); err != nil {
 		_ = session.Close()
@@ -284,4 +284,18 @@ func setConnectionDeadline(connection net.Conn, ctx context.Context, expiresAt t
 		return wrap(CodeConnectionClosed, "LAN session deadline could not be set", err)
 	}
 	return nil
+}
+
+// closeOnCancellation 确保返回前取消回调已结束，不能只等 socket 关闭而遗漏密钥清理。
+func (session *Session) closeOnCancellation(ctx context.Context) func() {
+	done := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		_ = session.Close()
+		close(done)
+	})
+	return func() {
+		if !stop() {
+			<-done
+		}
+	}
 }
