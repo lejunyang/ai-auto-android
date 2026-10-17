@@ -41,7 +41,12 @@ test("需要 JDK 与 Android SDK 的 job 从 osdk.toml 取版本", async () => {
     );
 
     assert.equal(workflow.includes("osdk --yes trust ."), true, name);
-    assert.equal(workflow.includes("osdk --yes install"), true, name);
+    assert.equal(
+      workflow.includes("osdk --yes install java android-platforms android-build-tools android-platform-tools -o accept-license=android-sdk-license"),
+      true,
+      name,
+    );
+    assert.equal(workflow.includes("--version v0.0.6"), true, name);
     // 不得再出现第二处版本声明。只看真实的 YAML 步骤，不看注释——注释里正需要
     // 提到这些旧写法来说明为什么弃用。
     const steps = workflow

@@ -30,8 +30,8 @@ jobs:
       # pin，只断言了文件包含对应字符串。
       - name: Install osdk
         run: |
-          curl -fsSL https://raw.githubusercontent.com/lejunyang/one-sdk/main/install.sh \
-            | sh -s -- --no-modify-shell --install-dir "$HOME/.local/bin"
+          curl -fsSL https://raw.githubusercontent.com/lejunyang/one-sdk/v0.0.6/install.sh \
+            | sh -s -- --version v0.0.6 --no-modify-shell --install-dir "$HOME/.local/bin"
           printf '%s\n' "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # `outdated` 会把每个 pin 都对上游索引解析一遍，有任何一个解析不出就以非零码
@@ -176,15 +176,17 @@ jobs:
       # 解决这两个问题。
       - name: Install osdk
         run: |
-          curl -fsSL https://raw.githubusercontent.com/lejunyang/one-sdk/main/install.sh \
-            | sh -s -- --no-modify-shell --install-dir "$HOME/.local/bin"
+          curl -fsSL https://raw.githubusercontent.com/lejunyang/one-sdk/v0.0.6/install.sh \
+            | sh -s -- --version v0.0.6 --no-modify-shell --install-dir "$HOME/.local/bin"
           printf '%s\n' "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Trust the project toolchain pins
         run: osdk --yes trust .
 
       - name: Install the pinned toolchain
-        run: osdk --yes install
+        # 仅安装 Android 构建所需工具；--yes 不代表接受 Android SDK 许可证。
+        # 将许可证同意限定到本请求的 android-sdk-license，避免隐式接受其它协议。
+        run: osdk --yes install java android-platforms android-build-tools android-platform-tools -o accept-license=android-sdk-license
 
       # gradle 刻意不交给 osdk pin：android/gradle/wrapper 用 distributionUrl 加
       # distributionSha256Sum 锁定 9.3.1，该校验和是更强的保障。这里保留 setup-gradle
