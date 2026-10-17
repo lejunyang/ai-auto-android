@@ -18,6 +18,7 @@ import dev.aiauto.android.automation.session.AutomationSessionEngine
 import dev.aiauto.android.automation.session.AutomationSessionState
 import dev.aiauto.android.automation.session.SessionPhase
 import dev.aiauto.android.automation.session.SessionRequest
+import dev.aiauto.android.automation.session.history.HistorySaveResult
 import dev.aiauto.android.automation.session.history.SessionHistoryRecord
 import dev.aiauto.android.automation.session.history.SessionHistoryStore
 import io.mockk.coEvery
@@ -29,6 +30,8 @@ import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
@@ -217,6 +220,43 @@ class SessionCoordinatorTest {
         val diagnostic = coordinator.historyWriteDiagnostic.value
         assertTrue(diagnostic is HistoryWriteDiagnostic.Failed)
         assertEquals("HISTORY_WRITE_FAILED", (diagnostic as HistoryWriteDiagnostic.Failed).errorCode)
+    }
+
+    @Test
+    fun `delayed history retains the previous session start time`() = runTest {
+        val historyScheduler = TestCoroutineScheduler()
+        val delayedHistory = TestScope(StandardTestDispatcher(historyScheduler))
+        var now = 1_000L
+        val saved = mutableListOf<SessionHistoryRecord>()
+        val store = mockk<SessionHistoryStore> {
+            every { save(any()) } answers {
+                val record = firstArg<SessionHistoryRecord>()
+                saved.add(record)
+                HistorySaveResult.Saved(record)
+            }
+        }
+        val coordinator = SessionCoordinator(
+            engineFactory = { engine }, historyStore = store,
+            scope = backgroundScope, historyWriteScope = delayedHistory.backgroundScope,
+            clock = { now }, idProvider = { "previous-session" },
+        )
+        assertTrue(coordinator.start(SessionRequest(task = "第一轮", targetPackage = "com.example")))
+        runCurrent()
+        now = 1_500L
+        engineState.value = AutomationSessionState(phase = SessionPhase.Completed)
+        runCurrent()
+        assertFalse(coordinator.isActive)
+        assertTrue(saved.isEmpty())
+
+        // IO 尚未执行时启动下一会话，历史不得读取下一会话的可变时间字段。
+        now = 2_000L
+        engineState.value = AutomationSessionState()
+        assertTrue(coordinator.start(SessionRequest(task = "第二轮", targetPackage = "com.example")))
+        historyScheduler.runCurrent()
+        assertEquals(1, saved.size)
+        assertEquals(1_000L, saved.single().startTimeMs)
+        assertEquals(1_500L, saved.single().endTimeMs)
+        coordinator.close()
     }
 
     @Test
