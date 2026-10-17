@@ -110,7 +110,13 @@ func (session *Session) WriteFrame(
 	if err != nil {
 		return err
 	}
-	if err := setConnectionDeadline(connection, ctx, expiresAt); err != nil {
+	if ctx.Err() != nil {
+		_ = session.Close()
+		return fail(CodeCancelled, "LAN operation was cancelled")
+	}
+	stopCancellation := context.AfterFunc(ctx, func() { _ = session.Close() })
+	defer stopCancellation()
+	if err := setConnectionDeadline(connection, ctx, expiresAt, true); err != nil {
 		_ = session.Close()
 		return err
 	}
@@ -132,6 +138,9 @@ func (session *Session) WriteFrame(
 	payload = append(payload, '\n')
 	if _, err := connection.Write(payload); err != nil {
 		_ = session.Close()
+		if ctx.Err() != nil {
+			return fail(CodeCancelled, "frame write was cancelled")
+		}
 		return wrap(CodeConnectionClosed, "encrypted frame could not be sent", err)
 	}
 	return nil
@@ -145,15 +154,24 @@ func (session *Session) ReadFrame(ctx context.Context) (string, []byte, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	if err := setConnectionDeadline(connection, ctx, expiresAt); err != nil {
+	if ctx.Err() != nil {
+		_ = session.Close()
+		return "", nil, fail(CodeCancelled, "LAN operation was cancelled")
+	}
+	stopCancellation := context.AfterFunc(ctx, func() { _ = session.Close() })
+	defer stopCancellation()
+	if err := setConnectionDeadline(connection, ctx, expiresAt, false); err != nil {
 		_ = session.Close()
 		return "", nil, err
 	}
-	payload, err := session.reader.ReadBytes('\n')
+	payload, err := readBoundedLANLine(session.reader, MaxFramePlaintextBytes+64*1024)
 	if err != nil {
 		_ = session.Close()
 		if errors.Is(ctx.Err(), context.Canceled) {
 			return "", nil, fail(CodeCancelled, "frame read was cancelled")
+		}
+		if ErrorCode(err) == CodeFrameTooLarge {
+			return "", nil, err
 		}
 		return "", nil, wrap(CodeConnectionClosed, "encrypted peer disconnected", err)
 	}
@@ -244,7 +262,7 @@ func (session *Session) openState() (net.Conn, *Framer, time.Time, error) {
 	return connection, framer, expiresAt, nil
 }
 
-func setConnectionDeadline(connection net.Conn, ctx context.Context, expiresAt time.Time) error {
+func setConnectionDeadline(connection net.Conn, ctx context.Context, expiresAt time.Time, writing bool) error {
 	deadline := expiresAt
 	if contextDeadline, ok := ctx.Deadline(); ok && contextDeadline.Before(deadline) {
 		deadline = contextDeadline
@@ -255,7 +273,14 @@ func setConnectionDeadline(connection net.Conn, ctx context.Context, expiresAt t
 		}
 		return fail(CodeInvitationExpired, "LAN session deadline has expired")
 	}
-	if err := connection.SetDeadline(deadline); err != nil {
+	// 读写方向各自设置截止时间，避免并发发送延长正在读取的请求预算。
+	var err error
+	if writing {
+		err = connection.SetWriteDeadline(deadline)
+	} else {
+		err = connection.SetReadDeadline(deadline)
+	}
+	if err != nil {
 		return wrap(CodeConnectionClosed, "LAN session deadline could not be set", err)
 	}
 	return nil

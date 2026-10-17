@@ -216,7 +216,7 @@ func (pending *PendingListener) performHandshake(
 		clear(transcriptHash[:])
 		return nil, wrap(CodeConnectionClosed, "session deadline could not be reset", err)
 	}
-	return newSession(
+	session := newSession(
 		connection,
 		framer,
 		sessionToken,
@@ -224,7 +224,10 @@ func (pending *PendingListener) performHandshake(
 		selection.SelectedCapabilities,
 		hello.SelectedEndpoint,
 		expiresAt,
-	), nil
+	)
+	// 握手读取器可能预读首个加密 frame；交接同一个缓冲区，避免丢弃合法字节。
+	session.reader = reader
+	return session, nil
 }
 
 func validateConfirmationMessage(
