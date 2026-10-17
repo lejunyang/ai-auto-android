@@ -148,7 +148,10 @@ Trae 项目级镜像位于对应的 `.trae/skills/<skill-name>`；只编辑 `ski
 固定工具链为 Go `1.26.5`、JDK `21`、Android SDK `36`、AGP `9.1.1` 和
 Gradle `9.3.1`。本机 SDK 路径不得提交到仓库。
 
-使用已发布的 osdk `0.0.6`；不依赖未合入的 one-sdk 改动。安装前可用
+使用最新正式版 osdk；CI 通过官方 `lejunyang/one-sdk@main` Action 和
+`version: latest` 安装，不再手写下载器或固定 osdk 程序版本。Go/JDK/Android 等项目
+工具链继续由 `osdk.toml` 固定。Action 只负责 osdk，本项目的工具安装和许可证选项由后续
+显式步骤执行。安装前可用
 `osdk android licenses show android-platforms` 查阅许可证；`--yes` 只处理普通确认，
 不会替代 Android SDK 许可证同意。以下安装命令显式限定为本请求的 `android-sdk-license`：
 

@@ -46,7 +46,14 @@ test("需要 JDK 与 Android SDK 的 job 从 osdk.toml 取版本", async () => {
       true,
       name,
     );
-    assert.equal(workflow.includes("--version v0.0.6"), true, name);
+    const setupCount = [...workflow.matchAll(/uses: lejunyang\/one-sdk@main/gu)].length;
+    assert.equal(setupCount, name === "verify.yml" ? 2 : 1, name);
+    for (const input of ['version: latest', 'install-tools: "false"', 'install-deps: "false"']) {
+      assert.equal(workflow.split(input).length - 1, setupCount, `${name}: ${input}`);
+    }
+    // osdk 本体必须由官方 Action 安装，不能回退为固定版本或手写下载器。
+    assert.equal(/raw\.githubusercontent\.com\/lejunyang\/one-sdk/u.test(workflow), false, name);
+    assert.equal(/--version v[0-9]/u.test(workflow), false, name);
     // 不得再出现第二处版本声明。只看真实的 YAML 步骤，不看注释——注释里正需要
     // 提到这些旧写法来说明为什么弃用。
     const steps = workflow
