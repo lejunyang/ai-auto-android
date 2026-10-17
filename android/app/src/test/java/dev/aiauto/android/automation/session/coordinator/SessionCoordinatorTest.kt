@@ -1,7 +1,7 @@
 package dev.aiauto.android.automation.session.coordinator
 
 /**
- * 功能用途：验证 SessionCoordinator 的单一 owner 语义与修复后的边界。
+ * 功能用途：以虚拟协程调度验证 SessionCoordinator 的单一 owner 语义与生命周期边界。
  *
  * 覆盖：
  * - 单会话约束、非阻塞 start
@@ -27,13 +27,19 @@ import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.advanceTimeBy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
@@ -41,17 +47,17 @@ import java.io.File
 /**
  * 测试用途：验证 SessionCoordinator 的单会话约束、暂停/停止/确认、终态清理、close 生命周期、并发原子性。
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class SessionCoordinatorTest {
 
     private lateinit var engine: AutomationSessionEngine
     private lateinit var engineState: MutableStateFlow<AutomationSessionState>
     private lateinit var historyStore: SessionHistoryStore
-    private lateinit var tempFolder: TemporaryFolder
+    @get:Rule
+    val tempFolder = TemporaryFolder()
 
     @Before
     fun setUp() {
-        tempFolder = TemporaryFolder()
-        tempFolder.create()
         historyStore = SessionHistoryStore(tempFolder.root)
 
         engineState = MutableStateFlow(AutomationSessionState())
@@ -61,38 +67,35 @@ class SessionCoordinatorTest {
             every { resume() } just runs
             every { stop() } just runs
         }
+        // 活跃引擎是长期挂起调用；立即返回只用于专门验证异常退出的用例。
+        coEvery { engine.start(any()) } coAnswers { awaitCancellation() }
     }
 
-    private fun createCoordinator(
+    private fun TestScope.createCoordinator(
         engineFactory: () -> AutomationSessionEngine = { engine },
         clock: () -> Long = { 1000L },
         idProvider: () -> String = { "test-id" },
-        scope: kotlinx.coroutines.CoroutineScope? = null,
-        historyWriteScope: kotlinx.coroutines.CoroutineScope? = null,
     ): SessionCoordinator {
-        val baseScope = scope ?: kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
-        val baseHistoryScope = historyWriteScope ?: kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
         return SessionCoordinator(
             engineFactory = engineFactory,
             historyStore = historyStore,
-            scope = baseScope,
+            scope = backgroundScope,
             clock = clock,
             idProvider = idProvider,
-            historyWriteScope = baseHistoryScope,
+            historyWriteScope = backgroundScope,
         )
     }
 
     @Test
-    fun `initial state is idle and not active`() {
+    fun `initial state is idle and not active`() = runTest {
         val coordinator = createCoordinator()
         assertFalse(coordinator.isActive)
         assertTrue(coordinator.coordinatorState.value is CoordinatorState.Idle)
     }
 
     @Test
-    fun `start is non-blocking and returns true`() {
+    fun `start is non-blocking and returns true`() = runTest {
         val coordinator = createCoordinator()
-        coEvery { engine.start(any()) } just runs
 
         // start 应立即返回，不等待 engine.start 完成。
         val result = coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
@@ -101,9 +104,8 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `single session constraint rejects second start`() {
+    fun `single session constraint rejects second start`() = runTest {
         val coordinator = createCoordinator()
-        coEvery { engine.start(any()) } just runs
 
         val first = coordinator.start(SessionRequest(task = "第一个", targetPackage = "com.example"))
         assertTrue(first)
@@ -113,28 +115,29 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `after terminal state coordinator returns to idle and second session can start`() = runBlocking {
+    fun `after terminal state coordinator returns to idle and second session can start`() = runTest {
         val coordinator = createCoordinator()
-        coEvery { engine.start(any()) } just runs
 
         coordinator.start(SessionRequest(task = "第一个", targetPackage = "com.example"))
         assertTrue(coordinator.isActive)
 
-        // 模拟终态。
+        runCurrent()
+        // 收集器已经订阅后再发终态，确定性验证状态驱动的清理路径。
         engineState.value = AutomationSessionState(phase = SessionPhase.Completed)
-        kotlinx.coroutines.delay(200)
+        runCurrent()
 
         // 终态后应清理，回到 Idle。
         assertFalse(coordinator.isActive)
         assertTrue(coordinator.coordinatorState.value is CoordinatorState.Idle)
 
-        // 第二会话应可启动。
+        // 第二会话使用新的初始状态，不能继承前一会话的终态。
+        engineState.value = AutomationSessionState()
         val second = coordinator.start(SessionRequest(task = "第二个", targetPackage = "com.example"))
         assertTrue(second)
     }
 
     @Test
-    fun `engineFactory failure returns false and does not become active`() {
+    fun `engineFactory failure returns false and does not become active`() = runTest {
         val coordinator = createCoordinator(engineFactory = { throw RuntimeException("create failed") })
 
         val result = coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
@@ -143,9 +146,8 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `pause calls engine pause when active`() {
+    fun `pause calls engine pause when active`() = runTest {
         val coordinator = createCoordinator()
-        coEvery { engine.start(any()) } just runs
         coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
 
         coordinator.pause()
@@ -153,9 +155,8 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `stop calls engine stop when active`() {
+    fun `stop calls engine stop when active`() = runTest {
         val coordinator = createCoordinator()
-        coEvery { engine.start(any()) } just runs
         coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
 
         coordinator.stop()
@@ -163,18 +164,16 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `pause when idle does nothing`() {
+    fun `pause when idle does nothing`() = runTest {
         val coordinator = createCoordinator()
         coordinator.pause()
         verify(exactly = 0) { engine.pause() }
     }
 
     @Test
-    fun `process recovery when active stops engine and marks recovered stopped`() = runBlocking {
-        // 用 runBlocking 自身 scope：后台 job 在单线程事件循环里，不与断言真实并发；
-        // handleProcessRecovery 的 cancel/join 保证设终态前后台 job 已完全终止。
-        val coordinator = createCoordinator(scope = this)
-        coEvery { engine.start(any()) } just runs
+    fun `process recovery when active stops engine and marks recovered stopped`() = runTest {
+        // 同一虚拟调度器保证 cancel/join 与恢复状态的顺序可验证。
+        val coordinator = createCoordinator()
         coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
         assertTrue(coordinator.isActive)
 
@@ -187,7 +186,7 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `process recovery when idle does nothing and stays idle`() = runBlocking {
+    fun `process recovery when idle does nothing and stays idle`() = runTest {
         val coordinator = createCoordinator()
         assertFalse(coordinator.isActive)
 
@@ -199,7 +198,7 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `history write diagnostic is exposed on failure`() = runBlocking {
+    fun `history write diagnostic is exposed on failure`() = runTest {
         // 使用一个会抛出异常的 historyStore。
         val failingStore = mockk<SessionHistoryStore> {
             every { save(any()) } throws RuntimeException("disk full")
@@ -207,12 +206,13 @@ class SessionCoordinatorTest {
         val coordinator = SessionCoordinator(
             engineFactory = { engine },
             historyStore = failingStore,
+            scope = backgroundScope,
+            historyWriteScope = backgroundScope,
         )
-        coEvery { engine.start(any()) } just runs
 
         coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
         engineState.value = AutomationSessionState(phase = SessionPhase.Completed)
-        kotlinx.coroutines.delay(300)
+        runCurrent()
 
         val diagnostic = coordinator.historyWriteDiagnostic.value
         assertTrue(diagnostic is HistoryWriteDiagnostic.Failed)
@@ -220,9 +220,8 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `coordinator state active does not expose engine`() {
+    fun `coordinator state active does not expose engine`() = runTest {
         val coordinator = createCoordinator()
-        coEvery { engine.start(any()) } just runs
         coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
 
         val state = coordinator.coordinatorState.value
@@ -232,9 +231,8 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `concurrent start only one accepted`() = runBlocking {
+    fun `concurrent start only one accepted`() = runTest {
         val coordinator = createCoordinator()
-        coEvery { engine.start(any()) } just runs
 
         // 两个并发 start 请求，只有一个应被接受。
         val result1 = coordinator.start(SessionRequest(task = "任务1", targetPackage = "com.example"))
@@ -246,16 +244,16 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `engine start returns without terminal state triggers cleanup`() = runBlocking {
-        val coordinator = createCoordinator(scope = this)
-        // engine.start 正常返回（just runs），但不发任何终态。
+    fun `engine start returns without terminal state triggers cleanup`() = runTest {
+        val coordinator = createCoordinator()
+        // 此用例有意让 engine.start 正常返回，但不发任何终态。
         coEvery { engine.start(any()) } just runs
 
         coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
         assertTrue(coordinator.isActive)
 
         // 等待 sessionJob 完成（engine.start 已返回），coordinator 应自动清理。
-        kotlinx.coroutines.delay(500)
+        runCurrent()
 
         // engine.start 正常返回但无终态，应视为 Stopped 并清理。
         assertFalse("无终态返回后应自动清理", coordinator.isActive)
@@ -263,9 +261,8 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `stop without terminal state forces cleanup after timeout`() = runBlocking {
-        val coordinator = createCoordinator(scope = this)
-        coEvery { engine.start(any()) } just runs
+    fun `stop without terminal state forces cleanup after timeout`() = runTest {
+        val coordinator = createCoordinator()
         // engine.stop 被调用，但 engine 不发 Stopped 终态。
 
         coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
@@ -275,17 +272,21 @@ class SessionCoordinatorTest {
         // stop 后立即仍 Active（等待终态或超时）。
         assertTrue(coordinator.isActive)
 
-        // 等待超过 stopTimeoutMs（5秒），应强制清理。
-        // 测试中使用较短的实际等待，验证超时机制存在。
-        kotlinx.coroutines.delay(1000)
-        // 注意：实际超时为 5 秒，这里只验证 stop 被调用且状态机制正常。
-        verify { engine.stop() }
+        // 在截止前必须仍 Active，精确达到 5 秒后必须清理，不能用一次短等待冒充验收。
+        runCurrent()
+        advanceTimeBy(4_999)
+        runCurrent()
+        assertTrue(coordinator.isActive)
+        advanceTimeBy(1)
+        runCurrent()
+        assertFalse(coordinator.isActive)
+        assertTrue(coordinator.coordinatorState.value is CoordinatorState.Idle)
+        verify(exactly = 1) { engine.stop() }
     }
 
     @Test
-    fun `close cancels scope and cleans up`() {
+    fun `close cancels scope and cleans up`() = runTest {
         val coordinator = createCoordinator()
-        coEvery { engine.start(any()) } just runs
 
         coordinator.start(SessionRequest(task = "测试", targetPackage = "com.example"))
         assertTrue(coordinator.isActive)

@@ -10,6 +10,7 @@
 2. LAN：修改 internal/bridge/lan 读取、握手和 session 生命周期；使用 net.Pipe 和内存 fixture 覆盖未换行超长输入、已取消及运行中取消、缓冲 frame 交接，保持 wire format。独立提交。
 3. ADB：internal/adb/direct.go 与回归测试隔离 UI hierarchy 临时文件，dump 失败也清理；不同调用不得覆盖或删除对方产物。独立提交。
 4. 历史 CI：test-lab/artifacts/test/collector.test.mjs 的严格单文件断言使用原生路径分隔符，保留全部防泄漏检查；Node pin 满足现有 engines >=24。验证 artifacts/matrix smoke 与三平台 Actions。新 CI 暴露的 Windows stat.mode 断言拆成 POSIX 专项，Linux/macOS 继续检查 0600，所有平台仍检查原子发布与清理；Windows ACL 未验收。
-5. 评估：docs 记录能力矩阵、安全边界、共享契约建议、远程 SSH stdio 配置与未验证平台。执行 make test/verify/build/comments、Node portability、Go race、Android 单测/构建/lint；推送独立分支及 draft PR 并监控 CI。
+5. Android CI：SessionCoordinatorTest 的活跃 engine mock 改为长期挂起，并使用同一虚拟调度器推进状态/历史/恢复；实际推进 5 秒验证停止超时，保留无终态返回的独立测试。修复前 Actions 出现状态/stop 竞态；定向单测、全量单测/assemble/lint 验收。
+6. 评估：docs 记录能力矩阵、安全边界、共享契约建议、远程 SSH stdio 配置与未验证平台。执行 make test/verify/build/comments、Node portability、Go race、Android 单测/构建/lint；推送独立分支及 draft PR 并监控 CI。
 
 本轮不并行派发代码修改。失败时保留测试证据，回滚限定提交即可；隔离工具链缓存位于仓库外 /workspace/android-tools。真实 ADB、USB/Wi-Fi、无障碍授权和跨设备 LAN 未执行。
