@@ -84,6 +84,31 @@ App 建立所需信任，再让 MCP 使用已协商的类型化能力。录制�
 `android_observe` 的 `kind=recordings` 读取；兼容保留的
 `android_recording_replay` 始终返回 `CONFIRMATION_REQUIRED` 且不执行回放。
 
+### 远程主机上的设备
+
+已有受信任 SSH 主机时，可让 MCP 通过 SSH stdio 启动该主机上的 `aactl`。
+ADB、Bridge forward 和会话文件均留在设备所在主机，客户端不需要开放 ADB 或 Bridge
+网络端口。先在该主机完成设备授权与 `bridge open`；首次 SSH host key 验证也由操作员完成。
+
+```json
+{
+  "mcpServers": {
+    "android-remote": {
+      "command": "ssh",
+      "args": ["-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+        "control-host", "/opt/ai-auto-android/aactl", "mcp", "serve"]
+    }
+  }
+}
+```
+
+`control-host` 是用户已有的 SSH 配置别名，路径替换为远端实际路径；远端会话使用同一
+操作系统账户。stdout 必须只输出 MCP，远端 shell 启动脚本不要打印欢迎文本。此配置复用
+现有 stdio 协议，尚未做真实 SSH/设备端到端验收。内置 LAN 目前仍为邀请、认证和只读
+探针入口，未接入 CLI/MCP 持续控制；详见[控制能力评估](docs/control-assessment.md)。
+不要把 `ADB_SERVER_SOCKET` 指向远端作为 Bridge 远控方案：当前 Bridge 客户端始终连接
+本机 `127.0.0.1` 的 forward 端口，doctor 也检查本机 5037。
+
 ## Agent Skills
 
 三个发布源可分别安装到兼容 Agent Skills 的客户端：
@@ -122,6 +147,25 @@ Trae 项目级镜像位于对应的 `.trae/skills/<skill-name>`；只编辑 `ski
 
 固定工具链为 Go `1.26.5`、JDK `21`、Android SDK `36`、AGP `9.1.1` 和
 Gradle `9.3.1`。本机 SDK 路径不得提交到仓库。
+
+使用最新正式版 osdk；CI 通过官方 `lejunyang/one-sdk@main` Action 和
+`version: latest` 安装，不再手写下载器或固定 osdk 程序版本。Go/JDK/Android 等项目
+工具链继续由 `osdk.toml` 固定。Action 只负责 osdk，本项目的工具安装和许可证选项由后续
+显式步骤执行。安装前可用
+`osdk android licenses show android-platforms` 查阅许可证；`--yes` 只处理普通确认，
+不会替代 Android SDK 许可证同意。以下安装命令显式限定为本请求的 `android-sdk-license`：
+
+```bash
+osdk --yes trust .
+osdk --yes install go node java android-platforms android-build-tools android-platform-tools -o accept-license=android-sdk-license
+osdk exec -t go -t node -- make test verify build
+make android-verify
+```
+
+Windows 的 `conda:m2-base` 用 `when` 限定平台；Windows 开发者另执行 `osdk --yes install`，
+在激活 osdk 的 shell 中使用 Makefile。模拟器和镜像设为 lazy，只有设备测试需要时才运行
+`osdk --yes install android-emulator android-system-images -o accept-license=android-sdk-license`。
+系统安装工具链时仍可直接使用原有入口：
 
 ```bash
 make test

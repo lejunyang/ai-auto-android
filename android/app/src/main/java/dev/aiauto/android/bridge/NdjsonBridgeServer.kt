@@ -149,66 +149,69 @@ class NdjsonBridgeServer(
         socket.tcpNoDelay = true
         socket.soTimeout = BridgeLimits.DEFAULT_DEADLINE_MS
         val connection = BridgeConnectionState()
-        while (running.get() && !socket.isClosed) {
-            val message = try {
-                readBoundedLine(socket)
-            } catch (_: SocketTimeoutException) {
-                writeLine(
-                    socket,
-                    dispatcher.genericFailure(
-                        BridgeException(
-                            code = BridgeErrorCode.DEADLINE_EXCEEDED,
-                            message = "The NDJSON frame exceeded its read deadline.",
-                            retryable = true,
-                        ),
-                    ),
-                )
-                return
-            } catch (_: Exception) {
-                return
-            }
-            when (message) {
-                BoundedLine.End -> return
-                BoundedLine.Oversized -> {
+        // 缓冲区属于连接而非单帧，保留同一次网络读取中预读的后续消息。
+        BufferedSocketInput(socket).use { input ->
+            while (running.get() && !socket.isClosed) {
+                val message = try {
+                    readBoundedLine(input)
+                } catch (_: SocketTimeoutException) {
                     writeLine(
                         socket,
                         dispatcher.genericFailure(
                             BridgeException(
-                                code = BridgeErrorCode.MESSAGE_TOO_LARGE,
-                                message = "The NDJSON message exceeds the 1048576 byte limit.",
+                                code = BridgeErrorCode.DEADLINE_EXCEEDED,
+                                message = "The NDJSON frame exceeded its read deadline.",
+                                retryable = true,
                             ),
                         ),
                     )
                     return
-                }
-
-                BoundedLine.MalformedUtf8 -> {
-                    writeLine(
-                        socket,
-                        dispatcher.genericFailure(
-                            BridgeException(
-                                code = BridgeErrorCode.PROTOCOL_ERROR,
-                                message = "The NDJSON message is not valid UTF-8.",
-                            ),
-                        ),
-                    )
+                } catch (_: Exception) {
                     return
                 }
-
-                BoundedLine.Truncated -> {
-                    writeLine(
-                        socket,
-                        dispatcher.genericFailure(
-                            BridgeException(
-                                code = BridgeErrorCode.PROTOCOL_ERROR,
-                                message = "The NDJSON message must end with a newline.",
+                when (message) {
+                    BoundedLine.End -> return
+                    BoundedLine.Oversized -> {
+                        writeLine(
+                            socket,
+                            dispatcher.genericFailure(
+                                BridgeException(
+                                    code = BridgeErrorCode.MESSAGE_TOO_LARGE,
+                                    message = "The NDJSON message exceeds the 1048576 byte limit.",
+                                ),
                             ),
-                        ),
-                    )
-                    return
-                }
+                        )
+                        return
+                    }
 
-                is BoundedLine.Value -> dispatch(socket, message.text, connection)
+                    BoundedLine.MalformedUtf8 -> {
+                        writeLine(
+                            socket,
+                            dispatcher.genericFailure(
+                                BridgeException(
+                                    code = BridgeErrorCode.PROTOCOL_ERROR,
+                                    message = "The NDJSON message is not valid UTF-8.",
+                                ),
+                            ),
+                        )
+                        return
+                    }
+
+                    BoundedLine.Truncated -> {
+                        writeLine(
+                            socket,
+                            dispatcher.genericFailure(
+                                BridgeException(
+                                    code = BridgeErrorCode.PROTOCOL_ERROR,
+                                    message = "The NDJSON message must end with a newline.",
+                                ),
+                            ),
+                        )
+                        return
+                    }
+
+                    is BoundedLine.Value -> dispatch(socket, message.text, connection)
+                }
             }
         }
     }
@@ -278,21 +281,16 @@ class NdjsonBridgeServer(
         }
     }
 
-    private fun readBoundedLine(socket: Socket): BoundedLine {
-        val input = socket.getInputStream()
+    private fun readBoundedLine(input: BufferedSocketInput): BoundedLine {
         val output = ByteArrayOutputStream()
         var byteCount = 0
         val expiresAt = System.nanoTime() +
             TimeUnit.MILLISECONDS.toNanos(BridgeLimits.DEFAULT_DEADLINE_MS.toLong())
         while (true) {
-            val remainingMillis = TimeUnit.NANOSECONDS
-                .toMillis(expiresAt - System.nanoTime())
-                .coerceAtLeast(1)
             if (System.nanoTime() >= expiresAt) {
                 throw SocketTimeoutException("NDJSON frame deadline exceeded")
             }
-            socket.soTimeout = remainingMillis.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-            val next = input.read()
+            val next = input.read(expiresAt)
             if (next < 0) {
                 if (byteCount == 0) {
                     return BoundedLine.End
@@ -308,6 +306,34 @@ class NdjsonBridgeServer(
                 return decodeLine(output.toByteArray())
             }
             output.write(next)
+        }
+    }
+
+    /** 每连接复用固定缓冲；避免每个字节都触发 read/setsockopt 系统调用。 */
+    private class BufferedSocketInput(private val socket: Socket) : java.io.Closeable {
+        private val input = socket.getInputStream()
+        private val buffer = ByteArray(8 * 1024)
+        private var offset = 0
+        private var size = 0
+
+        fun read(expiresAt: Long): Int {
+            if (offset == size) {
+                val remainingNanos = expiresAt - System.nanoTime()
+                if (remainingNanos <= 0) throw SocketTimeoutException("NDJSON frame deadline exceeded")
+                socket.soTimeout = TimeUnit.NANOSECONDS.toMillis(remainingNanos)
+                    .coerceIn(1, Int.MAX_VALUE.toLong()).toInt()
+                size = input.read(buffer)
+                offset = 0
+                if (size <= 0) return -1
+            }
+            return buffer[offset++].toInt() and 0xff
+        }
+
+        override fun close() {
+            // 缓冲可含类型化动作文本，连接退出后清零；socket 仍由连接 owner 关闭。
+            buffer.fill(0)
+            offset = 0
+            size = 0
         }
     }
 

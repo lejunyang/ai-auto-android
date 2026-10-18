@@ -1,4 +1,4 @@
-# 配置用途：声明并固定本项目在 Windows 上的 osdk 工具链版本，统一提供 Go、Node 与
+# 配置用途：声明并固定本项目的跨平台 osdk 工具链版本，统一提供 Go、Node 与
 # POSIX 构建环境，确保 Makefile 与 scripts/*.sh 可跨平台执行。
 
 [tools]
@@ -25,10 +25,12 @@
 # 改动请用 osdk 命令而非手工编辑（`with` 参与安装 identity，手改会指向另一个
 # prefix）。
 go = "1.26.5"
-node = "20.11.1"
-"conda:m2-base" = { version = "2022.6.1", with = "m2-make,m2-diffutils" }
+# test-lab/* 的 engines 要求 Node >=24，与 CI 的 Node 24 保持一致。
+node = "24.19.0"
+"conda:m2-base" = { version = "2022.6.1", with = "m2-make,m2-diffutils", when = { os = "windows" } }
 java = "21.0.12.1+1"
 
+# m2-base 仅适用于 Windows；普通编译不下载 Emulator 和 system image，设备矩阵按需显式安装。
 # Android 工具链。这些原先挂在 osdk 全局配置上，现改为项目级固定，避免换机或
 # 全局升级后本项目静默换到另一套 SDK。
 #
@@ -56,8 +58,8 @@ android-platforms = "=android-36"
 android-build-tools = "36.0.0"
 android-platform-tools = "37.0.1"
 android-cmdline-tools = "latest"
-android-emulator = "37.1.11"
-android-system-images = "android-35;google_apis;x86_64"
+android-emulator = { version = "37.1.11", lazy = true }
+android-system-images = { version = "android-35;google_apis;x86_64", lazy = true }
 
 [settings.shims.tools."conda:m2-base"]
 # m2-base 是元包，自身不「拥有」prefix 里那 257 个命令，所以默认一个 shim 都不生成

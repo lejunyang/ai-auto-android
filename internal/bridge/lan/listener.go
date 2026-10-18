@@ -10,7 +10,6 @@ import (
 	"io"
 	"net"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -288,8 +287,11 @@ func listenerPort(address net.Addr) (int, error) {
 }
 
 func readHandshakeMessage(reader *bufio.Reader, destination any) error {
-	payload, err := reader.ReadBytes('\n')
+	payload, err := readBoundedLANLine(reader, maxHandshakeBytes)
 	if err != nil {
+		if ErrorCode(err) == CodeFrameTooLarge {
+			return err
+		}
 		return wrap(CodeConnectionClosed, "handshake peer disconnected", err)
 	}
 	if len(payload) > maxHandshakeBytes {
@@ -325,7 +327,13 @@ func writeHandshakeMessage(connection net.Conn, value any) error {
 }
 
 func bytesTrimLine(payload []byte) []byte {
-	return []byte(strings.TrimSuffix(strings.TrimSuffix(string(payload), "\n"), "\r"))
+	if len(payload) > 0 && payload[len(payload)-1] == '\n' {
+		payload = payload[:len(payload)-1]
+	}
+	if len(payload) > 0 && payload[len(payload)-1] == '\r' {
+		payload = payload[:len(payload)-1]
+	}
+	return payload
 }
 
 func cloneInvitation(source Invitation) Invitation {
@@ -335,4 +343,29 @@ func cloneInvitation(source Invitation) Invitation {
 		source.Listener.AddressCandidates...,
 	)
 	return source
+}
+
+// readBoundedLANLine 在等待换行期间就执行预算，不能先 ReadBytes 再检查长度。
+func readBoundedLANLine(reader *bufio.Reader, limit int) ([]byte, error) {
+	payload := make([]byte, 0, min(limit, 4096))
+	for {
+		fragment, err := reader.ReadSlice('\n')
+		if len(fragment) > limit-len(payload) {
+			clear(payload)
+			return nil, fail(CodeFrameTooLarge, "LAN message exceeds the transport limit")
+		}
+		payload = append(payload, fragment...)
+		if err == nil {
+			return payload, nil
+		}
+		if !errors.Is(err, bufio.ErrBufferFull) {
+			clear(payload)
+			return nil, err
+		}
+		// 缓冲区刚好耗尽预算且仍未换行时，下一字节必然越界。
+		if len(payload) == limit {
+			clear(payload)
+			return nil, fail(CodeFrameTooLarge, "LAN message exceeds the transport limit")
+		}
+	}
 }

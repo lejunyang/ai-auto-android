@@ -31,7 +31,7 @@ func TestDesktopVisualProductionMCPDeviceSmoke(t *testing.T) {
 	runtime := newDesktopVisualRuntime(
 		visual.NewDesktopProposalService(client, visual.DesktopOptions{}),
 	)
-	session := connectVisualClient(t, service.New(client, nil), runtime)
+	session, written := connectVisualClientWithWrites(t, service.New(client, nil), runtime)
 
 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
 		Name: ToolVisualTargetPropose,
@@ -73,6 +73,7 @@ func TestDesktopVisualProductionMCPDeviceSmoke(t *testing.T) {
 	if !ok || image.MIMEType != "image/png" || len(image.Data) == 0 {
 		t.Fatalf("image content = %#v", result.Content[0])
 	}
+	waitForVisualWrite(t, written)
 	if runtime.pendingCount() != 0 {
 		t.Fatalf("pending visual cleanups = %d", runtime.pendingCount())
 	}

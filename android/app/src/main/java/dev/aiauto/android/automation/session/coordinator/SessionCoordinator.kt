@@ -311,6 +311,8 @@ class SessionCoordinator(
 
         historyWritten = true
         val endTimeMs = clock()
+        // 在 IO 排队前捕获本次会话元数据；下一会话可能已经重写可变 startTimeMs。
+        val sessionStartTimeMs = startTimeMs
 
         historyWriteScope.launch {
             val result = runCatching {
@@ -327,7 +329,7 @@ class SessionCoordinator(
                     completionSummary = null,
                     failureMessage = null,
                     stepCount = state.step,
-                    startTimeMs = startTimeMs,
+                    startTimeMs = sessionStartTimeMs,
                     endTimeMs = endTimeMs,
                 )
                 historyStore?.save(record)

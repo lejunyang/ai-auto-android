@@ -74,7 +74,7 @@ const assertStableBlockedSummary = async (artifactRoot, result, errorCode) => {
   const files = await collectFiles(artifactRoot);
   assert.deepEqual(
     files.map((file) => path.relative(artifactRoot, file)),
-    ["blocked/summary.json"],
+    [path.join("blocked", "summary.json")],
   );
   assert.deepEqual(
     JSON.parse(await readFile(files[0], "utf8")),

@@ -78,15 +78,17 @@ func (pending *PendingListener) performHandshake(
 			return nil, wrap(CodeConnectionClosed, "handshake deadline could not be set", err)
 		}
 	}
-	stopCloser := make(chan struct{})
-	go func() {
-		select {
-		case <-handshakeContext.Done():
-			_ = connection.Close()
-		case <-stopCloser:
+	// 成功交接前撤销回调，再 cancel 临时握手 context，防止延迟调度误关新会话。
+	stopped := make(chan struct{})
+	stopCloser := context.AfterFunc(handshakeContext, func() {
+		_ = connection.Close()
+		close(stopped)
+	})
+	defer func() {
+		if !stopCloser() {
+			<-stopped
 		}
 	}()
-	defer close(stopCloser)
 
 	reader := bufio.NewReaderSize(connection, maxHandshakeBytes)
 	var hello ClientHello
@@ -216,7 +218,7 @@ func (pending *PendingListener) performHandshake(
 		clear(transcriptHash[:])
 		return nil, wrap(CodeConnectionClosed, "session deadline could not be reset", err)
 	}
-	return newSession(
+	session := newSession(
 		connection,
 		framer,
 		sessionToken,
@@ -224,7 +226,10 @@ func (pending *PendingListener) performHandshake(
 		selection.SelectedCapabilities,
 		hello.SelectedEndpoint,
 		expiresAt,
-	), nil
+	)
+	// 握手读取器可能预读首个加密 frame；交接同一个缓冲区，避免丢弃合法字节。
+	session.reader = reader
+	return session, nil
 }
 
 func validateConfirmationMessage(

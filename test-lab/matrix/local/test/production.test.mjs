@@ -614,12 +614,11 @@ test("scenario 和 residue 拒绝未由本 session lifecycle 产生的任意 ser
   );
 });
 
-test("报告原子发布为 0600 且写入失败删除临时文件并保留旧报告", async () => {
+test("报告原子发布且写入失败删除临时文件并保留旧报告", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "n52-production-"));
   const destination = path.join(directory, "report.json");
   await writeProductionReport(destination, report());
   assert.deepEqual(JSON.parse(await readFile(destination, "utf8")), report());
-  assert.equal((await stat(destination)).mode & 0o777, 0o600);
   assert.deepEqual(await readdir(directory), ["report.json"]);
 
   const old = "{\"old\":true}\n";
@@ -636,6 +635,15 @@ test("报告原子发布为 0600 且写入失败删除临时文件并保留旧�
   );
   assert.equal(await readFile(destination, "utf8"), old);
   assert.deepEqual(await readdir(directory), ["report.json"]);
+});
+
+// Windows 的 Node stat.mode 不表达 DACL；POSIX 权限测试仍在 Linux/macOS 强制执行。
+// 原子替换、失败清理和旧报告保护的测试在三个平台全部运行。
+test("POSIX 报告仅允许当前用户读写", { skip: process.platform === "win32" }, async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "n52-production-mode-"));
+  const destination = path.join(directory, "report.json");
+  await writeProductionReport(destination, report());
+  assert.equal((await stat(destination)).mode & 0o777, 0o600);
 });
 
 test("固定 CLI 使用注入 runMatrix 跑唯一 300 轮计划并在报告后关闭 factory", async () => {

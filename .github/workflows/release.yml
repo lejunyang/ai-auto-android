@@ -65,17 +65,21 @@ jobs:
 
       # 发布产物必须由仓库 pin 的那批版本构建，所以 JDK 与 Android SDK 取自 osdk.toml，
       # 而不是在这里再声明第二份版本。理由同 verify.yml 中的对应步骤。
-      - name: Install osdk
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/lejunyang/one-sdk/main/install.sh \
-            | sh -s -- --no-modify-shell --install-dir "$HOME/.local/bin"
-          printf '%s\n' "$HOME/.local/bin" >> "$GITHUB_PATH"
+      # 官方 Action 使用最新 osdk；项目工具与许可证仍由后续显式步骤处理。
+      - name: Set up latest osdk
+        uses: lejunyang/one-sdk@main
+        with:
+          version: latest
+          install-tools: "false"
+          install-deps: "false"
 
       - name: Trust the project toolchain pins
         run: osdk --yes trust .
 
       - name: Install the pinned toolchain
-        run: osdk --yes install
+        # 发布校验和 CLI 构建也需要项目 pin 的 Go/Node；--yes 不代表接受 Android SDK 许可证。
+        # 将许可证同意限定到本请求的 android-sdk-license，避免隐式接受其它协议。
+        run: osdk --yes install go node java android-platforms android-build-tools android-platform-tools -o accept-license=android-sdk-license
 
       # gradle 仍由 wrapper 自身的 distributionUrl 加 distributionSha256Sum 锁定；
       # 这里保留 setup-gradle 仅为使用它的依赖缓存。
@@ -94,7 +98,7 @@ jobs:
       - name: Build release bundle
         env:
           VERSION: ${{ steps.release.outputs.version }}
-        run: osdk exec -t java -t android-platforms -t android-build-tools -t android-platform-tools -- make release VERSION="$VERSION"
+        run: osdk exec -t go -t node -t java -t android-platforms -t android-build-tools -t android-platform-tools -- make release VERSION="$VERSION"
 
       - name: Verify release checksums
         run: cd dist && sha256sum -c SHA256SUMS
