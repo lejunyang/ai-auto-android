@@ -1,6 +1,6 @@
 # 虚拟显示的 MCP 出口与焦点隔离任务
 
-M1 → M2 → M3 → M4 → M5 串行，同一 worktree、同一分支，单一执行者。规格状态文件只由
+M1 → M2 → M3 → M3b → M4 → M5 串行，同一 worktree、同一分支，单一执行者。规格状态文件只由
 当前任务的执行者修改。
 
 ## M1：明确指向主屏（显示编号 0）
@@ -34,12 +34,12 @@ M1 → M2 → M3 → M4 → M5 串行，同一 worktree、同一分支，单一�
 - [x] 记录未缓解时的逐步结果
 - [x] 尝试缓解并重新测量；有效则实现并补测试，无效则如实记录
 - [x] API34+固定标志RED/GREEN及两组独立测量通过（Round4/5）
-- [ ] 原验收脚本在新标志下完整通过（Round6失败，未到息屏/PIN）
+- [ ] 原验收脚本在新标志下完整通过（Round9首轮息屏后层级读取失败，未到65秒/PIN）
 - [ ] M3阶段验收通过
 - [x] 提交：`test(emulator): measure primary-display focus under virtual display input`
       （若有缓解实现，另加 `feat(displayd): ...`）
 
-当前停在原验收脚本ASCII/BACK段回归失败（progress.md Round6）；基线和两组测量已完成。M3未验收，M4/M5未开始。
+当前停在M3b首轮回归的息屏后层级读取失败（progress.md Round9）；BACK因果链、空屏错误及重新启动恢复已验证，完整回归0/3。M3/M3b未验收，M4/M5未开始。
 
 ## M4：MCP 端到端验收与文档
 
@@ -60,7 +60,9 @@ M1 → M2 → M3 → M4 → M5 串行，同一 worktree、同一分支，单一�
 - b9d9e2b：M2 实现与验证通过。
 - 0acf58b：M3首次基线准备失败记录，历史状态见Round3。
 - 41c4e7c：M3固定标志实现与API/SECURE边界测试。
-- 本轮M3测量提交：`test(emulator): measure primary-display focus under virtual display input`；两组实测完成，原脚本回归失败，整体未验收。
+- 5ac8c79：M3两组实测完成，原脚本回归失败，整体未验收。
+- 7676beb：M3b空屏错误、CLI/MCP映射、RED/GREEN与BACK因果链记录。
+- M3b脚本保存提交：`test(emulator): adapt virtual display acceptance to IME-less displays`；首轮息屏后层级读取失败，整体未验收。
 - M4、M5未开始。
 
 ## M5：接收文档清理移交（依赖 M4 验收通过）
@@ -91,10 +93,10 @@ M1 → M2 → M3 → M4 → M5 串行，同一 worktree、同一分支，单一�
 
 - [x] 两种构建独立复现点按输入框→BACK，记录IME、Activity与窗口分组
 - [x] RED/GREEN：DISPLAY_EMPTY与DISPLAY_NOT_FOUND分离，CLI/MCP映射与无回退测试
-- [ ] 修订按键到达检查，明确BACK退出根Activity、空屏错误与重新启动恢复
+- [x] 修订按键到达检查，明确BACK退出根Activity、空屏错误与重新启动恢复
 - [ ] 其余隔离/息屏65秒/PIN往返与重建判据保持，冷启动连续3次完整通过
 - [x] 提交：`fix(adb): report an empty display distinctly from a missing one`
-- [ ] 提交：`test(emulator): adapt virtual display acceptance to IME-less displays`
+- [x] 提交：`test(emulator): adapt virtual display acceptance to IME-less displays`（部分成果保存，非阶段验收通过）
 
 验收证据：两种BACK逐步表、定向/全量测试、三个独立冷启动报告与设备指纹。
 失败清理：停止helper、清转发和设备临时文件、清测试PIN并恢复超时、关闭模拟器；仅清理本轮忽略产物。

@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { deflateSync } from "node:zlib";
 import { pngStats } from "./virtual-display-png.mjs";
-import { requireTestSerial, primaryTopActivity } from "./verify-virtual-display.mjs";
+import { requireTestSerial, primaryTopActivity, topActivityOnDisplay, assertEmptyOwnedDisplay } from "./verify-virtual-display.mjs";
 
 function pngFixture(value) {
   // CLI 已校验 PNG CRC；此处只测试像素判据，构造两行 RGBA 扫描线。
@@ -30,4 +30,19 @@ test("primary activity is selected by display ID rather than focus or dump order
   const primary = "Display #0 (activities from top to bottom):\n      topResumedActivity=ActivityRecord{1ee1678 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t13}\n";
   for (const dump of [virtual + primary, primary + virtual]) assert.equal(primaryTopActivity(dump), "com.google.android.apps.nexuslauncher/.NexusLauncherActivity");
   assert.throws(() => primaryTopActivity(virtual));
+});
+
+test("empty virtual display never borrows primary or global activity", () => {
+  const dump = "Display #0 (activities from top to bottom):\n topResumedActivity=ActivityRecord{a u0 primary.app/.Main t1}\nDisplay #2 (activities from top to bottom):\n mLastResumedActivity=ActivityRecord{a u0 primary.app/.Main t1}\n";
+  assert.equal(topActivityOnDisplay(dump, 2), null);
+  assert.equal(topActivityOnDisplay(dump, 0), "primary.app/.Main");
+  assert.equal(topActivityOnDisplay(dump, 3), null);
+});
+test("empty acceptance requires dedicated code, ownership and no foreground", () => {
+  const empty = { ok: false, error: { code: "DISPLAY_EMPTY" } };
+  assert.doesNotThrow(() => assertEmptyOwnedDisplay(empty, true, null));
+  assert.throws(() => assertEmptyOwnedDisplay({ ok: false, error: { code: "DISPLAY_NOT_FOUND" } }, true, null));
+  assert.throws(() => assertEmptyOwnedDisplay(empty, false, null));
+  assert.throws(() => assertEmptyOwnedDisplay(empty, true, "fixture/.MainActivity"));
+  assert.throws(() => assertEmptyOwnedDisplay({ ok: true }, true, null));
 });

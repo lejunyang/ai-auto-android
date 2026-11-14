@@ -459,3 +459,72 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
   主屏隔离、65秒无输入等待、非黑帧、DEVICE_LOCKED/PIN清除/DISPLAY_ASLEEP/重建原判据不变。
   6个脚本本地测试通过，包括“不归属/错错误码/仍有前台不能算空屏”的否定用例。
   本节不把正在运行的冷启动轮次计为成功，M4尚未开始。
+
+## Round 9：M3b修订脚本首轮息屏后层级失败，停止验收（2026-11-14）
+
+- 空屏语义已单独提交7676beb：internal/adb解析与测试、apperr新增码、service边界注释、
+  CLI/MCP真实service路径测试、docs/virtual-display.md错误表及本规格状态，共10个文件。
+  DISPLAY_EMPTY的CLI/MCP映射已通过本地测试；本轮没有增加MCP工具或参数，没有改变风险门。
+- 修订原验收脚本：ASCII后用DELETE严格验证INPUT:E2EAsci；输入框仍focused时另发BACK，
+  必须同时得到DISPLAY_EMPTY、display list仍归属且该显示无topResumedActivity；然后同屏
+  重新启动必须恢复PAGE:MAIN。明确恢复原CLICK:1前提，后面的息屏点击仍要求CLICK:2。
+  原文件从screen_off_timeout写入到无效编号测试之前的3557字符（归一化换行）逐字未改，
+  隔离、息屏65秒、非黑帧、凭据锁/PIN清除、DISPLAY_ASLEEP与重建判据均未削弱。
+- m3b-seriesA-1，UTC08:56:18.130→08:57:49.415，transport39；独立冷启动、唯一
+  emulator-5554，osdk-test-35、API35、x86_64、320×640/160dpi、en-US、导航模式2，
+  虚拟屏720×1280/240dpi。设备指纹仍为
+  google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+  helper SHA-256 747be5ca0be6f62f2127c2a63ff55d38ae17b4c4ccc13205072867a1f4204478，
+  fixture SHA-256 1e88acf7a0b88f00df212648ca93c3487b37d0cb50e19b92569b80aa8462f6f8，
+  新CLI SHA-256 3454c35cce1d44fca53d9ff3aa1b1c03b01a82f492e15b72fec0c5e73108292d。
+
+| 本轮步骤 | 结果与证据 |
+| --- | --- |
+| 创建/列出/启动 | 通过；display2、PAGE:MAIN，主屏仍NexusLauncher |
+| 点按隔离/帧 | CLICK:1、帧改变，720×1280非黑；主屏前台不变 |
+| ASCII/非退出按键 | E2EAscii后DELETE精确得到INPUT:E2EAsci |
+| 输入框focused时BACK | 根页退出、activity=null、owned=true、DISPLAY_EMPTY；主屏前台不变 |
+| 同屏重新启动 | PAGE:MAIN及CLICK:1恢复，主屏前台不变 |
+| 滑动 | VERTICAL_OFFSET正数；2-inputs完成于73460ms |
+| 主屏息屏 | screen-state.on=false；随后目标帧成功，921600/921600像素非黑 |
+| 息屏后的动作前层级 | ACTION_FAILED: Invalid or truncated UIAutomator display-window XML. |
+| 息屏点按/65秒/PIN/重建 | 未执行；失败发生在tapNode动作前的hierarchy读取 |
+
+- **完整回归失败，成功0/3**。seriesA-2/3未启动；按任务书在M3b停止，不重试、不更换
+  判据、不放宽XML校验，也不把取帧成功外推为息屏保活/PIN往返通过。M3/M3b均未整体验收，
+  M4真实MCP stdio冷启动仍未执行（0次），M5没有进入逐条核实、修订或Skills镜像同步。
+  P01–P15均保持“已只读接收，待本分支代码核实”；未核实条目没有勾选或冒充已处理。
+- 失败原因尚未定位：错误表明层级被严格解析器拒绝，不能断言系统实际输出必然损坏或
+  截断。ADB临时dump已按原defer清理，没有保留这次失败的原始XML；failure-hierarchy.xml
+  是上一份成功层级的脱敏缓存，不能代表失败现场。failure-fixture.png是息屏后最近一帧，
+  已离线核对720×1280、非黑比例1并目视为本地fixture；它只证明取帧成功。
+- 失败产物总102421字节：PNG80650、脱敏缓存XML16435、日志时间窗0、报告5336，均在
+  1MiB预算内。对照构建/因果报告摘要已存Round7。记录后只清理本轮back-cause与
+  m3b-seriesA-1两个忽略目录，不保留对照DEX jar、classes、截图或诊断探针。
+- finally无cleanupError：恢复screen_off_timeout=2147483647，停止helper、清理固定
+  辅助文件并确认forward为空，然后emu kill。尚未设置测试PIN，不将“清PIN”记作已执行。
+  宿主随后确认adb devices为空、emulator/qemu进程列表[]；未改AVD/system image/osdk配置。
+
+### 本轮本地验证与提交边界
+
+- make comments退出0：594个手写文件、16个检查器自测。
+- make test退出0：Go316个顶层Test定义（含原默认跳过的显式设备冒烟；定义数不是子用例
+  执行数），全部包测试及vet通过，linux/darwin/windows交叉vet通过；协议56项、Skills3份
+  及镜像检查通过。定向go test ./internal/adb ./internal/cli ./internal/mcpserver -run Empty
+  -count=1通过，覆盖主屏0、归属屏7、不归属9、空组、坏尾与无回退。
+- make verify、make build退出0。node --check通过；node --test scripts/emulator/focus.test.mjs
+  scripts/emulator/virtual-display.test.mjs共10项通过（焦点4、回归脚本6），覆盖空屏不得
+  借主屏/全局活动，以及错误码、归属、前台三条件缺一不可。
+- make android-verify退出0，BUILD SUCCESSFUL（复核9秒、199任务）；testDebugUnitTest、
+  assembleDebug、lintDebug通过，612项、0failure/error、1既有跳过：app564、fixture8、
+  web-fixture6、displayd34。未修改任何android/displayd生产/测试跟踪文件。
+- 脚本及其测试、本规格状态保存为test(emulator): adapt virtual display acceptance to
+  IME-less displays；这是失败停止时的部分成果提交，不表示冷启动三次通过。三道既有
+  风险门文件完全未改；未修改上一规格状态、移交worktree或docs/next-phase-tasks.md。
+- 待集成方汇合的后续项：定位息屏后dump --windows被拒的原始输出形态/解析原因，并补齐
+  有界失败现场证据后重跑完整三冷启动；fixture的API35 edge-to-edge遮挡另立规格修复；
+  回归通过后才能执行M4/M5及P01–P15。继续保留API33未缓解、API34/真机/OEM/硬件键盘未验、
+  虚拟屏IME/中文不支持，以及BACK直接作用于应用、根页会退出的边界。
+- 收尾确认：两个本轮产物目录均先核对绝对路径在当前worktree内、无reparse point、无跟踪
+  文件且匹配Git忽略规则，再以LiteralPath非强制递归删除，Test-Path均false。未删除其它
+  轮次或用户文件。git diff --check通过，main仍f861a61、未push，保留本worktree供集成。

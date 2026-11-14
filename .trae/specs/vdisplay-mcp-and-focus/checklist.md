@@ -33,8 +33,17 @@
 - [x] 缓解手段的重新测量结果已记录，或记录了无法缓解的依据
 - [x] 停止后无残留进程、虚拟屏、转发与临时文件
 
-- [ ] 原verify-virtual-display.mjs在新标志下完整通过（Round6失败）
+- [ ] 原verify-virtual-display.mjs在新标志下完整通过（Round9首轮息屏后层级读取失败）
 - [ ] M3整体验收通过；M4/M5才可开始
+
+## M3b证据
+
+- [x] 旧标志第一次BACK收IME且保留Activity，第二次BACK退出；新标志第一次BACK即退出
+- [x] 已归属空屏与不归属显示分别返回DISPLAY_EMPTY与DISPLAY_NOT_FOUND，CLI/MCP路径有测试
+- [x] DELETE到达输入框，BACK后归属仍在、无前台Activity、专用错误，重新启动恢复正常
+- [x] 息屏65秒与PIN检查段逐字保持，未放宽XML校验
+- [ ] 修订后回归冷启动连续3次完整通过（当前首轮失败，0/3）
+- [ ] M3b阶段验收通过
 
 ## 验证
 

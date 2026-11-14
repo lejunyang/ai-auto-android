@@ -30,6 +30,19 @@ export function primaryTopActivity(dump) {
   return match[1];
 }
 
+/** 空显示可能不列出活动分段；按指定编号返回前台，不能借用主屏或全局尾部。 */
+export function topActivityOnDisplay(dump, displayId) {
+  const sections = dump.split(/^Display #/m).filter(part => part.startsWith(`${displayId} (activities from top to bottom):`));
+  ensure(sections.length <= 1, "Duplicate activity display section");
+  return sections.length ? /topResumedActivity=ActivityRecord\{\S+\s+u\d+\s+(\S+)\s+t\d+/.exec(sections[0])?.[1] ?? null : null;
+}
+
+/** 专用错误、显示归属与无前台三项必须同时成立，不能把不归属或观察失败当作空屏成功。 */
+export function assertEmptyOwnedDisplay(result, owned, activity) {
+  ensure(!result.ok && result.error?.code === "DISPLAY_EMPTY" && owned && activity === null,
+    "Expected an owned empty display after BACK, without primary fallback");
+}
+
 function options(argv) {
   const result = {};
   for (let i = 0; i < argv.length; i += 2) {
@@ -147,12 +160,31 @@ async function main() {
     ensure(fixtureNode(tapNode(id, "text_input", 0.85), "text_input").includes('focused="true"'), "Input field itself is not focused");
     event("action", { package: fixturePackage, action: "ui.setText", displayId: id, expected: "INPUT:E2EAscii" });
     cli(["action", "text", "--display", String(id), "--text", "E2EAscii"]); ensure(hierarchy(id).includes("E2EAscii"), "ASCII text did not reach fixture");
-    cli(["action", "key", "--display", String(id), "--key", "BACK"]); ensure(hierarchy(id).includes('text="INPUT:E2EAscii"'), "Text/key postcondition failed");
+    event("action", { package: fixturePackage, action: "ui.pressKey", key: "DELETE", displayId: id, expected: "INPUT:E2EAsci" });
+    cli(["action", "key", "--display", String(id), "--key", "DELETE"]); ensure(hierarchy(id).includes('text="INPUT:E2EAsci"'), "Text/key postcondition failed");
+    // 无虚拟屏IME时BACK直接作用于根Activity；单独验证退出与空屏，再显式重建测试前提。
+    ensure(fixtureNode(hierarchy(id), "text_input").includes('focused="true"'), "Input lost focus before BACK");
+    event("action", { package: fixturePackage, action: "ui.pressKey", key: "BACK", displayId: id, expected: "root Activity exits, display remains owned and empty" });
+    cli(["action", "key", "--display", String(id), "--key", "BACK"]);
+    const empty = cliEnvelope(["observe", "hierarchy", "--display", String(id)]);
+    const owned = cli(["display", "list"]).displays.some(d => d.displayId === id);
+    const afterBackActivity = topActivityOnDisplay(shell("dumpsys", "activity", "activities"), id);
+    assertEmptyOwnedDisplay(empty, owned, afterBackActivity);
+    ensure(mainActivity() === mainBefore, "Primary activity changed after virtual BACK");
+    event("2-back-empty", { displayId: id, code: empty.error.code, owned, activity: afterBackActivity });
+    event("action", { package: fixturePackage, action: "app.launch", displayId: id, expected: "PAGE:MAIN restored on same display" });
+    cli(["action", "launch", "--display", String(id), "--package", fixturePackage, "--activity", ".MainActivity"]);
+    const relaunched = hierarchy(id); ensure(relaunched.includes('text="PAGE:MAIN"'), "Fixture did not recover after empty display");
+    // 根页面退出后不承诺进程内状态仍在；若进程被回收，明确建立原CLICK:1前提，后续仍严格验CLICK:2。
+    if (relaunched.includes('text="CLICK:0"')) ensure(tapNode(id, "click_target").includes('text="CLICK:1"'), "Could not restore click precondition");
+    else ensure(relaunched.includes('text="CLICK:1"'), "Unexpected click state after relaunch");
+    ensure(mainActivity() === mainBefore, "Primary activity changed after virtual relaunch");
+    event("2-back-relaunch", { displayId: id, restored: true, clickPrecondition: 1 });
     const list = nodeBounds(hierarchy(id), "vertical_scroll_target");
     event("action", { package: fixturePackage, action: "ui.swipe", displayId: id, expected: "positive VERTICAL_OFFSET", condition: "fresh list bounds and post-action hierarchy" });
     cli(["action", "swipe", "--display", String(id), "--x1", String(list.x), "--y1", String(Math.floor(list.y2 - (list.y2 - list.y1) / 5)), "--x2", String(list.x), "--y2", String(Math.floor(list.y1 + (list.y2 - list.y1) / 5)), "--duration", "400"]);
     ensure(/text="VERTICAL_OFFSET:[1-9]\d*"/.test(hierarchy(id)), "Swipe did not change list offset");
-    event("2-inputs", { text: "ASCII fixture verified", key: "BACK", swipe: "positive vertical offset" });
+    event("2-inputs", { text: "ASCII fixture verified", key: "DELETE", back: "DISPLAY_EMPTY + relaunch", swipe: "positive vertical offset" });
     shell("settings", "put", "system", "screen_off_timeout", "15000");
     ensure(shell("settings", "get", "system", "screen_off_timeout") === "15000", "Timeout write failed");
     cli(["action", "sleep"]); await pause(1000); ensure(cli(["observe", "screen-state"]).on === false, "Primary display did not sleep");
