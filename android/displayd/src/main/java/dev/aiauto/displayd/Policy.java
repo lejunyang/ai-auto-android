@@ -20,10 +20,11 @@ final class Policy {
     }
     static int flags(int api) throws Protocol.Failure {
         if (api < 33) throw new Protocol.Failure("UNSUPPORTED_API", "requires API 33+");
-        // 固定排除 SECURE(1<<2)；独立焦点和设备显示组仅在 API 34+ 存在。
+        // 固定排除 SECURE(1<<2)；API34+禁止虚拟屏抢占顶层焦点，保护主屏IME客户端归属。
+        // API33没有STEAL_TOP_FOCUS_DISABLED，保留原值并在文档中声明未缓解。
         int base = 1 | (1 << 1) | (1 << 3) | (1 << 6) | (1 << 7) | (1 << 8)
                 | (1 << 10) | (1 << 11) | (1 << 12) | (1 << 13);
-        return api >= 34 ? base | (1 << 14) | (1 << 15) : base;
+        return api >= 34 ? base | (1 << 14) | (1 << 15) | (1 << 16) : base;
     }
     static boolean shouldKeepAwake(boolean credentialLocked, int count) {
         return !credentialLocked && count > 0;

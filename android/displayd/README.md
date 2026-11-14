@@ -123,8 +123,12 @@ API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`�
 | `FRAMEWORK_ERROR` | 固定框架接口或隐藏 API 调用失败，详情仅在设备日志 |
 | `SHUTTING_DOWN` | 并发请求遇到已停止的后端 |
 
-虚拟屏标志固定为 API 33 的 `15819`、API 34+ 的 `64971`，包含独立显示组、免锁屏、
-销毁内容与触摸等策略，API 34+ 才启用独立焦点与设备显示组；不含 `SECURE`，安全窗口
+虚拟屏标志固定为 API 33 的 `15819`、API 34+ 的 `130507`，包含独立显示组、免锁屏、
+销毁内容与触摸等策略。API 34+ 启用独立焦点、设备显示组，并追加
+`VIRTUAL_DISPLAY_FLAG_STEAL_TOP_FOCUS_DISABLED`（`1 << 16`），禁止抢占主屏顶层焦点；
+这些标志不能由调用方传入。API 33 保持原值，没有该项缓解。输入法不服务带此标志的
+虚拟屏，文本只能使用按键注入支持的受限 ASCII，不能据此承诺中文或其它 IME 输入。
+不含 `SECURE`，安全窗口
 仍由系统遮黑。每 2 秒在虚拟屏 displayId 所属组上报 `userActivity`，不调用 `wakeUp`。
 每次上报前检查当前前台用户的 `isDeviceSecure && isDeviceLocked`，凭据锁定时不调用
 电源接口。取帧在编码前后各检查一次凭据锁、显示有效性、显示组唤醒状态与显示状态；

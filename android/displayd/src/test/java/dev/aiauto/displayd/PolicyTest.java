@@ -72,7 +72,13 @@ public class PolicyTest {
         rejects("UNSUPPORTED_API", () -> Policy.flags(32));
     }
     @Test public void fixedFlagsRespectApiAndSecureBoundary() throws Exception {
-        assertEquals(15819, Policy.flags(33)); assertEquals(64971, Policy.flags(34));
-        assertEquals(64971, Policy.flags(35)); assertEquals(0, Policy.flags(35) & 4);
+        // 禁止抢占顶层焦点只在API34+可用；API33不伪装缓解，所有版本继续排除安全内容。
+        assertEquals(15819, Policy.flags(33));
+        for (int api : new int[]{34, 35, 36}) {
+            assertEquals(130507, Policy.flags(api));
+            assertEquals(1 << 16, Policy.flags(api) & (1 << 16));
+        }
+        assertEquals(0, Policy.flags(33) & (1 << 16));
+        for (int api : new int[]{33, 34, 35, 36}) assertEquals(0, Policy.flags(api) & (1 << 2));
     }
 }
