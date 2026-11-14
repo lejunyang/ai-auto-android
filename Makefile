@@ -3,6 +3,7 @@ SHELL := /bin/sh
 GO ?= go
 VERSION ?= dev
 DIST_DIR ?= dist
+BUNDLES ?= full,slim
 ANDROID_GRADLEW ?= ./android/gradlew
 ANDROID_GRADLE_FLAGS ?= --no-daemon
 
@@ -35,7 +36,7 @@ endif
 
 
 .PHONY: verify doctor fake-adb-smoke protocol-smoke protocol-test skills-sync skills-smoke skills-check comments
-.PHONY: go-fmt go-test go-vet go-cross-vet test build android-test android-lint android-build android-verify release
+.PHONY: go-fmt go-test go-vet go-cross-vet test build android-test android-lint android-build android-verify release release-test
 
 verify: fake-adb-smoke protocol-smoke skills-smoke comments
 	@./scripts/verify-toolchains.sh --metadata-only
@@ -79,6 +80,10 @@ go-cross-vet:
 
 test: protocol-test skills-check go-fmt go-test go-vet go-cross-vet
 
+# 发布测试仅使用本地伪归档和注入下载器；也随 go-test 纳入全量验证。
+release-test:
+	@$(GO) test ./scripts/releasebundles -count=1
+
 # 产物名按平台带扩展名。Windows 下若把 -o 指向已存在的同名无扩展名文件，go build 会以
 # 「build output already exists and is not an object file」失败，使该目标首次成功、
 # 第二次必失败；区分 aactl / aactl.exe 是让 build 可重复执行的前提。
@@ -110,7 +115,7 @@ android-verify:
 		testDebugUnitTest assembleDebug lintDebug
 
 release: verify
-	@VERSION="$(VERSION)" DIST_DIR="$(DIST_DIR)" GO="$(GO)" ANDROID_GRADLEW="$(ANDROID_GRADLEW)" \
+	@VERSION="$(VERSION)" DIST_DIR="$(DIST_DIR)" BUNDLES="$(BUNDLES)" GO="$(GO)" ANDROID_GRADLEW="$(ANDROID_GRADLEW_LAUNCHER)" \
 		./scripts/release.sh
 
 # 测试用途：独立验证虚拟显示验收脚本的设备守卫、主屏归属和黑帧判据，不启动设备。
