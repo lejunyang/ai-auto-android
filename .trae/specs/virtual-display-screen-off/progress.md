@@ -95,3 +95,35 @@
   build/smoke 内本轮临时 PNG、客户端、DEX 检查副本与日志，保留忽略的构建 APK。
   变更仅为 displayd 模块、settings 注册和本规格 T1 状态；无 APK、截图、缓存、密钥或
   构建产物加入提交，不修改 main，不 push。T1 完成后停止。
+
+## Round 1 复核：集成方独立验证（2026-11-14）
+
+- 复核对象 `b6fd7d0`。提交范围只含 `android/displayd/`、`android/settings.gradle.kts`
+  与本规格状态文件，无二进制；主工作区 `main` 未变，未 push。
+- 独立重跑：`make comments` 通过（571 个手写文件）；`:displayd:testDebugUnitTest
+  assembleDebug lintDebug` BUILD SUCCESSFUL，JUnit XML 为 29 项 0 失败 0 跳过。
+- 独立设备复测：AVD `osdk-test-35`、`-read-only -no-snapshot`、唯一设备
+  `emulator-5554`、同一指纹。客户端是集成方另写的一次性 Node 脚本，未复用 T1 的
+  冒烟脚本。进程属主为 `shell`，握手、建屏、取帧（78827 字节）成立；主屏 0 取帧
+  返回 `DISPLAY_NOT_FOUND`，越界尺寸返回 `INVALID_ARGUMENT`，未知方法返回
+  `UNKNOWN_METHOD`，多余字段返回 `INVALID_REQUEST`。
+- 提前验证了属于 T4 的两个场景（不据此勾选，T4 仍须按脚本复现）：
+  - `screen_off_timeout=15000`、主屏 `KEYCODE_SLEEP` 后等待 45 秒：显示组 0 为
+    Dozing、显示组 1 为 Awake，`status.groupAwake=true`；对虚拟屏点按后层级变化，
+    取帧 73182 字节非黑。保活成立。
+  - 设置测试 PIN 并息屏：`display.capture` 返回 `DEVICE_LOCKED`，
+    `status.credentialLocked=true`。约 6 秒后虚拟屏显示组转为 Dozing。测试 PIN 已清除。
+- **发现缺陷（必须在 T2 之前修复）**：清除 PIN 并解除锁屏后，
+  `credentialLocked=false`、`lastActivityUptimeMs` 恢复递增，但虚拟屏显示组保持
+  Dozing（`groupAwake=false`），此时 `display.capture` 返回 `ok:true` 和一张
+  6358 字节的全黑帧。也就是说，只要虚拟屏显示组因任何原因休眠，取帧就会静默给出
+  黑图，且 `userActivity` 上报无法把已休眠的组唤醒。这与规格「返回明确错误而不是
+  黑图」的要求不符。
+- 另记两处需在后续任务处理的风险：
+  - 抽象套接字名固定，设备上的任意应用可以抢先绑定同名套接字并伪造响应；电脑侧
+    经 `adb forward` 无法校验对端身份。Go 侧必须先确认名为 `aactl-displayd`、属主
+    为 `shell` 的进程存在且由本次或已知启动产生，再信任该套接字。
+  - `Main.accept()` 在拒绝连接时 `client.close()` 若抛出 `IOException` 会落入外层
+    处理并使整个辅助进程退出。
+- 清理：`shutdown` 返回 `stopped:true`，`pidof` 无输出，无残留虚拟屏与转发，设备
+  临时文件已删，模拟器已关闭。
