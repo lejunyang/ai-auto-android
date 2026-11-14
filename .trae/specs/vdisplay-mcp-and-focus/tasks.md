@@ -1,6 +1,6 @@
 # 虚拟显示的 MCP 出口与焦点隔离任务
 
-M1 → M2 → M3 → M4 串行，同一 worktree、同一分支，单一执行者。规格状态文件只由
+M1 → M2 → M3 → M4 → M5 串行，同一 worktree、同一分支，单一执行者。规格状态文件只由
 当前任务的执行者修改。
 
 ## M1：明确指向主屏（显示编号 0）
@@ -30,13 +30,16 @@ M1 → M2 → M3 → M4 串行，同一 worktree、同一分支，单一执行�
 
 目录所有权：`scripts/emulator/`（新增）、`android/displayd/`（仅缓解需要时）。
 
-- [ ] 实测脚本：构造主屏输入状态，逐步在虚拟屏操作并记录主屏状态
-- [ ] 记录未缓解时的逐步结果
-- [ ] 尝试缓解并重新测量；有效则实现并补测试，无效则如实记录
-- [ ] 提交：`test(emulator): measure primary-display focus under virtual display input`
+- [x] 实测脚本：构造主屏输入状态，逐步在虚拟屏操作并记录主屏状态
+- [x] 记录未缓解时的逐步结果
+- [x] 尝试缓解并重新测量；有效则实现并补测试，无效则如实记录
+- [x] API34+固定标志RED/GREEN及两组独立测量通过（Round4/5）
+- [ ] 原验收脚本在新标志下完整通过（Round6失败，未到息屏/PIN）
+- [ ] M3阶段验收通过
+- [x] 提交：`test(emulator): measure primary-display focus under virtual display input`
       （若有缓解实现，另加 `feat(displayd): ...`）
 
-当前停在主屏输入基线未建立（progress.md Round 3）。本阶段未验收；仅保存失败准备脚本与证据记录，以下M4未开始。
+当前停在原验收脚本ASCII/BACK段回归失败（progress.md Round6）；基线和两组测量已完成。M3未验收，M4/M5未开始。
 
 ## M4：MCP 端到端验收与文档
 
@@ -55,5 +58,26 @@ M1 → M2 → M3 → M4 串行，同一 worktree、同一分支，单一执行�
 - 6361df3：规格初始提交。
 - 2862aa3：M1 实现与验证通过。
 - b9d9e2b：M2 实现与验证通过。
-- M3 未完成：仅提交 `test(emulator): record blocked primary-display focus setup` 保存准备失败，不计作阶段验收。
-- M4 未开始。
+- 0acf58b：M3首次基线准备失败记录，历史状态见Round3。
+- 41c4e7c：M3固定标志实现与API/SECURE边界测试。
+- 本轮M3测量提交：`test(emulator): measure primary-display focus under virtual display input`；两组实测完成，原脚本回归失败，整体未验收。
+- M4、M5未开始。
+
+## M5：接收文档清理移交（依赖 M4 验收通过）
+
+目标：逐条核实并处理 docs-stale-audit 移交的 P01–P15，所有能力描述以本分支当前代码为准。
+目录所有权：README.md、docs/architecture.md、docs/protocol.md、skills/ 下两份 references/commands.md
+及项目同步工具生成的 .trae/skills/ 对应镜像；不修改移交 worktree。
+执行波次：M3 → M4 → M5 单人串行；无并行子任务，导航与规格状态仍由本执行者统一汇合。
+
+- [ ] 只读移交 progress.md，对 P01–P15 各自核对本分支代码与现有测试；核实不了的标注未核实
+- [ ] 修正权限、截图授权例外、MCP工具/观察/动作与Bridge方法能力清单，保留未验收边界
+- [ ] 修正两份commands.md并用项目既有命令同步镜像，运行make skills-check
+- [ ] progress.md逐条记录处理结果、代码证据与未覆盖项
+- [ ] make comments、make test、make verify、make build、make android-verify
+- [ ] 提交：`docs: reconcile README, architecture, protocol and skills with current capabilities`
+
+验收证据：逐条P01–P15表、实际工具/Schema清单、一致性检查与全量命令结果。
+提交边界：仅上述文档/镜像与本规格状态，不混入M3/M4实现。
+失败回滚/清理：保留未验项与核实记录，停止M5；只撤销明确属于本阶段且未验收的编辑，
+不覆盖用户或其它任务改动。无设备操作；不修改路线图文件，后续项只登记本规格progress.md。

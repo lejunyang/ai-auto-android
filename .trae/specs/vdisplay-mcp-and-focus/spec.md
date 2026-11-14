@@ -123,3 +123,10 @@
 ## 回滚与清理
 
 全部是增量入口。验收失败时停止辅助进程、移除转发、删除设备临时文件、关闭模拟器。
+
+## 增补收尾范围（2026-11-14，用户恢复任务）
+
+按用户恢复任务增加 M5：M4通过后，逐条核实 docs-stale-audit 的 P01–P15；仅修改本规格
+已有文档所有权中的 README.md、docs/architecture.md、docs/protocol.md 和两份
+skills references/commands.md。允许通过项目同步工具同步 .trae/skills/ 中对应镜像。
+移交分支/worktree仅只读；其它规格和docs文件仍禁止修改，结果逐条追加到本规格进度。

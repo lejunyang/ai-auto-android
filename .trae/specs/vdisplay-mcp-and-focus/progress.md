@@ -260,3 +260,119 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
 - 未验证：API 34（标志自该版本起存在，未上机）、真机与 OEM、硬件键盘、虚拟屏上
   需要输入法才能完成的输入（中文等，带该标志后输入法不会服务虚拟屏）。
 - 清理：探针已停止，设备临时文件与转发已清，模拟器已关闭。
+
+
+## Round 4：恢复M3，独立未缓解测量（2026-11-14）
+
+- 开工HEAD=d70eacb，status干净；重读规格修订、集成方实测和移交P01–P15。单人串行，未派发Sub-Agent，移交worktree仅只读。按用户增量新增M5计划和镜像同步范围，尚未开始M4/M5实施。
+- 主屏改为系统设置搜索S（com.google.android.settings.intelligence/.modules.search.SearchActivity）；虚拟屏仍为fixture F；C为com.google.android.deskclock。基线完整要求输入节点focused=true、文本Primary、当前IME客户端S/显示0、mInputShown=true、显示0 IME Insets可见，且窗口列表存在TYPE_INPUT_METHOD。没有修改fixture、AVD或系统设置。
+- 三次采集器准备失败均未计为有效测量：resume-raw-1（transport26）错误依赖InputMethod标题；实际截图/TYPE_INPUT_METHOD及其bounds证实键盘可见，改按稳定窗口类型识别。resume-raw-2（transport27）当前客户端PID未能与ps行关联，改为严格PID+任意空白分隔，并增加缺失诊断；没有据此宣称焦点失败或完全确诊当次时序。resume-raw-3（transport29）完整基线和字符a成功后，读取空虚拟屏的窗口组返回DISPLAY_NOT_FOUND；创建步骤改读helper状态，应用启动后才读取层级。每次均停止并清理、冷启动重跑，不拼接结果。
+- 有效未缓解轮次resume-raw-4：2026-11-14T08:15:10.776Z → 2026-11-14T08:18:34.228Z，transport31；原helper SHA-256 b855ecc31fd631b5f663d565c199846fcb787b8bc9513cae20236e9689a1aa29，创建标志64971（尚未修改）。测量脚本SHA-256 a9ddcc9ddc04962f62220f47d2b29d4ef2923a2bc88aa2d41ec3cf72a9260dd4，缓解后使用同一脚本。
+- AVD osdk-test-35，API35/google_apis/x86_64，emulator37.1.11；后台参数-read-only -no-snapshot -no-boot-anim -no-audio，唯一emulator-5554，boot_completed=1。主屏320×640/160dpi、en-US、导航模式2；虚拟屏720×1280/240dpi。指纹与Round3的F35相同：google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。CLI和fixture SHA、四个系统App版本/系统APK SHA均由本轮再次独立采集，与Round3记录一致。
+
+表中是每次虚拟屏动作后、向主屏输入探针字符之前的状态；窗口=主屏窗口active/focused，S窗口表示SearchActivity，主屏焦点应用始终是S，输入节点focused始终true。IME三列依次为服务mInputShown、显示0 Insets可见、显示0 TYPE_INPUT_METHOD窗口存在。
+
+| 步骤 | 顶层焦点显示 | 主屏焦点窗口 | 窗口active/focused | 当前IME客户端/显示 | IME服务/Insets/窗口 | 主屏输入框（探针前→后） | 虚拟输入 | 主屏字符落点 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 主屏基线 | 0 | S窗口 | true/true | S/0 | true/true/true | Primary → Primarya | — | a：主屏 |
+| helper启动/建屏 | 0 | S窗口 | true/true | S/0 | true/true/true | Primarya → Primaryab | — | b：主屏 |
+| 虚拟屏启动fixture | 2 | null | false/false | F/2 | false/false/false | Primaryab → Primaryabc | 空 | c：主屏 |
+| 虚拟屏点按非输入区 | 2 | null | false/false | S/0 | true/true/true | Primaryabc → Primaryabcd | 空 | d：主屏 |
+| 虚拟屏点按输入框 | 2 | null | false/false | F/2 | true/true/true | Primaryabcd → Primaryabcde | 空 | e：主屏 |
+| 虚拟屏ASCII Virtual | 2 | null | false/false | S/0 | true/true/true | Primaryabcde → Primaryabcdef | Virtual | f：主屏 |
+| 虚拟屏DELETE | 2 | null | false/false | S/0 | true/true/true | Primaryabcdef → Primaryabcdefg | Virtua | g：主屏 |
+| 不带显示DELETE之后 | 0 | S窗口 | true/true | S/0 | true/true/true | Primaryabcdef → Primaryabcdefh | Virtua | h：主屏 |
+| 虚拟屏启动时钟 | 2 | null | false/false | C/2 | false/false/false | Primaryabcdefh → Primaryabcdefhi | — | i：主屏 |
+
+- 每行主屏字符探针之后，独立复查均为topFocusedDisplay=0、S/0、三项IME可见true、主屏窗口active/focused=true；这说明显式display0键注入会恢复主屏，**不代表虚拟屏动作隔离成功**。与集成方没有逐步主屏探针的连续操作不同，本轮非输入区点按/text/DELETE之后，IME客户端有时仍是S/0，但顶层显示已经变为2、主屏窗口失焦；如表原样记录，不调整方法去迎合集成方表。
+- 不带显示DELETE的实测前提：此前主屏字符g已将焦点恢复显示0。主屏Primaryabcdefg→Primaryabcdef，虚拟屏Virtua不变；之后主屏探针h成功。不能把这一结果外推为未缓解、虚拟屏持有顶层焦点时的任意按键去向。
+- 虚拟侧确有CLICK:1，ASCII Virtual→DELETE后Virtua；时钟启动目标包正确，720×1280截图921600/921600像素非黑。原始测量不是必须无影响的测试，以上打断均作为结果保存。
+- 原两份Java探针已从脚本路径及仓库移除，Killed根因未查清，不阻塞本轮。没有使用IME策略探针或同值策略设置当作缓解。Go侧只核对hello/API/预算和groupAwakeQuery，不假设虚拟屏flags；协议拒绝调用方flags的负fixture无需修改。
+- 本轮finally完成helper停止、只剩主屏、无forward/固定临时文件、emu kill；未设PIN、未改全局设置。模拟器关闭后确认无emulator/qemu才进入标志位RED/GREEN。
+
+
+## Round 5：固定标志RED/GREEN与缓解后独立测量（2026-11-14）
+
+- 未缓解resume-raw-4完整测量与清理完成后，先更新PolicyTest，API34/35/36要求130507、API33仍15819，逐API排除SECURE并明确API33不含1<<16。RED：:displayd:testDebugUnitTest --tests dev.aiauto.displayd.PolicyTest共17项、1失败（fixedFlagsRespectApiAndSecureBoundary，旧64971不符130507）；再改Policy.flags的固定API34+分支追加1<<16，不增加调用方参数或通用反射。
+- GREEN：经osdk exec运行:displayd:testDebugUnitTest :displayd:assembleDebug :displayd:lintDebug，BUILD SUCCESSFUL（26秒），helper全部34项0failure/error；PolicyTest17项全通过。同步android/displayd/README的数值、API33未缓解及IME不服务虚拟屏/ASCII注入限制。Go没有标志位假设，三道既有风险门完整文件diff仍为空。
+- 缓解后resume-fixed-1：2026-11-14T08:21:56.742Z → 2026-11-14T08:25:31.239Z，transport33，display2；实际重建/部署helper SHA-256 747be5ca0be6f62f2127c2a63ff55d38ae17b4c4ccc13205072867a1f4204478。与未缓解使用同一测量脚本SHA-256 a9ddcc9ddc04962f62220f47d2b29d4ef2923a2bc88aa2d41ec3cf72a9260dd4，CLI/fixture/system image/profile未变。未调用已删除的聚焦/IME策略探针。
+
+以下仍为每个动作后、主屏字符探针之前的状态；主屏焦点窗口与焦点应用均为S SearchActivity，当前IME客户端均S/显示0，IME服务是原LatinIME。
+
+| 步骤 | 顶层焦点显示 | 主屏窗口active/focused | IME服务/Insets/窗口 | 主屏输入框（探针前→后） | 虚拟屏输入框 | 主屏字符落点 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 主屏基线 | 0 | true/true | true/true/true | Primary → Primarya | — | a：主屏 |
+| helper启动/建屏 | 0 | true/true | true/true/true | Primarya → Primaryab | — | b：主屏 |
+| 虚拟屏启动fixture | 0 | true/true | true/true/true | Primaryab → Primaryabc | 空 | c：主屏 |
+| 虚拟屏点按非输入区 | 0 | true/true | true/true/true | Primaryabc → Primaryabcd | 空 | d：主屏 |
+| 虚拟屏点按输入框 | 0 | true/true | true/true/true | Primaryabcd → Primaryabcde | 空 | e：主屏 |
+| 虚拟屏ASCII Virtual | 0 | true/true | true/true/true | Primaryabcde → Primaryabcdef | Virtual | f：主屏 |
+| 虚拟屏DELETE | 0 | true/true | true/true/true | Primaryabcdef → Primaryabcdefg | Virtua | g：主屏 |
+| 不带显示DELETE之后 | 0 | true/true | true/true/true | Primaryabcdef → Primaryabcdefh | Virtua | h：主屏 |
+| 虚拟屏启动时钟 | 0 | true/true | true/true/true | Primaryabcdefh → Primaryabcdefhi | — | i：主屏 |
+
+- 独立核对全部9行的前/后状态、主屏字符落点、相邻行主屏文本：除明确的不带显示DELETE外，虚拟屏动作没有修改主屏内容。每行主屏输入节点始终focused=true；虚拟屏CLICK:1、text=Virtual、定向DELETE后Virtua，启动时钟包名与720×1280非黑帧正常。
+- 不带显示DELETE前top=0，主屏Primaryabcdefg→Primaryabcdef，虚拟屏Virtua不变；两个模式在各自主屏字符探针之后都得到此结果。它是本脚本时序的实测，不等同于未缓解且虚拟屏持有顶层焦点时的去向保证。
+- 结论仅限本次API35固定模拟器：固定标志使已测虚拟屏启动/点按/ASCII/按键不再抢占主屏焦点或IME客户端；当前结果与集成方缓解后结论一致，来源为本轮独立脚本，不复用其手工数据。API33保持未缓解；API34代码/单测不等于设备验收，真机/OEM、硬件键盘与虚拟屏中文仍未验。
+- 两轮都finally停止helper、确认只剩主屏、无转发/临时文件，关闭模拟器，无PIN/全局设置变更。Node焦点4项、旧验收脚本4项本地测试通过，测量脚本node --check通过。M3仍等待原verify-virtual-display.mjs在新标志下的完整回归，未提前进入M4。
+
+## Round 6：原验收脚本回归失败，停在M3（2026-11-14）
+
+- 原样运行 scripts/emulator/verify-virtual-display.mjs，文件相对d70eacb无diff，SHA-256
+  fe6a675075fee147e6c3c5254820d669160024fa7e34d255cec5e465ebd6df2d。没有删检查、改判据或
+  改写原脚本。AACTL_ADB_PATH指向真实adb.exe，MSYS_NO_PATHCONV=1，显式emulator-5554。
+- focus-flag-regression-1：UTC 08:27:02.167→08:28:08.485，transport34；固定F35环境、
+  新helper SHA 747be5ca0be6f62f2127c2a63ff55d38ae17b4c4ccc13205072867a1f4204478，
+  同一CLI/fixture。创建/列出/启动成功，主屏保持NexusLauncher；CLICK:1及帧变化通过，
+  取帧720×1280且全部921600像素非黑。普通dump返回主屏NexusLauncher（预期的顶层焦点
+  变化，argv没有改变），不再是旧标志下的fixture，仍只作为观察记录。
+- **回归失败**：ASCII输入/BACK这一段随后读取目标层级时返回
+  DISPLAY_NOT_FOUND: Requested display has no window group in UIAutomator output。
+  报告最后的显式动作事件是ui.setText。原脚本在这段还执行BACK，但未对每条命令记录
+  单独时间线，因此现有报告不能严格区分错误发生在text后还是BACK后的层级读取；
+  不将“BACK一定关闭应用”写成已证实根因，也不把缓存层级或截图当作失败后的状态。
+  原脚本的“2-inputs”没有完成，未执行滑动、主屏息屏、65秒保活或PIN往返。
+- 按用户明确的“有变化就如实记录并停下来报告”，本轮在这里停止设备验收；
+  **M3整体未验收，M4、M5均未开始**。没有为了过回归调整键值、重启fixture或更改原脚本，
+  没有启动MCP stdio设备验收（仍未执行，0/3），不把两组焦点测量通过代替完整回归。
+- 原脚本finally恢复原screen_off_timeout=2147483647、停止helper并核对forward为空、
+  清理固定辅助文件、emu kill；尚未设置测试PIN，无需伪造清PIN操作。随后宿主确认
+  adb devices为空、emulator/qemu进程列表[]。原脚本没有cleanupError。
+- 回归失败证据98297字节：缓存fixture PNG78353、脱敏XML16044、日志时间窗0、报告3900；
+  已目视截图只含本地fixture。缓存PNG在ASCII/BACK之前，不能证明失败后画面。
+  三次准备失败证据分别116057、30968、118150字节，均小于1MiB；raw-2未保存截图，
+  当时新鲜display0层级包名为com.android.settings和systemui，不符合只采集fixture/
+  设置搜索截图的条件。其具体生命周期变化未确诊，不能把PID关联失败简单断言成排版问题。
+  有效未缓解/缓解报告分别32429/33206字节；摘要写入本规格后按策略清理本轮本地产物。
+- P01–P15处理状态：已只读接收移交，尚未进入逐条代码核实、修订或Skills镜像同步。
+  它们不是“核实通过”，也不以当前make skills-check通过冒充M5已完成。M5保持全部未勾选。
+- 后续汇合项：独立规格修正fixture在API35的edge-to-edge输入框遮挡；定位新标志下原
+  回归ASCII/BACK段窗口组消失，先恢复M3回归再执行M4；M4通过后才核实P01–P15。
+  继续保留API33未缓解、API34/真机/OEM/硬件键盘未验与虚拟屏IME/中文不支持边界。
+  未改docs/next-phase-tasks.md、其它规格或移交worktree。
+
+### 停止前的全量本地检查
+
+- make comments退出0，594个手写文件、16个检查器自测；两份不用的Java探针已删除。
+- make test退出0：Go313个顶层Test定义（含1个默认跳过的显式设备冒烟）、包测试和vet，
+  linux/darwin/windows交叉vet均通过；协议56项，Skills3份及镜像通过。
+- make android-verify退出0（18秒、199任务，复用缓存），单测/assembleDebug/lintDebug通过；
+  612项、0failure/error、1既有跳过（app564、fixture8、web-fixture6、displayd34）。
+- Node焦点解析/基线4项、原验收脚本守卫/PNG/主屏归属4项均通过，node --check通过；
+  三道既有风险门完整文件未改。以上本地检查不替代已经失败的设备回归。
+- 本轮按职责保存固定标志实现与独立测量两个提交；这两份提交不表示M3整体通过。
+  M4/M5没有实现或文档交付提交，不继续越过依赖阶段。
+
+### 本轮保存与清理确认
+
+- make verify、make build均退出0；重新构建CLI仍为
+  d85bd0a3baa7e6d001fc0425db6e12b4f26da41417b23245a192c2dd2fd12f0f。
+  git diff --check通过；原回归脚本与三道既有风险门完整文件未改。
+- 固定标志实现已单独保存为41c4e7c（feat(displayd): keep virtual displays from stealing top focus），
+  仅Policy.java、PolicyTest.java、android/displayd/README.md三个文件。
+- 测量脚本、两份不用探针删除及本规格状态另行保存为
+  test(emulator): measure primary-display focus under virtual display input；包含本轮新增的M5计划，
+  没有提前修订M5所拥有的文档或Skills镜像。这是M3部分成果保存，不是M3验收通过。
+- 本地focus证据根与本轮单个回归证据目录经绝对路径、无symlink、无跟踪文件及Git忽略
+  规则核对后，用非强制Remove-Item清理，Test-Path均false。未删除其它运行或用户文件。
+  设备列表空、emulator/qemu进程列表[]，未push、main未改；保留当前worktree供集成。

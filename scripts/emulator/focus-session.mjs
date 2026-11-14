@@ -12,10 +12,10 @@ export const fixturePackage = 'dev.aiauto.fixture';
 export const ensure = (ok,message) => { if (!ok) throw Error(message); };
 export const pause = ms => new Promise(resolve => setTimeout(resolve,ms));
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-export function options(argv,extra=[]) {
+export function options(argv,extra=[],values=[]) {
  const result={};
  for(let i=0;i<argv.length;i+=2) {
-  const key=argv[i]?.slice(2);ensure(['device','adb','aactl','helper','fixture','run',...extra].includes(key)&&argv[i+1]&&!(key in result),'Invalid or duplicate option');result[key]=argv[i+1];
+  const key=argv[i]?.slice(2);ensure(['device','adb','aactl','helper','fixture','run',...extra,...values].includes(key)&&argv[i+1]&&!(key in result),'Invalid or duplicate option');result[key]=argv[i+1];
  }
  requireTestSerial(result.device);
  for(const key of ['adb','aactl','helper','fixture',...extra]) ensure(result[key]&&fs.statSync(result[key]).isFile(),`Missing local artifact: ${key}`);
@@ -69,7 +69,7 @@ export class DisplaySession {
   const xy=point(this.hierarchy(id),resourceId,fraction);
   this.action(id,'tap',['--x',String(xy.x),'--y',String(xy.y)],`target ${resourceId}`,packageName);return this.hierarchy(id);
  }
- async prepare() {
+ async prepare({startHelper=true}={}) {
   this.guard();this.identity=this.devices()[0];ensure(this.raw(['shell','getprop','sys.boot_completed']).stdout==='1','Wait for boot before running');
   ensure(this.raw(['emu','avd','name']).stdout.split('\n')[0].trim()==='osdk-test-35','Wrong AVD');
   ensure(this.shell('getprop','ro.build.version.sdk')==='35','Wrong API');
@@ -80,7 +80,13 @@ export class DisplaySession {
   for(const key of ['helper','fixture','aactl']) env[`${key}SHA256`]=sha256(fs.readFileSync(this.opt[key]));
   this.report.environment=env;this.safe=true;this.event('environment',env);
   this.guard();this.raw(['install','-r','-t',this.opt.fixture]);ensure(/versionCode=1\b/.test(this.shell('dumpsys','package',fixturePackage)),'Unexpected fixture version');
-  this.helperStarted=true;this.cli(['display','start','--helper',this.opt.helper]);
+  if(startHelper)this.startHelper();
+ }
+ startHelper() {this.helperStarted=true;return this.cli(['display','start','--helper',this.opt.helper]);}
+ describeSystemApp(packageName) {
+  const info=this.shell('dumpsys','package',packageName),paths=this.shell('pm','path',packageName).split(/\r?\n/).map(l=>l.replace(/^package:/,''));
+  ensure(paths.length&&paths.every(p=>/^\/(system|product|system_ext)\/[A-Za-z0-9_./-]+\.apk$/.test(p)),`Non-system app source: ${packageName}`);
+  return {package:packageName,versionCode:/versionCode=(\d+)/.exec(info)?.[1],versionName:/versionName=([^\r\n]+)/.exec(info)?.[1],source:'fixed system image',apks:paths.map(p=>({path:p,sha256:this.shell('sha256sum',p).split(/\s+/)[0]}))};
  }
  cleanup() {
   if(!this.safe)return;
@@ -112,8 +118,8 @@ export class DisplaySession {
    if(this.safe)try {
     this.guard();const log=this.raw(['logcat','-d','-t','40','-s','displayd:I']).stdout;
     fs.writeFileSync(path.join(this.root,'failure-log-window.txt'),log.slice(-16384));
-    // 一次性模拟器的主屏只有本地 fixture；图片限512KiB，所有失败证据总额小于1MiB。
-    if(this.lastXML.includes(`package="${fixturePackage}"`)) {
+    // 一次性模拟器只显示本地fixture或无账户设置搜索；图片限512KiB，证据总额小于1MiB。
+    if(this.lastXML.includes(`package="${fixturePackage}"`)||this.lastXML.includes('package="com.google.android.settings.intelligence"')) {
      const target=path.join(this.root,'failure-primary.png');this.cli(['observe','screenshot','--display','0','--output',target]);
      if(fs.statSync(target).size>512*1024)fs.unlinkSync(target);
     }
