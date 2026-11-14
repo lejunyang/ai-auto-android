@@ -36,6 +36,8 @@ M1 → M2 → M3 → M4 串行，同一 worktree、同一分支，单一执行�
 - [ ] 提交：`test(emulator): measure primary-display focus under virtual display input`
       （若有缓解实现，另加 `feat(displayd): ...`）
 
+当前停在主屏输入基线未建立（progress.md Round 3）。本阶段未验收；仅保存失败准备脚本与证据记录，以下M4未开始。
+
 ## M4：MCP 端到端验收与文档
 
 目录所有权：`scripts/emulator/`（新增）、`docs/virtual-display.md`、`docs/protocol.md`、
@@ -50,4 +52,8 @@ M1 → M2 → M3 → M4 串行，同一 worktree、同一分支，单一执行�
 
 ## 实际提交
 
-（完成后填写）
+- 6361df3：规格初始提交。
+- 2862aa3：M1 实现与验证通过。
+- b9d9e2b：M2 实现与验证通过。
+- M3 未完成：仅提交 `test(emulator): record blocked primary-display focus setup` 保存准备失败，不计作阶段验收。
+- M4 未开始。

@@ -4,10 +4,10 @@
 
 ## 范围与流程
 
-- [ ] 独立 change spec、独立分支与 worktree，单一职责 Conventional Commit
-- [ ] 未回写任何既有规格的验收结论
-- [ ] 未修改 `android/app/`、`internal/bridge/` 与规格未列出的 `docs/` 文件
-- [ ] 未 push 到远端
+- [x] 独立 change spec、独立分支与 worktree，单一职责 Conventional Commit
+- [x] 未回写任何既有规格的验收结论
+- [x] 未修改 `android/app/`、`internal/bridge/` 与规格未列出的 `docs/` 文件
+- [x] 未 push 到远端
 
 ## 安全边界
 
@@ -27,19 +27,19 @@
 
 ## 模拟器证据（API 35）
 
-- [ ] 记录 AVD、system image、分辨率与设备指纹
+- [x] 记录 AVD、system image、分辨率与设备指纹
 - [ ] MCP stdio 端到端冷启动连续 3 次的结果已记录
 - [ ] 焦点与输入法逐步实测结果已记录（未缓解）
 - [ ] 缓解手段的重新测量结果已记录，或记录了无法缓解的依据
-- [ ] 停止后无残留进程、虚拟屏、转发与临时文件
+- [x] 停止后无残留进程、虚拟屏、转发与临时文件
 
 ## 验证
 
-- [ ] `make comments`
-- [ ] `make test`
-- [ ] `make verify`
-- [ ] `make build`
-- [ ] `make android-verify`（若改到 `android/`）
+- [x] `make comments`
+- [x] `make test`
+- [x] `make verify`
+- [x] `make build`
+- [x] `make android-verify`（若改到 `android/`）
 
 ## 待设备验证（保持未勾选）
 
