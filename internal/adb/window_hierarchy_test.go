@@ -144,15 +144,70 @@ func TestDisplayHierarchyReportsEmptyAfterFullValidation(t *testing.T) {
 // 无文件/空文件是系统没有提供窗口，不是畸形XML；截断、权限失败与设备失败不能混为此错误。
 type missingWindowExecutor struct {
 	fakeADB
-	missing bool
+	missing   bool
+	execOut   bool
+	decorate  func(string) string
+	truncated bool
 }
 
 func (e *missingWindowExecutor) Run(ctx context.Context, program string, args []string, options process.Options) (process.Result, error) {
 	if len(args) > 4 && args[2] == "exec-out" && e.missing {
 		e.calls = append(e.calls, append([]string(nil), args...))
+		if e.execOut {
+			line := "cat: " + args[4] + ": No such file or directory"
+			if e.decorate != nil {
+				line = e.decorate(line)
+			}
+			return process.Result{Stdout: []byte(line), OutputTruncated: e.truncated}, nil
+		}
 		return process.Result{ExitCode: 1, Stderr: []byte("cat: " + args[4] + ": No such file or directory\n")}, errors.New("exit 1")
 	}
 	return e.fakeADB.Run(ctx, program, args, options)
+}
+
+// exec-out旧exec服务合并诊断到stdout且退出0，必须按本次UUID路径精确识别，不能模拟成shell。
+func TestExecOutMissingWindowDumpMatchesOnlyCurrentDiagnostic(t *testing.T) {
+	for _, id := range []int{0, 7} {
+		e := &missingWindowExecutor{missing: true, execOut: true, decorate: func(s string) string { return " \r\n" + s + "\n\t" }, fakeADB: fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {Stdout: []byte("35")}, {}, {}, {}}, errors: make([]error, 5)}}
+		_, err := NewClient("adb", e).WithDisplay(id).Hierarchy(context.Background(), "FIRST")
+		assertAppErrorCode(t, err, apperr.CodeWindowsUnavailable)
+		if len(e.calls) != 5 || e.calls[4][3] != "rm" {
+			t.Fatal("cleanup/fallback", e.calls)
+		}
+	}
+}
+
+func TestExecOutSimilarDiagnosticsAndLegacyPathRemainRejected(t *testing.T) {
+	for name, decorate := range map[string]func(string) string{
+		"different path": func(s string) string { return strings.Replace(s, "aactl-window-", "other-window-", 1) },
+		"extra line":     func(s string) string { return s + "\nextra" },
+		"prefix only":    func(s string) string { return strings.TrimSuffix(s, " directory") },
+		"permission":     func(s string) string { return strings.Replace(s, "No such file or directory", "Permission denied", 1) },
+		"malformed XML":  func(string) string { return "<displays><broken" },
+		"oversize":       func(string) string { return strings.Repeat("x", maxHierarchyOutput+1) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := &missingWindowExecutor{missing: true, execOut: true, decorate: decorate, fakeADB: fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {Stdout: []byte("35")}, {}, {}, {}}, errors: make([]error, 5)}}
+			_, err := NewClient("adb", e).WithDisplay(7).Hierarchy(context.Background(), "FIRST")
+			assertAppErrorCode(t, err, apperr.CodeActionFailed)
+		})
+	}
+	for _, target := range []bool{false, true} {
+		e := &missingWindowExecutor{missing: true, execOut: true, truncated: target, fakeADB: fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {Stdout: []byte("35")}, {}, {}, {}}, errors: make([]error, 5)}}
+		c := NewClient("adb", e)
+		if target {
+			c = c.WithDisplay(7)
+		}
+		_, err := c.Hierarchy(context.Background(), "FIRST")
+		assertAppErrorCode(t, err, apperr.CodeActionFailed)
+		want := 4
+		if target {
+			want = 5
+		}
+		if len(e.calls) != want {
+			t.Fatal("unexpected extra calls", e.calls)
+		}
+	}
 }
 func TestMissingWindowDumpsHaveActionableError(t *testing.T) {
 	for _, data := range [][]byte{nil, []byte(" \n\t")} {
@@ -176,6 +231,7 @@ func TestWindowDumpFailuresDoNotMasqueradeAsNoWindows(t *testing.T) {
 		code   string
 	}{
 		{process.Result{}, process.ErrTimeout, apperr.CodeDeadlineExceeded},
+		{process.Result{ExitCode: 1, Stderr: []byte("device offline")}, errors.New("exit 1"), apperr.CodeDeviceOffline},
 		{process.Result{ExitCode: 1, Stderr: []byte("Permission denied")}, errors.New("exit 1"), apperr.CodeDeviceUnreachable},
 		{process.Result{OutputTruncated: true}, nil, apperr.CodeActionFailed},
 		{process.Result{Stdout: []byte("<displays><display")}, nil, apperr.CodeActionFailed},

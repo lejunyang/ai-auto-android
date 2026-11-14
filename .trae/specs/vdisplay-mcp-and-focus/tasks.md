@@ -39,7 +39,7 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - [x] 提交：`test(emulator): measure primary-display focus under virtual display input`
       （若有缓解实现，另加 `feat(displayd): ...`）
 
-修订二已用M3c两策略验收取代旧单一策略要求。本轮按新规则自主修复脚手架，现停在产品契约失败：F2原始dump无文件，CLI却返回ACTION_FAILED而非WINDOWS_UNAVAILABLE（progress.md Round19）。steal三次完整通过，isolated完整通过0/3，M4/M5未开始。
+修订二已用M3c两策略验收取代旧单一策略要求。Round20修复exec-out合并诊断后，最小复现CLI已返回WINDOWS_UNAVAILABLE；steal三次完整通过，isolated完整验收重新从0/3计数，M4/M5尚未开始。
 
 ## M4：MCP 端到端验收与文档
 
@@ -87,7 +87,7 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 验收证据：逐条P01–P15表、实际工具/Schema清单、一致性检查与全量命令结果。
 提交边界：仅上述文档/镜像与本规格状态，不混入M3/M4实现。
 失败回滚/清理：保留未验项与核实记录，停止M5；只撤销明确属于本阶段且未验收的编辑，
-不覆盖用户或其它任务改动。无设备操作；不修改路线图文件，后续项只登记本规格progress.md。
+不覆盖用户或其它任务改动。无设备操作；合并1a5b356后按用户新增授权把后续项登记到docs/next-phase-tasks.md。
 
 ## M3b：空虚拟屏语义与新BACK行为（依赖已完成的M3两组焦点测量）
 
@@ -117,7 +117,7 @@ scripts/emulator、docs/virtual-display.md与本规格状态。三道既有风�
 - [x] 原始dump矩阵、取帧及注入独立复现，记录字节数/文件存在性/显示组
 - [x] displayd焦点枚举解析/范围/固定标志先RED后GREEN，返回策略及API33真实隔离能力
 - [x] Go客户端、service、CLI、MCP逐层透传及拒绝非法值测试
-- [ ] 无窗口输出专用错误设备验收（本地映射测试通过；F2设备仍返回ACTION_FAILED，未达契约）
+- [x] 无窗口输出专用错误设备验收（Round20最小复现实际CLI返回WINDOWS_UNAVAILABLE）
 - [x] steal冷启动连续3次完整息屏/65秒/PIN往返/重建通过
 - [ ] isolated冷启动连续3次通过，复用完整焦点判据、BACK/空屏/恢复与息屏输入/取帧/错误
 - [x] 基线稳定等待/按最新状态重试、fixture复位、电源条件等待与原始失败证据补强，均有脚本测试

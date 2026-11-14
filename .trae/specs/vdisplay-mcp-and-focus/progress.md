@@ -869,3 +869,14 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
 - 后续登记在本规格而非路线图文件：先定位主屏OFF/isolated下实际cat输出与错误映射，
   保持畸形/截断拒绝，修复后重新执行isolated三个完整冷启动，再推进M4/M5。fixture的
   edge-to-edge布局问题仍待独立规格；API33/34、真机/OEM/硬件键盘和中文输入边界仍未覆盖。
+
+## Round 20：更正exec-out诊断通道假设，最小复现通过（2026-11-14）
+
+- 开工确认本分支HEAD为普通合并1a5b356、工作区干净；文档清理成果已合入。仅在本worktree工作，按用户新增授权后续可更新合并后的路线图；未修改其它worktree。
+- 更正4c9468c：其假adb用退出1/stderr模拟缺文件，只符合shell。集成方实测exec-out旧exec服务把stderr并到stdout、退出0，导致真实诊断被送入XML校验。保留此历史记录，不回写旧验收。
+- 先RED：go test ./internal/adb -run TestExecOutMissingWindowDumpMatchesOnlyCurrentDiagnostic -count=1，两个目标显示分支实际ACTION_FAILED，断言WINDOWS_UNAVAILABLE失败。随后只为显式目标添加退出0、stderr空、trim(stdout)完整等于本次UUID路径ENOENT行的分支；保留退出1/stderr精确识别。截断/超限检查在分类之前，默认无显示路径不改。
+- GREEN：go test ./internal/adb -count=1通过（8.711秒）。覆盖显示0/7、首尾空白、分离stderr旧形态；不同路径、多一行、仅前缀、权限诊断、畸形/超限/截断、离线反例；不带显示编号仍按旧判。make build通过。
+- 最小复现execout-fixed-minimal-1：UTC11:17:22.220→11:19:54.921，transport61；复用isolated-raw-F2流程，不计完整场景次数。主屏Settings搜索基线全部判据通过、显示3输入Diagnostic成功；主屏第1次ON、第2次OFF；虚拟帧720×1280，非黑921600/921600。原始dump退出0、stdout报告dumped、stderr空，test -f确认无文件、0字节、无显示组；随后真实CLI返回WINDOWS_UNAVAILABLE、retryable=false、details.displayId=3，消息包含唤醒主屏或用steal重建的出路。
+- 指纹仍google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys，API35、320×640/160dpi、en-US、导航2。CLI SHA256=8838361972da00ac63833780e2debedbfd4e1e40011db0463d03dfd4ca99ef20；helper626142bb…、fixture1e88acf7…不变。原始CLI响应、raw-result、截图、系统分段和时间线保留在忽略目录scripts/emulator/build/focus/execout-fixed-minimal-1，清理前保存；无evidenceError/cleanupError。
+- 自查本规格新增ADB调用：显示0截图复用exec-out screencap及完整PNG校验；显式目标input/am及getprop/sha256sum/proc操作走shell；helper管理通过转发上的JSON/帧协议。新增exec-out cat缺文件分类仅此一处；诊断脚本先test -f再读取，未发现其它把exec-out错误当作分离stderr的新增假设。本次只查，不扩改历史默认层级问题，该项待路线图登记。
+- helper/显示/转发/临时文件均0，未设置PIN或修改全局设置，emu kill成功，宿主emulator/qemu为空。下一步完整isolated三次从冷启动重新计数，未把最小复现计入通过。

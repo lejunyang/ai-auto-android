@@ -189,3 +189,10 @@ DISPLAY_EMPTY：目标已经过service归属校验（主屏0除外）且有效du
 
 当前产品验收阻塞：Round19原始dump未产生文件，而CLI返回ACTION_FAILED/无效XML，
 尚未满足WINDOWS_UNAVAILABLE契约。按产品问题停机，不降低错误判据、不越过M3c进入M4/M5。
+
+## exec-out修复与合并后收尾授权（2026-11-14）
+
+用户已授权修复Round19产品阻塞：只在带显示编号时，完整精确匹配本次UUID路径的
+exec-out退出0/stdout ENOENT诊断，并保留退出1/stderr分支；其它形态及无显示参数行为不变。
+1a5b356普通合并后，M5在本分支合并后的文档上核实P01–P15，并按现有任务格式更新
+docs/next-phase-tasks.md；这一最新授权替代此前该文件禁止修改的限制，其它边界保持。

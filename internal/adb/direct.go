@@ -170,10 +170,10 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 		"-s", serial, "exec-out", "cat", hierarchyRemotePath,
 	}, process.Options{Timeout: 10 * time.Second, MaxOutput: maxHierarchyOutput})
 	if err != nil {
-		// 只识别本次随机路径的明确ENOENT；超时、离线、权限失败和截断仍保留原错误。
+		// 保留分离stderr的形态；仅匹配本次UUID路径，超时/离线/权限失败及超限不改判。
 		missing := strings.TrimSpace(string(result.Stderr)) == "cat: "+hierarchyRemotePath+": No such file or directory"
 		var appError *apperr.Error
-		if c.displayID != nil && !result.OutputTruncated && result.ExitCode == 1 && missing && errors.As(err, &appError) && appError.Code == apperr.CodeDeviceUnreachable {
+		if c.displayID != nil && !result.OutputTruncated && len(result.Stdout) <= maxHierarchyOutput && result.ExitCode == 1 && missing && errors.As(err, &appError) && appError.Code == apperr.CodeDeviceUnreachable {
 			return Hierarchy{}, windowsUnavailable(*c.displayID)
 		}
 		return Hierarchy{}, err
@@ -185,6 +185,12 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 			true,
 			map[string]any{"device": serial},
 		)
+	}
+	// exec-out使用旧exec服务：cat的stderr并入stdout且退出0，不能按shell的退出码判断缺文件。
+	// 仅精确识别本次UUID路径的完整ENOENT诊断；其它文本继续严格XML校验，未指定显示时不改变行为。
+	if c.displayID != nil && result.ExitCode == 0 && strings.TrimSpace(string(result.Stderr)) == "" &&
+		strings.TrimSpace(string(result.Stdout)) == "cat: "+hierarchyRemotePath+": No such file or directory" {
+		return Hierarchy{}, windowsUnavailable(*c.displayID)
 	}
 	format := ""
 	if c.displayID != nil {

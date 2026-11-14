@@ -143,7 +143,7 @@ seriesB-1/2/3 连续完整通过；每次均只连接 emulator-5554，独立冷�
 | `CAPABILITY_UNAVAILABLE` | 层级所需 API 无法可靠读取或低于门槛 |
 | `DISPLAY_NOT_FOUND` | 重新 list，使用该 helper 拥有的有效编号 |
 | `DISPLAY_EMPTY` | 屏存在但没有窗口；先在该屏启动应用再读层级，不能去掉显示参数回退主屏 |
-| `WINDOWS_UNAVAILABLE` | 系统未提供任何窗口输出；常见于主屏息屏且目标为 isolated。唤醒主屏，或关闭并以 steal 重建（销毁原屏应用内容） |
+| `WINDOWS_UNAVAILABLE` | 按显示读取时无文件/空输出；兼容 exec-out 退出0、stdout为本次随机路径完整ENOENT诊断，以及退出1、stderr分离形态。常见于主屏息屏且目标为 isolated；唤醒主屏或以 steal 重建（销毁原屏内容） |
 | `DEVICE_LOCKED` | 等用户正常解除凭据锁，不自动解锁 |
 | `DISPLAY_ASLEEP` | close/create，接受原屏应用内容被销毁，再重新启动 |
 | `FRAME_NOT_READY` | 重新观察状态后可另发取帧请求，不重复输入动作 |
