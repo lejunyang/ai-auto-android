@@ -10,7 +10,8 @@
 > 已实现并有单测，但仍有未交付余项或设备验收缺口，整项不勾选。
 > 文件传输 CLI/MCP 与 `ime.show` 出口已实现；N59 保留其已决结论，未决项继续待办。
 > N60.1 已在当前分支交付MCP/显式主屏与焦点策略，三次stdio及两策略证据见vdisplay-mcp-and-focus；
-> 发布、兼容矩阵、旧层级语义与新增多显示余项仍未完成，N60整项保持未勾选。
+> N60.2 发布打包已于 2026-11-15 在本分支完成，证据见 release-bundles；
+> 兼容矩阵、旧层级语义与新增多显示余项仍未完成，N60整项保持未勾选。
 > 下方带日期的“实现/追加记录”按时序保留，早期“未完成”由后续记录收口，不能单独
 > 用作当前缺口。逐项证据见[本次审计](../.trae/specs/docs-stale-audit/progress.md)。
 >
@@ -1362,12 +1363,12 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
 ### [ ] Task N60：虚拟显示后续（部分交付，余项分别立项）
 
 目标：在已验收的CLI/MCP与焦点策略边界上补发布、兼容性及仍被拒绝的多显示能力。
-N60.1已完成，其余子项只登记、未实施；实施前各建独立change spec，保留失败/未验事实。
+N60.1、N60.2已完成，其余子项只登记、未实施；实施前各建独立change spec，保留失败/未验事实。
 
 | 子项 | 具体步骤与依赖 | 允许修改范围与验收证据 | 建议提交边界 |
 | --- | --- | --- | --- |
 | N60.1 MCP/显式主屏与焦点策略：已交付 | 四个独立管理工具、两类观察/六类既有动作带displayId，0明确主屏；focus默认isolated/显式steal，helper v2、API33不隔离；helper启停只CLI | 证据见[vdisplay规格](../.trae/specs/vdisplay-mcp-and-focus/progress.md) Round24–26：isolated三冷启动、steal原三次65秒/PIN、真实MCP三冷启动；风险门不变，不将后续项算已交付 | ce5dd14、4017153、6d27678及该规格列出的前序提交 |
-| N60.2 发布打包 | 依赖稳定v2契约；CLI/helper同版固定命名与摘要，验证同目录定位与版本不匹配；升级须先旧CLI停v1 | scripts/release.sh、发布配置及独立规格；干净目录解包后start/stop、SHA256与升级失败路径 | build(release): package matching displayd helper |
+| N60.2 发布打包：已交付 | 四目标完整/精简包、同版 debug helper、官方 ADB 37.0.1 固定清单/许可门/NOTICE、独立 App APK；无裸 CLI 资产。随包优先与 doctor 来源可见，升级仍先旧 CLI 停 v1 | [release-bundles](../.trae/specs/release-bundles/progress.md)：离线打包 20 项、定位/诊断 RED/GREEN、九资产 SHA256、Windows 隔离两包及 API35 唯一模拟器 start/create/close/stop。既有 v1 拒绝单测通过；本轮未重跑真实 v1 升级，不声称 macOS/Linux 已运行 | 75b43c9 规格、20974c7 定位诊断、71ea6f7 打包；后续验收/文档提交见该规格 |
 | N60.3 API33/34矩阵 | 固定profile/指纹；分别测focus映射、API33 focusIsolated=false/groupAwake=null、两策略焦点/IME、息屏层级、65秒保活、锁定/重建；不得用API35外推 | 新scripts/emulator/display-api-matrix/与独立规格；每API连续运行、原始失败证据、清理；发现产品缺陷单独拆修复 | test(emulator): verify displayd on API 33 and 34 |
 | N60.4 真机/OEM与硬件键盘矩阵 | 依赖N60.3；固定型号/ROM/API/ABI、调试方式、fixture SHA、键盘型号/连接方式，逐步测主屏/虚拟屏焦点、IME、物理按键去向、锁定和任务迁移；显示id与实际屏交叉核对 | 独立设备验收脚本/报告；每台显式serial及用户授权，物理键盘步骤由用户参与，记录前后两屏原始证据；不把ADB键注入冒充硬件输入 | test(device): record display and hardware keyboard compatibility |
 | N60.5 无显示编号层级的语义与缺文件错误 | 主屏0已交付；旧默认仍读活动窗口、缺文件仍可能误报无效XML。先决定兼容命名/提示，再测试双屏交替焦点；为旧exec-out缺文件精确识别本次UUID诊断，保持坏XML拒绝 | internal/adb、service/cli/mcpserver必要映射及独立规格；原argv兼容测试、显示0/活动窗口双证据、stdout退出0与stderr退出1、相似诊断反例，不能静默改成主屏 | fix(observe): clarify legacy hierarchy ownership and missing output |
@@ -1377,7 +1378,20 @@ N60.1已完成，其余子项只登记、未实施；实施前各建独立change
 | N60.9 fixture API35 edge-to-edge布局 | 独立夹具修复，不改生产App/Bridge；确认主屏320×640输入框[12,31][308,79]被标题栏至y80遮挡，按WindowInsets处理布局并验证所有目标可见可点 | android/device-fixture与新scripts/emulator/fixture-layout/；固定API/分辨率/密度，原始bounds/截图、输入focused与精确文本、对既有手势/滚动回归；修复前后的失败测试 | fix(fixture): keep editable controls below system bars |
 | N60.10 isolated无IME与中文输入 | 依赖N60.8相关归属设计，先落安全/能力决策；当前只受限ASCII，Bridge Unicode工具不接受displayId。评估显示绑定的语义输入或IME策略，不伪称键盘显示、不借剪贴板绕过 | 独立规格决定API/授权与internal/service/mcpserver、Android语义路由范围后才实现；中文/组合文本精确落点、主屏不变、无IME/失败拒绝、API33/34与OEM矩阵 | docs(spec): decide isolated display text input；批准后再feat实现 |
 
-并行波次与目录所有权：波次A可分别做N60.2（release目录）、N60.3（新增display-api-matrix
+#### N60.2 后续项（登记，均未实施）
+
+| 目标 | 具体步骤与依赖 | 波次、目录所有权与允许范围 | 验收证据 / 提交边界 / 回滚清理 |
+| --- | --- | --- | --- |
+| 项目自身许可证待负责人决定 | 先由负责人决定许可，再建独立规格审查声明、依赖及包内文件；本次不补写 LICENSE | A，决策文档由单一负责人维护；批准后才修改 LICENSE/分发文档/打包白名单 | 留存明确决策与清单核对；docs(license) 独立提交；未决时保留无 LICENSE 事实，不自动选择 |
+| linux/arm64 官方 ADB 缺口 | 核对 Google 是否提供对应归档；若仍无，先决定仅精简包或其它受控来源及许可，不套用 amd64 ADB | A，新增独立规格及 release 专属范围；禁止本任务自动换源 | 官方来源/架构证据、包内 ELF 与实际 arm64 运行；build(release) 单独提交；失败不发布新目标，清其 staging |
+| macOS 公证与隔离属性 | 明确签名身份、凭据与 Apple 流程后，验证下载隔离属性、正常授权启动及公证；不能用清安全属性冒充验收 | B，依赖许可/签名方案；macOS 分发配置与文档归一个 owner，受控凭据由负责人提供 | 两架构实际系统证据与公证结果；build(macos) 独立提交；撤销未验产物、清临时钥匙串，不触碰未知证书 |
+| macOS/Linux 实机运行验证 | 固定宿主版本/架构与已核对的发布归档，从隔离环境验证 doctor、设备、截图、helper 生命周期；真机 RSA 由用户授权 | A，新增发布验收脚本及独立规格；不与 B 并行修改共享构建文件，汇合后由单一集成者更新状态 | 各平台指纹/摘要/原始响应、清理与连续运行结果；test(release) 单独提交；失败保留证据、关闭自启模拟器/清 helper |
+| 包管理器分发 | 依赖许可与目标平台运行验收，选择渠道并审查安装目录、更新/卸载与官方 ADB 来源，不抢占用户共用服务 | C，新增渠道配置/文档，release 共享文件统一集成 | 安装/升级/卸载与摘要/来源检查；build(distribution) 独立提交；撤回未验渠道版本，只清本渠道所有文件 |
+
+上述 A 可做独立只读调研；实施前各建 change spec，文件范围互斥才可并行。共享清单、发布配置、
+路线图只由集成者串行更新；N60.3–N60.10 的原结论不受本次打包验收影响。
+
+并行波次与目录所有权：原波次A中N60.2（release目录）已完成；其余仍可分别做N60.3（新增display-api-matrix
 专属目录）、N60.9（device-fixture及新增fixture-layout目录），共享构建/导航由单一集成者修改。
 N60.5与N60.7都涉及adb/service/CLI，交同一owner串行；N60.8在两者完成后串行推进，
 N60.10在其相关归属决策后再做。N60.4依赖N60.3，N60.6只做决策文档。共享协议、状态

@@ -13,7 +13,7 @@ aactl devices list --json
 
 `version` 不需要 ADB。`doctor` 检查：
 
-- ADB 可执行文件及版本；
+- 实际 ADB 路径 `adbPath`、来源 `adbSource`（explicit / bundled / path / sdk）及版本；
 - `adb server-status` 是否可读取；
 - 本机 loopback `127.0.0.1:5037` 是否有 ADB server；
 - `adb mdns check` 是否通过。
@@ -30,12 +30,17 @@ aactl devices list --json
 `aactl` 按以下顺序查找：
 
 1. `AACTL_ADB_PATH`；
-2. `PATH` 中的 `adb` / `adb.exe`；
-3. `ANDROID_HOME/platform-tools`；
-4. `ANDROID_SDK_ROOT/platform-tools`；
-5. 默认 SDK 目录：
+2. 解析 CLI 可执行文件符号链接后，其同目录的 `platform-tools/adb[.exe]`；
+3. `PATH` 中的 `adb` / `adb.exe`；
+4. `ANDROID_HOME/platform-tools`；
+5. `ANDROID_SDK_ROOT/platform-tools`；
+6. 默认 SDK 目录：
    - macOS：`~/Library/Android/sdk/platform-tools/adb`
    - Windows：`%USERPROFILE%\AppData\Local\Android\Sdk\platform-tools\adb.exe`
+   - Linux：`~/Android/Sdk/platform-tools/adb`
+
+工作目录不参与随包查找，切换目录不会使 CLI 使用那里放置的 ADB。
+精简包没有 `platform-tools/`，未安装 ADB 时可换用完整包，或按下面的方式配置。
 
 macOS 当前终端临时指定：
 
@@ -51,8 +56,30 @@ $env:AACTL_ADB_PATH = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 aactl doctor --json
 ```
 
-路径必须指向文件；macOS 上还必须有可执行权限。不要从非官方镜像下载单独的
+路径必须指向常规文件；macOS/Linux 上还必须有可执行权限。不要从非官方镜像下载单独的
 ADB 二进制。
+
+## 随包 ADB 损坏
+
+完整包的候选文件存在但为目录、断开的符号链接或没有执行权限时，CLI 返回含
+`bundled ADB` 的 `ADB_NOT_FOUND`，不会继续使用 PATH 中另一版本的 ADB。
+重新核对归档的 SHA256SUMS，再整体解压；Windows 同时检查 `AdbWinApi.dll` 与
+`AdbWinUsbApi.dll` 是否被移动/删除，缺 DLL 的启动错误也需重新解压恢复。
+需要临时覆盖时，显式设置 `AACTL_ADB_PATH` 指向已核实的官方 ADB，再查看 doctor
+是否显示 `adbSource=explicit` 与预期路径。macOS 公证/隔离属性尚未验收，遇到系统拦截
+应按操作系统提供的正常审查流程处理，不把更改系统安全设置作为自动修复。
+
+## ADB 版本冲突
+
+电脑已有另一版本 ADB 服务时，Android Studio、其它工具和随包 ADB 交替使用，会
+互相重启共享的 ADB 服务、打断连接，可能出现 server/client version mismatch 或设备
+短暂离线。先查看各工具的 ADB 路径/版本以及 `aactl doctor --json` 的 `adbPath`、
+`adbSource`，再选一种固定方式：
+
+- 设置 `AACTL_ADB_PATH`，让 aactl 与其它工具使用同一个官方 ADB。
+- 改用精简包，并让 PATH/SDK 指向现有工具共用的官方 ADB。
+
+doctor 不会主动执行 kill-server；不要在未知设备状态下反复切换版本或重试动作。
 
 ## USB
 

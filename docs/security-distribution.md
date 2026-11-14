@@ -1,7 +1,53 @@
 # 安全与分发
 
 本文是工程安全基线，不是法律意见，也不构成 Google Play 审核保证。政策结论按
-2026-07-18 可访问的官方文档整理；发布前必须重新核对最新全文。
+2026-07-18 可访问的官方文档整理；随包供应链节另记本次核对日期。发布前必须重新核对最新全文。
+
+## 随包二进制供应链与许可
+
+默认完整包附带官方 Platform-Tools 的 **ADB 运行子集**，精简包不带 ADB；两者都有
+同次源码构建的 CLI 与 `aactl-displayd.apk`。App debug APK 独立发布，所有八归档和
+App APK 均列入 SHA256SUMS，不再额外发布裸 CLI。
+
+Platform-Tools 固定在 [osdk.toml](../osdk.toml) 的 `37.0.1`，供应链记录见
+[固定清单](../scripts/platform-tools.lock.json)。清单于 2026-11-14 从 Google
+[repository2-3.xml](https://dl.google.com/android/repository/repository2-3.xml) 的稳定
+`platform-tools` 包获取系统、版本、归档名、字节数和 SHA-1；先核对实际下载的大小与
+官方 SHA-1，再计算并固定 SHA-256。完整取值和下载核对过程见
+[发布规格进展](../.trae/specs/release-bundles/progress.md)。这些摘要提供固定和一致性校验，
+不等同于独立的发布签名或第三方审计。
+
+发布器只允许 `https://dl.google.com/android/repository/` 的 HTTPS 下载，并拒绝离开该
+官方目录的重定向。每次使用缓存也重新核对大小、SHA-1、SHA-256；三个系统均通过才
+提取。解包前逐条验证归档路径和类型，拒绝绝对路径、`..`、符号链接、非常规条目和重复
+路径，只读取固定白名单：ADB、Windows 的 `AdbWinApi.dll` / `AdbWinUsbApi.dll`，以及
+原样附带的 `platform-tools/NOTICE.txt`。macOS 两架构共用官方通用 ADB。其它工具、
+压缩包、缓存均不进发布包或 Git；本项目不承诺包含完整 Android SDK。
+
+完整包下载或使用缓存之前，发布者必须先阅读
+[Android SDK 许可条款](https://developer.android.com/studio/terms)，再显式设置：
+
+```bash
+AACTL_ACCEPT_ANDROID_SDK_LICENSE=android-sdk-license make release VERSION=0.1.0
+```
+
+CI 显式设置同一变量，与安装工具链的 `accept-license=android-sdk-license` 一致；
+`--yes`、缓存已存在或运行测试都不能替代此同意。只生成精简包可设置 `BUNDLES=slim`，
+不获取/读取官方归档；Go 与 Gradle 强制离线，工具链和依赖须预先准备。
+输出在专属 staging 完成后整体发布，失败清理 staging 与未验证下载；已有输出目录
+不会被覆盖。归档固定顺序、权限和 `SOURCE_DATE_EPOCH`（默认提交时间），ZIP 的 DOS
+时间精度为两秒；这不等于承诺 Go/Android 上游构建的所有输入均逐字节可复现。
+
+**再分发官方二进制受 Android SDK 许可条款约束。** 负责人已知悉该风险并决定提供
+完整包；发布者仍应自行评估适用条款与再分发风险，附带 NOTICE 或设置环境变量不构成
+对再分发权利的法律认定。本文不是法律意见，也不替负责人作法律判断。
+仓库当前没有 LICENSE，本任务未选择许可证或添加自拟许可文本；项目自身许可证待
+负责人决定，已登记到路线图 N60.2 后续项。
+
+完整包优先使用随包 ADB；机器上不同版本的 ADB 交替使用可能互相重启共享服务并打断
+连接。用 `AACTL_ADB_PATH` 指向同一官方 ADB，或改用精简包；参见
+[排障说明](troubleshooting.md#adb-版本冲突)。本轮只在 Windows 实际运行包，macOS/Linux
+只有结构与摘要检查，尚无对应系统上的运行、公证或隔离属性结论。
 
 ## 安全模型
 

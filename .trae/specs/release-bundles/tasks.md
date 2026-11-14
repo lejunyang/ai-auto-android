@@ -14,6 +14,9 @@
 - [x] R1 RED/GREEN 与定向验证
 - [x] R2 离线 RED/GREEN、固定清单、打包/CI
 - [x] R3 真实构建、隔离运行、模拟器与清理
-- [ ] R4 文档、路线图 N60.2 与全量验收
+- [x] R4 文档、路线图 N60.2 与全量验收
+
+实际提交：75b43c9（R0）、20974c7（R1）、71ea6f7（R2）、18176f8（R3）；
+R4 为最终 docs(release) 提交。详细执行与未覆盖边界见 progress.md Round1–5。
 
 手动边界：真机 RSA/权限、安全设置必须用户确认，本任务无需操作；disposable emulator 的既有调试通道可自动使用，不安装 App、不启用无障碍/MediaProjection、不自动确认其它操作。

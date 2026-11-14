@@ -6,8 +6,14 @@ helper 的部署、启动与停止仍只由操作员通过 CLI 完成；App Brid
 
 ## 构建、启动与升级
 
-helper APK 只作为 app_process 的 CLASSPATH，**不安装 APK**。当前发布制品没有打包
-helper，需用仓库固定工具链构建：
+helper APK 只作为 app_process 的 CLASSPATH，**不安装 APK**。完整包和精简包都提供
+与 CLI 同次构建的 `aactl-displayd.apk`；整体解压后自动解析同目录产物：
+
+~~~bash
+aactl display start --device SERIAL --json
+~~~
+
+从源码开发时仍可用固定工具链构建并显式指定 debug 变体：
 
 ~~~bash
 make build
@@ -23,11 +29,17 @@ aactl display start --device SERIAL --helper android/displayd/build/outputs/apk/
 实际隔离字段，不会把 v1 缺字段当作已隔离，因此拒绝 v1 握手。升级顺序：
 
 1. 保留旧 CLI，先用它执行 aactl display stop --device SERIAL --json，停止运行中的 v1 helper。
-2. 再替换 CLI 和匹配的 helper APK，用新版 CLI 执行上面的 display start。
+2. 整体解压新完整包或精简包，替换 CLI 和匹配的 helper APK，用新版 CLI 执行无
+   `--helper` 的 `aactl display start --device SERIAL --json`。源码构建才需要指定路径。
 3. 检查 start 返回 protocolVersion:2，并通过 list/status 核对 focus、focusIsolated。
 
 新版 CLI 不会向不匹配的 v1 helper 发 shutdown。固定 socket 名 aactl-displayd-v1 仍是
 传输端点，不表示线协议版本；编码、预算及 uid 边界见 [displayd 契约](../android/displayd/README.md)。
+
+发布包使用 `:displayd:assembleDebug` 产物；签名不影响 app_process 类路径用途。
+App debug APK 是单独的 Release 资产，启动 helper 不需要安装 App。Windows 完整包已在
+API35 模拟器完成 devices、主屏截图、无 `--helper` 的 start、create、close、stop，
+同目录定位与协议 v2 已实测；macOS/Linux 包仅做结构/摘要检查，不能据此外推运行兼容性。
 
 ## 选择焦点策略
 

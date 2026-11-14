@@ -91,3 +91,30 @@ c71fb5b704be898d45095a5ecd0021bbf150d2a56c80e83bd44d51b5a4412093  ai-auto-androi
 - 首次模拟器查询到online但boot_completed尚为空，等待后读取到1才开始操作，没有在未就绪设备上做动作。
 - 临时守卫误用ADB不支持的get-transport-id，动作前即失败；从CLI原始devices JSON确认字段位于connection.transportId，修正后以固定22检查。截图尚未执行，未重复动作。
 - emu kill后20秒检查发现退出中的emulator launcher；官方stdout明示等待20秒优雅退出。未杀未知进程、未再次发送关闭；随后只读复核时进程已自然退出，设备与宿主最终零残留，原失败事实保留。后续脚手架应给关闭观察留足60秒并持续核实相同归属。
+
+## Round 5 — R4 文档收口与最终验证
+
+- README 安装先完整包、用户 RSA 授权与运行，再精简包；填入 Round4 的四平台实测大小及独立 App 72.63 MiB。虚拟显示示例默认同目录 helper，保留源码路径与旧 CLI 先停 v1 的升级顺序。排障记录实际 adbPath/adbSource、损坏随包拒绝和共用 ADB/精简包两种版本冲突规避方法。
+- security-distribution 记录官方地址、固定清单、三重校验、白名单、原始 NOTICE、显式许可开关和负责人已知风险的决定；2026-11-15只读核对 Android 官方 studio/terms 与 Platform-Tools 发布说明，不替负责人作法律判断。项目无 LICENSE；未添加自拟许可。
+- 路线图只收口 N60.2 及对应摘要/波次指引，其它子项行逐字保留。N60整项仍未勾；后续许可决策、linux/arm64、macOS 公证/隔离属性、macOS/Linux 实机运行和包管理器分发均独立登记未实施，含依赖/owner/步骤/证据/提交/清理。
+- 额外对八个真实归档只读检查：排序、顶级目录、0755/0644、时间1794668686、tar uid/gid0均通过；同目标 full/slim 的CLI逐字节同版，全部helper摘要一致，所有随包官方ADB/DLL/NOTICE与已验证官方zip中的对应文件逐字节相同。原始 inventory.json 位于忽略证据目录，临时检查程序放在仓库外，不提交。
+- 保存的官方 XML SHA-256：d670de8bce15cc4ecf5d1a135f2168137ccbb8402111dfc8efcf9cb6f3b2f28f。固定清单的原始字段来源仍是 Round3 指定 XML 节点，SHA-256 为实际下载计算值，不是凭记忆或 XML 提供。
+
+最终命令与数量：
+
+| 检查 | 结果与计数 |
+| --- | --- |
+| make comments | 通过，604个受管手写文件；检查器16个正反例 |
+| make test | 通过：Go全部包、格式、vet；linux/darwin/windows cross-vet均通过；336个本机可编译顶层Test定义（go test -list统计，不是子用例执行数，包含既有条件跳过设备测试）；协议56项；Skills3份及镜像/命令例检查 |
+| make verify | 通过：fake ADB、协议、Skills、注释和toolchain metadata |
+| make build | 通过，默认dev CLI仍为本地忽略产物，不替换用于冒烟的已解压版本 |
+| make android-verify | 通过，17秒/199任务（15执行/184缓存），testDebugUnitTest/assembleDebug/lintDebug；XML统计614项、0failure/error、1既有跳过：app564/fixture8/webfixture6/displayd36 |
+| 发布离线定向 | 20/20（含子测试），无网络；两次伪输入归档逐字节一致 |
+| workflow-portability | Node6/6 |
+| 真实release/校验 | 8归档+1 App APK；SHA256SUMS 9/9；Windows full/slim隔离结果、API35六步及清理通过 |
+| 文档与范围 | 五份更新文档37个本地链接目标存在；git diff --check通过；相对d565282的android/与internal/mcpserver/完整diff为空，无其它规格/风险门修改 |
+
+- 核心Go/Make在文档修改后已再次完整通过，日志 make-final.log；Android验证后未改Android源码，无需重复相同缓存检查。所有外部工具在本机验证中使用明确真实exe路径，未改全局PATH或项目pins。
+- 未覆盖：macOS arm64/amd64、Linux amd64实际运行；linux/arm64完整包；macOS公证/下载隔离属性；真机/OEM/API33/34、实际v1→v2升级与长期flaky统计。本轮不为这些能力作验收结论。
+- 设计未偏离；实现选择为已存在DIST_DIR拒绝覆盖，包内只附ADB所需子集。过程纠正（首次手工许可变量遗漏、裸make入口、临时Go格式、守卫字段、启动/关闭时机）见Round3/4，不隐藏失败或放宽判据。唯一设备、授权及官方来源边界保持。
+- 本规格R0–R4按实现/单测/实际设备证据勾选；提交只含允许范围的文本源码/配置/文档，不含二进制/缓存/发布产物。最终提交后再用git status/worktree与设备/进程只读复核；不push，不移除指定worktree。
