@@ -25,6 +25,7 @@ func selectDisplayWindows(data []byte, id int) ([]byte, error) {
 	currentID := -1
 	start := 0
 	windowCount := 0
+	selectedWindowCount := 0
 	var selected []byte
 	for {
 		before := int(decoder.InputOffset())
@@ -73,9 +74,7 @@ func selectDisplayWindows(data []byte, id int) ([]byte, error) {
 			}
 		case xml.EndElement:
 			if depth == 2 && currentID == id {
-				if windowCount == 0 {
-					return invalid()
-				}
+				selectedWindowCount = windowCount
 				selected = data[start:int(decoder.InputOffset())]
 			}
 			depth--
@@ -87,8 +86,10 @@ func selectDisplayWindows(data []byte, id int) ([]byte, error) {
 			return invalid()
 		}
 	}
-	if selected == nil {
-		return nil, apperr.New(apperr.CodeDisplayNotFound, "Requested display has no window group in UIAutomator output.", false, nil)
+	if selected == nil || selectedWindowCount == 0 {
+		// 归属由service在调用前核对（主屏0除外）；有效XML缺窗口只说明空屏，不说明屏不存在。
+		// 必须等完整输入通过校验才分类，不能把损坏尾部误报为空屏或回退到主屏。
+		return nil, apperr.New(apperr.CodeDisplayEmpty, "The display has no windows. Launch an application on that display before reading hierarchy.", false, map[string]any{"displayId": id})
 	}
 	// 完整校验全部输入后只复制目标组，保留真实窗口层次与属性，绝不拼入其它显示。
 	result := append([]byte(`<?xml version="1.0" encoding="UTF-8"?><displays>`), selected...)

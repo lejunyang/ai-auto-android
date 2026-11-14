@@ -402,3 +402,60 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
 - 由此暴露一个真实的可用性问题：屏仍归辅助进程所有、只是上面没有窗口时，返回
   `DISPLAY_NOT_FOUND` 会误导调用方以为屏不存在。
 - 清理：辅助进程已停止，设备临时文件与转发已清，模拟器已关闭。
+
+## Round 7：M3b独立BACK因果链（2026-11-14）
+
+- 开工HEAD=ed944ce、工作区干净，已重读集成方定位。M3b → M4 → M5单人串行，未派发Agent。
+- 两份对照构建全部在本worktree的忽略目录scripts/emulator/build/back-cause中生成：
+  当前五份Java生产源码复制到独立src目录，旧Policy取git show d70eacb的原文；经同一本地
+  osdk javac --release17与D8流水线生成两个CLASSPATH DEX jar，不安装、不下载APK。
+  二进制逐类比较仅Policy.class不同，没有改动android/displayd跟踪文件或其它worktree。
+- 两次均独立冷启动固定osdk-test-35，-read-only -no-snapshot -no-boot-anim -no-audio，
+  唯一emulator-5554、boot_completed=1，F35指纹、320×640/160dpi、en-US、导航模式2，
+  虚拟屏720×1280/240dpi。CLI仍d85bd0a3...、fixture仍1e88acf7...（完整摘要见前轮）。
+- 旧构建old-cause：UTC08:48:20.821→08:49:08.215，transport37；helper jar SHA-256
+  14a35b20ee490305fa2c38ce7540708353fcc58180fb0d8631fdcce4473d202f，标志64971。
+- 新构建new-cause：UTC08:50:52.763→08:51:35.927，transport38；helper jar SHA-256
+  46dabae719aa57be37e46061cbba183c9625c6855df137e640225c75d394f110，标志130507。
+
+| 构建与观察点 | 虚拟屏topResumedActivity | 主屏窗口数 / 虚拟屏窗口数 | 当前IME客户端显示 / mInputShown | helper仍拥有显示2 | 层级 |
+| --- | --- | --- | --- | --- | --- |
+| 64971，点按输入框后 | fixture MainActivity | 3 / 1 | fixture显示2 / true，IME token显示0 | 是 | 成功 |
+| 64971，第一次BACK后 | fixture MainActivity | 2 / 1 | fixture显示2 / false | 是 | 成功 |
+| 64971，键盘已隐藏后再BACK | 无前台Activity | 2 / 无分组 | launcher显示0 / false | 是 | 旧错误DISPLAY_NOT_FOUND |
+| 130507，点按输入框后 | fixture MainActivity | 2 / 1 | launcher显示0 / false | 是 | 成功 |
+| 130507，第一次BACK后 | 无前台Activity | 2 / 无分组 | launcher显示0 / false | 是 | 旧错误DISPLAY_NOT_FOUND |
+
+- 实验补齐了旧标志下“第一次BACK收键盘且保留根页面、下一次BACK才退出”的行为链；
+  新标志没有虚拟屏IME，第一次BACK直接使根页面退出。不是helper丢屏，也不是损坏的XML。
+  因果链以窗口/IME/按显示分段的topResumedActivity共同核对，不采信普通活动窗口dump。
+  诊断报告的宽泛ActivityRecord提及列表可能包含全局尾部，因此表只使用该显示的
+  topResumedActivity，不把尾部Launcher提及当作虚拟屏活动。
+- 每次动作前均最新观察、显式serial、记录预期；第二次旧BACK是在已确认IME隐藏且
+  fixture仍在的状态下作对照，不是失败后的盲目重试。没有输入文本、PIN或修改设置。
+  两轮finally清理helper/显示/转发/设备XML、关闭模拟器，无emulator/qemu后才换构建。
+- RED：先新增ADB有效空输出、空组、坏尾部测试，以及真实service/ADB驱动的CLI/MCP
+  空屏与不归属区别测试。原实现均把空屏报DISPLAY_NOT_FOUND而失败；主屏0同样覆盖。
+  后续实现只改变空屏分类，保留完整XML校验、随机文件清理和不回退边界。
+
+## Round 8：M3b空屏错误RED/GREEN（2026-11-14）
+
+- 新增DISPLAY_EMPTY，retryable=false，消息要求先在目标显示启动应用；有效XML无目标组
+  或目标组零窗口时返回该错误。只在完整校验全部XML之后分类，坏尾部仍ACTION_FAILED，
+  超限/重复编号/截断仍沿用原拒绝。主屏0适用且不要求helper；正整数在service中先验归属。
+- DISPLAY_NOT_FOUND仍由helper归属门处理不归属目标。没有把空屏改成成功、空XML输出或
+  普通dump回退；service只补边界注释，MCP既有通用apperr映射自然保留新code，三道风险门
+  文件完全未改。ExitCode映射未改，两种显示错误仍为既有通用退出码10，应按error.code分支。
+- RED三处实测失败：ADB解析器、CLI真实service/ADB路径、MCP真实service/ADB路径都把
+  DISPLAY_EMPTY误报DISPLAY_NOT_FOUND；实现后同样测试GREEN。CLI/MCP均覆盖0、已归属7、
+  不归属9；9在发出ADB读取前拒绝，0不查helper，已存在空屏每次仅固定5次ADB调用并清理，
+  没有回退。额外覆盖有效空组与无目标组后面的畸形XML。
+- make comments（594文件/16自测）、make test（含三系统交叉vet、协议56项、Skills3份）、
+  make verify、make build通过；定向ADB/CLI/MCP空屏测试通过。docs/virtual-display.md
+  同步错误表和先验归属/空屏语义，未提前修改M4/M5其余文档。
+- 修订脚本正在冷启动验收：DELETE需严格得到INPUT:E2EAsci；另按BACK要求根页退出、
+  归属仍在、DISPLAY_EMPTY且该显示无topResumedActivity；重新启动同屏PAGE:MAIN恢复。
+  不承诺进程内状态跨根页面退出保留，仅必要时显式恢复原CLICK:1前提，后续仍断言CLICK:2。
+  主屏隔离、65秒无输入等待、非黑帧、DEVICE_LOCKED/PIN清除/DISPLAY_ASLEEP/重建原判据不变。
+  6个脚本本地测试通过，包括“不归属/错错误码/仍有前台不能算空屏”的否定用例。
+  本节不把正在运行的冷启动轮次计为成功，M4尚未开始。

@@ -51,7 +51,7 @@ func TestSelectDisplayWindowsUsesRealDisplayGroups(t *testing.T) {
 func TestSelectDisplayWindowsRejectsMissingMalformedAndOversize(t *testing.T) {
 	data := windowsFixture(t)
 	_, err := selectDisplayWindows(data, 999)
-	assertAppErrorCode(t, err, apperr.CodeDisplayNotFound)
+	assertAppErrorCode(t, err, apperr.CodeDisplayEmpty)
 	for name, invalid := range map[string][]byte{
 		"truncated":    data[:len(data)-20],
 		"invalid id":   []byte(strings.Replace(string(data), `<display id="2">`, `<display id="bogus">`, 1)),
@@ -122,4 +122,20 @@ func TestDisplayHierarchyRejectsTruncatedADBOutputAndCleans(t *testing.T) {
 	if len(f.calls) != 5 || f.calls[4][3] != "rm" {
 		t.Fatal("remote file not cleaned")
 	}
+}
+
+// 有效XML中的空屏与损坏输出不同；即使目标组缺失也必须校验完整尾部并清理远端文件。
+func TestDisplayHierarchyReportsEmptyAfterFullValidation(t *testing.T) {
+	for _, id := range []int{0, 7} {
+		f := &fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {Stdout: []byte("35")}, {}, {Stdout: []byte("<displays/>")}, {}}, errors: make([]error, 5)}
+		_, err := NewClient("adb", f).WithDisplay(id).Hierarchy(context.Background(), "FIRST")
+		assertAppErrorCode(t, err, "DISPLAY_EMPTY")
+		if len(f.calls) != 5 || f.calls[4][3] != "rm" {
+			t.Fatal("cleanup missing or fallback attempted")
+		}
+	}
+	_, err := selectDisplayWindows([]byte(`<displays><display id="0"/></displays>`), 0)
+	assertAppErrorCode(t, err, "DISPLAY_EMPTY")
+	_, err = selectDisplayWindows([]byte(`<displays></displays><broken`), 7)
+	assertAppErrorCode(t, err, apperr.CodeActionFailed)
 }

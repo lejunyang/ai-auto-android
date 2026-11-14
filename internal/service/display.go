@@ -93,6 +93,7 @@ func (s *Service) observeDisplay(ctx context.Context, r ObserveRequest) (Observe
 		}
 		return ObserveResult{Device: r.Device, Kind: r.Kind, Format: "png", SizeBytes: len(frame.Bytes), SHA256: frame.SHA256, Image: frame.Bytes}, nil
 	}
+	// 正整数目标先核对归属，随后解析器可安全区分DISPLAY_EMPTY与确实不归属的DISPLAY_NOT_FOUND。
 	target, err := s.targetDisplay(ctx, r.Device, *r.DisplayID)
 	if err != nil {
 		return ObserveResult{}, err

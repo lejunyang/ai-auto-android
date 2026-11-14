@@ -81,3 +81,21 @@ M1 → M2 → M3 → M4 → M5 串行，同一 worktree、同一分支，单一�
 提交边界：仅上述文档/镜像与本规格状态，不混入M3/M4实现。
 失败回滚/清理：保留未验项与核实记录，停止M5；只撤销明确属于本阶段且未验收的编辑，
 不覆盖用户或其它任务改动。无设备操作；不修改路线图文件，后续项只登记本规格progress.md。
+
+## M3b：空虚拟屏语义与新BACK行为（依赖已完成的M3两组焦点测量）
+
+目标：独立核实两种标志构建的BACK因果链，区分空屏/不存在，并修订旧验收脚本而不削弱电源/锁屏检查。
+目录所有权：internal/adb、service、cli、mcpserver（仅错误映射）、apperr（仅新增错误码）、
+原verify-virtual-display.mjs及其测试、docs/virtual-display.md、本规格状态。android/displayd不修改。
+执行波次：M3b → M4 → M5 单人串行；不并行派发Agent。两份对照helper仅在本worktree忽略构建目录生成。
+
+- [x] 两种构建独立复现点按输入框→BACK，记录IME、Activity与窗口分组
+- [x] RED/GREEN：DISPLAY_EMPTY与DISPLAY_NOT_FOUND分离，CLI/MCP映射与无回退测试
+- [ ] 修订按键到达检查，明确BACK退出根Activity、空屏错误与重新启动恢复
+- [ ] 其余隔离/息屏65秒/PIN往返与重建判据保持，冷启动连续3次完整通过
+- [x] 提交：`fix(adb): report an empty display distinctly from a missing one`
+- [ ] 提交：`test(emulator): adapt virtual display acceptance to IME-less displays`
+
+验收证据：两种BACK逐步表、定向/全量测试、三个独立冷启动报告与设备指纹。
+失败清理：停止helper、清转发和设备临时文件、清测试PIN并恢复超时、关闭模拟器；仅清理本轮忽略产物。
+不改上一规格状态，不将M3b的脚本语义变化回写为其历史验收结论。

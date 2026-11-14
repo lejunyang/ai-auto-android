@@ -4,6 +4,9 @@ package cli
 
 import (
 	"context"
+	"github.com/lejunyang/ai-auto-android/internal/adb"
+	"github.com/lejunyang/ai-auto-android/internal/apperr"
+	"github.com/lejunyang/ai-auto-android/internal/process"
 	"github.com/lejunyang/ai-auto-android/internal/service"
 	"strings"
 	"testing"
@@ -27,6 +30,67 @@ func TestDisplayActionArgumentsReachSharedService(t *testing.T) {
 	request := runActionCommand(t, "action", "sleep", "--device", "SERIAL")
 	if request.Action != service.ActionDeviceSleep {
 		t.Fatal(request)
+	}
+}
+
+// CLI使用真实service/adb解析器，空屏错误不能被信封改写或触发普通dump回退。
+type emptyHierarchyExecutor struct{ calls [][]string }
+
+func (e *emptyHierarchyExecutor) Run(_ context.Context, _ string, args []string, _ process.Options) (process.Result, error) {
+	e.calls = append(e.calls, append([]string(nil), args...))
+	line := strings.Join(args, " ")
+	switch {
+	case strings.HasPrefix(line, "devices "):
+		return process.Result{Stdout: []byte("List of devices attached\nSERIAL\tdevice transport_id:1\n")}, nil
+	case strings.Contains(line, "getprop ro.build.version.sdk"):
+		return process.Result{Stdout: []byte("35")}, nil
+	case strings.Contains(line, "exec-out cat"):
+		return process.Result{Stdout: []byte("<displays/>")}, nil
+	default:
+		return process.Result{}, nil
+	}
+}
+
+type cliOwnedDisplays struct {
+	service.DisplayBackend
+	calls int
+}
+
+func (d *cliOwnedDisplays) RequireDisplay(_ context.Context, _ string, id int) error {
+	d.calls++
+	if id == 7 {
+		return nil
+	}
+	return apperr.New(apperr.CodeDisplayNotFound, "Not helper-owned", false, nil)
+}
+func TestCLIEmptyDisplayAndMissingDisplayRemainDistinct(t *testing.T) {
+	for _, id := range []string{"0", "7", "9"} {
+		executor := &emptyHierarchyExecutor{}
+		helper := &cliOwnedDisplays{}
+		app, stdout := testApp(executor, "")
+		app.Automation = service.NewWithDisplays(adb.NewClient("adb", executor), helper)
+		if app.Run(context.Background(), []string{"observe", "hierarchy", "--device", "SERIAL", "--display", id, "--json"}) != apperr.ExitInternal {
+			t.Fatal(stdout.String())
+		}
+		e := decodeEnvelope(t, stdout.Bytes())
+		want := "DISPLAY_EMPTY"
+		calls := 5
+		if id == "9" {
+			want = apperr.CodeDisplayNotFound
+			calls = 0
+		}
+		if e.OK || e.Error == nil || e.Error.Code != want || e.Error.Retryable {
+			t.Fatalf("%s: %+v", id, e)
+		}
+		if len(executor.calls) != calls {
+			t.Fatal("wrong route or fallback", executor.calls)
+		}
+		if id != "9" && !strings.Contains(strings.ToLower(e.Error.Message), "launch") {
+			t.Fatal("missing recovery instruction")
+		}
+		if id == "0" && helper.calls != 0 {
+			t.Fatal("primary required helper")
+		}
 	}
 }
 

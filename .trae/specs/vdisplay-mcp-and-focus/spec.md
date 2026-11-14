@@ -130,3 +130,11 @@
 已有文档所有权中的 README.md、docs/architecture.md、docs/protocol.md 和两份
 skills references/commands.md。允许通过项目同步工具同步 .trae/skills/ 中对应镜像。
 移交分支/worktree仅只读；其它规格和docs文件仍禁止修改，结果逐条追加到本规格进度。
+
+## M3b空屏语义增补（2026-11-14，用户授权）
+
+按用户增量允许修改原scripts/emulator/verify-virtual-display.mjs及其测试，新增空屏错误
+DISPLAY_EMPTY：目标已经过service归属校验（主屏0除外）且有效dump --windows无目标窗口时，
+提示先在该显示启动应用；未归属仍DISPLAY_NOT_FOUND。错误必须保持CLI/MCP路径一致、无主屏回退。
+修订按键验收不依赖BACK隐藏输入法，单独验证BACK结束根Activity、空屏与重新启动恢复；
+隔离/息屏65秒/PIN往返检查不削弱，连续三个冷启动通过后才进入M4，再进入M5。

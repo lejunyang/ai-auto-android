@@ -227,3 +227,30 @@ func TestMCPDisplaySchemasRejectOutOfRangeAndExtraFields(t *testing.T) {
 		t.Fatal("extra fields reached management")
 	}
 }
+
+// 经过真实service与ADB解析器验证新错误映射；不归属的屏仍在读取窗口之前拒绝。
+type mcpOwnedDisplays struct{ service.DisplayBackend }
+
+func (*mcpOwnedDisplays) RequireDisplay(_ context.Context, _ string, id int) error {
+	if id == 7 {
+		return nil
+	}
+	return apperr.New(apperr.CodeDisplayNotFound, "Not helper-owned", false, nil)
+}
+func TestMCPEmptyDisplayAndMissingDisplayRemainDistinct(t *testing.T) {
+	for _, id := range []int{0, 7, 9} {
+		fake := &scriptedADB{results: []process.Result{onlineDevices(), {Stdout: []byte("35")}, {}, {Stdout: []byte("<displays/>")}, {}}, errors: make([]error, 5)}
+		client := adb.NewClient("adb", fake)
+		session := connectClient(t, service.NewWithDisplays(client, &mcpOwnedDisplays{}))
+		r := callDisplayTool(t, session, ToolObserve, map[string]any{"device": "SERIAL", "kind": "hierarchy", "displayId": id}, false)
+		want := "DISPLAY_EMPTY"
+		calls := 5
+		if id == 9 {
+			want = apperr.CodeDisplayNotFound
+			calls = 0
+		}
+		if !strings.Contains(toolErrorText(t, r), `"code":"`+want+`"`) || len(fake.calls) != calls {
+			t.Fatal("wrong error/route", toolErrorText(t, r), fake.calls)
+		}
+	}
+}

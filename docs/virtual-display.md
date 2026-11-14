@@ -66,7 +66,9 @@ aactl display stop --device SERIAL --json
 下有一个 `display id="N"`，其下是多个 `window` 及各自的 `hierarchy/node`。
 窗口列表可能包含目标屏的系统窗口；调用方仍需按目标包选择节点。
 
-显示缺失、重复编号、畸形/截断 XML 或超过 8MiB 预算都明确失败，不返回其它显示。
+经归属校验确认存在的显示（主屏0除外）没有窗口分组时返回 `DISPLAY_EMPTY`，先在该屏
+启动应用再观察；未归辅助进程所有才返回 `DISPLAY_NOT_FOUND`。重复编号、畸形/截断
+XML 或超过 8MiB 预算仍明确失败，不返回其它显示。
 摘要与 `sizeBytes` 对应筛选后的 XML。它与普通 dump 的单个 `hierarchy` 根不同。
 
 不带 `--display` 时仍发出原来的普通 dump 命令，`format=uiautomator-xml`。它读取的是
@@ -140,6 +142,7 @@ seriesB-1/2/3 连续完整通过；每次均只连接 emulator-5554，独立冷�
 | `UNSUPPORTED_API` | 虚拟屏要求 API33+，不降级 |
 | `CAPABILITY_UNAVAILABLE` | 层级所需 API 无法可靠读取或低于门槛 |
 | `DISPLAY_NOT_FOUND` | 重新 list，使用该 helper 拥有的有效编号 |
+| `DISPLAY_EMPTY` | 屏存在但没有窗口；先在该屏启动应用再读层级，不能去掉显示参数回退主屏 |
 | `DEVICE_LOCKED` | 等用户正常解除凭据锁，不自动解锁 |
 | `DISPLAY_ASLEEP` | close/create，接受原屏应用内容被销毁，再重新启动 |
 | `FRAME_NOT_READY` | 重新观察状态后可另发取帧请求，不重复输入动作 |

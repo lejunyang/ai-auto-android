@@ -36,6 +36,7 @@ const (
 	CodeInternal          = "INTERNAL_ERROR"
 	// 虚拟屏错误保持独立，调用方不得据此转向主屏重试。
 	CodeDisplayNotFound       = "DISPLAY_NOT_FOUND"
+	CodeDisplayEmpty          = "DISPLAY_EMPTY"
 	CodeDisplaydNotRunning    = "DISPLAYD_NOT_RUNNING"
 	CodeDisplaydIdentity      = "DISPLAYD_IDENTITY_MISMATCH"
 	CodeDisplaydHelperMissing = "DISPLAYD_HELPER_MISSING"
