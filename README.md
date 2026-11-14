@@ -61,7 +61,7 @@ aactl recording replay --device SERIAL \
 aactl bridge close --device SERIAL --json
 ```
 
-## 虚拟显示与主屏息屏（CLI）
+## 虚拟显示、焦点策略与主屏息屏（CLI / MCP）
 
 API33+ 可用 shell 身份的 `displayd` 创建后台虚拟屏，使用 `--display N` 在其上
 启动、截图、读取窗口列表和输入；`aactl action sleep --device SERIAL` 使主屏息屏。
@@ -70,7 +70,7 @@ helper 需从源码构建，当前 Release 不打包它；APK 不安装，只作
 ```bash
 make android-verify
 aactl display start --device SERIAL --helper android/displayd/build/outputs/apk/debug/displayd-debug.apk --json
-aactl display create --device SERIAL --width 720 --height 1280 --dpi 240 --json
+aactl display create --device SERIAL --width 720 --height 1280 --dpi 240 --focus steal --json
 aactl observe hierarchy --device SERIAL --display N --json
 aactl observe screenshot --device SERIAL --display N --output virtual.png --json
 aactl display stop --device SERIAL --json
@@ -80,7 +80,12 @@ aactl display stop --device SERIAL --json
 普通层级读取的是活动窗口，虚拟屏有焦点时可能返回虚拟屏内容。凭据锁定拒绝取帧；
 组休眠后必须关闭重建，其上应用内容会销毁。已在主屏运行的应用向虚拟屏启动会整体
 移过去。API33 无法查询显示组唤醒状态，真机/OEM 与 API33/34 兼容性尚未验收。
-MCP 与 App Bridge 不提供虚拟屏入口。完整命令、恢复与证据见
+MCP 已提供四个虚拟屏管理工具，以及带 displayId 的截图/层级和六类既有动作；
+helper 启停仍只有 CLI，App Bridge 尚无多显示出口。focus 默认 isolated，保护主屏输入，
+但虚拟屏没有输入法且主屏息屏时读不到层级；steal 可息屏挂机，会打断主屏输入法。
+API33 两策略均无法隔离；0 明确主屏且不要求 helper。isolated 的 BACK 直接作用于应用，
+空屏返回 DISPLAY_EMPTY；无窗口输出返回 WINDOWS_UNAVAILABLE。helper 协议已升 v2，
+升级前先用旧 CLI 停止 v1 helper，再更新 CLI/helper 并启动。完整参数、选择建议与证据见
 [虚拟显示操作](docs/virtual-display.md)。
 
 ## MCP 配置

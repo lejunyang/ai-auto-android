@@ -47,10 +47,10 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 `docs/architecture.md`、`README.md`、`skills/`。
 
 - [x] 通过真实 MCP stdio 会话的端到端脚本，冷启动连续 3 次（Round26）
-- [ ] 文档：MCP 工具与参数、显示编号 0、焦点实测结果与限制
+- [x] 文档：MCP工具/参数、显示0、两组焦点结果/策略限制、v2旧CLI停v1升级顺序
 - [x] 全量：`make comments`、`make test`、`make verify`、`make build`、
       `make android-verify`（若改到 `android/`）
-- [ ] 提交：`test(emulator): verify virtual display through MCP` 与
+- [x] 提交：`test(emulator): verify virtual display through MCP` 与
       `docs: document MCP virtual display tools and focus behaviour`
 
 ## 实际提交
@@ -69,7 +69,7 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - M3c脚本保存提交：`test(emulator): verify both focus policies end to end`；steal三次通过，isolated首轮基线失败，整体未验收。
 - 本轮脚手架与原始响应提交：`test(emulator): harden focus setup and preserve failure responses`；F2已进入产品检查，错误契约失败后停止。
 - M3c收尾提交：test(emulator): use a stable primary-input baseline；证据见Round22–24。
-- M4待验收，M5依赖M4。
+- M4真实stdio三次及文档/全量验证通过（Round26），进入M5。
 
 ## M5：接收文档清理移交（依赖 M4 验收通过）
 

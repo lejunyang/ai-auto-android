@@ -179,5 +179,6 @@ T1b 的 API 35 PIN 往返验证了 DEVICE_LOCKED → DISPLAY_ASLEEP → 重建�
 Round20最小复现及Round24三个完整isolated冷启动均得到真实WINDOWS_UNAVAILABLE；
 主屏输入采用Settings主进程的添加网络对话框SSID，全部焦点/IME/文本判据保持，
 BACK/空屏/重启、息屏取帧/输入及唤醒后层级恢复均通过。对话框只取消不保存，网络列表不变。
-旧搜索基线的失败仍保留在历史记录，未计为成功。MCP stdio尚待验收。
+旧搜索基线的失败仍保留在历史记录，未计为成功。MCP stdio在Round26三个冷启动完整通过，两策略均由MCP创建并完成列表/状态/观察/六类动作/关闭；
+helper启停仍只有CLI，20个MCP工具与三道既有风险门边界保持。
 API33/34、真机/OEM仍留待后续任务，不把标志能力字段当成这些平台的实测结论。

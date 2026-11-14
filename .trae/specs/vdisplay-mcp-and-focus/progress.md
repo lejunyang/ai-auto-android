@@ -990,3 +990,5 @@ S=com.android.settings，F=dev.aiauto.fixture，C=com.google.android.deskclock�
 - 补测两组新基线数据、默认isolated/steal取舍、API33实际不隔离、BACK/无IME/中文限制、空屏与无输出错误，以及v2升级先旧CLI停止v1步骤均写入README、协议与virtual-display文档。
 - Node32项通过；comments601文件/16自测；skills-check通过3份与镜像。make test第一次在Node spawnSync go时因PATH为go.cmd而ENOENT，全部Go包此前通过；随后显式GO=E:/osdk-data/data/installs/go/1.26.5/bin/go.exe重跑make test及make verify均退出0，三系统cross-vet通过。未改Makefile、PATH持久配置或安装软件。
 - make android-verify退出0（1m5s、199任务，6执行/193缓存）；单测614项、0失败、1既有跳过，assembleDebug/lintDebug通过。构建CLI在MCP会话结束后单独执行，避免占用中的Windows可执行文件；未在设备验收中替换CLI。
+
+- M4文档提交范围：README、docs/virtual-display.md、docs/protocol.md的虚拟屏/v2段、displayd README及本规格状态；架构/协议剩余P项与skills留到M5。make build退出0，CLI摘要仍8838361972da00ac63833780e2debedbfd4e1e40011db0463d03dfd4ca99ef20。设备已关闭、adb devices为空、宿主无emulator/qemu，M4完成后串行进入M5。

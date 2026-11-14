@@ -1,172 +1,229 @@
-# 虚拟显示与主屏息屏
+# 虚拟显示、焦点策略与主屏息屏
 
-电脑侧 CLI 可通过 shell 身份的 `displayd` 创建虚拟屏，启动、观察与操作其上的应用，
-并用 `action sleep` 使主屏息屏。该能力不经过 Android App 或 App Bridge；MCP 没有
-虚拟屏出口，App 内 AI 会话原有的锁屏暂停边界保持不变。
+电脑侧 CLI 和 MCP 可通过 shell 身份的 displayd 在后台虚拟屏启动、观察与操作应用。
+helper 的部署、启动与停止仍只由操作员通过 CLI 完成；App Bridge 和 App AI 没有多显示出口。
+虚拟屏不绕过凭据锁，不捕获安全窗口；目标失效不会回退主屏。
 
-## 构建与启动
+## 构建、启动与升级
 
-辅助 APK 作为 `app_process` 的 CLASSPATH 使用，**不安装 APK**。当前发布制品没有
-打包它，需要从本仓库构建。沿用 Makefile 的 osdk 工具链：
+helper APK 只作为 app_process 的 CLASSPATH，**不安装 APK**。当前发布制品没有打包
+helper，需用仓库固定工具链构建：
 
-```bash
+~~~bash
 make build
 make android-verify
 aactl display start --device SERIAL --helper android/displayd/build/outputs/apk/debug/displayd-debug.apk --json
-```
+~~~
 
-产物定位顺序为 `--helper PATH`、环境变量 `AACTL_DISPLAYD_APK`、`aactl` 可执行文件
-同目录的 `aactl-displayd.apk`。显式指定的路径不存在时直接失败，不换用其它 APK。
-部署会比对本地与设备 SHA-256，只有不同才推送；已有实例与本地产物不同，需先 stop。
+产物定位顺序为 --helper PATH、AACTL_DISPLAYD_APK、CLI 同目录的 aactl-displayd.apk。
+显式路径不存在即失败，不换用其它 APK；部署比对本地与设备 SHA-256。helper 脱离启动 shell，
+每次调用独立建立并清理 forward，连接前后核对 shell 属主、进程名与 socket inode/fd 归属。
 
-辅助进程会脱离启动 shell，后续 CLI 调用共用它创建的屏幕。每次请求独立建立和清理
-ADB forward；连接前核对 shell 属主、精确进程名与监听 socket 的 inode/fd 归属。
-身份无法核实时拒绝连接，不采信同名未知套接字。
+**helper 协议已升为 v2**，公共 CLI 信封与 App Bridge 仍为 1.0。新客户端必须获得策略和
+实际隔离字段，不会把 v1 缺字段当作已隔离，因此拒绝 v1 握手。升级顺序：
 
-## 命令
+1. 保留旧 CLI，先用它执行 aactl display stop --device SERIAL --json，停止运行中的 v1 helper。
+2. 再替换 CLI 和匹配的 helper APK，用新版 CLI 执行上面的 display start。
+3. 检查 start 返回 protocolVersion:2，并通过 list/status 核对 focus、focusIsolated。
 
-全部命令要求显式 `--device SERIAL`；`--json` 输出既有紧凑信封。
+新版 CLI 不会向不匹配的 v1 helper 发 shutdown。固定 socket 名 aactl-displayd-v1 仍是
+传输端点，不表示线协议版本；编码、预算及 uid 边界见 [displayd 契约](../android/displayd/README.md)。
 
-| 命令 | 参数与效果 |
+## 选择焦点策略
+
+| focus | 适用场景 | API34+ 行为与代价 |
+| --- | --- | --- |
+| isolated（默认） | 用户同时在主屏输入 | 不抢主屏顶层焦点与输入法；虚拟屏没有输入法；主屏息屏时读不到层级 |
+| steal | 无人值守、主屏息屏挂机 | 可息屏读取虚拟屏层级、输入和取帧；启动/点按会抢顶层焦点、打断主屏输入法 |
+
+有人使用主屏时选择 isolated，并保持主屏唤醒才能读层级；需要息屏层级自动化时显式选择
+steal，并接受主屏输入被打断。两种策略息屏时均可取帧和注入按键文本，凭据锁定保护相同。
+
+API33 没有禁止抢焦点标志：两种策略标志都为 15819，focusIsolated:false；
+hello.capabilities.focusIsolation:false，不能依赖 isolated 保护主屏输入。API34+ 分别为
+130507 / 64971，均不含 SECURE。focusIsolated 表示当前 API 启用了标志，不是 OEM 实测保证。
+API33/34、真机/OEM、硬件键盘仍未验收。
+
+isolated 虚拟屏没有输入法，只能用按键注入支持的受限 ASCII 文本；中文与 IME 输入未接入。
+BACK 直接作用于应用，在根页面会退出，**不会先收键盘**。steal 下输入法会服务虚拟屏，
+本机实测第一次 BACK 收键盘且保留根页面。不要将一种策略的 BACK 行为用于另一种策略。
+
+## CLI 命令与显示编号 0
+
+所有设备命令显式指定 --device SERIAL，--json 使用既有紧凑信封。
+
+| 命令 | 参数与结果 |
 | --- | --- |
-| `display start` | 可选 `--helper PATH`；部署、启动或复用匹配实例 |
-| `display status` | 凭据锁、显示状态、显示组唤醒状态与保活诊断 |
-| `display stop` | 释放全部虚拟屏，等待进程退出，清除固定 APK/日志 |
-| `display create` | 必须给 `--width W --height H --dpi D`；返回 `displayId` |
-| `display list` | 列出本进程拥有的虚拟屏 |
-| `display close` | 必须给 `--display N`；销毁目标屏及其上应用内容 |
-| `observe screenshot` | 支持 `--display N`；必须给 `--output PATH` |
-| `observe hierarchy` | 支持 `--display N`；返回目标显示的窗口列表 |
-| `action tap`、`swipe`、`text`、`key`、`launch` | 在原有参数外支持 `--display N` |
-| `action sleep` | `device.sleep`；用幂等 `KEYCODE_SLEEP` 使主屏息屏，不接受 `--display` |
+| display start / stop | 仅操作员 CLI；可选 start --helper PATH，stop 销毁全部屏上内容并清临时 APK/日志 |
+| display create | --width W --height H --dpi D；可选 --focus isolated\|steal，默认 isolated |
+| display list / status | 每屏返回 displayId、尺寸、focus、focusIsolated；status 另含凭据锁、显示组与保活诊断 |
+| display close | --display N；只能关闭 helper 拥有的正整数显示，销毁其上内容 |
+| observe screenshot / hierarchy | 可选 --display N；截图须 --output PATH |
+| action tap / swipe / long-press / text / key / launch | 在原参数外接受 --display N |
+| action sleep / wake | 只作用于主屏，不接受 --display；MCP 不开放这两个动作 |
 
-尺寸范围为宽、高各 128..2048，dpi 72..640；最多同时 2 块虚拟屏。
-将下面的 `N` 替换成 create 实际返回的编号，不能假定编号跨重建保持不变：
+宽、高各 128..2048 像素，dpi 72..640，最多同时两块屏。create 不接受原始 flags 或 socket；helper 的部署路径只由 CLI start 接受。使用 create 实际返回的编号，重建后编号可能变化：
 
-```bash
-aactl display create --device SERIAL --width 720 --height 1280 --dpi 240 --json
+~~~bash
+aactl display create --device SERIAL --width 720 --height 1280 --dpi 240 --focus steal --json
 aactl display list --device SERIAL --json
 aactl action launch --device SERIAL --display N --package dev.aiauto.fixture --activity .MainActivity --json
 aactl observe hierarchy --device SERIAL --display N --json
 aactl observe screenshot --device SERIAL --display N --output virtual.png --json
-aactl action sleep --device SERIAL --json
-aactl display status --device SERIAL --json
-aactl action wake --device SERIAL --json
+aactl observe hierarchy --device SERIAL --display 0 --json
 aactl display close --device SERIAL --display N --json
 aactl display stop --device SERIAL --json
-```
+~~~
 
-`tap/swipe` 的坐标必须来自同一目标显示的最新层级或截图；动作后再次观察。文本入口
-仍只接受受限 ASCII，普通按键白名单没有扩大。失败时不能去掉 `--display` 向主屏重试。
+**编号 0 明确指向主屏，不要求 helper 运行**。层级发 dump --windows 后只取 display id="0"，
+输入与启动明确带 -d 0 / --display 0。正整数必须归 helper 所有。
 
-## 层级形态与焦点歧义
+不带目标显示的旧 argv 逐字保持，普通 hierarchy 读的是**活动窗口**，可能是虚拟屏，
+不能据此认定主屏内容。无显示编号的缺文件错误仍是历史问题，未在本次修复。
+坐标必须来自目标屏最新层级或截图，每步后重新观察；失败时不能去掉显示参数重试。
 
-指定显示时执行 `uiautomator dump --windows`，完整校验 XML 后只返回精确编号对应的
-一组窗口。CLI 的 `format` 为 **`uiautomator-windows-xml`**，XML 根为 `displays`，
-下有一个 `display id="N"`，其下是多个 `window` 及各自的 `hierarchy/node`。
-窗口列表可能包含目标屏的系统窗口；调用方仍需按目标包选择节点。
+## MCP 工具与参数
 
-经归属校验确认存在的显示（主屏0除外）没有窗口分组时返回 `DISPLAY_EMPTY`，先在该屏
-启动应用再观察；未归辅助进程所有才返回 `DISPLAY_NOT_FOUND`。重复编号、畸形/截断
-XML 或超过 8MiB 预算仍明确失败，不返回其它显示。
-摘要与 `sizeBytes` 对应筛选后的 XML。它与普通 dump 的单个 `hierarchy` 根不同。
+MCP 总工具数为 20。本规格增加的四个管理工具走独立风险门，既有三道风险门不变：
 
-不带 `--display` 时仍发出原来的普通 dump 命令，`format=uiautomator-xml`。它读取的是
-**活动窗口**，不保证是主屏：API35 模拟器中，最近一次输入发生在虚拟屏后，普通
-层级实测返回 `dev.aiauto.fixture`，而主屏的前台 Activity 仍是 NexusLauncher。
-因此不能用普通层级判断主屏是否受影响。验收脚本按 `dumpsys activity activities`
-的 display 0 分段核对 `topResumedActivity`；普通层级歧义作为独立后续项登记。
-
-## 息屏、锁定与恢复
-
-存在虚拟屏时，helper 每 2 秒向其显示组上报用户活动；这能保持已唤醒的组，
-**不能恢复已经休眠的组**。凭据锁定期间跳过保活，不尝试唤醒、解锁或输入凭据。
-
-凭据锁定时取帧返回 `DEVICE_LOCKED`。API35 经历凭据锁定后，即使用户已解除锁定，
-虚拟屏显示组仍可能休眠，此时取帧返回 `DISPLAY_ASLEEP`，不返回黑帧。
-恢复步骤是 close、create，在新编号上重新启动应用；**原屏上的应用内容会被销毁**，
-不会搬回主屏，不承诺保留状态。
-
-另一个任务行为限制是：**已在主屏运行的应用再向虚拟屏启动时，整个任务会移过去**，
-不会自动另开一份。选择目标包前要考虑对当前任务的影响。
-
-## 版本与验证边界
-
-| 能力 | 版本条件 |
+| 工具 | 参数 |
 | --- | --- |
-| 本功能创建和管理虚拟屏 | API33+ |
-| 底层 `dump --windows` 参数 | AOSP Android11/API30 起解析；CLI 虚拟屏流程仍要求 API33+ |
-| 按屏查询显示组唤醒状态 | API34+ |
-| API33 的显示组状态 | `groupAwake=null`，不使用主屏或全局状态代替 |
+| android_display_list | device |
+| android_display_status | device |
+| android_display_create | device、width、height、dpi；可选 focus，枚举 isolated/steal，默认 isolated |
+| android_display_close | device、displayId（正整数）；销毁目标屏及其上应用内容 |
 
-参数下界依据是 AOSP 的
-[Android10 DumpCommand](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android10-release/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/DumpCommand.java)
-尚无 `--windows`，而
-[Android11 DumpCommand](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android11-release/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/DumpCommand.java)
-已解析该参数并按显示枚举窗口。帮助文本没有列出它，能力判断不依赖 help。
+管理输入 schema 均为 additionalProperties:false。MCP 无 helper 启停、部署、任意 shell、
+原始标志或 socket/path 参数；未运行时返回 DISPLAYD_NOT_RUNNING，提示操作员先 display start。
 
-API33 只能额外检查 `Display.getState()` 是否 ON；如果系统在组休眠时仍报告 ON，
-无法保证识别该情况，不能承诺拒绝所有休眠黑帧。安全窗口不被捕获，系统仍会遮黑。
+android_observe 仅 screenshot、hierarchy 接受可选 displayId，0 明确主屏，正整数先验归属。
+层级结果带 displayId、format、xml、sizeBytes、sha256；截图返回 PNG image content 与元数据。
+android_action_execute 的以下六类既有动作接受同名 displayId，依据是 service 的目标路由与
+既有模型白名单的交集；没有扩大动作面：
 
-当前设备证据限于 API35 的 `osdk-test-35`、google_apis x86_64。API33/34、真机/OEM、
-无线 ADB 重连，以及用户在主屏输入时的焦点/输入法兼容性均未验收；中文与输入法管理
-不属于本功能。重复验收结果和设备指纹以[本规格进度](../.trae/specs/virtual-display-screen-off/progress.md)
-为准，不能外推为真机结论。
+| action | 既有参数与路由依据 |
+| --- | --- |
+| ui.tap | x、y；固定 input -d N tap |
+| ui.swipe | startX/startY/endX/endY、可选 durationMs；固定 input -d N swipe |
+| ui.longClick | x、y、可选 durationMs；同点长时 swipe，不增加长按语义能力 |
+| ui.setText | text；固定 input -d N text，仅受限 ASCII |
+| ui.pressKey | key；固定 input -d N keyevent，沿用 21 键白名单 |
+| app.launch | package、可选 activity；固定 am start --display N，沿用既有准入 |
 
-### API35 连续三次冷启动证据
+ui.scroll 目前依据主屏尺寸，不接受 displayId，包括 0。其它观察、等待/断言/滚动直到、
+视觉与 Bridge 工具均拒绝 displayId；不得通过删除参数改向主屏。Bridge 的 Unicode 文本工具
+也不能作为虚拟屏中文输入的替代。app.stop、device.sleep/wake 不因目标显示而获准。
 
-2026-11-14，使用同一 `make build` CLI、同一 helper 与本地 debug fixture，
-seriesB-1/2/3 连续完整通过；每次均只连接 emulator-5554，独立冷启动并清理关闭。
+示例 tools/call 的 name 与 arguments：
 
-| 轮次 | 建屏/启动/主屏前台 | 点按、滑动、按键、ASCII、层级与帧 | 息屏与保活 | PIN 往返 | stop 清理 |
+~~~json
+{"name":"android_display_create","arguments":{"device":"SERIAL","width":720,"height":1280,"dpi":240,"focus":"isolated"}}
+{"name":"android_observe","arguments":{"device":"SERIAL","kind":"hierarchy","displayId":2}}
+{"name":"android_action_execute","arguments":{"device":"SERIAL","action":"ui.tap","displayId":2,"x":200,"y":300}}
+{"name":"android_display_close","arguments":{"device":"SERIAL","displayId":2}}
+~~~
+
+示例编号 2 须替换为实际返回值，坐标须从当前目标层级计算。
+
+## 层级、空屏与无输出
+
+按显示读取的 format 为 uiautomator-windows-xml，根为 displays，只含精确编号对应的
+一个 display 及其 window/hierarchy/node；完整校验全部 XML 后才筛选。窗口可能包含系统窗口，
+仍需按包定位。重复编号、畸形、截断或超过 8MiB 都失败，绝不返回其它显示。
+
+| 错误码 | 含义与处理 |
+| --- | --- |
+| DISPLAYD_HELPER_MISSING | 构建并明确指定本地 helper |
+| DISPLAYD_NOT_RUNNING | 操作员经 CLI start 后再调用 |
+| DISPLAYD_IDENTITY_MISMATCH | 核查进程、socket 或产物冲突，停止操作 |
+| UNSUPPORTED_API | 创建/管理要求 API33+，不降级 |
+| CAPABILITY_UNAVAILABLE | dump --windows 所需 API 不能可靠确认或低于 API30 |
+| DISPLAY_NOT_FOUND | 目标确实不归 helper 所有；重新 list，不能回退主屏 |
+| DISPLAY_EMPTY | 归属有效（或主屏 0），有效 XML 中没有该显示的窗口；先在该屏启动应用 |
+| WINDOWS_UNAVAILABLE | UIAutomator 没有输出文件或输出为空，拿不到任何窗口；常见于主屏息屏且 isolated，唤醒主屏或用 steal 重建 |
+| DEVICE_LOCKED | 等用户正常解除凭据锁，不自动输入凭据或绕过 |
+| DISPLAY_ASLEEP | 关闭并重建显示，再启动应用；原屏内容会销毁 |
+| FRAME_NOT_READY | 重新观察后可另发取帧请求，不重发输入动作 |
+
+WINDOWS_UNAVAILABLE 只识别无输出及本次 UUID 路径的完整 ENOENT 诊断：兼容 exec-out
+退出 0／stdout 合并诊断，以及退出 1／stderr 分离形态；相似文本、其它 cat 错误、截断、
+超限、畸形 XML 保持拒绝。不带显示编号的旧路径不改。CLI 新显示错误走通用退出码 10，
+MCP 保留相同 code；自动化按 code 分支，不靠英文消息猜测。
+
+## 息屏、凭据锁与任务迁移
+
+helper 每 2 秒向虚拟屏电源组上报活动，只能保住已唤醒的组；凭据锁定期间跳过，
+不调用 wakeUp。锁定时拒帧 DEVICE_LOCKED，解锁后该组仍可能休眠并返回 DISPLAY_ASLEEP，
+需要 close/create 重建；不会把旧屏应用内容搬回主屏。API33 groupAwake:null，
+只能额外检查 Display.getState()，不能保证发现所有组休眠黑帧。SECURE 窗口仍由系统遮黑。
+
+已在主屏运行的应用再向虚拟屏启动时，整个任务可能移过去，不自动另开实例。
+观察和输入失败不提供主屏回退；App AI 原有的凭据锁暂停边界保持。
+
+## 焦点实测与验收证据
+
+设备为 osdk-test-35，API35/google_apis/x86_64，主屏320×640/160dpi、en-US、导航模式2，
+虚拟屏720×1280/240dpi；只连接 emulator-5554，read-only 冷启动。
+指纹为 google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+
+主屏新基线为 Settings 的 Add network 对话框，SSID 自动聚焦，空值提示语精确为
+Enter the SSID，随后预置 Primary；不点击 Save，结束时按最新节点点 Cancel，
+逐字比较前后网络列表。设置搜索进程 STATE CHANGE 的失败和旧夹具遮挡均保留为历史，
+未把它们计为通过，亦未修改 fixture。
+
+新基线两策略的逐步数据如下。完整原始记录、旧两组测量及失败证据索引见
+[本规格进度](../.trae/specs/vdisplay-mcp-and-focus/progress.md) Round4/5、Round22之后。
+主屏字符探针会恢复主屏焦点，表中的每步状态取自探针之前，不能把探针后的恢复误当隔离成功。
+
+
+S=com.android.settings，F=dev.aiauto.fixture，C=com.google.android.deskclock；三项可见依次是mInputShown、显示0 IME Insets、显示0输入法窗口。主屏输入节点始终focused=true，焦点应用始终WifiDialogActivity。steal数据来自wifi-steal-focus-1，isolated来自B3；每步主屏探针均成功。
+
+| 步骤 | steal 顶层/主屏焦点窗口/active/focused | steal IME客户端/显示；三项可见 | isolated 对应状态 | 主屏文本（探针前→后，两策略相同） | 虚拟输入 |
 | --- | --- | --- | --- | --- | --- |
-| seriesB-1 | 通过 | 通过 | 66.679秒，组唤醒、帧非黑 | DEVICE_LOCKED → DISPLAY_ASLEEP → 重建正常帧 | 通过 |
-| seriesB-2 | 通过 | 通过 | 66.191秒，组唤醒、帧非黑 | 同上 | 通过 |
-| seriesB-3 | 通过 | 通过 | 66.579秒，组唤醒、帧非黑 | 同上 | 通过 |
+| 基线 | 0/Add network/true/true | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primary → Primarya | — |
+| 启动helper/建屏 | 0/Add network/true/true | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primarya → Primaryab | — |
+| 虚拟屏启动fixture | 2/null/false/false | F/2；否/否/否 | 0/Add network/true/true；S/0；是/是/是 | Primaryab → Primaryabc | 空 |
+| 点按非输入区 | 2/null/false/false | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primaryabc → Primaryabcd | 空 |
+| 点按输入框 | 2/null/false/false | F/2；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primaryabcd → Primaryabcde | 空 |
+| ASCII Virtual | 2/null/false/false | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primaryabcde → Primaryabcdef | Virtual |
+| 定向DELETE | 2/null/false/false | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primaryabcdef → Primaryabcdefg | Virtua |
+| 不带显示DELETE后 | 0/Add network/true/true | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primaryabcdef → Primaryabcdefh | Virtua |
+| 虚拟屏启动时钟 | 2/null/false/false | C/2；否/否/否 | 0/Add network/true/true；S/0；是/是/是 | Primaryabcdefh → Primaryabcdefhi | — |
 
-三轮普通层级均返回虚拟屏 fixture；主屏 Activity 保持 NexusLauncher。
-指纹均为 `google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys`，
-环境为320×640/160dpi、en-US、导航模式2，虚拟屏720×1280/240dpi。
-每轮恢复超时、清除测试PIN，无残留helper、虚拟屏、forward与设备临时文件。
+steal在启动/点按虚拟屏后主屏失焦；启动fixture和时钟时输入法收起，点按虚拟输入框后键盘在主屏可见但服务F/2。中间主屏探针会把IME客户端恢复S/0，所以部分行客户端仍是S；这不改变其顶层显示2/主屏失焦事实，与旧测量一致。不带显示DELETE前顶层已被探针恢复为0，故本时序落在主屏，不能外推任意键盘焦点状态。
 
-此前 seriesA-1 因输入框中心被标题栏遮挡而失败，未计入这三次结果；修正脚本点选
-与精确焦点校验后，从头执行seriesB。三次样本不能证明长期无 flaky 或真机兼容。
+isolated 新基线 B1/B2/B3 连续完整通过：每轮9步全部主屏判据、BACK→DISPLAY_EMPTY→重启、
+息屏帧/输入/WINDOWS_UNAVAILABLE、唤醒层级恢复和 Cancel/网络不变。
+steal 回归保留本规格 Round13 的三次冷启动：65秒保活、PIN往返、重建均通过，
+其主屏判据是 Launcher/dumpsys，不使用设置搜索，因此此次不需重跑。
+上一规格 seriesB 三次是更早的历史证据，不代替当前两策略验收。
+三次样本不代表长期无 flaky，也不代表 API33/34、真机/OEM 或硬件键盘兼容。
 
-## 错误与清理
 
-| 错误码 | 处理 |
-| --- | --- |
-| `DISPLAYD_HELPER_MISSING` | 构建并指定 helper 路径，或按上文放置产物 |
-| `DISPLAYD_NOT_RUNNING` | 显式 start 后再操作 |
-| `DISPLAYD_IDENTITY_MISMATCH` | 停止操作，核查设备进程、socket 或产物冲突 |
-| `UNSUPPORTED_API` | 虚拟屏要求 API33+，不降级 |
-| `CAPABILITY_UNAVAILABLE` | 层级所需 API 无法可靠读取或低于门槛 |
-| `DISPLAY_NOT_FOUND` | 重新 list，使用该 helper 拥有的有效编号 |
-| `DISPLAY_EMPTY` | 屏存在但没有窗口；先在该屏启动应用再读层级，不能去掉显示参数回退主屏 |
-| `WINDOWS_UNAVAILABLE` | 按显示读取时无文件/空输出；兼容 exec-out 退出0、stdout为本次随机路径完整ENOENT诊断，以及退出1、stderr分离形态。常见于主屏息屏且目标为 isolated；唤醒主屏或以 steal 重建（销毁原屏内容） |
-| `DEVICE_LOCKED` | 等用户正常解除凭据锁，不自动解锁 |
-| `DISPLAY_ASLEEP` | close/create，接受原屏应用内容被销毁，再重新启动 |
-| `FRAME_NOT_READY` | 重新观察状态后可另发取帧请求，不重复输入动作 |
+### 真实MCP stdio三冷启动结果
 
-设备端其它固定错误与线协议见 [displayd README](../android/displayd/README.md)。调用方应
-按 `error.code` 分支；新增 helper 错误目前使用通用退出码 10，不能只靠退出码区分。
-正常结束执行 `display stop`；不要删除身份未知的进程或转发。
+| 轮次 | UTC起止 | transport | tools/call次数 | 结果 |
+| --- | --- | --- | --- | --- |
+| mcp-A1 | 2026-11-14T14:18:38.948Z → 2026-11-14T14:20:43.532Z | 16 | 64 | isolated/steal、全部观察/动作/管理、stdio退出/清理通过 |
+| mcp-A2 | 2026-11-14T14:21:37.858Z → 2026-11-14T14:23:34.604Z | 18 | 64 | isolated/steal、全部观察/动作/管理、stdio退出/清理通过 |
+| mcp-A3 | 2026-11-14T14:24:29.414Z → 2026-11-14T14:26:31.984Z | 19 | 64 | isolated/steal、全部观察/动作/管理、stdio退出/清理通过 |
 
-## 模拟器验收脚本
+三次都通过initialize/initialized、tools/list（20工具，无helper启停）及真实tools/call，非内存会话或CLI替代。每轮先在helper未启动时读显示0层级与PNG，再验证管理入口DISPLAYD_NOT_RUNNING；CLI启动helper后，通过MCP对两种focus分别创建、列表/状态核对、启动fixture、复位、点按/长按/滑动/ASCII/DELETE、层级/帧/主屏归属、关闭及DISPLAY_NOT_FOUND。每轮stdio退出0、清理为0，未设置PIN或修改系统设置。
 
-新增脚本不改既有 emulator runner。先在后台按下列固定参数启动一次性模拟器，确认只有
-`emulator-5554` 在线且 `sys.boot_completed=1`，再运行：
+## 复现入口
 
-```text
+先单独启动一次模拟器并等 boot_completed=1；每个 run 结束均清理并关闭模拟器，
+连续三次必须分别冷启动，失败从头计数：
+
+~~~text
 emulator -avd osdk-test-35 -read-only -no-snapshot -no-boot-anim -no-audio
 node scripts/emulator/verify-virtual-display.mjs --device emulator-5554 --adb PATH_TO_ADB --aactl PATH_TO_AACTL --helper PATH_TO_HELPER_APK --fixture PATH_TO_LOCAL_DEBUG_FIXTURE_APK --run RUN_NAME
-```
+node scripts/emulator/measure-virtual-display-focus.mjs --device emulator-5554 --adb PATH_TO_ADB --aactl PATH_TO_AACTL --helper PATH_TO_HELPER_APK --fixture PATH_TO_LOCAL_DEBUG_FIXTURE_APK --mode mitigated --scenario acceptance --run RUN_NAME
+node scripts/emulator/verify-virtual-display-mcp.mjs --device emulator-5554 --adb PATH_TO_ADB --aactl PATH_TO_AACTL --helper PATH_TO_HELPER_APK --fixture PATH_TO_LOCAL_DEBUG_FIXTURE_APK --run RUN_NAME
+~~~
 
-Windows 应传入实际 `.exe` 路径；可通过 `osdk where android-platform-tools` 找到 adb，
-CLI 使用 `make build` 产物。脚本严格核对设备与固定环境，只允许一次性模拟器设置
-测试 PIN/屏幕超时；每次运行 finally 清理并关闭模拟器。连续三次须分别冷启动，
-任一失败则重新开始计数。产物暂存在忽略的 `scripts/emulator/build/virtual-display/`，
-失败证据限额且脱敏，记录摘要后清理，不提交截图、日志或 APK。
-
-脚本守卫、主屏归属与 PNG 判据的独立测试入口为 `make emulator-vdisplay-test`，
-该目标不启动模拟器、不操作设备。
+三个脚本分别用于 steal 息屏回归、isolated 与真实 MCP stdio。Windows 传真实 .exe 路径，
+CLI 的 AACTL_ADB_PATH 指向实际 adb.exe；Git Bash 先 export MSYS_NO_PATHCONV=1。
+只允许一次性模拟器：steal 回归会设置测试 PIN/超时并在 finally 恢复；输入基线脚本绝不保存网络。
+失败先保存限额脱敏层级、截图、系统分段、实际响应与时间线，再清理。
+制品在忽略的 scripts/emulator/build/ 下，不提交截图、APK 或缓存。

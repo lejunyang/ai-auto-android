@@ -41,9 +41,13 @@ Schema 位于 [`../protocol/schema/v1/`](../protocol/schema/v1/)，运行限制�
 
 ### 虚拟显示 CLI 结果
 
-`display start|status|stop|create|list|close` 与观察/动作的 `--display N` 仅由电脑侧
-CLI 提供，不增加公共 action Schema、MCP 或 App Bridge 出口。`action sleep` 在
-service 中为 `device.sleep`，用 KEYCODE_SLEEP 使主屏息屏，不接受目标显示参数。
+`display start/stop` 仅由操作员 CLI 提供；MCP 的 android_display_list/status/create/close
+提供独立风险门下的屏幕管理。观察的 screenshot/hierarchy 与六类既有动作接受可选
+displayId（CLI为--display）；0明确主屏且不查helper，正整数先核对归属。其它工具拒绝该参数。
+create 的 focus 枚举 isolated/steal，默认 isolated；list/status返回focus、focusIsolated。
+API33如实false；API34+ isolated保护主屏输入但息屏无层级/虚拟屏无IME，steal可息屏读层级
+但会打断主屏输入。动作面及参数详见[虚拟显示操作](virtual-display.md)。
+`action sleep` 为 CLI 的 device.sleep，KEYCODE_SLEEP 只使主屏息屏；MCP不开放sleep/wake。
 
 层级结果分两种 `format`：
 
@@ -56,12 +60,16 @@ service 中为 `device.sleep`，用 KEYCODE_SLEEP 使主屏息屏，不接受目
 畸形、截断或超过8MiB时失败，绝不返回其它显示。`sizeBytes` 与 `sha256` 对应筛选后
 的 XML。普通层级在虚拟屏持有焦点时可能返回虚拟屏内容；不能当作主屏身份判据。
 
-独立 displayd v1 线协议使用16384字节头、最多16MiB定长PNG体，详见
+独立 displayd v2 线协议使用16384字节头、最多16MiB定长PNG体，详见
 [设备端契约](../android/displayd/README.md)，不与 Bridge NDJSON 上限混用。
 辅助进程及虚拟屏错误包括 DISPLAYD_HELPER_MISSING、DISPLAYD_NOT_RUNNING、
 DISPLAYD_IDENTITY_MISMATCH、UNSUPPORTED_API、DISPLAY_NOT_FOUND、DEVICE_LOCKED、
-DISPLAY_ASLEEP；这些新增错误目前走通用退出码10，须按 `error.code` 区分。
-层级命令的 API 能力拒绝仍使用 CAPABILITY_UNAVAILABLE。
+DISPLAY_ASLEEP、DISPLAY_EMPTY、WINDOWS_UNAVAILABLE；这些显示错误目前走通用退出码10，须按 `error.code` 区分。
+层级命令的 API 能力拒绝仍使用 CAPABILITY_UNAVAILABLE。DISPLAY_EMPTY表示有效XML中的归属空屏，
+提示先启动应用；WINDOWS_UNAVAILABLE表示系统无文件/空输出（含本次随机路径的完整ENOENT），
+提示唤醒主屏或用steal重建；其它诊断、坏XML/截断/超限仍拒绝。
+helper v2拒绝v1握手，升级须先保留并用旧CLI停止v1 helper，再更新CLI/helper启动；
+新CLI不会向版本不匹配的helper发送shutdown，socket名称保持aactl-displayd-v1。
 
 API33 的 groupAwake 为 null；API34+ 可按屏查询。凭据锁定时拒帧，解锁后组仍休眠
 返回 DISPLAY_ASLEEP，调用方需 close/create 后重新启动应用，原屏应用内容会销毁。
