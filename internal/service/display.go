@@ -1,6 +1,6 @@
 package service
 
-// 功能用途：定义仅电脑侧 CLI 使用的虚拟显示管理接口，不扩展 Automation 或 MCP 协议。
+// 功能用途：定义电脑侧显示接口；MCP 另设独立风险门，只开放屏幕管理，不暴露 helper 启停。
 
 import (
 	"context"
@@ -18,7 +18,7 @@ type DisplayRequest struct {
 	Width, Height, DPI, DisplayID int
 }
 
-// DisplayAutomation 与通用 Automation 分离，避免自动成为 MCP 出口。
+// DisplayAutomation 与通用动作分离，由适配器显式决定允许的管理出口。
 type DisplayAutomation interface {
 	ManageDisplay(context.Context, DisplayRequest) (any, error)
 }
@@ -35,9 +35,13 @@ type DisplayBackend interface {
 	RequireDisplay(context.Context, string, int) error
 }
 
-// NewWithDisplays 只供电脑侧直连入口构建显示能力。
-func NewWithDisplays(direct *adb.Client, displays DisplayBackend) *Service {
-	s := New(direct, nil)
+// NewWithDisplays 为电脑侧入口构建显示能力，并保留可选的既有 Bridge 路由。
+func NewWithDisplays(direct *adb.Client, displays DisplayBackend, bridge ...BridgeBackend) *Service {
+	var b BridgeBackend
+	if len(bridge) > 0 {
+		b = bridge[0]
+	}
+	s := New(direct, b)
 	s.displays = displays
 	s.displayTarget = func(id int) DirectBackend { return direct.WithDisplay(id) }
 	return s
@@ -124,7 +128,7 @@ func (s *Service) targetDisplay(ctx context.Context, device string, id int) (Dir
 
 func (s *Service) actionDisplay(ctx context.Context, r ActionRequest) (adb.ActionResult, error) {
 	switch r.Action {
-	case ActionTap, ActionSwipe, ActionSetText, ActionPressKey, ActionLaunch:
+	case ActionTap, ActionSwipe, ActionLongClick, ActionSetText, ActionPressKey, ActionLaunch:
 	default:
 		return adb.ActionResult{}, invalid("This action does not support a virtual display target.")
 	}

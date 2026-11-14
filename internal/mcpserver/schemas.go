@@ -28,6 +28,7 @@ func observeSchema() json.RawMessage {
 				"required":["device","kind"],
 				"properties":{
 					"device":` + deviceSchema() + `,
+					"displayId":` + displayIDSchema() + `,
 					"kind":{"const":"screenshot"}
 				},
 				"additionalProperties":false
@@ -37,6 +38,7 @@ func observeSchema() json.RawMessage {
 				"required":["device","kind"],
 				"properties":{
 					"device":` + deviceSchema() + `,
+					"displayId":` + displayIDSchema() + `,
 					"kind":{"const":"hierarchy"}
 				},
 				"additionalProperties":false
@@ -290,6 +292,7 @@ func actionSchema() json.RawMessage {
 				"required":["device","action","x","y"],
 				"properties":{
 					"device":` + deviceSchema() + `,
+					"displayId":` + displayIDSchema() + `,
 					"action":{"const":"ui.tap"},
 					"x":` + coordinateSchema() + `,
 					"y":` + coordinateSchema() + `
@@ -301,6 +304,7 @@ func actionSchema() json.RawMessage {
 				"required":["device","action","startX","startY","endX","endY"],
 				"properties":{
 					"device":` + deviceSchema() + `,
+					"displayId":` + displayIDSchema() + `,
 					"action":{"const":"ui.swipe"},
 					"startX":` + coordinateSchema() + `,
 					"startY":` + coordinateSchema() + `,
@@ -315,6 +319,7 @@ func actionSchema() json.RawMessage {
 				"required":["device","action","x","y"],
 				"properties":{
 					"device":` + deviceSchema() + `,
+					"displayId":` + displayIDSchema() + `,
 					"action":{"const":"ui.longClick"},
 					"x":` + coordinateSchema() + `,
 					"y":` + coordinateSchema() + `,
@@ -338,6 +343,7 @@ func actionSchema() json.RawMessage {
 				"required":["device","action","text"],
 				"properties":{
 					"device":` + deviceSchema() + `,
+					"displayId":` + displayIDSchema() + `,
 					"action":{"const":"ui.setText"},
 					"text":{
 						"type":"string",
@@ -354,6 +360,7 @@ func actionSchema() json.RawMessage {
 				"required":["device","action","key"],
 				"properties":{
 					"device":` + deviceSchema() + `,
+					"displayId":` + displayIDSchema() + `,
 					"action":{"const":"ui.pressKey"},
 					"key":{"enum":["BACK","HOME","RECENTS","ENTER","TAB","ESCAPE","SPACE","DELETE","FORWARD_DEL","DPAD_UP","DPAD_DOWN","DPAD_LEFT","DPAD_RIGHT","DPAD_CENTER","MOVE_HOME","MOVE_END","PAGE_UP","PAGE_DOWN","VOLUME_UP","VOLUME_DOWN","VOLUME_MUTE"]}
 				},
@@ -364,6 +371,7 @@ func actionSchema() json.RawMessage {
 				"required":["device","action","package"],
 				"properties":{
 					"device":` + deviceSchema() + `,
+					"displayId":` + displayIDSchema() + `,
 					"action":{"const":"app.launch"},
 					"package":` + packageSchema() + `,
 					"activity":{"type":"string","minLength":1,"maxLength":512,"pattern":"^[A-Za-z0-9_./]+$"}
@@ -380,8 +388,9 @@ func observeOutputSchema() json.RawMessage {
 		"required":["device","kind","format"],
 		"properties":{
 			"device":` + deviceSchema() + `,
+			"displayId":` + displayIDSchema() + `,
 			"kind":{"enum":["screenshot","hierarchy","semantic","recordings","foreground","apps","windows","transientMessages"]},
-			"format":{"enum":["png","uiautomator-xml","accessibility-tree","recording-list","foreground","app-list","window-list","transient-message-list"]},
+			"format":{"enum":["png","uiautomator-xml","uiautomator-windows-xml","accessibility-tree","recording-list","foreground","app-list","window-list","transient-message-list"]},
 			"sizeBytes":{"type":"integer","minimum":1},
 			"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},
 			"xml":{"type":"string"},

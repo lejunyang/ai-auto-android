@@ -353,7 +353,7 @@ func (a *App) serveMCP(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		automation = service.New(client, bridgeService)
+		automation = service.NewWithDisplays(client, vdisplay.New(client), bridgeService)
 		desktopVisual = visual.NewDesktopProposalService(client, visual.DesktopOptions{})
 		desktopAttestedVisual = visual.NewDesktopAttestedActionService(
 			client,

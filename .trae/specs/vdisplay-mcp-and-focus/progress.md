@@ -33,3 +33,46 @@
 - 本阶段未启动模拟器、helper，未设PIN、修改设置或创建转发/设备文件。
   收尾 adb devices -l 为空，无 emulator/qemu 进程；因此无需设备清理动作。
 - M1 仅有单元/命令证据，真实主屏隔离留待 M4，不提前勾选设备验收。
+
+## Round 2：M2 MCP 出口 RED/GREEN（2026-11-14）
+
+- 前置 M1 `2862aa3` 已通过 make test 并提交，才开始本阶段。串行、单一执行者。
+- RED：新增 MCP 会话测试，目标显示参数被旧 schema 拒绝，四个管理工具不存在；
+  完成后同一测试 GREEN。过程中未选定版本的 python shim 拒绝启动，改用 Node/补丁，
+  没有安装软件或改 osdk 配置。
+- 新工具为 android_display_list/status/create/close；采用独立
+  requireDisplayManagementAllowed，只收四种操作。helper start/stop/shutdown 无出口。
+  输入 additionalProperties:false，尺寸128..2048、dpi72..640、关闭编号至少1；
+  数量上限2继续由 helper 强制。关闭工具描述明确销毁其上应用内容。
+- 新显示路径将 apperr 映射为带 code/message/retryable 的工具错误；未启动返回
+  DISPLAYD_NOT_RUNNING 并要求操作员先 aactl display start。已有错误码全部复用，
+  未新增错误码，未改变省略显示时的错误/输出。observe 显式目标返回 displayId，
+  层级 format 增加 uiautomator-windows-xml。
+- 三道既有门 risk.go、bridge_action.go、file_transfer.go 的完整文件 diff 为空，
+  准入标准、注释及名单均未改；文件传输语义不变。service/CLI 仅做接线：MCP 使用
+  带显示后端且保留 Bridge 的服务，长按复用已有固定 input swipe 合成。
+
+| android_action_execute 动作 | 可带 displayId | 依据与路由 |
+| --- | --- | --- |
+| ui.tap | 是 | risk.go 既有白名单；input -d N tap |
+| ui.swipe | 是 | 既有白名单；input -d N swipe |
+| ui.longClick | 是 | 既有白名单；固定同点 swipe，经相同 input -d N；不新增动作 |
+| ui.pressKey | 是 | 既有白名单和原键枚举不变；input -d N keyevent |
+| ui.setText | 是 | 既有白名单及原ASCII字符约束不变；input -d N text；不开放Unicode |
+| app.launch | 是 | 已在直连白名单；am start --display N；可能迁移既有任务的限制仍适用 |
+| ui.scroll | 否 | 既有实现先读不带显示的 wm size，再合成坐标；不能将主屏尺寸当目标屏尺寸。schema 明确拒绝，省略目标仍维持既有行为，接入留后续 |
+| device.wake / device.sleep | 否 | wake 不在既有 MCP 白名单；sleep 按规格不开放；没有修改风险门 |
+| 其它原来被拒动作 | 否 | 显示字段不改变原风险门，schema与服务双重拒绝 |
+
+- 视觉候选/动作、wait/assert/scroll_until、Bridge工具与其它observe种类均未接入。
+  有会话负测试，传 displayId（含0）明确拒绝、服务调用数为0。显示负数、小数、
+  字符串、越界及管理未知字段/尺寸均拒绝；helper错误原码透传，无主屏输入回退。
+  真实 service + vdisplay 客户端驱动 fake-adb 验证未启动时不发 input。
+- README 工具数按一致性测试从16同步为20；未修改其它文档/协议，协议动作本身未变。
+- 验证：定向 mcpserver/service/cli 全通过；make comments（591文件、16自测）、
+  make test（Go313个顶层Test定义，含1个默认跳过的设备冒烟；协议56项、Skills3份、
+  三系统交叉vet）、make verify、make build 全退出0。git diff --check通过。
+- 未启动模拟器、helper，未设置PIN或改设置；阶段末 adb devices 为空，无
+  emulator/qemu、设备文件、转发或进程残留。
+- 汇合待办（只登记本规格）：ui.scroll 的目标尺寸路由；视觉/等待/断言/滚动直到与
+  Bridge 的多显示支持。不得将这些未交付项记入历史MVP。

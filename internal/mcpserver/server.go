@@ -69,6 +69,10 @@ var ToolNames = []string{
 	ToolFilePush,
 	ToolFilePull,
 	ToolScrollUntil,
+	ToolDisplayList,
+	ToolDisplayStatus,
+	ToolDisplayCreate,
+	ToolDisplayClose,
 }
 
 type devicesListInput struct{}
@@ -90,6 +94,7 @@ type bridgeImeShowOutput struct {
 }
 
 type observeInput struct {
+	DisplayID     *int   `json:"displayId,omitempty"`
 	Device        string `json:"device"`
 	Kind          string `json:"kind"`
 	TargetPackage string `json:"targetPackage,omitempty"`
@@ -102,6 +107,7 @@ type observeInput struct {
 }
 
 type observeOutput struct {
+	DisplayID  *int                        `json:"displayId,omitempty"`
 	Device     string                      `json:"device"`
 	Kind       string                      `json:"kind"`
 	Format     string                      `json:"format"`
@@ -251,6 +257,7 @@ func (input scrollUntilInput) toRequest() service.ScrollUntilRequest {
 }
 
 type actionInput struct {
+	DisplayID  *int   `json:"displayId,omitempty"`
 	Device     string `json:"device"`
 	Action     string `json:"action"`
 	X          int    `json:"x,omitempty"`
@@ -331,7 +338,7 @@ func newServer(
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:         ToolObserve,
-		Description:  "Observe one explicitly selected Android device using a PNG screenshot, UIAutomator hierarchy, or an established App bridge semantic snapshot.",
+		Description:  "Observe one explicitly selected Android device using a PNG screenshot, UIAutomator hierarchy, or an established App bridge semantic snapshot. Only screenshot/hierarchy accept displayId (0 explicitly selects primary); positive IDs require an operator-started helper, and failures never fall back to primary.",
 		InputSchema:  observeSchema(),
 		OutputSchema: observeOutputSchema(),
 		Annotations:  readOnlyAnnotations(),
@@ -340,6 +347,9 @@ func newServer(
 		_ *mcp.CallToolRequest,
 		input observeInput,
 	) (*mcp.CallToolResult, observeOutput, error) {
+		if input.DisplayID != nil && input.Kind != service.ObserveScreenshot && input.Kind != service.ObserveHierarchy {
+			return nil, observeOutput{}, modelToolError{Code: "INVALID_ARGUMENT", Message: "displayId is only supported for screenshot and hierarchy.", Retryable: false}
+		}
 		if input.Kind == observeKindRecordings {
 			result, err := automation.ListRecordings(ctx, input.Device)
 			if err != nil {
@@ -425,15 +435,20 @@ func newServer(
 			}, nil
 		}
 		result, err := automation.Observe(ctx, service.ObserveRequest{
+			DisplayID:     input.DisplayID,
 			Device:        input.Device,
 			Kind:          input.Kind,
 			TargetPackage: input.TargetPackage,
 			MaxDepth:      input.MaxDepth,
 		})
 		if err != nil {
+			if input.DisplayID != nil {
+				err = displayToolError(err)
+			}
 			return nil, observeOutput{}, err
 		}
 		output := observeOutput{
+			DisplayID: input.DisplayID,
 			Device:    result.Device,
 			Kind:      result.Kind,
 			Format:    result.Format,
@@ -454,7 +469,7 @@ func newServer(
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        ToolActionExecute,
-		Description: "Execute one low-risk typed ADB action on an explicitly selected Android device. The server enforces a model-action allowlist and rejects destructive or high-risk actions.",
+		Description: "Execute one low-risk typed ADB action on an explicitly selected Android device. The server enforces a model-action allowlist and rejects destructive or high-risk actions. displayId supports tap, swipe, longClick, pressKey, ASCII setText and launch only; scroll uses primary screen dimensions and rejects displayId.",
 		InputSchema: actionSchema(),
 		Annotations: actionAnnotations(),
 	}, func(
@@ -466,6 +481,7 @@ func newServer(
 			return nil, adb.ActionResult{}, err
 		}
 		result, err := automation.ExecuteAction(ctx, service.ActionRequest{
+			DisplayID:  input.DisplayID,
 			Device:     input.Device,
 			Action:     input.Action,
 			X:          input.X,
@@ -482,6 +498,9 @@ func newServer(
 			Direction:  input.Direction,
 			Amount:     input.Amount,
 		})
+		if input.DisplayID != nil {
+			err = displayToolError(err)
+		}
 		return nil, result, err
 	})
 
@@ -664,6 +683,7 @@ func newServer(
 	})
 
 	registerFileTransferTools(server, automation)
+	registerDisplayTools(server, automation)
 
 	return server
 }

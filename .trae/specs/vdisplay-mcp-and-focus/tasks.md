@@ -18,13 +18,13 @@ M1 → M2 → M3 → M4 串行，同一 worktree、同一分支，单一执行�
 
 目录所有权：`internal/mcpserver/`、`protocol/`。
 
-- [ ] 先写失败测试：schema、风险门、错误映射、未接入工具拒绝该参数
-- [ ] `android_observe` 的 `screenshot` / `hierarchy` 接受 `displayId`
-- [ ] `android_action_execute` 中已允许的动作接受 `displayId`，逐项列表记录
-- [ ] 虚拟屏管理工具：列出与状态、创建、关闭，独立风险门
-- [ ] `device.sleep` 的开放与否按规格判定并记录理由
-- [ ] `make test`、`make verify`、`make build`
-- [ ] 提交：`feat(mcp): target virtual displays from MCP tools`
+- [x] 先写失败测试：schema、风险门、错误映射、未接入工具拒绝该参数
+- [x] `android_observe` 的 `screenshot` / `hierarchy` 接受 `displayId`
+- [x] `android_action_execute` 中已允许的动作接受 `displayId`，逐项列表记录
+- [x] 虚拟屏管理工具：列出与状态、创建、关闭，独立风险门
+- [x] `device.sleep` 的开放与否按规格判定并记录理由
+- [x] `make test`、`make verify`、`make build`
+- [x] 提交：`feat(mcp): target virtual displays from MCP tools`
 
 ## M3：焦点与输入法实测及缓解
 
