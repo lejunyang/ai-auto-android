@@ -230,3 +230,148 @@
   定向 go test ./internal/service 与 CLI -run TestDisplay 均通过；git diff --check 通过。
 - 本轮未启动模拟器或创建转发、设备文件、PIN；阶段结束 adb devices 为空，无
   emulator/qemu 进程。尚不以命令面单测勾选 CLI 设备功能，T4 须使用 make build 产物验收。
+
+## Round 5：T4 CLI 验收阻塞，未完成（2026-11-14）
+
+- T3 已提交 d33eca8，前序验证通过、工作树干净。新增三个 scripts/emulator 文件：
+  verify-virtual-display.mjs、virtual-display-png.mjs、virtual-display.test.mjs。
+  它们尚未提交；未修改既有模拟器脚本、internal/adb 或 T4 允许范围外文件。
+- 脚本只接受 emulator-5554，核对唯一在线设备、transport、固定指纹、AVD、API、
+  分辨率、密度、语言、导航模式与 boot_completed=1；只用真实 bin/aactl.exe
+  完成辅助进程/观察/动作。PIN 与超时仅是 test-only 模拟器路径；无下载或第三方 APK。
+  有界 PNG 像素检查、失败 hierarchy 全文本脱敏、日志时间窗与 fixture 帧限额
+  （合计 <1MiB）已实现，但端到端流程未通过，不能声称脚本已验收。
+- 脚本单测 node --test scripts/emulator/virtual-display.test.mjs：3 项通过。
+  node --check 通过；make comments 通过（586 文件、16 自测）；make build 通过。
+  本轮全量 make test/verify/android-verify 未作为 T4 最终验收执行；前序阶段结果仍保留。
+- 前置尝试 run1：尚未进入功能场景，Windows emulator 控制台 avd name 输出 CRCRLF，
+  首行残留 CR 导致 Unexpected AVD；已按实际输出修正逐行 trim，仍严格匹配名称。
+  该次未设置 PIN/超时、未部署 helper；已 emu kill 并确认无设备/模拟器进程。
+- 功能尝试 pass1：不是成功轮次。设备 emulator-5554（transport_id=11），
+  AVD osdk-test-35，-read-only -no-snapshot -no-boot-anim -no-audio，API35，
+  x86_64、320×640/160dpi、en-US、navigation_mode=2、原超时2147483647，指纹：
+  google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+  2026-11-14T03:53:07Z 开始，03:53:25Z 停止。
+  - make build 产物 aactl SHA-256：
+    a5908712d444101f4849c06ae2df6c4b9aefcb4b1114b30fe39ce27e1f2cdb36。
+  - helper SHA-256：681af2fb0d9c23051deaae137530ab6c737aefa135da8be0b3138949dcd15ec3；
+    本地 device-fixture debug APK（versionCode=1/versionName=1.0.0）SHA-256：
+    1e88acf7a0b88f00df212648ca93c3487b37d0cb50e19b92569b80aa8462f6f8。
+  - CLI 主屏 unlock/HOME/hierarchy、display start/create/list 成功，displayId=2；
+    action launch --display 2 --package dev.aiauto.fixture --activity .MainActivity 返回成功。
+  - **首个 observe hierarchy --display 2 失败**：CAPABILITY_UNAVAILABLE，
+    UIAutomator does not support --display-id; refusing primary-display fallback.
+    未获得目标层级，所以未继续点击、截图、主屏隔离、息屏、65 秒保活或 PIN 往返。
+  - 这是 T2 新增的 help 能力探测误拒绝：internal/adb/direct.go 的 Hierarchy 在
+    uiautomator help 文本不含 --display-id 时直接失败，尽管本规格 Round 0/1 复核
+    已实测该 API35 支持 dump --display-id。单测把 help 文本人为写成包含该参数，
+    没有覆盖真实帮助输出，Go 生命周期冒烟也没有读取层级，所以此前未发现。
+- **停在 T4，不跨范围回修**。修复需要改 internal/adb 的能力判定和真实 help 回归
+  fixture/测试，超出本阶段允许修改范围；需要重新开放该范围后先验证修复，再从
+  第一次冷启动开始完成连续三次 CLI 验收。不删除保护，不采用主屏 dump 作成功证据。
+- 当前三次连续成功为 0/3，没有第 2/3 次结果。checklist 功能节已按 CLI 证据取消
+  T1 原始协议对应的组合勾选，T2/T3 的层级事项重开；历史 progress 未改动。
+  未开始宣称已交付的架构/使用/路线图/Skill 文档更新，也未做 T4 两个提交。
+- 失败后 finally 的真实 display stop 成功（其内部等待 PID 消失后清 APK/日志），
+  forward --list 为空；screen_off_timeout 恢复原值，本次未设置测试 PIN。
+  emu kill 返回后外部复核 adb devices 为空、无 emulator/qemu 进程。
+  限额脱敏报告与失败产物已读入本轮摘要后清理，不提交截图、APK、日志或缓存。
+- 另记执行偏离已在 Round 3 如实记录：T2 首次冒烟没有等待 boot_completed=1，
+  已添加硬检查并在启动完成后重跑；本轮未重复该问题。
+
+## Round 6：T2b 源码调查发现前提不成立，停止实施（2026-11-14）
+
+- 用户重新开放 T2b 的 internal/adb、internal/vdisplay（仅测试/冒烟）、新增错误码与
+  本规格状态范围。开工 git status/worktree 核对：HEAD=d33eca8，分支与 worktree 正确，
+  只有 Round 5 的三份状态文件与三个未提交模拟器脚本；没有覆盖或丢弃上轮产物，
+  主工作区 main 仍为 f861a61。未派发 Sub-Agent。
+- **关键更正：未查到支持 --display-id 的最低 API；所查发行分支均没有解析该参数。**
+  上轮“API35 参数支持但帮助漏列”是错误推断，源码不支持该结论。本节追加更正，
+  不改 Round 0/1/5 的历史记录。
+- AOSP 实际文件位于 frameworks/base/cmds/uiautomator/**cmds/uiautomator**/src/…，
+  不是少一层 cmds/uiautomator 的路径。查阅以下完整文件（Google Gitiles format=TEXT
+  与官方 aosp-mirror 源码交叉读取；仅在内存解析文本，未下载二进制或新依赖）：
+  - [android13-release / API33 DumpCommand](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android13-release/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/DumpCommand.java)
+  - [android14-release / API34 DumpCommand](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android14-release/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/DumpCommand.java)
+  - [android15-release / API35 DumpCommand](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/DumpCommand.java)
+  - [android16-release / API36 DumpCommand](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android16-release/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/DumpCommand.java)
+  - [main DumpCommand](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/DumpCommand.java)
+- 上述参数循环都只识别 --compressed 与 --windows；其它带连字符的参数被忽略，
+  普通值被当作输出文件路径，最后的显式路径覆盖前面的数字。普通分支调用
+  getRootInActiveWindow，显示尺寸/旋转使用 Display.DEFAULT_DISPLAY；不是按指定
+  displayId 查节点。活动窗口若恰在虚拟屏，返回其 XML 也不能证明参数生效。
+  因此不能把 API35（甚至36）设为允许门槛，也不能把未知参数运行结果当作成功。
+- 排除上层隐式解析：已查
+  [android15-release Launcher.java](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/Launcher.java)，
+  它只消费子命令名称并将剩余参数交给 Command.run，没有全局 --display-id 处理。
+- 额外结果校验的结论：已查
+  [android15-release AccessibilityNodeInfoDumper.java](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/cmds/uiautomator/library/core-src/com/android/uiautomator/core/AccessibilityNodeInfoDumper.java)。
+  普通 XML 的 hierarchy 根只有 rotation，不含可核对的 displayId；包名、文字或尺寸
+  也不能可靠证明显示目标。不存在的 displayId 负探针能揭露忽略，但不能使不支持的
+  参数成为可用能力。本轮未向不支持的系统发送目标 dump，更未采信其结果。
+  --windows 路径另有 display 元素及 id，可作为调整契约后的候选方案；未擅自替换
+  任务书要求的 dump --display-id，未实现或宣称该候选方案已验收。
+- 真实 API35 help fixture：internal/adb/testdata/uiautomator-help-api35.txt。
+  通过唯一在线 emulator-5554（transport_id=12）读取，boot_completed=1，固定
+  osdk-test-35、-read-only -no-snapshot -no-boot-anim -no-audio，指纹
+  google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+  help 退出0，stdout=0字节、stderr=1659字节；fixture 是 stderr 原始字节，SHA-256：
+  cb5d9049b8bcddbf3c9157588b1cf5782f79bc75a8d6daf6369f8e712a76ee28。
+  内容没有 --display-id，与源码相符。未在人为 fixture 中补参数。
+- **阶段停止**：无法同时满足“API35 成功”“按真实支持版本放行”“不采信未知参数”
+  三项验收要求。未修改生产 Go 逻辑或测试去制造成功，未运行新的虚拟屏 dump，
+  未启动 helper、安装 fixture、设置 PIN 或修改 screen_off_timeout。
+  尚未执行本阶段 make test/verify/build 与 Go/CLI 层级冒烟，T2b 未提交。
+  T4 未恢复，连续成功仍为0/3，也没有新的 T4 文档或提交。
+- 清理：确认 pidof 无 helper、forward --list 为空、固定设备 APK/日志不存在；
+  emu kill 返回OK，随后确认 adb devices 为空且无 emulator/qemu 进程。保留真实帮助
+  fixture 作为可评审证据；其余上轮文件未改。本轮状态、帮助 fixture 均未提交。
+
+## Round 7：T2b 新契约 RED/GREEN 与真实 CLI（2026-11-14）
+
+- 开工 HEAD=f544271，已重读 spec 的实测更正与 Go 侧；保留上轮未提交脚本/状态/帮助
+  fixture，不覆盖用户更正，不修改主工作区。单人串行，仅在本阶段授权目录实现。
+- --windows 源码下界确定为 Android11/API30：
+  - [android10-release / API29](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android10-release/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/DumpCommand.java) 没有该分支。
+  - [android11-release / API30](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android11-release/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/DumpCommand.java) 解析 --windows，使用 getWindowsOnAllDisplays。
+  - [android12-release](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android12-release/cmds/uiautomator/cmds/uiautomator/src/com/android/commands/uiautomator/DumpCommand.java) 与 Round 6 的 Android13+ 均保留该路径。
+  源码通过 Google Gitiles format=TEXT 读取核实。整体虚拟显示仍要求 API33，与这个
+  单独命令的 API30 门槛不同；API33/34 设备兼容性尚未验收。
+- 真实 fixture 采集：唯一 emulator-5554、transport_id=13，boot_completed=1，AVD/启动
+  参数遵照任务书，指纹 google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+  用既有真实 aactl 建屏2，在其上启动本地 debug dev.aiauto.fixture/.MainActivity，
+  主屏是 NexusLauncher。仅为 fixture 采集执行原始 adb dump --windows，设备独立路径
+  /data/local/tmp/aactl-t2b-windows.xml。原输出37089字节，根 displays，下有 display
+  id="0" 与 id="2"，每组有 window/hierarchy/node，显示归属明确可靠。
+- 保存 internal/adb/testdata/windows-api35.xml，37571字节；只脱敏 text/content-desc/title，
+  保留真实分组、窗口、包名、资源ID、状态与坐标，未手写替代结构。SHA-256
+  550cba5db7d1f157e5d30fb85cac254c16b49c0ac916235b96fec17d80c04792。
+  既有真实 help fixture 一并保留作不依赖 help 的回归依据。
+- RED：selectDisplayWindows 安全占位拒绝，真实目标组与缺失错误测试失败；旧代码的
+  help 门禁使真实帮助回归失败，截断清理测试也按预期失败。再实现：
+  - 显式目标时先读 SDK，低于30、缺失/非数字、读取失败/截断均 CAPABILITY_UNAVAILABLE，
+    在随机文件分配与 dump 之前停止。完全移除 help 探测，不发送 --display-id。
+  - dump --windows 后完整严格解析输入；只复制精确 display.id 的那一组，目标缺失
+    DISPLAY_NOT_FOUND；畸形、重复ID、多个根、错误分组、超深、截断及8MiB超限拒绝。
+    即使目标已找到仍验证后续XML，不能把损坏尾部当作成功。失败也清远端文件。
+  - XML返回 displays 根且只含目标 display 的窗口列表；format 明确为
+    uiautomator-windows-xml，透传 service/CLI。普通命令 argv 与 uiautomator-xml 不变。
+- GREEN：真实 fixture 覆盖主屏/虚拟屏、调换顺序、多显示隔离、缺失、畸形、重复、超限；
+  fake-adb 覆盖API29拒绝、API30边界、API35正确命令、缺API与截断清理。
+  service/CLI 格式透传均有单测，既有普通命令兼容测试保持逐字检查。
+- 真实 make build 产物 CLI：observe hierarchy --display 2 成功，format=
+  uiautomator-windows-xml，16378字节，SHA-256
+  442282146756123cd0977721598b514e84b8e99933b6abbea03f5327410f1012；断言包含
+  dev.aiauto.fixture，且不含 nexuslauncher 或 display0，证明仅返回目标屏。
+- Go 设备冒烟补层级后通过（1项）：额外建屏3并启动 Settings，返回目标窗口列表22511
+  字节，SHA-256 7cf0ccdde53bc2b98c445782c61f8acdedc9ab07826d5dd16b1ce001cbd7bb75，
+  包名正确且无主屏桌面；取帧78827字节，随后 close/stop 完成。
+- 验证：make comments（588文件、16自测）、make test、make verify、make build 均退出0；
+  Go 303个顶层 Test 定义（含默认跳过的1个显式设备测试，本轮已另行启用通过），
+  协议56项与Skills3份及镜像通过；adb/service/CLI/vdisplay 定向测试通过。
+- 阶段清理：Go Stop 后 pidof无输出、仅剩display0、forward列表空、helper APK/日志
+  已删除；删除本次原始XML后ls确认不存在。未设PIN、未改超时；emu kill 返回OK，
+  随后 adb devices 空、无 emulator/qemu。git diff --check通过；未开始T4操作。
+- 提交检查补充：帮助输出原始采集含 CRLF 与末尾空行；首次暂存被 Git 报末尾空行。
+  已只规范化行尾与末尾空白，正文没有补写/改写，复核暂存 diff --check 通过；
+  Round6 的原始 SHA-256 对应采集时字节，规范化后的版本作为回归 fixture。

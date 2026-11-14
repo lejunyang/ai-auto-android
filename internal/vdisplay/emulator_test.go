@@ -56,6 +56,14 @@ func TestDisplaydEmulatorLifecycle(t *testing.T) {
 	if _, err = host.WithDisplay(screen.DisplayID).Launch(ctx, serial, "com.android.settings", ".Settings"); err != nil {
 		t.Fatal(err)
 	}
+	hierarchy, err := host.WithDisplay(screen.DisplayID).Hierarchy(ctx, serial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hierarchy.Format != "uiautomator-windows-xml" || !strings.Contains(hierarchy.XML, `package="com.android.settings"`) || strings.Contains(hierarchy.XML, "nexuslauncher") {
+		t.Fatal("virtual hierarchy contains the wrong display")
+	}
+	t.Logf("hierarchy format=%s bytes=%d sha256=%s", hierarchy.Format, hierarchy.Bytes, hierarchy.SHA256)
 	status, err := c.Status(ctx, serial)
 	if err != nil {
 		t.Fatal(err)

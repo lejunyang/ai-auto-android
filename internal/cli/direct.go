@@ -88,7 +88,7 @@ func (a *App) executeObserve(
 		}
 		return map[string]any{
 			"device":    options["device"],
-			"format":    "uiautomator-xml",
+			"format":    hierarchy.Format,
 			"xml":       hierarchy.XML,
 			"sizeBytes": hierarchy.SizeBytes,
 			"sha256":    hierarchy.SHA256,

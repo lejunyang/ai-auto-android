@@ -91,6 +91,8 @@ type Screenshot struct {
 
 // Hierarchy 保存已验证 UIAutomator XML 及其大小和摘要。
 type Hierarchy struct {
+	// Format 非空时标记带显示编号的窗口列表，与普通活动窗口树区分。
+	Format string `json:"format,omitempty"`
 	XML    string `json:"xml"`
 	Bytes  int    `json:"sizeBytes"`
 	SHA256 string `json:"sha256"`
@@ -135,14 +137,12 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 		return Hierarchy{}, err
 	}
 	if c.displayID != nil {
-		help, _ := c.run(ctx, []string{"-s", serial, "shell", "uiautomator", "help"}, process.Options{})
-		if !strings.Contains(string(help.Stdout)+string(help.Stderr), "--display-id") {
-			return Hierarchy{}, apperr.New(apperr.CodeCapabilityMissing, "UIAutomator does not support --display-id; refusing primary-display fallback.", false, nil)
+		// AOSP Android11/API30 首次解析 --windows；帮助文本未列出它，不能用 help 判能力。
+		sdk, err := c.run(ctx, []string{"-s", serial, "shell", "getprop", "ro.build.version.sdk"}, process.Options{})
+		api, parseErr := strconv.Atoi(strings.TrimSpace(string(sdk.Stdout)))
+		if err != nil || sdk.OutputTruncated || parseErr != nil || api < 30 {
+			return Hierarchy{}, apperr.New(apperr.CodeCapabilityMissing, "Display-window hierarchy requires a readable Android API level of 30+; refusing active-window fallback.", false, nil)
 		}
-		if help.OutputTruncated {
-			return Hierarchy{}, apperr.New(apperr.CodeProtocol, "UIAutomator help was truncated.", false, nil)
-		}
-		// 部分版本 help 以非零退出；只在完整输出明确列出参数时允许继续。
 	}
 	requestID, err := output.RequestID()
 	if err != nil {
@@ -157,7 +157,7 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 	}()
 	dumpArgs := []string{"-s", serial, "shell", "uiautomator", "dump"}
 	if c.displayID != nil {
-		dumpArgs = append(dumpArgs, "--display-id", strconv.Itoa(*c.displayID))
+		dumpArgs = append(dumpArgs, "--windows")
 	}
 	dumpArgs = append(dumpArgs, hierarchyRemotePath)
 	_, err = c.run(ctx, dumpArgs, process.Options{Timeout: 20 * time.Second})
@@ -171,7 +171,7 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 	if err != nil {
 		return Hierarchy{}, err
 	}
-	if result.OutputTruncated || !validHierarchyXML(result.Stdout) {
+	if result.OutputTruncated || len(result.Stdout) > maxHierarchyOutput {
 		return Hierarchy{}, apperr.New(
 			apperr.CodeActionFailed,
 			"ADB returned an invalid or truncated UI hierarchy.",
@@ -179,8 +179,19 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 			map[string]any{"device": serial},
 		)
 	}
+	format := ""
+	if c.displayID != nil {
+		result.Stdout, err = selectDisplayWindows(result.Stdout, *c.displayID)
+		if err != nil {
+			return Hierarchy{}, err
+		}
+		format = "uiautomator-windows-xml"
+	} else if !validHierarchyXML(result.Stdout) {
+		return Hierarchy{}, apperr.New(apperr.CodeActionFailed, "ADB returned an invalid or truncated UI hierarchy.", true, map[string]any{"device": serial})
+	}
 	sum := sha256.Sum256(result.Stdout)
 	return Hierarchy{
+		Format: format,
 		XML:    string(result.Stdout),
 		Bytes:  len(result.Stdout),
 		SHA256: hex.EncodeToString(sum[:]),

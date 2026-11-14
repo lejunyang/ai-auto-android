@@ -4,6 +4,9 @@
 完成。T1 定下设备端协议后 T2 才能开始；规格状态文件（本文件、`checklist.md`、
 `progress.md`）只由当前任务的执行者修改。
 
+当前状态（Round 7）：按 f544271 的新契约完成 T2b，使用 `dump --windows` 并严格筛选
+目标显示，API35 真实 CLI 与 Go 冒烟通过。下一步恢复 T4，完整三次验收和文档仍待完成。
+
 ## T1：设备端辅助进程 `displayd`
 
 目录所有权：`android/displayd/`、`android/settings.gradle.kts`。
@@ -41,10 +44,29 @@ PIN/息屏/超时端到端仍属 T4。API 33 的 `groupAwake=null` 限制见 Rou
 - [x] 先写失败测试（fake-adb 与假服务端）
 - [x] `Forward` 支持 `localabstract`
 - [x] 点按、滑动、按键、文本、启动、层级增加可选目标显示；不带参数时逐字不变
+      （层级已按新契约回修；完整 CLI 场景仍待 T4）
 - [x] `internal/vdisplay`：部署与 SHA-256 校验、启动、探活、类型化客户端、清理
 - [x] 稳定错误：显示不存在、辅助进程未运行、API 过低、设备已锁定、显示组休眠、身份无法验证
 - [x] `make test`
 - [x] 提交：`feat(adb): target virtual displays through displayd`
+
+## T2b：按显示读取窗口列表（T4 前置）
+
+目标：使用 `dump --windows` 的可靠显示编号，仅返回目标组，避免采信其它活动窗口。
+依赖：先核实 AOSP，再做 RED/GREEN、真实 CLI 冒烟及独立提交，之后才能恢复 T4。
+目录所有权：`internal/adb/`、`internal/vdisplay/`（仅冒烟/测试）、service/CLI（仅结果
+格式透传）、`internal/apperr/`（仅新增错误码）与本规格状态；单人串行，无并行波次。
+失败清理：停止本次 helper、移除本次 forward、清设备临时文件/PIN、关闭模拟器；
+不得为了使 API35 验收通过而放宽不回退边界。
+
+- [x] 查 AOSP android13/14/15/16-release 与 main 的 DumpCommand，记录源码链接
+- [x] 采集 API35 真实 help fixture（原样 stderr，未人为补参数）
+- [x] 核对 Android10/11 源码，`--windows` 门槛 API30；未知/低版本不发 dump
+- [x] 真实多显示 fixture 的 RED/GREEN：存在、缺失、混排、畸形、重复与超限/截断
+- [x] 只返回目标 display 组，`format=uiautomator-windows-xml` 透传 service/CLI
+- [x] Go 设备冒烟补虚拟屏层级，并用真实 CLI 通过
+- [x] `make comments`、`make test`、`make verify`、`make build`
+- [x] 提交：`fix(adb): read display hierarchy from dump --windows`
 
 ## T3：service 与 CLI 出口
 
@@ -53,6 +75,7 @@ PIN/息屏/超时端到端仍属 T4。API 33 的 `groupAwake=null` 限制见 Rou
 - [x] 先写失败测试（命令面与 service 一致性）
 - [x] `aactl display start|status|stop|create|list|close`
 - [x] `observe screenshot|hierarchy` 与 `action tap|swipe|text|key|launch` 的 `--display`
+      （层级按新契约回修并通过真实 CLI；完整场景待 T4）
 - [x] `aactl action sleep`（`device.sleep`）
 - [x] 任何失败都不回退到主屏执行
 - [x] `make test`、`make verify`、`make build`

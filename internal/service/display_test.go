@@ -25,6 +25,19 @@ type fakeDisplays struct {
 	captures, requires int
 }
 
+type windowsDirect struct{ fakeDirect }
+
+func (f *windowsDirect) Hierarchy(context.Context, string) (adb.Hierarchy, error) {
+	return adb.Hierarchy{Format: "uiautomator-windows-xml", XML: "<displays/>"}, nil
+}
+func TestDisplayHierarchyFormatPassesThroughService(t *testing.T) {
+	s := New(&windowsDirect{}, nil)
+	result, err := s.Observe(context.Background(), ObserveRequest{Device: "SERIAL", Kind: ObserveHierarchy})
+	if err != nil || result.Format != "uiautomator-windows-xml" {
+		t.Fatalf("format lost: %+v %v", result, err)
+	}
+}
+
 func (f *fakeDisplays) Capture(context.Context, string, int) (adb.Screenshot, error) {
 	f.captures++
 	return adb.Screenshot{Bytes: []byte("virtual-frame")}, f.err

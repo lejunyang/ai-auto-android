@@ -422,10 +422,14 @@ func (s *Service) Observe(ctx context.Context, request ObserveRequest) (ObserveR
 		if err != nil {
 			return ObserveResult{}, err
 		}
+		format := hierarchy.Format
+		if format == "" {
+			format = "uiautomator-xml"
+		}
 		return ObserveResult{
 			Device:    request.Device,
 			Kind:      request.Kind,
-			Format:    "uiautomator-xml",
+			Format:    format,
 			SizeBytes: hierarchy.Bytes,
 			SHA256:    hierarchy.SHA256,
 			XML:       hierarchy.XML,

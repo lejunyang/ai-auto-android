@@ -5,6 +5,7 @@ package cli
 import (
 	"context"
 	"github.com/lejunyang/ai-auto-android/internal/service"
+	"strings"
 	"testing"
 )
 
@@ -61,7 +62,23 @@ func (a *displayCapturingAutomation) ManageDisplay(_ context.Context, r service.
 }
 func (a *displayCapturingAutomation) Observe(_ context.Context, r service.ObserveRequest) (service.ObserveResult, error) {
 	a.observed = r
-	return service.ObserveResult{Image: []byte("test-only"), XML: "<hierarchy/>"}, nil
+	format := "uiautomator-xml"
+	if r.DisplayID != nil {
+		format = "uiautomator-windows-xml"
+	}
+	return service.ObserveResult{Format: format, Image: []byte("test-only"), XML: "<hierarchy/>"}, nil
+}
+
+func TestDisplayHierarchyFormatPassesThroughCLI(t *testing.T) {
+	fake := &displayCapturingAutomation{}
+	app, stdout := testApp(&commandExecutor{}, "")
+	app.Automation = fake
+	if app.Run(context.Background(), []string{"observe", "hierarchy", "--device", "SERIAL", "--display", "7", "--json"}) != 0 {
+		t.Fatal(stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `"format":"uiautomator-windows-xml"`) {
+		t.Fatal(stdout.String())
+	}
 }
 
 func TestDisplayManagementCommandSurface(t *testing.T) {

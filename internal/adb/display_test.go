@@ -73,10 +73,12 @@ func TestDisplayLaunchAndHierarchyNeverUsePrimaryFallback(t *testing.T) {
 			args = append(args, "-n", "com.example.app/.MainActivity")
 			assertArgs(t, f.calls[1], args...)
 			results := []process.Result{{Stdout: []byte(twoOnlineDevices)}}
+			xmlData := []byte("<hierarchy/>")
 			if target {
-				results = append(results, process.Result{Stdout: []byte("dump --display-id DISPLAY_ID")})
+				results = append(results, process.Result{Stdout: []byte("35")})
+				xmlData = []byte(strings.Replace(string(windowsFixture(t)), `<display id="2">`, `<display id="7">`, 1))
 			}
-			results = append(results, process.Result{}, process.Result{Stdout: []byte("<hierarchy/>")}, process.Result{})
+			results = append(results, process.Result{}, process.Result{Stdout: xmlData}, process.Result{})
 			f = &fakeADB{results: results, errors: make([]error, len(results))}
 			c = NewClient("adb", f)
 			if target {
@@ -92,7 +94,7 @@ func TestDisplayLaunchAndHierarchyNeverUsePrimaryFallback(t *testing.T) {
 			path := f.calls[index][len(f.calls[index])-1]
 			args = []string{"-s", "FIRST", "shell", "uiautomator", "dump"}
 			if target {
-				args = append(args, "--display-id", "7")
+				args = append(args, "--windows")
 			}
 			args = append(args, path)
 			assertArgs(t, f.calls[index], args...)
@@ -100,8 +102,8 @@ func TestDisplayLaunchAndHierarchyNeverUsePrimaryFallback(t *testing.T) {
 	}
 }
 
-func TestDisplayHierarchyRejectsUnsupportedFlagBeforeDump(t *testing.T) {
-	f := &fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {Stdout: []byte("dump [file]")}}, errors: []error{nil, nil}}
+func TestDisplayHierarchyRejectsUnsupportedAPIBeforeDump(t *testing.T) {
+	f := &fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {Stdout: []byte("29")}}, errors: []error{nil, nil}}
 	_, err := NewClient("adb", f).WithDisplay(7).Hierarchy(context.Background(), "FIRST")
 	if err == nil {
 		t.Fatal("missing display-id support accepted")
