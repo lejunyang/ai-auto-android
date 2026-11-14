@@ -951,3 +951,42 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
 - 每轮最新层级Cancel一次关闭添加网络对话框，前后网络列表原文相等，仅系统AndroidWifi open/owe；从未点Save。helper/显示/forward/临时文件0，未设PIN/改全局设置，emu kill成功，换轮前无emulator/qemu。一次性复核探针文件已删除，仅保留忽略目录的原始证据。
 - 指纹google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys；AVD osdk-test-35/API35/google_apis/x86_64，320×640/160dpi/en-US/导航2，虚拟720×1280/240dpi。helper626142bb4c8a26740b05560876f29d246b50c839cbf3e54e606c724f5310deee，fixture1e88acf7a0b88f00df212648ca93c3487b37d0cb50e19b92569b80aa8462f6f8，CLI8838361972da00ac63833780e2debedbfd4e1e40011db0463d03dfd4ca99ef20。
 - 本地Node27/27、comments598文件/16自测、diff --check通过。原steal脚本未改，Round13三次65秒保活/PIN往返/重建保持；其主屏判据是Launcher/dumpsys，不涉及本次输入基线。M3/M3b/M3c按修订二完成，提交后进入M4；另补测一次新SSID基线steal焦点供文档对照，不作为原三次回归的替代。
+
+## Round 25：新SSID基线的steal焦点对照与M4准备（2026-11-14）
+
+- 补充wifi-steal-focus-1：2026-11-14T14:14:22.747Z→2026-11-14T14:17:28.414Z，emulator-5554          device product:sdk_gphone64_x86_64 model:sdk_gphone64_x86_64 device:emu64xa transport_id:14，同helper/CLI/fixture与新SSID基线，9步测量完成、Cancel与网络不变、清理通过；不是65秒/PIN回归的替代。该补测在M3c三次通过后串行执行，MCP设备验收等其关闭模拟器后再开始。
+
+S=com.android.settings，F=dev.aiauto.fixture，C=com.google.android.deskclock；三项可见依次是mInputShown、显示0 IME Insets、显示0输入法窗口。主屏输入节点始终focused=true，焦点应用始终WifiDialogActivity。steal数据来自wifi-steal-focus-1，isolated来自B3；每步主屏探针均成功。
+
+| 步骤 | steal 顶层/主屏焦点窗口/active/focused | steal IME客户端/显示；三项可见 | isolated 对应状态 | 主屏文本（探针前→后，两策略相同） | 虚拟输入 |
+| --- | --- | --- | --- | --- | --- |
+| 基线 | 0/Add network/true/true | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primary → Primarya | — |
+| 启动helper/建屏 | 0/Add network/true/true | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primarya → Primaryab | — |
+| 虚拟屏启动fixture | 2/null/false/false | F/2；否/否/否 | 0/Add network/true/true；S/0；是/是/是 | Primaryab → Primaryabc |  |
+| 点按非输入区 | 2/null/false/false | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primaryabc → Primaryabcd |  |
+| 点按输入框 | 2/null/false/false | F/2；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primaryabcd → Primaryabcde |  |
+| ASCII Virtual | 2/null/false/false | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primaryabcde → Primaryabcdef | Virtual |
+| 定向DELETE | 2/null/false/false | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primaryabcdef → Primaryabcdefg | Virtua |
+| 不带显示DELETE后 | 0/Add network/true/true | S/0；是/是/是 | 0/Add network/true/true；S/0；是/是/是 | Primaryabcdef → Primaryabcdefh | Virtua |
+| 虚拟屏启动时钟 | 2/null/false/false | C/2；否/否/否 | 0/Add network/true/true；S/0；是/是/是 | Primaryabcdefh → Primaryabcdefhi | — |
+
+- 结果与先前同样逐步主屏探针方法一致：steal启动fixture/时钟后顶层2、主屏焦点窗口null、IME服务/Insets/窗口均隐藏，客户端F/2或C/2；点虚拟输入框后键盘在主屏但服务F/2。每步主屏探针会恢复S/0，因此部分行IME仍为S/0但主屏窗口失焦，不能改写为隔离成功。不带显示DELETE前顶层已由探针恢复0，只据此说明本时序落主屏。
+- M4新增纯Node内置stdio客户端/测试及真实验收脚本，不增加生产MCP工具或依赖。已测试分帧/多字节/乱序响应、通知、坏帧/预算、超时/断连/管道错误不重发动作、真实结构字段判错；5项通过。MCP冷启动三次正在执行，不提前记录通过。
+
+## Round 26：M4真实stdio连续三次通过（2026-11-14）
+
+### 真实MCP stdio三冷启动结果
+
+| 轮次 | UTC起止 | transport | tools/call次数 | 结果 |
+| --- | --- | --- | --- | --- |
+| mcp-A1 | 2026-11-14T14:18:38.948Z → 2026-11-14T14:20:43.532Z | 16 | 64 | isolated/steal、全部观察/动作/管理、stdio退出/清理通过 |
+| mcp-A2 | 2026-11-14T14:21:37.858Z → 2026-11-14T14:23:34.604Z | 18 | 64 | isolated/steal、全部观察/动作/管理、stdio退出/清理通过 |
+| mcp-A3 | 2026-11-14T14:24:29.414Z → 2026-11-14T14:26:31.984Z | 19 | 64 | isolated/steal、全部观察/动作/管理、stdio退出/清理通过 |
+
+三次都通过initialize/initialized、tools/list（20工具，无helper启停）及真实tools/call，非内存会话或CLI替代。每轮先在helper未启动时读显示0层级与PNG，再验证管理入口DISPLAYD_NOT_RUNNING；CLI启动helper后，通过MCP对两种focus分别创建、列表/状态核对、启动fixture、复位、点按/长按/滑动/ASCII/DELETE、层级/帧/主屏归属、关闭及DISPLAY_NOT_FOUND。每轮stdio退出0、清理为0，未设置PIN或修改系统设置。
+
+- 唯一设备仍emulator-5554，read-only冷启动、boot_completed=1、每次检查transport与相同API35指纹。helper/fixture/CLI SHA与Round24相同；MCP协议2025-11-25，helper独立协议2，公共CLI/Bridge仍1.0。三轮原始报告在scripts/emulator/build/mcp/mcp-A1/A2/A3（忽略目录）。
+- 每屏六类动作及依据已在Round2和docs/virtual-display.md逐项登记；ui.scroll拒绝目标是因为主屏尺寸路由，等待/断言/滚动直到、视觉/Bridge等未接入工具继续拒绝。模型sleep/wake仍不开放，helper start/stop没有MCP工具，不放宽三道旧风险门。
+- 补测两组新基线数据、默认isolated/steal取舍、API33实际不隔离、BACK/无IME/中文限制、空屏与无输出错误，以及v2升级先旧CLI停止v1步骤均写入README、协议与virtual-display文档。
+- Node32项通过；comments601文件/16自测；skills-check通过3份与镜像。make test第一次在Node spawnSync go时因PATH为go.cmd而ENOENT，全部Go包此前通过；随后显式GO=E:/osdk-data/data/installs/go/1.26.5/bin/go.exe重跑make test及make verify均退出0，三系统cross-vet通过。未改Makefile、PATH持久配置或安装软件。
+- make android-verify退出0（1m5s、199任务，6执行/193缓存）；单测614项、0失败、1既有跳过，assembleDebug/lintDebug通过。构建CLI在MCP会话结束后单独执行，避免占用中的Windows可执行文件；未在设备验收中替换CLI。

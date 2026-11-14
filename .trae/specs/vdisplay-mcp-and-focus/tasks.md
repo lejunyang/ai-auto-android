@@ -46,9 +46,9 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 目录所有权：`scripts/emulator/`（新增）、`docs/virtual-display.md`、`docs/protocol.md`、
 `docs/architecture.md`、`README.md`、`skills/`。
 
-- [ ] 通过真实 MCP stdio 会话的端到端脚本，冷启动连续 3 次
+- [x] 通过真实 MCP stdio 会话的端到端脚本，冷启动连续 3 次（Round26）
 - [ ] 文档：MCP 工具与参数、显示编号 0、焦点实测结果与限制
-- [ ] 全量：`make comments`、`make test`、`make verify`、`make build`、
+- [x] 全量：`make comments`、`make test`、`make verify`、`make build`、
       `make android-verify`（若改到 `android/`）
 - [ ] 提交：`test(emulator): verify virtual display through MCP` 与
       `docs: document MCP virtual display tools and focus behaviour`
