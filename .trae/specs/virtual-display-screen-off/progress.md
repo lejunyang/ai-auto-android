@@ -166,3 +166,42 @@
   forward --list 空；设备 APK/日志 ls 返回不存在；测试 PIN 已清除。
   emu kill 返回 OK，随后 devices 为空，emulator/qemu 进程已退出（退出存在短暂延迟）。
   临时客户端、PNG 与日志只位于忽略的 displayd/build 下，未加入 Git。
+
+## Round 3：T2 Go 显示目标与 displayd 客户端（2026-11-14）
+
+- 前置 T1b 已提交 ae9486f 且验证通过、模拟器已清理；本轮仅修改 internal/adb、
+  internal/vdisplay、internal/apperr 新错误码与本规格状态文件。
+- RED：fake-adb 的 4 个 input 显示分支、launch 显示分支、uiautomator 参数不支持拒绝、
+  localabstract 转发均按预期失败；legacy 分支通过。假服务端初始 RED 覆盖有效帧、
+  超限/坏响应清理、6 种设备错误、身份拒绝、缺进程及握手失败清理。
+- 实现：WithDisplay 复制客户端，不改既有方法签名；input -d、am start --display、
+  uiautomator dump --display-id；dump 前核对 help，不支持则明确失败。省略目标时
+  Tap/Swipe/Key/Text/Launch（含 monkey 与显式 Activity）/Hierarchy 的 argv 均有逐字测试。
+  WithDisplay.Screenshot 明确拒绝 screencap。Sleep 专用 KEYCODE_SLEEP 原语在本轮允许的
+  adb 目录预备，普通按键白名单未变；service/CLI 接线仍属 T3。
+- 身份：forward 前核对精确进程名 aactl-displayd、属主 shell、唯一 PID，以及
+  /proc/net/unix 的监听 inode 是否出现在该 PID 的 fd。建立转发后再次核对同一 PID
+  与归属；查不到、伪造名称、root 属主、inode 不符、套接字被其他进程占用均拒绝，
+  不向未知 socket 发送请求。测试覆盖这些反例，API 35 的 /proc 可读性有设备证据。
+- 部署：--helper、AACTL_DISPLAYD_APK、可执行文件同目录 aactl-displayd.apk 的优先级；
+  显式缺失不降级。比对远端 SHA-256，同摘要不推送，缺失/变化才推送，推送后复核；
+  已运行实例摘要不符先拒绝，要求 stop 后再部署，避免覆盖存活实例。
+- 协议：每次调用自己申请并移除 forward（含坏头、超限、断连、dial 失败、版本不符）；
+  每个方法前单独连接 hello，固定 16384 字节响应头与 16MiB 帧上限后再分配，按 bytes
+  精确读取，不依赖 EOF；校验目标、尺寸与 PNG 解码。错误保持独立：DISPLAY_NOT_FOUND、
+  DISPLAYD_NOT_RUNNING、DISPLAYD_IDENTITY_MISMATCH、DISPLAYD_HELPER_MISSING、UNSUPPORTED_API、
+  DEVICE_LOCKED、DISPLAY_ASLEEP；设备端其它固定错误透传，未知错误码拒绝。
+- API 35 Go 客户端冒烟：AVD 与参数不变，唯一 emulator-5554，指纹
+  google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+  首次开机检查读到 boot_completed 为空，但同批命令继续启动了冒烟，这是顺序偏离；
+  已在测试中添加 boot_completed=1 硬检查，并确认系统启动完成后重新运行作为证据。
+  重跑 TestDisplaydEmulatorLifecycle 通过：hello v1/API35 → displayId=3 → 在目标屏
+  启动 Settings → groupAwake=true → PNG 78529 字节（SHA-256
+  d4bd467a929d6cdafaf2941fade191f415c87f7cac9851df8d2ea4a29b573f98）→ list/close/stop。
+  本轮没有设置 PIN 或修改超时，不代替 T4 的真实 CLI 验收。
+- 验证：make comments 通过（579 文件、16 自测）；make test 通过（协议 56 项，
+  Skills 3 份与镜像；Go 共 287 个顶层 Test 定义，adb 94、vdisplay 10，默认跳过
+  1 个显式设备测试，设备测试已按上述单独启用）。定向 adb/vdisplay 测试均通过。
+  git diff --check 通过。
+- 清理：客户端 Stop 后无 PID、仅剩 display 0、forward 列表空、固定 APK/日志不存在；
+  emu kill 返回 OK，随后 adb devices 为空且无 emulator/qemu 进程。工作树未含构建产物。

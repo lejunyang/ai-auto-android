@@ -34,6 +34,14 @@ const (
 	CodeScriptNotFound    = "SCRIPT_NOT_FOUND"
 	CodeProtocol          = "PROTOCOL_ERROR"
 	CodeInternal          = "INTERNAL_ERROR"
+	// 虚拟屏错误保持独立，调用方不得据此转向主屏重试。
+	CodeDisplayNotFound       = "DISPLAY_NOT_FOUND"
+	CodeDisplaydNotRunning    = "DISPLAYD_NOT_RUNNING"
+	CodeDisplaydIdentity      = "DISPLAYD_IDENTITY_MISMATCH"
+	CodeDisplaydHelperMissing = "DISPLAYD_HELPER_MISSING"
+	CodeUnsupportedAPI        = "UNSUPPORTED_API"
+	CodeDeviceLocked          = "DEVICE_LOCKED"
+	CodeDisplayAsleep         = "DISPLAY_ASLEEP"
 )
 
 // ExitSuccess 等常量定义 aactl 对脚本和 Agent 稳定公开的进程退出码。

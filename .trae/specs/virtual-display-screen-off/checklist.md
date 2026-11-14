@@ -34,7 +34,7 @@ DISPLAY_NOT_FOUND，辅助进程不可用的 Go/CLI 行为仍待 T2/T3。
 - [ ] 对虚拟屏点按、滑动、按键、ASCII 文本
 - [ ] 读取虚拟屏层级与帧
 - [ ] `device.sleep` 使主屏息屏，与 `device.wake` 对称
-- [ ] 不带 `--display` 时既有命令行为逐字不变（有测试）
+- [x] 不带 `--display` 时既有命令行为逐字不变（T2 fake-adb 测试；CLI 参数待 T3）
 
 T1 使用系统 Settings 验证启动与主屏前台保持，已验证帧；fixture 输入及层级链路待 T4。
 

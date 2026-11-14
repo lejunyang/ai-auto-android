@@ -104,6 +104,9 @@ type ActionResult struct {
 
 // Screenshot 从明确在线设备读取并完整校验 PNG 截图。
 func (c *Client) Screenshot(ctx context.Context, serial string) (Screenshot, error) {
+	if c.displayID != nil {
+		return Screenshot{}, apperr.New(apperr.CodeCapabilityMissing, "Virtual display screenshots require displayd capture.", false, nil)
+	}
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return Screenshot{}, err
 	}
@@ -131,6 +134,16 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return Hierarchy{}, err
 	}
+	if c.displayID != nil {
+		help, _ := c.run(ctx, []string{"-s", serial, "shell", "uiautomator", "help"}, process.Options{})
+		if !strings.Contains(string(help.Stdout)+string(help.Stderr), "--display-id") {
+			return Hierarchy{}, apperr.New(apperr.CodeCapabilityMissing, "UIAutomator does not support --display-id; refusing primary-display fallback.", false, nil)
+		}
+		if help.OutputTruncated {
+			return Hierarchy{}, apperr.New(apperr.CodeProtocol, "UIAutomator help was truncated.", false, nil)
+		}
+		// 部分版本 help 以非零退出；只在完整输出明确列出参数时允许继续。
+	}
 	requestID, err := output.RequestID()
 	if err != nil {
 		return Hierarchy{}, apperr.Wrap(apperr.CodeInternal, "Could not allocate a UI hierarchy path.", false, err)
@@ -142,9 +155,12 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 			"-s", serial, "shell", "rm", "-f", hierarchyRemotePath,
 		}, process.Options{Timeout: 5 * time.Second})
 	}()
-	_, err = c.run(ctx, []string{
-		"-s", serial, "shell", "uiautomator", "dump", hierarchyRemotePath,
-	}, process.Options{Timeout: 20 * time.Second})
+	dumpArgs := []string{"-s", serial, "shell", "uiautomator", "dump"}
+	if c.displayID != nil {
+		dumpArgs = append(dumpArgs, "--display-id", strconv.Itoa(*c.displayID))
+	}
+	dumpArgs = append(dumpArgs, hierarchyRemotePath)
+	_, err = c.run(ctx, dumpArgs, process.Options{Timeout: 20 * time.Second})
 	if err != nil {
 		return Hierarchy{}, err
 	}
@@ -266,6 +282,14 @@ func (c *Client) Launch(ctx context.Context, serial, packageName, activity strin
 	} else {
 		args = []string{"-s", serial, "shell", "am", "start", "-W", "-n", component}
 	}
+	if c.displayID != nil {
+		args = []string{"-s", serial, "shell", "am", "start", "-W", "--display", strconv.Itoa(*c.displayID)}
+		if activity == "" {
+			args = append(args, "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-p", packageName)
+		} else {
+			args = append(args, "-n", component)
+		}
+	}
 	if err := c.runAction(ctx, serial, args, process.Options{Timeout: 20 * time.Second}); err != nil {
 		return ActionResult{}, err
 	}
@@ -297,7 +321,11 @@ func (c *Client) inputAction(
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return ActionResult{}, err
 	}
-	args := append([]string{"-s", serial, "shell", "input"}, inputArgs...)
+	args := []string{"-s", serial, "shell", "input"}
+	if c.displayID != nil {
+		args = append(args, "-d", strconv.Itoa(*c.displayID))
+	}
+	args = append(args, inputArgs...)
 	if err := c.runAction(ctx, serial, args, process.Options{}); err != nil {
 		return ActionResult{}, err
 	}
@@ -326,6 +354,9 @@ func (c *Client) runAction(
 }
 
 func (c *Client) requireOnlineDevice(ctx context.Context, serial string) error {
+	if c.displayID != nil && (*c.displayID <= 0 || *c.displayID > 2147483647) {
+		return apperr.New(apperr.CodeDisplayNotFound, "Target must be a positive helper-owned virtual display ID.", false, nil)
+	}
 	if err := ValidateSerial(serial); err != nil {
 		return err
 	}

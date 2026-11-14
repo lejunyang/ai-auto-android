@@ -30,6 +30,8 @@ type Client struct {
 	dial      func(network, address string, timeout time.Duration) (net.Conn, error)
 	goos      string
 	now       func() time.Time
+	// displayID 仅由 WithDisplay 复制设置，不能改变共享客户端的主屏行为。
+	displayID *int
 }
 
 // DoctorCheck 表示一项可独立定位故障的 ADB 诊断结果。

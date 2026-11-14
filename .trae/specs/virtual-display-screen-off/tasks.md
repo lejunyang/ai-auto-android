@@ -38,13 +38,13 @@ PIN/息屏/超时端到端仍属 T4。API 33 的 `groupAwake=null` 限制见 Rou
 
 目录所有权：`internal/adb/`、`internal/vdisplay/`、`internal/apperr/`。
 
-- [ ] 先写失败测试（fake-adb 与假服务端）
-- [ ] `Forward` 支持 `localabstract`
-- [ ] 点按、滑动、按键、文本、启动、层级增加可选目标显示；不带参数时逐字不变
-- [ ] `internal/vdisplay`：部署与 SHA-256 校验、启动、探活、类型化客户端、清理
-- [ ] 稳定错误：显示不存在、辅助进程未运行、API 过低、设备已锁定
-- [ ] `make test`
-- [ ] 提交：`feat(adb): target virtual displays through displayd`
+- [x] 先写失败测试（fake-adb 与假服务端）
+- [x] `Forward` 支持 `localabstract`
+- [x] 点按、滑动、按键、文本、启动、层级增加可选目标显示；不带参数时逐字不变
+- [x] `internal/vdisplay`：部署与 SHA-256 校验、启动、探活、类型化客户端、清理
+- [x] 稳定错误：显示不存在、辅助进程未运行、API 过低、设备已锁定、显示组休眠、身份无法验证
+- [x] `make test`
+- [x] 提交：`feat(adb): target virtual displays through displayd`
 
 ## T3：service 与 CLI 出口
 
