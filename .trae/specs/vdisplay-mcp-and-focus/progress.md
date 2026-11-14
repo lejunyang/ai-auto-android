@@ -557,3 +557,49 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
   非黑见 codex 上一轮记录）。
 - 据此规格新增「修订二：焦点策略二选一」。
 - 清理：两个构建的辅助进程均已停止，设备临时文件与转发已清，模拟器已关闭。
+
+## Round 10：M3c独立原始窗口输出复现与策略实现（2026-11-14）
+
+- 开工HEAD=5beaf3b，工作区干净，已核对worktree列表并重读修订二及集成方定位。
+  两份helper在本worktree忽略目录focus-policy-baseline内经同一osdk javac/D8本地流水线
+  生成，仅Policy来自不同固定标志版本；没有下载、安装helper或修改AVD配置。
+  isolated jar SHA-256 46dabae719aa57be37e46061cbba183c9625c6855df137e640225c75d394f110；
+  steal jar SHA-256 14a35b20ee490305fa2c38ce7540708353fcc58180fb0d8631fdcce4473d202f。
+- raw-isolated-1：UTC09:19:16.370→09:20:26.645，transport41；raw-steal-2：
+  UTC09:23:49.716→09:24:38.418，transport43。均独立冷启动osdk-test-35、唯一emulator-5554、
+  boot_completed=1、固定F35指纹、320×640/160dpi、en-US、导航模式2、x86_64，虚拟屏
+  720×1280/240dpi。CLI/fixture与Round9相同。每次dump前删除本次固定探针路径，逐次记录
+  命令退出码/原始stdout/stderr、文件存在性、精确字节数、SHA-256及显示分组，不采信dumped提示。
+
+| 构建/主屏 | 文件 | 字节数 | 显示分组 | 顶层焦点显示 | 取帧/输入 |
+| --- | --- | --- | --- | --- | --- |
+| isolated/唤醒 | 有 | 31465 | 0、2 | 0 | 非黑；Awake到达 |
+| isolated/息屏 | 无 | 0 | 无 | 0 | 非黑 |
+| isolated/息屏注入后 | 无 | 0 | 无 | 0 | 非黑；Sleep+DELETE已发送 |
+| isolated/重新唤醒 | 有 | 31472 | 0、2 | 0 | 精确INPUT:AwakeSlee |
+| steal/唤醒 | 有 | 85563 | 0、2 | 2 | 非黑；Awake到达 |
+| steal/息屏 | 有 | 16405 | 2 | 2 | 非黑 |
+| steal/息屏注入后 | 有 | 16413 | 2 | 2 | 非黑；Sleep+DELETE已发送 |
+| steal/重新唤醒 | 有 | 37108 | 0、2 | 2 | 精确INPUT:AwakeSlee |
+
+- 全部dump命令退出0且stdout为UI hierchary dumped to固定探针路径，stderr为空。
+  isolated两次无文件，不能把提示当成功；steal首轮raw-steal-1采集器只有64KiB缓冲而读取
+  失败，未测到息屏，已停止清理。探针改为与生产解析器一致的8MiB读取预算、原始证据
+  落盘总限512KiB后，从新冷启动raw-steal-2完成测量；85563字节也说明原预算不足。
+  失败轮不计为成功，保留诊断摘要；没有改变功能判据。两份有效结果与集成方定性结论一致，
+  字节数不同（本轮有输入框/IME节点、显示编号不同），不借其手工数据充数。
+- 两种构建的息屏帧均720×1280，921600像素全部非黑。输入注入不仅退出0，还以唤醒后
+  精确文本AwakeSlee核对。每轮finally删除探针XML、停止helper、核对显示/转发/临时文件为0，
+  emu kill；无PIN或设置修改。后续确认设备列表空、emulator/qemu为0。
+- Android RED：ProtocolTest15项1失败，新focus字段旧解析器拒绝；PolicyTest18项1失败，
+  旧实现没有二值标志映射。随后实现focus枚举（省略默认isolated），非法字符串返回
+  INVALID_ARGUMENT，错误类型/原始flags/其它方法携带focus仍INVALID_REQUEST。固定标志
+  API34+ isolated=130507、steal=64971；API33均15819，全部排除SECURE。
+- hello.protocolVersion提升为2：创建/list/status新增必须可信的focus/focusIsolated字段，
+  新客户端不能把旧helper缺字段误认作隔离成功；编码、预算和固定socket端点不变。
+  hello.capabilities.focusIsolation为API34+，每屏focusIsolated只在API34+ isolated时true；
+  API33请求isolated仍返回focus=isolated、focusIsolated=false，明确报告未隔离。
+- Android GREEN：:displayd:testDebugUnitTest :displayd:assembleDebug :displayd:lintDebug通过
+  （17秒、47任务），36项0failure/error；README同步v2、字段、两策略/数值/API33及BACK代价。
+  Go客户端/服务/CLI/MCP透传及非法参数/缺失或矛盾能力响应测试通过；三道风险门文件未改。
+  阶段完整设备验收尚未开始，本节不勾选两策略的三次冷启动或M4/M5。

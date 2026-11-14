@@ -18,6 +18,18 @@ public class ProtocolTest {
         var r = read("{\"id\":7,\"method\":\"display.create\",\"width\":720,\"height\":1280,\"dpi\":240}\n");
         assertEquals(7, r.id()); assertEquals(720, r.width()); assertEquals(1280, r.height());
         assertEquals(240, r.dpi());
+        assertEquals("isolated", r.focus());
+    }
+    @Test public void parsesOnlyTheTwoFocusPolicies() throws Exception {
+        for (String focus : new String[]{"isolated", "steal"}) {
+            var r = read("{\"id\":1,\"method\":\"display.create\",\"width\":720,\"height\":1280,\"dpi\":240,\"focus\":\"" + focus + "\"}\n");
+            assertEquals(720, r.width()); assertEquals(focus, r.focus());
+        }
+        for (String focus : new String[]{"", "ISOLATED", "other", "130507"})
+            rejects("{\"id\":1,\"method\":\"display.create\",\"width\":720,\"height\":1280,\"dpi\":240,\"focus\":\"" + focus + "\"}\n", "INVALID_ARGUMENT");
+        rejects("{\"id\":1,\"method\":\"display.create\",\"width\":720,\"height\":1280,\"dpi\":240,\"focus\":1}\n", "INVALID_REQUEST");
+        rejects("{\"id\":1,\"method\":\"display.create\",\"width\":720,\"height\":1280,\"dpi\":240,\"flags\":130507}\n", "INVALID_REQUEST");
+        rejects("{\"id\":1,\"method\":\"status\",\"focus\":\"steal\"}\n", "INVALID_REQUEST");
     }
     @Test public void parsesAllMethods() throws Exception {
         for (String method : new String[]{"hello", "display.list", "status", "shutdown"})

@@ -93,20 +93,21 @@ final class AndroidBackend implements AutoCloseable {
         if (closed) throw new Protocol.Failure("SHUTTING_DOWN", "helper is stopping");
         Map<String, Object> result;
         switch (request.method()) {
-            case "hello" -> result = Protocol.fields("protocolVersion", 1, "apiLevel", Build.VERSION.SDK_INT,
+            case "hello" -> result = Protocol.fields("protocolVersion", 2, "apiLevel", Build.VERSION.SDK_INT,
                     "supported", Build.VERSION.SDK_INT >= 33,
                     "capabilities", Protocol.fields("virtualDisplay", Build.VERSION.SDK_INT >= 33,
                             "binaryPng", true, "credentialLockGuard", true,
-                            "groupAwakeQuery", Build.VERSION.SDK_INT >= 34),
+                            "groupAwakeQuery", Build.VERSION.SDK_INT >= 34,
+                            "focusIsolation", Build.VERSION.SDK_INT >= 34),
                     "limits", Protocol.fields("maxMessageBytes", Policy.MAX_MESSAGE_BYTES,
                             "maxFrameBytes", Policy.MAX_FRAME_BYTES, "maxDisplays", Policy.MAX_DISPLAYS,
                             "minDimension", 128, "maxDimension", 2048, "minDpi", 72, "maxDpi", 640));
             case "display.create" -> {
-                int flags = Policy.flags(Build.VERSION.SDK_INT);
+                int flags = Policy.flags(Build.VERSION.SDK_INT, request.focus());
                 Policy.dimensions(request.width(), request.height(), request.dpi());
                 Policy.capacity(screens.size());
                 initialize();
-                Screen screen = new Screen(request.width(), request.height(), request.dpi());
+                Screen screen = new Screen(request.width(), request.height(), request.dpi(), request.focus());
                 try {
                     screen.display = displays.createVirtualDisplay("aactl-displayd", screen.width, screen.height,
                             screen.dpi, screen.reader.getSurface(), flags);
@@ -190,12 +191,14 @@ final class AndroidBackend implements AutoCloseable {
 
     private final class Screen implements AutoCloseable {
         final int width, height, dpi;
+        final String focus;
         final ImageReader reader;
         VirtualDisplay display;
         private Image latest;
         private boolean released;
-        Screen(int width, int height, int dpi) {
+        Screen(int width, int height, int dpi, String focus) {
             this.width = width; this.height = height; this.dpi = dpi;
+            this.focus = focus;
             reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3);
             reader.setOnImageAvailableListener(source -> {
                 synchronized (this) {
@@ -210,7 +213,8 @@ final class AndroidBackend implements AutoCloseable {
         Map<String, Object> describe(int id, boolean status) throws Exception {
             Display current = display.getDisplay();
             Map<String, Object> description = Protocol.fields("displayId", id, "width", width,
-                    "height", height, "dpi", dpi);
+                    "height", height, "dpi", dpi, "focus", focus,
+                    "focusIsolated", Policy.focusIsolated(Build.VERSION.SDK_INT, focus));
             if (status) {
                 Class<?> infoClass = Class.forName("android.view.DisplayInfo");
                 Object info = infoClass.getConstructor().newInstance();

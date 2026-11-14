@@ -81,4 +81,16 @@ public class PolicyTest {
         assertEquals(0, Policy.flags(33) & (1 << 16));
         for (int api : new int[]{33, 34, 35, 36}) assertEquals(0, Policy.flags(api) & (1 << 2));
     }
+    @Test public void focusPoliciesHaveFixedFlagsAndHonestIsolation() throws Exception {
+        // 纯策略测试覆盖API33降级与所有版本禁止SECURE，调用方不能选择任意标志。
+        for (int api : new int[]{33, 34, 35, 36}) {
+            for (String focus : new String[]{"isolated", "steal"}) {
+                int expected = api == 33 ? 15819 : focus.equals("isolated") ? 130507 : 64971;
+                assertEquals(expected, Policy.flags(api, focus));
+                assertEquals(0, Policy.flags(api, focus) & (1 << 2));
+                assertEquals(api >= 34 && focus.equals("isolated"), Policy.focusIsolated(api, focus));
+            }
+        }
+        rejects("INVALID_ARGUMENT", () -> Policy.flags(35, "raw"));
+    }
 }

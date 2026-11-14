@@ -1,6 +1,6 @@
 # 虚拟显示的 MCP 出口与焦点隔离任务
 
-M1 → M2 → M3 → M3b → M4 → M5 串行，同一 worktree、同一分支，单一执行者。规格状态文件只由
+M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一分支，单一执行者。规格状态文件只由
 当前任务的执行者修改。
 
 ## M1：明确指向主屏（显示编号 0）
@@ -101,3 +101,25 @@ M1 → M2 → M3 → M3b → M4 → M5 串行，同一 worktree、同一分支�
 验收证据：两种BACK逐步表、定向/全量测试、三个独立冷启动报告与设备指纹。
 失败清理：停止helper、清转发和设备临时文件、清测试PIN并恢复超时、关闭模拟器；仅清理本轮忽略产物。
 不改上一规格状态，不将M3b的脚本语义变化回写为其历史验收结论。
+
+## M3c：显式焦点策略（修订二取代M3b单一策略回归要求）
+
+目标：独立复现四种标志/电源组合；默认保护主屏输入，显式steal保留息屏挂机能力。
+目录所有权：android/displayd、internal/adb/vdisplay/service/cli/mcpserver、apperr仅新增码、
+scripts/emulator、docs/virtual-display.md与本规格状态。三道既有风险门不改。
+执行波次：M3c → M4 → M5单人串行；只使用本地工具链与唯一固定模拟器，不修改fixture。
+
+- [x] 原始dump矩阵、取帧及注入独立复现，记录字节数/文件存在性/显示组
+- [x] displayd焦点枚举解析/范围/固定标志先RED后GREEN，返回策略及API33真实隔离能力
+- [ ] Go客户端、service、CLI、MCP逐层透传及拒绝非法值测试
+- [ ] 无窗口输出专用错误与CLI/MCP映射，畸形/截断仍拒绝
+- [ ] steal冷启动连续3次完整息屏/65秒/PIN往返/重建通过
+- [ ] isolated冷启动连续3次通过，复用完整焦点判据、BACK/空屏/恢复与息屏输入/取帧/错误
+- [ ] make comments、make test、make verify、make build、make android-verify
+- [ ] 按职责提交displayd、CLI/MCP、ADB错误及设备验收脚本
+
+提交建议：feat(displayd): add an explicit focus policy for virtual displays；
+feat(cli): expose the virtual display focus policy；fix(adb): explain missing window dumps instead of reporting invalid XML；
+test(emulator): verify both focus policies end to end。前置层次定向验证通过再提交，整体验收未过不进入M4。
+失败清理：恢复本轮超时、清除已设置的测试PIN、停止helper、清转发/设备临时文件、关闭模拟器，
+只删除本轮已核对归属的忽略产物；失败记录追加progress，不覆盖历史结论。

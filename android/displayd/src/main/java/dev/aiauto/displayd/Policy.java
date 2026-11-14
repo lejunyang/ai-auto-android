@@ -18,13 +18,23 @@ final class Policy {
         if (bytes < 1 || bytes > MAX_FRAME_BYTES)
             throw new Protocol.Failure("FRAME_TOO_LARGE", "PNG exceeds frame budget");
     }
-    static int flags(int api) throws Protocol.Failure {
+    static String focus(String value) throws Protocol.Failure {
+        if (!"isolated".equals(value) && !"steal".equals(value))
+            throw new Protocol.Failure("INVALID_ARGUMENT", "focus must be isolated or steal");
+        return value;
+    }
+    static boolean focusIsolated(int api, String focus) {
+        return api >= 34 && "isolated".equals(focus);
+    }
+    static int flags(int api) throws Protocol.Failure { return flags(api, "isolated"); }
+    static int flags(int api, String focus) throws Protocol.Failure {
         if (api < 33) throw new Protocol.Failure("UNSUPPORTED_API", "requires API 33+");
-        // 固定排除 SECURE(1<<2)；API34+禁止虚拟屏抢占顶层焦点，保护主屏IME客户端归属。
-        // API33没有STEAL_TOP_FOCUS_DISABLED，保留原值并在文档中声明未缓解。
+        focus(focus);
+        // 固定排除SECURE；只把二值策略映射为固定组合，API33以focusIsolated=false如实报告降级。
         int base = 1 | (1 << 1) | (1 << 3) | (1 << 6) | (1 << 7) | (1 << 8)
                 | (1 << 10) | (1 << 11) | (1 << 12) | (1 << 13);
-        return api >= 34 ? base | (1 << 14) | (1 << 15) | (1 << 16) : base;
+        if (api >= 34) base |= (1 << 14) | (1 << 15);
+        return focusIsolated(api, focus) ? base | (1 << 16) : base;
     }
     static boolean shouldKeepAwake(boolean credentialLocked, int count) {
         return !credentialLocked && count > 0;
