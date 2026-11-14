@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | CLI | stdout 上的单个 JSON 信封 | 人工调用和 Skills；日志、提示写 stderr |
 | App Bridge | TCP loopback 上 UTF-8 NDJSON + JSON-RPC 2.0 | 电脑到 Android App 的短期会话 |
-| MCP | stdio | 六个类型化工具；五个共用 `service.Automation`，visual proposal 使用独立只读 capture 端口 |
+| MCP | stdio | 20个类型化工具；共享service与独立视觉端口，管理风险门另立 |
 
 Schema 位于 [`../protocol/schema/v1/`](../protocol/schema/v1/)，运行限制位于
 [`../protocol/limits.json`](../protocol/limits.json)，版本规则位于
@@ -110,7 +110,9 @@ API33 的 groupAwake 为 null；API34+ 可按屏查询。凭据锁定时拒帧�
 | requestId 防重放窗口 | 300 秒 |
 | 防重放缓存上限 | 4,096 条 |
 
-超限不会执行对应动作。截图等大制品不走 Bridge，而是走直接 ADB 截图通道。
+超限不会执行对应动作。普通Bridge观察不回传PNG，截图走直接ADB/helper/MCP图像内容。
+例外是授权debug disposable emulator的visual.action.execute请求，可携带有界pngBase64及
+attested observation；校验包、图像摘要、有效期后执行并验证，finally清零，仍受Bridge总帧预算。
 
 ## 版本协商
 
@@ -163,51 +165,61 @@ token 过期、错误或被 App 撤销时，本地记录会在相应错误后清
 
 | 方法 | 认证 | 当前行为 |
 | --- | --- | --- |
-| `rpc.hello` | 否 | 协商 `1.0` 和 capabilities |
-| `session.open` | 一次性码 | 签发一个短期 token，并使码失效 |
-| `device.info` | token | 返回 Android、App 版本及 Bridge 能力 |
-| `ui.snapshot` | token | 返回脱敏 Accessibility 树；深度 1..100，默认 64 |
-| `action.execute` | token | 执行当前 Bridge 已实现的动作 |
-| `recording.list` | token | 返回脱敏脚本摘要，不返回步骤、变量或 secret |
-| `recording.replay` | token | 回放 App 私有存储中的脚本 UUID |
-| `session.close` | token | 撤销当前 App 会话 |
+| rpc.hello | 否 | 协商1.0及实际capabilities |
+| session.open | 一次性码 | 短期token，使码失效 |
+| session.close | token | 撤销当前会话 |
+| device.info | token | Android/App版本与能力 |
+| ui.snapshot | token | 脱敏Accessibility树，maxDepth 1..100、默认64 |
+| ui.foreground | token | 已授权包的当前Activity/包名 |
+| ui.windows | token | 可见窗口及节点树，目标包与深度限制 |
+| ui.transientMessages | token | 已捕获Toast/通知，含eventTimeMs，支持toastsOnly |
+| action.execute | token | parser与无障碍路由实际支持的动作，非全部Schema类型 |
+| visual.action.execute | token+有效test-only授权 | 仅debug disposable emulator的attested原子视觉执行 |
+| recording.list | token | 脱敏摘要，不返回步骤/变量/secret |
+| recording.replay | token | 回放App私有脚本UUID，仍受本地策略 |
 
-当前 hello 能力名为：
-
-- `bridge.rpc`
-- `device.info`
-- `recording.list`
-- `ui.snapshot`
-- `action.execute`
-- `recording.replay`
+当前hello能力按AndroidBridgeMethods.capabilities()逐项为：bridge.rpc、device.info、
+recording.list、ui.snapshot、ui.foreground、action.execute、action.gesture.composite、
+action.node.extended、action.ime.show、action.text.editing、action.pressKey、action.global.extended、
+visual.action.execute、recording.replay。ui.windows与ui.transientMessages现有方法，但没有
+各自同名的独立hello能力项；不可按方法名猜capability。无障碍/视觉/回放按实际可用性上报，
+visual.action.execute还要求授权的debug一次性模拟器；action.pressKey仅可靠发送MOVE_HOME/MOVE_END。
 
 `recording.list` 直接读取 App 私有 `RecordingScriptStore`，桥启动后可用；它只返回
 `id`、`name`、`targetPackages`、`stepCount`、`createdAt` 和 `requirements`。
-后三项是否可用取决于无障碍服务是否正在运行。直接 ADB 设备则报告 `adb.direct`，
+无障碍相关方法取决于服务是否运行和目标包约束；recording.list本身不要求无障碍。直接 ADB 设备则报告 `adb.direct`，
 并根据 `device`、`unauthorized`、`offline` 等状态设置 `available`、`permission`
 和 `reason`。
 
 ## 动作
 
-Schema v1 共声明 45 种动作类型，但不同入口只实现其子集。下表列出常用动作的入口分布，未列出的动作类型以各入口的实际实现为准：
+Schema v1 当前oneOf声明46种动作类型（以action.schema.json为准），但不同入口只实现其子集。下表列出常用动作的入口分布，未列出的动作类型以各入口的实际实现为准：
 
-| 动作 | 直接 CLI/MCP | Bridge `action.execute` | App AI / 录制回放 |
+| 动作 | 直接CLI / MCP | Bridge action.execute | App AI / 回放边界 |
 | --- | --- | --- | --- |
-| `app.launch` | 是 | 否 | App AI 可启动已授权包；录制不生成 |
-| `app.stop` | 是 | 否 | App AI 风险策略阻断；录制不生成 |
-| `ui.click`、`ui.longClick` | 否 | 是 | 是 |
-| `ui.tap`、`ui.swipe` | 是 | 是 | App AI 可执行；录制不自动生成 |
-| `ui.setText` | 受限 ASCII、无选择器 | 仅非敏感字面量 | App 回放可临时解析 `secretRef` |
-| `ui.scroll` | 否 | 是 | 是 |
-| `ui.back`、`ui.home`、`ui.recents` | 通过白名单 key | 是 | App AI 中 home/recents 被风险策略阻断 |
-| `ui.wait`、`ui.assert` | 否 | 否 | 回放引擎可作为条件步骤处理 |
-| `ime.show` | MCP 是；直连否 | 是（聚焦语义） | 未接入 |
-| `ime.hide` | 是 | 否 | 未接入 |
-| `file.push`、`file.pull` | 是（只新增，CLI 与 MCP） | 否 | 未接入 |
-| `task.finish` | 否 | 否 | 仅 App AI 会话终止信号 |
+| app.launch | 两者均可 | 否 | AI可启动授权包，录制不自动生成 |
+| app.stop | CLI可；MCP拒绝 | 否 | AI风险策略阻断 |
+| ui.click | 直连无选择器；MCP用android_bridge_action | 是 | 语义执行 |
+| ui.longClick | 两者可按坐标；MCP语义长按另走Bridge工具 | 是，按选择器 | AI/回放可按对应受控路径执行 |
+| ui.tap / ui.swipe | 两者可按坐标 | 是 | AI视觉路径要求有效授权 |
+| ui.setText | 两者受限ASCII；Unicode用Bridge专用工具 | 非敏感字面量 | 回放可临时解析secretRef |
+| ui.scroll | 两者可；无displayId | 是 | 可用，不代表scrollUntil事件回放已全部接线 |
+| ui.back / home / recents | 直连白名单key；MCP同样 | 是 | AI的home/recents被策略阻断 |
+| ui.wait / ui.assert | CLI check wait/assert、MCP专用工具 | 否 | AI/回放条件路径，须按各自判据子集使用 |
+| ui.scrollUntil | CLI check scroll-until、MCP android_scroll_until | 否 | 不能据公共Schema推定AI/回放支持 |
+| ime.show | CLI bridge ime-show、MCP android_ime_show；无ADB打开键盘键 | 是，仅聚焦 | parser/通用executor能映射；AI风险白名单不含，故不作为AI已开放能力 |
+| ime.hide | CLI可；MCP不开放 | 否 | 不据parser接受宣称用户流程已交付 |
+| file.push / file.pull | CLI/MCP只新增检查，无删除/覆盖开关 | 否 | 未开放到AI用户流程 |
+| task.finish | 电脑无此会话 | 否 | 仅AI会话终止信号 |
+
+App的ProviderActionParser接受ime.show，RuntimeSessionExecutor与ReplayEngine的通用路由
+可交给AccessibilityCommandJsonParser，再执行ImeShow；但AutomationRiskPolicy白名单没有
+ime.show，AI会话会先阻断。回放的通用路由存在不等于编辑器可配置该步骤或完成了设备验收，
+这些用户流程本轮未核实；不能仅凭parser声称已交付。
 
 `ime.show` 的实际语义是**聚焦当前输入控件**，不是确定的键盘可见性开关。
-`ime.hide` 能走直连 ADB 是因为 `KEYCODE_BACK` 可收起键盘，而 Android 没有对称的
+`ime.hide`的直连实现是注入KEYCODE_BACK，不保证只收键盘；IME未显示时会直接作用于应用，
+isolated无IME的根页面会退出。Android没有对称的
 「打开键盘」keycode，无障碍通道也无法查询键盘当前是否可见。因此 `ime.show`
 只走桥侧无障碍，对输入焦点节点执行 `ACTION_FOCUS`：键盘通常随焦点出现，但这取决于
 输入法实现与当前焦点状态。成功结果表示**已聚焦**，不表示键盘已显示；当前没有可聚焦的
@@ -259,6 +271,7 @@ Schema 合法不等于当前后端可执行。Bridge 对未实现但合法的动
 | 会话 | `AUTH_REQUIRED`、`AUTH_INVALID`、`AUTH_EXPIRED`、`REQUEST_REPLAYED` |
 | 资源限制 | `DEADLINE_EXCEEDED`、`MESSAGE_TOO_LARGE`、`RATE_LIMITED` |
 | 动作/选择器 | `ACTION_NOT_ALLOWED`、`ACTION_FAILED`、`SELECTOR_NOT_FOUND`、`SELECTOR_AMBIGUOUS` |
+| 虚拟显示 | DISPLAYD_NOT_RUNNING、DISPLAYD_IDENTITY_MISMATCH、DISPLAY_NOT_FOUND、DISPLAY_EMPTY、WINDOWS_UNAVAILABLE、DEVICE_LOCKED、DISPLAY_ASLEEP |
 | 录制/内部 | `SCRIPT_NOT_FOUND`、`INTERNAL_ERROR` |
 
 回放报告中的 `SECRET_REQUIRED`、`CONDITION_TIMEOUT`、
@@ -278,20 +291,43 @@ CLI 退出码：
 
 ## MCP 边界
 
-`aactl mcp serve` 当前只暴露：
+`aactl mcp serve`当前完整20工具与internal/mcpserver.ToolNames一致：
 
 - `android_devices_list`
 - `android_device_get`
 - `android_observe`
 - `android_visual_target_propose`
+- `android_visual_action_execute`
 - `android_action_execute`
+- `android_bridge_action`
 - `android_recording_replay`
+- `android_screen_record`
+- `android_wait`
+- `android_assert`
+- `android_bridge_set_text`
+- `android_ime_show`
+- `android_file_push`
+- `android_file_pull`
+- `android_scroll_until`
+- `android_display_list`
+- `android_display_status`
+- `android_display_create`
+- `android_display_close`
 
-MCP 不暴露 doctor、Wi-Fi 配对/连接、Bridge open/info/action/close、录制列表或
-任意 shell。`android_observe` 支持 `screenshot`、`hierarchy` 和已建立 Bridge
-会话后的 `semantic`；`android_visual_target_propose` 仅从一次稳定且明确包的
-PNG/UIAutomator observation 提出 template 候选，返回的 `actionCommitCount` 固定
-为 0；动作工具只走直接 ADB 类型化动作。
+android_observe有8种kind：screenshot、hierarchy、foreground、apps、semantic、windows、
+transientMessages、recordings。后四种要求已有Bridge会话；录制摘要可读，
+android_recording_replay仍始终CONFIRMATION_REQUIRED、不执行回放。录屏MP4是独立
+android_screen_record，不是脚本列表或回放。
+
+直连动作、四种语义Bridge动作（ui.click/longClick/scrollIntoView/nodeAction）、文件传输
+和虚拟屏管理各守独立风险门；原子视觉动作另外校验有效授权/attestation。ui.setText的
+Unicode入口是android_bridge_set_text，ime.show只承诺聚焦。虚拟屏目标仅接已列六类
+直连动作和两类观察，不能通过displayId扩张任何门的准入标准。
+
+MCP无doctor、Wi-Fi配对/连接、Bridge open/info/close、helper启停、权限授予或任意shell。
+CLI bridge action并未整体透传给模型；MCP仅给经过独立门批准的语义子集。只读视觉候选
+actionCommitCount=0，不构成后续授权；原子视觉执行在同一次调用重新采集、绑定与验证，
+unknown提交状态必须停止，不重试动作。
 
 ## 验证
 

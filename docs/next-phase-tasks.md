@@ -9,7 +9,8 @@
 > N57 的窗口、瞬时消息与剪贴板写入，N58 的 scroll-until、事件判据和选择器扩展
 > 已实现并有单测，但仍有未交付余项或设备验收缺口，整项不勾选。
 > 文件传输 CLI/MCP 与 `ime.show` 出口已实现；N59 保留其已决结论，未决项继续待办。
-> N60 以本 worktree 基线为准，不能把并行分支上的计划视为已合入能力。
+> N60.1 已在当前分支交付MCP/显式主屏与焦点策略，三次stdio及两策略证据见vdisplay-mcp-and-focus；
+> 发布、兼容矩阵、旧层级语义与新增多显示余项仍未完成，N60整项保持未勾选。
 > 下方带日期的“实现/追加记录”按时序保留，早期“未完成”由后续记录收口，不能单独
 > 用作当前缺口。逐项证据见[本次审计](../.trae/specs/docs-stale-audit/progress.md)。
 >
@@ -1335,7 +1336,9 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
 3. **多显示屏**：电脑侧 shell helper 与 CLI 的安全决策、实现和验收以独立规格
    [virtual-display-screen-off](../.trae/specs/virtual-display-screen-off/spec.md) 与
    [进度证据](../.trae/specs/virtual-display-screen-off/progress.md) 为准。
-   不包含 MCP、Bridge 或 App AI 的跨显示出口；后续项见 N60，不回写已完成 MVP。
+   本分支MCP管理/目标观察与六类动作、主屏0、二值焦点策略由
+   [vdisplay-mcp-and-focus](../.trae/specs/vdisplay-mcp-and-focus/progress.md)交付；helper启停仍CLI，
+   Bridge/App AI的多显示未接入，余项见N60，不回写已完成MVP。
 4. **视觉动作类型扩展**：`android_visual_action_execute` 目前只允许
    tap / long-click / swipe，是刻意收窄。
 5. **OCR**：`visual-observation-proposal.schema.json` 的 `source` 已预留 `ocr`，
@@ -1356,32 +1359,39 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
    [ime-show-focus](../.trae/specs/ime-show-focus/spec.md) 及 `008cf40`。
    结果不保证或验证键盘可见性，故从待决清单移除。）
 
-### [ ] Task N60：虚拟显示后续（未实现，分别立项）
+### [ ] Task N60：虚拟显示后续（部分交付，余项分别立项）
 
-目标：在既有电脑侧 CLI 边界上补充发布、兼容性和显式观察语义；任何子项实施前
-都创建独立 change spec，不把路线图计划写成已交付。本次仅登记，未执行下列工作。
+目标：在已验收的CLI/MCP与焦点策略边界上补发布、兼容性及仍被拒绝的多显示能力。
+N60.1已完成，其余子项只登记、未实施；实施前各建独立change spec，保留失败/未验事实。
 
 | 子项 | 具体步骤与依赖 | 允许修改范围与验收证据 | 建议提交边界 |
 | --- | --- | --- | --- |
-| N60.1 MCP 出口 | 依赖本规格验收；先定义模型动作策略、显示目标和销毁确认，再接命令与观察；保持 Bridge/App 会话边界 | `internal/mcpserver/` 及独立规格；协议仅由集成任务改。证据需含禁止动作、无效目标不回退与真实调用测试 | `feat(mcp): expose approved virtual display operations` |
-| N60.2 发布打包 | 依赖稳定 helper 契约；发布 APK 与 CLI 同版本、固定命名及摘要，验证同目录自动定位与版本不匹配处理 | `scripts/release.sh`、发布配置及独立规格；证据为干净目录解包后的 start/stop 与 SHA-256 | `build(release): package matching displayd helper` |
-| N60.3 API33/34 验证 | 依赖固定 emulator profile；分别验证独立组/焦点标志、API33 groupAwake=null、锁定/休眠/重建、窗口筛选与65秒保活；不以API35推断 | `scripts/emulator/` 新独立脚本/证据目录；若发现产品缺陷，另拆修复任务。每个API记录指纹、连续运行结果和清理 | `test(emulator): verify displayd on API 33 and 34` |
-| N60.4 真机与 OEM 矩阵 | 依赖N60.3；固定型号、ROM、API、ABI、调试方式及fixture版本，核验权限、取帧、输入/IME、锁定与任务迁移 | 独立设备验收脚本与报告；须有每设备明确serial、环境和失败产物，不能将模拟器结论算作真机通过 | `test(device): record virtual display OEM compatibility` |
-| N60.5 普通层级焦点歧义 | API35 已观察到虚拟屏最后输入后普通层级返回fixture；先定义固定主屏与活动窗口的显式语义/兼容策略，再实现并测试双屏交替输入 | `internal/adb/`、必要的service/CLI及独立规格；证据须交叉核对display0/虚拟屏归属，保留既有命令的兼容说明 | `fix(observe): make hierarchy display ownership explicit` |
-| N60.6 摄像头能力决策 | 当前未实现；先审查授权、数据来源与安全边界，再决定是否立项，不随显示功能顺带实现 | 仅独立决策规格；未获决策前不得增加注入或捕获入口 | `docs(spec): define camera automation boundaries` |
+| N60.1 MCP/显式主屏与焦点策略：已交付 | 四个独立管理工具、两类观察/六类既有动作带displayId，0明确主屏；focus默认isolated/显式steal，helper v2、API33不隔离；helper启停只CLI | 证据见[vdisplay规格](../.trae/specs/vdisplay-mcp-and-focus/progress.md) Round24–26：isolated三冷启动、steal原三次65秒/PIN、真实MCP三冷启动；风险门不变，不将后续项算已交付 | ce5dd14、4017153、6d27678及该规格列出的前序提交 |
+| N60.2 发布打包 | 依赖稳定v2契约；CLI/helper同版固定命名与摘要，验证同目录定位与版本不匹配；升级须先旧CLI停v1 | scripts/release.sh、发布配置及独立规格；干净目录解包后start/stop、SHA256与升级失败路径 | build(release): package matching displayd helper |
+| N60.3 API33/34矩阵 | 固定profile/指纹；分别测focus映射、API33 focusIsolated=false/groupAwake=null、两策略焦点/IME、息屏层级、65秒保活、锁定/重建；不得用API35外推 | 新scripts/emulator/display-api-matrix/与独立规格；每API连续运行、原始失败证据、清理；发现产品缺陷单独拆修复 | test(emulator): verify displayd on API 33 and 34 |
+| N60.4 真机/OEM与硬件键盘矩阵 | 依赖N60.3；固定型号/ROM/API/ABI、调试方式、fixture SHA、键盘型号/连接方式，逐步测主屏/虚拟屏焦点、IME、物理按键去向、锁定和任务迁移；显示id与实际屏交叉核对 | 独立设备验收脚本/报告；每台显式serial及用户授权，物理键盘步骤由用户参与，记录前后两屏原始证据；不把ADB键注入冒充硬件输入 | test(device): record display and hardware keyboard compatibility |
+| N60.5 无显示编号层级的语义与缺文件错误 | 主屏0已交付；旧默认仍读活动窗口、缺文件仍可能误报无效XML。先决定兼容命名/提示，再测试双屏交替焦点；为旧exec-out缺文件精确识别本次UUID诊断，保持坏XML拒绝 | internal/adb、service/cli/mcpserver必要映射及独立规格；原argv兼容测试、显示0/活动窗口双证据、stdout退出0与stderr退出1、相似诊断反例，不能静默改成主屏 | fix(observe): clarify legacy hierarchy ownership and missing output |
+| N60.6 摄像头能力决策 | 当前未实现；先审查授权、来源和安全边界，再决定立项，不随显示功能实施 | 仅独立决策规格；未获明确决策不增加捕获或注入 | docs(spec): define camera automation boundaries |
+| N60.7 虚拟屏ui.scroll | 依赖N60.1；先RED验证现拒绝displayId，再从已验归属目标屏读取尺寸，以原方向/幅度上限合成滚动；接CLI/MCP同名目标，保留白名单标准 | internal/adb/service/cli/mcpserver及新emulator滚动脚本；不同尺寸双屏精确滚动位置、无效目标不回退、显示0独立、未指定目标兼容、连续冷启动 | feat(display): scroll using the target display dimensions |
+| N60.8 等待/断言/滚动直到、视觉与Bridge多显示 | 依赖N60.5/7；逐工具先定义窗口/选择器/帧与动作归属，绑定display及observation，判据从同屏求值；未接入者继续明确拒绝，不能删除目标重试 | 各新规格明确internal/adb/service/mcpserver、视觉与Bridge协议/Android端所有权；共享协议单一集成者。证据须跨屏同名节点歧义、漂移/失效/无回退及真实stdio；不放宽既有三道门 | feat(display): bind predicates and observations to a display；Bridge/视觉另分提交 |
+| N60.9 fixture API35 edge-to-edge布局 | 独立夹具修复，不改生产App/Bridge；确认主屏320×640输入框[12,31][308,79]被标题栏至y80遮挡，按WindowInsets处理布局并验证所有目标可见可点 | android/device-fixture与新scripts/emulator/fixture-layout/；固定API/分辨率/密度，原始bounds/截图、输入focused与精确文本、对既有手势/滚动回归；修复前后的失败测试 | fix(fixture): keep editable controls below system bars |
+| N60.10 isolated无IME与中文输入 | 依赖N60.8相关归属设计，先落安全/能力决策；当前只受限ASCII，Bridge Unicode工具不接受displayId。评估显示绑定的语义输入或IME策略，不伪称键盘显示、不借剪贴板绕过 | 独立规格决定API/授权与internal/service/mcpserver、Android语义路由范围后才实现；中文/组合文本精确落点、主屏不变、无IME/失败拒绝、API33/34与OEM矩阵 | docs(spec): decide isolated display text input；批准后再feat实现 |
 
-并行波次与目录所有权：波次A可分别派发N60.1（mcpserver）、N60.2（release）、
-N60.3（新增emulator脚本）、N60.5（adb/service/CLI）；不得同时修改同一文件。
-N60.4在N60.3后单独进行，N60.6只有决策文档。共享协议、规格状态、导航和矩阵报告
-由单一集成任务在汇合点修改，各任务只交付自己目录的实现与证据。
+并行波次与目录所有权：波次A可分别做N60.2（release目录）、N60.3（新增display-api-matrix
+专属目录）、N60.9（device-fixture及新增fixture-layout目录），共享构建/导航由单一集成者修改。
+N60.5与N60.7都涉及adb/service/CLI，交同一owner串行；N60.8在两者完成后串行推进，
+N60.10在其相关归属决策后再做。N60.4依赖N60.3，N60.6只做决策文档。共享协议、状态
+和矩阵汇总只由集成任务收口；各子项按表单独提交，不混改已完成MVP/其它规格历史。
 
-人工步骤：真机RSA、无障碍/录屏/安装与敏感权限必须用户完成，因为模拟器 test-only
-预置不能代表真实授权；不得自动设置真机PIN或修改其安全设置。模拟器兼容测试继续
-使用明确 test-only 路径，减少重复人工确认。
+人工步骤：真机RSA、无障碍/MediaProjection/安装/敏感权限和硬件连接由用户完成，
+这些信任或物理操作无法由一次性模拟器预置替代。不得自动设置真机PIN或修改其安全设置。
+模拟器仅在新规格明确test-only授权下使用固定profile，记录指纹、ABI及fixture来源/SHA。
+添加网络输入基线只能Cancel、不保存配置，真实设备不得自动使用此基线。
 
-失败后的回滚/清理：首个失败停止动作并保留限额脱敏证据；清理自己创建的虚拟屏、
-helper、forward和临时文件，恢复模拟器测试PIN/超时并关闭模拟器；不得杀未知进程或
-删除其它任务产物。发布实验只清理独立输出目录，MCP/普通层级改动可按独立提交回滚。
+失败回滚/清理：动作失败先保存限额脱敏XML/截图/系统分段/实际响应/时间线，拒绝盲重试；
+清理本任务helper/显示/forward/临时文件、清模拟器测试PIN并恢复本轮超时，关闭模拟器并
+核实宿主进程为空。只撤销明确归属的未验收改动，不杀未知进程或改其它worktree。
+发布实验只清独立输出目录，各能力按独立提交回滚；不能通过放宽判据把失败算通过。
 
 ## UI 产品体验探索（不改变既有验收）
 

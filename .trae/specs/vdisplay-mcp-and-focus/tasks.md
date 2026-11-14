@@ -69,21 +69,23 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - M3c脚本保存提交：`test(emulator): verify both focus policies end to end`；steal三次通过，isolated首轮基线失败，整体未验收。
 - 本轮脚手架与原始响应提交：`test(emulator): harden focus setup and preserve failure responses`；F2已进入产品检查，错误契约失败后停止。
 - M3c收尾提交：test(emulator): use a stable primary-input baseline；证据见Round22–24。
-- M4真实stdio三次及文档/全量验证通过（Round26），进入M5。
+- ce5dd14：新SSID基线与M3c连续三次完成。
+- 4017153、6d27678：M4真实stdio三次与文档完成。
+- M5 P01–P15、镜像、路线图及验证完成（Round27）；提交hash见git log。
 
 ## M5：接收文档清理移交（依赖 M4 验收通过）
 
 目标：逐条核实并处理 docs-stale-audit 移交的 P01–P15，所有能力描述以本分支当前代码为准。
 目录所有权：README.md、docs/architecture.md、docs/protocol.md、skills/ 下两份 references/commands.md
-及项目同步工具生成的 .trae/skills/ 对应镜像；不修改移交 worktree。
+及项目同步工具生成的.trae/skills/镜像，另按新增授权更新docs/next-phase-tasks.md；不修改移交worktree。
 执行波次：M3 → M4 → M5 单人串行；无并行子任务，导航与规格状态仍由本执行者统一汇合。
 
-- [ ] 只读移交 progress.md，对 P01–P15 各自核对本分支代码与现有测试；核实不了的标注未核实
-- [ ] 修正权限、截图授权例外、MCP工具/观察/动作与Bridge方法能力清单，保留未验收边界
-- [ ] 修正两份commands.md并用项目既有命令同步镜像，运行make skills-check
-- [ ] progress.md逐条记录处理结果、代码证据与未覆盖项
-- [ ] make comments、make test、make verify、make build、make android-verify
-- [ ] 提交：`docs: reconcile README, architecture, protocol and skills with current capabilities`
+- [x] 只读移交 progress.md，对 P01–P15 各自核对本分支代码与现有测试；核实不了的标注未核实
+- [x] 修正权限、截图授权例外、MCP工具/观察/动作与Bridge方法能力清单，保留未验收边界
+- [x] 修正两份commands.md并用项目既有命令同步镜像，运行make skills-check
+- [x] progress.md逐条记录处理结果、代码证据与未覆盖项
+- [x] make comments、make test、make verify、make build、make android-verify
+- [x] 提交：`docs: reconcile README, architecture, protocol and skills with current capabilities`
 
 验收证据：逐条P01–P15表、实际工具/Schema清单、一致性检查与全量命令结果。
 提交边界：仅上述文档/镜像与本规格状态，不混入M3/M4实现。

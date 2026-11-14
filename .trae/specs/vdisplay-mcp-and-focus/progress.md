@@ -992,3 +992,33 @@ S=com.android.settings，F=dev.aiauto.fixture，C=com.google.android.deskclock�
 - make android-verify退出0（1m5s、199任务，6执行/193缓存）；单测614项、0失败、1既有跳过，assembleDebug/lintDebug通过。构建CLI在MCP会话结束后单独执行，避免占用中的Windows可执行文件；未在设备验收中替换CLI。
 
 - M4文档提交范围：README、docs/virtual-display.md、docs/protocol.md的虚拟屏/v2段、displayd README及本规格状态；架构/协议剩余P项与skills留到M5。make build退出0，CLI摘要仍8838361972da00ac63833780e2debedbfd4e1e40011db0463d03dfd4ca99ef20。设备已关闭、adb devices为空、宿主无emulator/qemu，M4完成后串行进入M5。
+
+## Round 27：M5接收P01–P15、路线图与最终验证（2026-11-14）
+
+- 在M4提交4017153/6d27678及三次真实stdio/全量检查通过后才开始M5。只读本分支合并后的docs-stale-audit/progress.md，不修改该规格或移交worktree；所有事实重新对照当前代码，不沿用其984ee31的16工具基线。
+
+| 移交项 | 处理结果 | 本分支证据 |
+| --- | --- | --- |
+| P01 | 已更正README网络-only，列真实权限及用户触发/授权边界 | main AndroidManifest.xml声明9项uses-permission；扫码、VoiceInputHandler、OverlayController、AutomationSessionService的用途；不推定权限已获授权 |
+| P02 | 已区分普通Bridge快照不返PNG与attested执行请求有界PNG例外，CLI不能编辑录制保留 | AttestedVisualActionGateway解码/校验/执行/finally清零；CLI recording路由仅list/replay，未声称N56编辑器全部验收 |
+| P03 | 架构MCP改为当前20工具 | internal/mcpserver/server.go ToolNames、readme_toolcount_test.go与三轮真实tools/list20逐项一致 |
+| P04 | 更正CLI无watch，补有界watch/可信重连，N35矩阵仍未完成 | internal/cli/cli.go watch/trust/reconnect分流，internal/adb/watch.go与trusted.go；跨平台真实断线矩阵本轮未验 |
+| P05 | 更正截图不进App AI流：默认语义，显式截图授权才有图像/observation、校验/后置观察/清零 | AndroidSessionAdapters.kt ProviderSessionPlanner（screenshotsAllowed、copyProviderImage/finally fill0）、AuthorizedVisualSessionAction与VisualSessionObservationFactory |
+| P06 | Provider信任边界同步默认语义+显式授权图像例外 | 同P05及OpenAICompatibleProvider.toUserContent的有界image_url，不把外部Provider当本地处理 |
+| P07 | 架构列完整8种android_observe及直连/Bridge区别 | schemas.go observeSchema/observeOutputSchema与server.go：screenshot/hierarchy/foreground/apps/semantic/windows/transientMessages/recordings |
+| P08 | 架构补应用/前台/录屏/长按滚动手势/判据/文件等；区分已有视觉端口和未验真实App自愈 | cli/direct.go与check.go、adb/device_state.go、mcpserver视觉端口、App授权视觉上下文；TOCTOU/跨平台/真实App矩阵边界保留 |
+| P09 | 协议45改46，以Schema为准 | protocol/schema/v1/action.schema.json顶层oneOf实读46项，新增scrollUntil在内；未据Schema推定所有入口可执行 |
+| P10 | Bridge方法表12项、hello能力14项完整列出，test-only认证限制保留 | AndroidBridgeMethods.handle的9方法+RPC会话层hello/open/close；capabilities列14项；windows/messages有方法但没有独立同名capability，按源码如实说明 |
+| P11 | 动作入口表区分坐标/选择器/判据工具，补longClick/scroll/wait/assert/scrollUntil | cli/direct.go、check.go、mcpserver schemas/risk/Bridge白名单；app.stop仅CLI、MCP拒绝，未放宽任何门 |
+| P12 | 协议列完整20工具/8观察/Bridge与视觉路径/四个管理及独立门，recordings可读、replay仍拒绝 | ToolNames、schemas.go、server.go、display.go；真实MCP三次，已有model/replay/语义/文件风险测试 |
+| P13 | 已更正截图例外及ime.show分层；App编辑器/回放用户流程设备结论标未核实 | ProviderActionParser接受、AccessibilityCommandJsonParser映射ImeShow、Router执行ACTION_FOCUS；RuntimeSessionExecutor/ReplayEngine通用路由存在，但AutomationRiskPolicy白名单不含ime.show，不能声称AI会话已开放；未进行App流程设备验收 |
+| P14 | 观察commands补全部直连/Bridge观察、MP4与脚本区别、显示0/策略/错误；同步镜像 | cli/direct.go与bridge.go实际选项；skills命令示例smoke及make skills-sync/check；Windows输出ACL表述按writeScreenshot的0600请求和平台限制澄清 |
+| P15 | 自动化commands改实际31类Bridge路由与MCP四项语义子集，修app.stop错误示例、21键白名单和多显示限制；同步镜像 | AccessibilityCommandJsonParser分支，Bridge ui.pressKey只MOVE_HOME/MOVE_END，clipboard.get未接；mcpserver三道旧风险门保持，真实六类目标动作已验 |
+
+- P01–P15均已处理；P13中App编辑器/回放的ime.show用户流程未核实，文档明确保留此边界，不把parser/单测当交付证明。没有启动App/Bridge、授予权限或做额外设备操作。
+- make skills-sync生成仅两份references镜像，make skills-check退出0，3份portable skills/镜像及CLI所有命令示例测试通过。只编辑skills源，不手改镜像。
+- 路线图按合并后用户授权更新N60：N60.1标明已交付MCP/主屏0/策略，N60整项不勾；N60.3 API33/34，N60.4真机/OEM/硬件键盘，N60.5默认活动窗口与缺文件错误，N60.7虚拟ui.scroll，N60.8等待/断言/滚动直到/视觉/Bridge多显示，N60.9 fixture API35 edge-to-edge遮挡，N60.10 isolated无IME/中文输入。各项都有具体步骤、依赖/串行与目录owner、允许范围、验收证据、提交边界和失败清理；仅登记，未实施。
+- 最终make test、make verify、make build均退出0，GO参数指向本地固定1.26.5真实exe；全Go包/vet、linux/darwin/windows cross-vet通过，327顶层Test定义（非子用例执行数，包含既有默认跳过设备冒烟），协议56项，Skills3份及镜像/CLI示例通过。make comments退出0：601文件/16自测。
+- make android-verify已在M4末尾对同一最终Android源码通过：614项、0failure/error、1既有跳过（app564/fixture8/webfixture6/displayd36），assembleDebug/lintDebug通过；M5只改Markdown，无Android源码变化，不重复无关设备或构建测试。Node基线/焦点/旧回归/MCP共32项通过，之后无脚本改动。
+- 改动文档本地链接39个、0断链；diff --check通过。三道旧风险门相对2b78a79完整diff为空；M5仅README、architecture/protocol/路线图、两份skills源/对应镜像及本规格状态，未改其它docs/规格/App/Bridge/fixture/main或其它worktree，未push、无第三方下载/依赖或制品提交。
+- 未覆盖风险：API33/34、真机/OEM/硬件键盘、中文/IME矩阵；长期flaky统计未覆盖。A3状态读取返回retryable ACTION_FAILED的内部原始display字节未导出，原因未核实，原始响应与当时可得证据保留；后续B三轮均0次此类失败，没靠重试获得通过。旧搜索失败不计通过，所有原始失败证据继续保留在忽略目录供审阅。

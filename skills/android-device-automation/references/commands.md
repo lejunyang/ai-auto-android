@@ -16,7 +16,7 @@ aactl action stop --device SERIAL --package com.example.app --json
 
 坐标接受 0 到 100000。滑动时长接受 1 到 60000 ms，默认值为 300 ms。直接文本最多接受 10000 个 ASCII 字节，可使用字母、数字、空格和 `@._+-,:/`。
 
-支持的按键为 `BACK`、`HOME`、`RECENTS`、`ENTER`、`TAB`、`ESCAPE`、`SPACE`、`DELETE`、`FORWARD_DEL`、`DPAD_UP`、`DPAD_DOWN`、`DPAD_LEFT`、`DPAD_RIGHT`、`DPAD_CENTER`、`VOLUME_UP`、`VOLUME_DOWN` 和 `VOLUME_MUTE`。
+支持的按键为 `BACK`、`HOME`、`RECENTS`、`ENTER`、`TAB`、`ESCAPE`、`SPACE`、`DELETE`、`FORWARD_DEL`、`DPAD_UP`、`DPAD_DOWN`、`DPAD_LEFT`、`DPAD_RIGHT`、`DPAD_CENTER`、`MOVE_HOME`、`MOVE_END`、`PAGE_UP`、`PAGE_DOWN`、`VOLUME_UP`、`VOLUME_DOWN` 和 `VOLUME_MUTE`。
 
 这些命令映射到固定的 ADB 参数数组，不提供 shell 命令。
 
@@ -45,10 +45,16 @@ aactl action stop --device SERIAL --package com.example.app --json
 ```
 
 ```json
-{"device":"SERIAL","action":"app.stop","package":"com.example.app"}
+{"device":"SERIAL","action":"ui.longClick","x":200,"y":400,"durationMs":750}
 ```
 
-MCP 直接动作与对应 CLI 命令具有相同的校验和后端语义。MCP 不暴露任意 shell 或 Bridge 动作执行。
+```json
+{"device":"SERIAL","action":"ui.scroll","direction":"down","amount":0.6}
+```
+
+MCP直接动作与对应CLI共享校验/后端，但只开放既有七项：tap/swipe/longClick/scroll/
+ASCII setText/pressKey/launch。app.stop与sleep/wake等CLI动作不开放，任意shell也不开放。
+选择器动作另用独立白名单的android_bridge_action，不是bridge action整体透传。
 
 ## 原子视觉动作
 
@@ -112,7 +118,18 @@ aactl bridge action --device SERIAL --action '{"type":"ui.back","params":{}}' --
 aactl bridge action --device SERIAL --action '{"type":"ui.click","params":{"target":{"packageName":"com.example.app","selectorCandidates":[{"strategy":"resourceId","value":"com.example.app:id/continue","weight":1,"required":true}]}}}' --json
 ```
 
-当前 Bridge 可执行 `ui.click`、`ui.longClick`、使用非敏感字面文本的 `ui.setText`、`ui.scroll`、`ui.tap`、`ui.swipe`、`ui.back`、`ui.home` 和 `ui.recents`。其他 protocol v1 动作可能符合 schema，但会在此 Bridge 返回 `CAPABILITY_UNAVAILABLE`。
+当前Bridge action.execute由AccessibilityCommandJsonParser逐项映射，分为：
+
+- 元素/指针：ui.click、ui.longClick、非敏感字面量ui.setText、ui.scroll、ui.tap、ui.swipe。
+- 有界手势：ui.drag、ui.multiTap、ui.pinch、ui.rotate、ui.twoFingerScroll、ui.pathGesture。
+- 节点/编辑：ui.scrollIntoView、ui.selectText、ui.copy/cut/paste、ui.nodeAction、ui.setProgress、ui.scrollToPosition。
+- 导航/系统：ui.back/home/recents、ui.notifications、ui.quickSettings、ui.lockScreen、ui.powerDialog、ui.dismissNotificationShade，仍受运行时API与本地策略限制。
+- ui.pressKey只可靠发送MOVE_HOME/MOVE_END；ime.show聚焦当前可编辑节点，不保证键盘可见；clipboard.set只写入。
+
+上述是Bridge解析/路由集合，不等于App AI风险白名单，也不等于MCP开放集合。
+clipboard.get等合法Schema但未接线的动作返回CAPABILITY_UNAVAILABLE，不伪造结果。
+MCP android_bridge_action只含ui.click、ui.longClick、ui.scrollIntoView、ui.nodeAction四项；
+Unicode文本另走android_bridge_set_text，聚焦另走android_ime_show。配对与无障碍授权不能自动完成。
 
 完成 Bridge 工作后关闭 session：
 
@@ -143,3 +160,24 @@ aactl recording replay --device SERIAL --script 123e4567-e89b-42d3-a456-42661417
 兼容性 MCP 工具 `android_recording_replay` 在此 MVP 中始终返回 `CONFIRMATION_REQUIRED`，不会执行回放。只有在人工直接审核并确认后才能使用 CLI。
 
 检查 `succeeded`、`requiresIntervention`，以及每个步骤的 `status`、`attempts`、`route`、`matchScore`、`errorCode` 和 `message`。
+
+## 显示目标与焦点策略
+
+坐标必须来自目标显示最新观察，动作后重新读取同屏验证；不得按失败结果盲目重复。
+CLI tap/swipe/long-press/text/key/launch接受--display N，MCP对应六类动作接受displayId。
+0明确主屏且不要求helper，正整数须归helper所有；ui.scroll当前不接显示目标。
+等待/断言/滚动直到、视觉与Bridge工具尚不支持displayId，拒绝后不能去掉参数改向主屏。
+
+```json
+{"device":"SERIAL","action":"ui.setText","displayId":2,"text":"Ascii"}
+```
+
+示例2须替换为android_display_create实际返回值；该工具参数是device/width/height/dpi及
+可选focus=isolated或steal（默认isolated）。android_display_list/status/close提供其它管理，
+close会销毁其上应用；helper启停仍只有CLI。v2升级先用旧CLI停止v1，再更新并启动。
+
+isolated适合有人在主屏输入：API34+保护主屏焦点，但虚拟屏无IME、只能受限ASCII；
+BACK直接交给应用，在根页会退出并读到DISPLAY_EMPTY，重新启动后恢复。主屏息屏时
+层级返回WINDOWS_UNAVAILABLE，可唤醒或用steal重建；取帧与按键注入仍可用。
+steal适合息屏挂机，会打断主屏输入法，其BACK可先收IME，不能套用isolated断言。
+API33没有隔离标志，focusIsolated=false；中文输入与多显示Bridge仍待独立实现。

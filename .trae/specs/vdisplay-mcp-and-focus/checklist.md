@@ -70,3 +70,10 @@
 - [ ] 真机与 OEM ROM 上的焦点与输入法行为
 - [ ] API 33 / API 34 上的行为差异
 - [ ] 硬件键盘输入在虚拟屏持有焦点时的去向
+
+## M5文档移交与收尾
+
+- [x] P01–P15逐条对照本分支代码处理，App用户流程未核实边界明确保留（Round27）
+- [x] 两份Skills references及镜像由项目工具同步，make skills-check通过
+- [x] docs/next-phase-tasks.md按新增授权登记全部指定后续项，N60只把已交付子项标明完成
+- [x] M4/M5按顺序完成，原始失败记录append-only，无其它规格写入

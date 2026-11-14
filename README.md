@@ -152,7 +152,13 @@ Trae 项目级镜像位于对应的 `.trae/skills/<skill-name>`；只编辑 `ski
 
 ## Android 权限
 
-- App 清单只声明网络权限，用于访问用户配置的 OpenAI 兼容 Provider。
+- INTERNET / ACCESS_NETWORK_STATE 用于 Provider 网络访问与网络状态。
+- CAMERA 用于用户主动触发的二维码扫描；无相机或拒绝权限时可手工输入邀请码。
+- FOREGROUND_SERVICE / FOREGROUND_SERVICE_SPECIAL_USE 用于有通知、可暂停/停止的会话保活。
+- POST_NOTIFICATIONS 用于会话状态通知，Android13+ 运行时授权由用户完成。
+- RECORD_AUDIO 用于按需语音输入，未授权时返回权限缺失，不能据清单声明推定已授权。
+- SYSTEM_ALERT_WINDOW 用于受控悬浮助理，须用户到系统设置手动授权。
+- QUERY_ALL_PACKAGES 用于列出可启动应用并逐包配置授权，不等于获得这些应用的控制权限。
 - AccessibilityService 必须由用户先接受 App 内独立醒目披露，再到系统设置手动
   启用；App 不能替用户授权。
 - 用户必须配置允许的目标包。前台包不匹配、敏感目标或能力不可用时执行失败关闭。
@@ -163,10 +169,12 @@ Trae 项目级镜像位于对应的 `.trae/skills/<skill-name>`；只编辑 `ski
 
 - 仅支持 Android 11 / API 30 及以上；不支持 Root、Shizuku、Device Owner、
   蓝牙 ADB、互联网远控、OCR 或设备农场。
-- 直接 ADB 仅提供类型化观察、输入和应用控制，不提供任意 shell。
+- 直接ADB只提供预定义的类型化命令，不提供任意shell；文件传输、判据与虚拟屏同样受各自边界约束。
 - 录制订阅点击、长按、文本、滚动和窗口变化；由 App 执行器发起的 Back、Home、
   Recents 也会录制。原始触摸、物理系统导航和自由手势不在录制范围内。
-- Bridge 不传截图；截图和 UIAutomator XML 是可能包含敏感内容的原始 ADB 产物。
+- 普通 Bridge 快照不回传截图；获授权的 debug disposable emulator 原子视觉执行请求
+  是例外，可携带有界 PNG 并在校验/执行后清零。App AI 默认发语义摘要，只有显式允许
+  截图且取得有效授权时才发送有界图像与 observation 上下文。原始 ADB 截图/XML 可能含敏感内容。
 - CLI 可列出但不能编辑录制脚本，也不能向回放传入 secret；MCP 不执行录制回放。
 - 支付、购买、安装、授权和系统安全设置被禁止；发送、提交、删除等动作需要当次确认。
 
