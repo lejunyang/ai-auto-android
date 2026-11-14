@@ -376,3 +376,29 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
 - 本地focus证据根与本轮单个回归证据目录经绝对路径、无symlink、无跟踪文件及Git忽略
   规则核对后，用非强制Remove-Item清理，Test-Path均false。未删除其它运行或用户文件。
   设备列表空、emulator/qemu进程列表[]，未push、main未改；保留当前worktree供集成。
+
+## 集成方定位：回归失败不是窗口组异常消失（2026-11-14）
+
+- 复核对象 `5ac8c79`。在同一固定模拟器环境下，用本分支构建的 `aactl` 与带新标志的
+  displayd 逐步执行，并在每个动作后直接读取 `uiautomator dump --windows` 的显示分组：
+
+| 动作 | 显示 0 | 显示 2 |
+| --- | --- | --- |
+| 创建虚拟屏 | 2 个窗口 | 无分组（屏上没有任何窗口） |
+| 启动 fixture | 2 个窗口 | 1 个窗口（Device Fixture） |
+| 点按按钮 | 2 个窗口 | 1 个窗口 |
+| 点按输入框 | 2 个窗口 | 1 个窗口 |
+| `action text --display 2` | 2 个窗口 | 1 个窗口 |
+| `action key --display 2 --key back` | 2 个窗口 | **无分组** |
+
+- BACK 之后 `dumpsys activity activities` 的 `Display #2` 下已没有任何 Activity：
+  fixture 的根 Activity 被 BACK 结束了，虚拟屏变空，自然没有窗口分组。此时
+  `display list` 仍列出该屏，`observe hierarchy --display 2` 返回 `DISPLAY_NOT_FOUND`。
+- 这是新标志带来的**行为变化，而不是缺陷**：未加标志时，点按虚拟屏输入框会让输入法
+  为它服务，随后的 BACK 先被输入法消费（收起键盘）；加标志后输入法不再服务虚拟屏，
+  BACK 直接交给 Activity，根 Activity 随即结束。上一规格验收脚本里「输入文本后按
+  BACK」这一步隐含依赖了前一种行为。该因果链中「未加标志时 BACK 被输入法消费」
+  一环是推断，未单独实验。
+- 由此暴露一个真实的可用性问题：屏仍归辅助进程所有、只是上面没有窗口时，返回
+  `DISPLAY_NOT_FOUND` 会误导调用方以为屏不存在。
+- 清理：辅助进程已停止，设备临时文件与转发已清，模拟器已关闭。
