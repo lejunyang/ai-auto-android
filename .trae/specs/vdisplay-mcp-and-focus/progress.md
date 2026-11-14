@@ -709,3 +709,163 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
   三个steal报告各6599字节，isolated失败目录30964字节。先核对八个绝对路径均在当前
   worktree内、无reparse point、无跟踪文件且匹配Git忽略规则，再用LiteralPath非强制
   Remove-Item递归清理；八项Test-Path均false，未删除其它轮次或用户文件。
+
+## Round 15：按新停机规则恢复M3c，脚手架修复第1次（2026-11-14）
+
+- 开工HEAD=f0bb80e、工作区干净，worktree/main身份核对无变化；只修脚本，不修改产品代码。
+  用户已明确区分脚手架与产品失败，同一问题修复3次仍不稳定才停止；M3c → M4 → M5继续串行。
+- 现象：旧轮在搜索输入基线抛Primary input window not unique。静态核实该错误把0个和多个
+  匹配窗口合并报告；Round14失败后层级确实没有搜索输入框，不能据旧事后采集断言原时刻重复。
+  脚手架根因是未等待首页/搜索页稳定、未确认页面转换完成即继续输入，诊断也缺数量信息；
+  旧轮具体Android转换时序已无法追溯，不伪造其原始证据。
+- 改法：目标节点连续两次一致才点按；搜索页输入框轮询最多6次，未出现先保存原始观察/
+  截图/系统分段/时间线，再重新观察和定位，最多再点一次；输入前同样等待focused稳定，
+  原完整基线条件最多观察6次等待成立，不重复文本注入。节点消失/变化会重置稳定计数。
+  没有更换应用、延长固定睡眠或放宽原focused/文本/当前IME客户端/显示0键盘判据。
+- 诊断现在包含matchingWindows、inputNodes、包名及原始窗口头；0与多个明确区分。
+  DisplaySession保留触发判据的原始CLI层级和同次focus快照，在重试/清理前落盘，完整脱敏
+  XML不以新dump替换，并采截图、原始系统分段与时间线；证据总额限制1MiB。
+- 新脚本测试覆盖缺失重置稳定计数、有上限结束、重试先保存且坐标来自新层级、0/2个窗口
+  诊断、失败保留原始观察而不重读hierarchy。Node15项通过；make comments通过596文件/16自测。
+- 新系列isolated-B1已独立冷启动，transport51，原完整基线全部通过后才启动helper。
+  目前仍在设备验收中，不将基线通过冒充完整场景通过；先前失败轮不计数。
+
+## Round 16：保留原始现场后的脚手架诊断与修复（2026-11-14）
+
+- isolated-B1仍在helper启动前失败：完整基线曾通过，主屏字符a后搜索输入窗口为0。
+  当时原始CLI层级62285字节、截图33625字节、window48416、IME前缀32768、activity31522、
+  processes116、timeline3473、report7261均已在cleanup前保存到忽略目录focus/isolated-B1。
+  截图显示Settings首页，原始XML只有SystemUI/IME，原窗口与进程证据保留，没有事后dump覆盖。
+  初始当前IME客户端PID1645，失败采集进程中搜索为3790；证明页面/进程发生变化，不足以
+  单独断言崩溃类型。本轮未到被测虚拟屏操作，不计通过。
+- isolated-diagnostic-C1在系统App元数据读取时遇到本地ADB daemon连接10060超时，尚无
+  首份UI层级；report保留原始错误、环境与时间线，明确evidenceError=No original observation。
+  无法在不可达时伪造层级/截图；连接在finally已恢复，helper/显示/forward/临时文件均0，
+  emu kill成功。宿主随后核对同一本地adb进程和5037监听恢复、无模拟器，不修改系统配置。
+- ADB脚手架修复第1次：仅对固定白名单的只读shell查询，在daemon瞬断后重新确认唯一
+  serial、同一transport、指纹，最多重发一次。不重发输入、安装、启动、删除或清理命令，
+  不更改端口、密钥或系统设置。单测覆盖只读成功、身份不符拒绝、输入/安装/rm一律不重发。
+- isolated-diagnostic-C2（transport54）9步焦点测量全部通过、主屏探针全部落点正确。
+  随后新建显示3、重启fixture并点按时失败Fresh virtual tap failed，已保留当时原始XML、
+  截图、系统分段、crash/exit-info和时间线。截图明确CLICK:2、INPUT:Virtua；本轮不计完整通过。
+- fixture脚手架修复第1次：只读源码确认FixtureProcessState.current是进程内单例，关闭
+  显示/Activity不保证清空点击和输入。改用最新层级中现有reset_target按钮建立CLICK:0及
+  空输入前提；BACK重新启动后同样显式复位。原CLICK:1、BackCheck、Awake/DELETE和息屏
+  AwakeSlee等精确断言全部保留，没有修改fixture，也不尝试启动其不可导出的debug组件。
+- 搜索基线脚手架修复第2次：由一次完整基线改为连续两次全部原判据满足、当前IME客户端
+  相同后才继续。C2的exit-info记录旧搜索PID1532在本轮早期因STATE CHANGE（reason15，
+  status0，description=change ... state=empty）退出，crash缓冲为空；这说明冷启动存在
+  非崩溃包状态切换，不能倒推B1也是同一退出原因。新等待有界6次，不延长固定睡眠、不恢复
+  或重建已开始测量时的主屏状态，不能掩盖产品导致的焦点变化。
+- 证据采集补强：发现IME注册信息本身超过旧32KiB前缀预算，当前客户端字段在其后。
+  改为保留当前IME客户端/服务/显示/可见性等原始行，并增加crash缓冲及exit-info；单测验证
+  大段注册信息不能挤掉末尾当前字段。原始触发XML始终完整脱敏保存，不采新层级替换。
+- 以上脚本测试共19项通过；新的isolated-D1/2/3系列从冷启动重新计数。B1、C1、C2均未算通过，
+  D系列尚在运行。当前搜索基线已修2次，fixture状态与ADB瞬断各修1次，未触发同问题修3次
+  仍不稳定的停机阈值；如后续触发，保留各轮原始证据并停止，不能继续盲改。
+
+## Round 17：有原始证据的搜索状态切换与电源等待修复（2026-11-14）
+
+- isolated-D1（transport55）第一次搜索未出现，6次轮询均0输入节点；重试前的原始XML、
+  PNG、系统分段、时间线、exit-info已保存。exit-info精确记录当轮搜索PID1571在
+  10:28:42.319以STATE CHANGE（reason15/status0，change ... state=empty）退出，crash为空。
+  当前IME客户端是Settings PID994/显示0、mInputShown=false。这次直接证实冷启动包状态
+  切换造成搜索页丢失，不能把它写成虚拟屏焦点异常或应用崩溃。原地重新观察/定位后仅再点
+  一次，搜索页出现并完成连续两次完整基线，再进入被测操作；原失败观察没有被覆盖。
+- D1原9步、虚拟屏复位后的CLICK:1/BackCheck、BACK→DISPLAY_EMPTY、同屏重新启动、
+  主屏焦点/IME/文本保持、AwakeX→DELETE得到Awake、取帧均通过。随后脚本紧接着注入
+  KEYCODE_SLEEP便检查on=false，返回on=true，轮次失败、后两轮未启动，不计通过。
+- 电源脚手架修复第1次：注入返回只代表按键已提交；改成最多8次、每次间隔250ms的
+  screen-state条件轮询，逐次保存原始状态；唤醒同样等待on=true。不重复按键，不增加固定
+  睡眠，不放宽最终on=false/true判据。超时在抛错前采关联层级/窗口/IME/Activity/截图并
+  保留原始错误响应，再清理。若持续不达标，作为产品/环境证据继续分类，不能无限重试。
+- D1电源失败时原层级是息屏前最后一次观察，不能当作息屏后的层级；该证据来源时间已
+  在报告保留。这一局限由新超时关联采集修正，没有把旧缓存重新标为新现场。
+- 单测新增电源状态true,true,false的有限观察、不重复输入、持续true时严格超时且先保存
+  现场；Node共20项通过。新isolated-E1/2/3系列从冷启动开始计数，D1不算通过。
+
+## Round 18：补齐实际响应与最小原始复现（2026-11-14）
+
+- isolated-E1（transport56）基线及9步、复位/BACK/重启均通过；Sleep后的原始轮询为
+  ON→OFF（277073ms→277603ms），证实前轮即时判断属于等待时机问题。息屏虚拟帧720×1280
+  且全部921600像素非黑。随后requireWindowsUnavailable抛泛化错误，旧脚本没有保存实际
+  CLI响应，不能据它判断真实错误码或把缓存层级当成那次响应。E1不计通过，后两轮未启动。
+- 证据脚手架修复：envelope现在记录真实响应，finish在截图/清理覆盖缓存之前先保存
+  failure-response.json，证据包也保存原始响应；错误断言带实际ok/code/message。补测试
+  证明后续截图响应不能覆盖触发失败的原信封。没有修改产品错误映射或放宽错误判据。
+- 新增最小diagnose-isolated-hierarchy.mjs：保留完整主屏基线，重建isolated屏、输入、息屏
+  后先保存原始dump stdout/stderr/文件存在性/字节数/原始脱敏XML，再保存目标CLI完整响应、
+  display/power原文与截图、窗口/IME/Activity/退出记录，然后才断言错误契约。它标记diagnosticOnly，
+  不冒充完整9步或三个冷启动验收。
+- isolated-raw-F1（transport57）仍在helper前因搜索页退出导致0输入窗口，已保存真实原始
+  层级/截图/系统分段/响应，未触及产品，未计通过。
+- 搜索基线脚手架修复第3次：仅在helperStarted=false、已经先保存原始失败证据、重新读到
+  Settings首页时，允许完整重建一次，再执行全部原基线及相同客户端连续两次判据。若最新
+  状态不明确或已经启动helper，禁止恢复；最多两次构建，仍不稳定就按用户阈值停止。
+  单测覆盖先保存再观察再构建、无首页不能重试、两次严格上限、helper启动后拒绝恢复。
+- Node共22项通过，make comments通过597文件/16自测。isolated-raw-F2（transport58）正在
+  最小复现：第一次构建丢失后按最新首页重建，尚未计通过。当前不进入M4/M5，待真实响应
+  分类；如契约矛盾则按产品问题停止，不自行修改产品实现。
+
+## Round 19：实际CLI错误契约失败，按产品问题停止M3c（2026-11-14）
+
+- isolated-raw-F2：UTC10:51:26.811→10:54:10.307，transport58。第三次基线修复在首次
+  包状态切换后仅按当前Settings首页重建一次，完整原基线及相同客户端两次观察均通过；
+  helper随后才启动，创建/重建isolated显示3、复位、点按、Diagnostic文本均通过。
+  唤醒状态下主屏top=0、当前IME客户端搜索PID3710/显示0、IME服务/Insets/窗口均可见，
+  主屏文本Primary未变。搜索第3次修复在本次构建有效，但没有三个完整冷启动稳定性结论。
+- 设备环境仍为osdk-test-35/API35/google_apis/x86_64、320×640/160dpi、en-US、导航模式2，
+  虚拟屏720×1280/240dpi；唯一emulator-5554，-read-only/-no-snapshot/-no-boot-anim/-no-audio。
+  指纹google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+  CLI仍10c4ba81c9c96a84954607545cafd2cd2297b41a7f97d4ea140ba005da436ab7，helper仍
+  626142bb4c8a26740b05560876f29d246b50c839cbf3e54e606c724f5310deee，fixture仍Round13摘要。
+
+| 最小复现步骤 | 清理前保存的原始结果 |
+| --- | --- |
+| 主屏睡眠条件等待 | 第1次ON、第2次OFF；没有重复Sleep输入 |
+| 虚拟屏取帧 | 720×1280、921600/921600像素非黑，文件83051字节 |
+| 原始dump --windows | 退出0，stdout=UI hierchary dumped to固定诊断路径，stderr空 |
+| 诊断路径test -f | 文件不存在，0字节、无显示组；原始结果JSON287字节 |
+| 紧随其后的CLI observe hierarchy --display 3 | ok=false，ACTION_FAILED，Invalid or truncated UIAutomator display-window XML.；实际响应456字节 |
+| 关联display原文 | controller0=OFF、controller3=ON |
+| 契约断言 | 期望可操作WINDOWS_UNAVAILABLE，实际不符，失败 |
+
+- 这是已进入被测能力后的错误契约阻塞，按用户产品问题停机：不修改产品映射、不把
+  ACTION_FAILED改作可接受值、不用本地单测替代设备结果，不继续完整isolated/M4/M5。
+  原始独立dump和CLI是先后两个命令，期间没有输入动作；不能声称前者是后者内部临时文件
+  的字节。CLI内部cat原始字节未导出，需下一步定位其诊断通道与XML解析分支，不能冒充
+  根因已经完全确认。新旧本地build摘要一致且二进制包含WINDOWS_UNAVAILABLE，非漏部署该码。
+- 关键证据保留在scripts/emulator/build/focus/isolated-raw-F2（Git忽略，未提交）：
+  actual-cli-response.json SHA-256 fab993cc53d95627200dd34c5d2be204c293556a7833ff00f59a84a75b2c884d；
+  raw-result.json SHA-256 3558ddd9d6b4cd2b062d503b1f1aceebff21c8b4a7cdb5a0cb23036e2aaa0409；
+  virtual-asleep.png SHA-256 2e126871c73313257023d693378057d8df57ba94486dfa9109c9d14f2e081990。
+  还有display.txt39683字节、power.txt214311字节、原始响应、当时的脱敏层级/无层级错误、
+  主屏截图、Window/IME/Activity/进程/退出记录和时间线。全目录604337字节，小于1MiB。
+- 各轮原始证据继续保留供审阅，每轮均小于1MiB：B1=219466、C1=2186（初始化ADB不可达，
+  无首份UI观察，明确记录不可采）、C2=280663、D1=368979、E1=476266、F1=178217、F2=604337。
+  各次清理前先落盘可得证据；旧采集缺口见Round16–18，不能把新采集方式倒填为历史证据。
+- 临时补充只读电源观察器在E1 emulator关闭时有非终止PowerShell错误，随后两次明确serial
+  的只读请求被ADB以offline拒绝，没有触达设备；补充样本1无有效数据，不作验收证据。
+  已停止该观察器，不再使用其流程；补单测确认统一DisplaySession遇离线/多设备/transport
+  变化时在进一步设备读取之前停止。这是本轮设备纪律的偏离，未隐式切换或操作其它设备。
+- F2 finally无cleanupError/evidenceError：helper/虚拟屏/forward/固定临时文件均0，诊断XML已删，
+  emu kill成功；本轮从未设置PIN或修改全局设置。宿主再次确认adb devices空、emulator/qemu[]。
+  原始失败证据按本轮要求保留在忽略目录，不提交截图、APK、缓存或密钥。
+- isolated完整冷启动成功0/3，所有失败轮未计数，E2/E3未启动；最小F2不冒充完整场景。
+  steal原三次通过保留。M4真实MCP stdio仍未执行，M5 P01–P15全部未核实/未处理。
+
+### 本轮最终本地验证与后续汇合项
+
+- make comments退出0：597文件、16检查器自测。Node焦点/脚手架17项、既有虚拟屏脚本6项，
+  共23项通过，新增脚本node --check通过；基线全部原判据的逐项否定测试仍通过。
+- make test退出0：Go325个顶层Test定义（非子用例执行数，含既有默认跳过设备冒烟）、
+  全部包测试/vet和linux/darwin/windows交叉vet通过；协议56项、Skills3份/镜像通过。
+- make verify、make build退出0；CLI重建仍10c4ba81...，与设备运行产物一致。
+  make android-verify退出0（56秒、199任务）：单测/assembleDebug/lintDebug通过，614项，
+  0failure/error、1既有跳过（app564、fixture8、web-fixture6、displayd36）。
+- 本轮只提交脚手架、测试、模块README验证边界和本规格状态，标题为
+  test(emulator): harden focus setup and preserve failure responses；不包含任何产品Go/Java实现
+  或M4/M5交付。三道既有风险门未改，未改其它规格/文档/skills/fixture/App/Bridge/main，未push。
+- 后续登记在本规格而非路线图文件：先定位主屏OFF/isolated下实际cat输出与错误映射，
+  保持畸形/截断拒绝，修复后重新执行isolated三个完整冷启动，再推进M4/M5。fixture的
+  edge-to-edge布局问题仍待独立规格；API33/34、真机/OEM/硬件键盘和中文输入边界仍未覆盖。

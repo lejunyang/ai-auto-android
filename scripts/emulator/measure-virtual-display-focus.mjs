@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { DisplaySession, options, ensure, node, attr, fixturePackage } from './focus-session.mjs';
 import { pngStats } from './virtual-display-png.mjs';
 import { assertEmptyOwnedDisplay, topActivityOnDisplay } from './verify-virtual-display.mjs';
-export const primaryPackage='com.google.android.settings.intelligence';
-export const primaryInputID=`${primaryPackage}:id/open_search_view_edit_text`;
+import { primaryPackage, primaryInputID, openPrimarySearch, inputWindowDiagnostics, waitStable, searchInput, recoverPrimaryBaseline } from './focus-baseline.mjs';
+export { primaryPackage, primaryInputID } from './focus-baseline.mjs';
 
 /** 证据严格取显示0与当前IME客户端；即使顶层焦点在其它显示也不替换主屏数据。 */
 export function parseFocus(windowDump,imeDump,processes,xml) {
@@ -20,7 +20,8 @@ export function parseFocus(windowDump,imeDump,processes,xml) {
  const clientProcess=pid?processes.split(/\r?\n/).map(s=>s.trim()).find(s=>s.split(/\s+/)[0]===pid[1])?.replace(/^\d+\s+/,''):null;
  ensure(client==='null'||(display&&clientProcess),`Cannot attribute current IME client: ${client}; process=${clientProcess}; candidates=${processes.split(/\r?\n/).filter(l=>/settings.intelligence|fixture|inputmethod/.test(l)).join(',')}`);
  const primaryWindows=[...xml.matchAll(/<window\b[^>]*>[\s\S]*?<\/window>/g)].map(m=>m[0]);
- const appWindows=primaryWindows.filter(w=>w.includes(`resource-id="${primaryInputID}"`));ensure(appWindows.length===1,'Primary input window not unique');
+ const appWindows=primaryWindows.filter(w=>w.includes(`resource-id="${primaryInputID}"`));
+ if(appWindows.length!==1)throw Error(`Primary input window not unique: ${JSON.stringify(inputWindowDiagnostics(xml))}`);
  const input=node(xml,primaryInputID),appWindow=appWindows[0].match(/^<window\b[^>]*>/)[0];
  return {
   topFocusedDisplay:Number(field(windowDump,/mTopFocusedDisplayId=(\d+)/,'top focused display')),
@@ -37,10 +38,36 @@ export function parseFocus(windowDump,imeDump,processes,xml) {
 export function requireBaseline(b) {
  ensure(b.primaryInput==='Primary'&&b.primaryInputFocused&&b.clientProcess===primaryPackage&&b.clientDisplay===0&&b.inputShown&&b.primaryImeVisible&&b.primaryImeWindow,'Primary typing baseline not established');
 }
+/** 基线必须连续两次满足原全部条件且客户端不变，避免冷启动包状态切换的短暂可见窗口。 */
+export async function waitTypingBaseline(snapshot,{attempts=6,wait=()=>new Promise(resolve=>setTimeout(resolve,250)),observe=()=>{}}={}) {
+ let previous=null,lastError;
+ for(let attempt=1;attempt<=attempts;attempt++) {
+  try{const state=snapshot();requireBaseline(state);const signature=JSON.stringify([state.client,state.primaryInput]);if(signature===previous)return state;previous=signature;lastError=Error('Primary baseline client did not stabilize');}
+  catch(e){previous=null;lastError=e;observe(attempt,e);}
+  if(attempt<attempts)await wait();
+ }
+ throw lastError;
+}
+/** fixture状态属于进程；仅用现有可见复位按钮建立精确前提，不依赖关闭Activity清空进程状态。 */
+export function resetVirtualFixture(s,id) {
+ const xml=s.tap(id,`${fixturePackage}:id/reset_target`);
+ ensure(xml.includes('text="CLICK:0"')&&xml.includes('text="INPUT:"')&&attr(node(xml,`${fixturePackage}:id/text_input`),'text')==='','Fixture reset did not establish empty input / CLICK:0');
+ s.event('fixture-reset',{displayId:id,click:0,input:''});return xml;
+}
+/** KEYCODE_SLEEP/WAKE注入返回不代表电源转换完成；只轮询状态，不重复注入按键。 */
+export async function waitPrimaryState(s,on,{attempts=8,wait=()=>new Promise(resolve=>setTimeout(resolve,250))}={}) {
+ for(let attempt=1;attempt<=attempts;attempt++) {
+  const state=s.cli(['observe','screen-state']);s.event('screen-state-poll',{attempt,expectedOn:on,state});
+  if(state.on===on)return state;
+  if(attempt<attempts)await wait();
+ }
+ s.failureObservation(0);s.preserveEvidence('screen-state-timeout');
+ throw Error(`Primary did not become on=${on} within ${attempts} observations`);
+}
 
 /** 无窗口输出不等于空屏或坏XML，必须保留可执行的恢复建议。 */
 export function requireWindowsUnavailable(result) {
- ensure(!result.ok&&result.error?.code==='WINDOWS_UNAVAILABLE'&&result.error.message.includes('Wake')&&result.error.message.includes('steal'),'Expected actionable WINDOWS_UNAVAILABLE');
+ ensure(!result.ok&&result.error?.code==='WINDOWS_UNAVAILABLE'&&result.error.message.includes('Wake')&&result.error.message.includes('steal'),`Expected actionable WINDOWS_UNAVAILABLE; actual=${JSON.stringify({ok:result.ok,error:result.error,format:result.data?.format})}`);
 }
 
 async function main() {
@@ -48,7 +75,7 @@ async function main() {
  ensure(opt.scenario===undefined||opt.scenario==='acceptance','--scenario acceptance is the only extension');
  ensure(!opt.scenario||opt.mode==='mitigated','isolated acceptance requires mitigated mode');
  const s=new DisplaySession(opt,'focus');s.report.mode=opt.mode;let id,virtualLaunched=false;
- const snapshot=()=>parseFocus(s.shell('dumpsys','window'),s.shell('dumpsys','input_method'),s.shell('ps','-A','-o','PID,NAME'),s.hierarchy(0));
+ const snapshot=()=>{const raw=s.focusObservation();return parseFocus(raw.window,raw.ime,raw.processes,raw.xml);};
  const virtual=()=>{
   if(id===undefined)return null;
   if(!virtualLaunched)return {launched:false,displayId:id,status:s.cli(['display','status']).displays.find(d=>d.displayId===id)};
@@ -67,10 +94,14 @@ async function main() {
   await s.prepare({startHelper:false});
   s.report.systemApps=['com.android.settings',primaryPackage,'com.google.android.deskclock','com.google.android.inputmethod.latin'].map(p=>s.describeSystemApp(p));
   s.hierarchy(0);s.action(0,'launch',['--package','com.android.settings','--activity','.Settings'],'Settings primary search entry','com.android.settings');
-  const xml=s.hierarchy(0),search=[...xml.matchAll(/<node\b[^>]*>/g)].map(m=>m[0]).filter(n=>/text="Search settings"/.test(n));
-  ensure(search.length===1,'Search settings entry not unique');s.tap(0,attr(search[0],'resource-id'),0.5,'com.android.settings');
-  s.tap(0,primaryInputID,0.5,primaryPackage);s.action(0,'text',['--text','Primary'],'primary search text=Primary',primaryPackage);
-  const baseline=snapshot();s.event('baseline',baseline);requireBaseline(baseline);measure('baseline');
+  const baseline=await recoverPrimaryBaseline(s,async()=>{
+   await openPrimarySearch(s);s.tap(0,primaryInputID,0.5,primaryPackage);
+   const focused=await waitStable(()=>s.hierarchy(0),xml=>{const n=searchInput(xml);return n&&attr(n,'focused')==='true'?n:null;});
+   ensure(focused.ready,'Search input did not acquire stable focus before typing');
+   s.action(0,'text',['--text','Primary'],'primary search text=Primary',primaryPackage);
+   return waitTypingBaseline(snapshot,{observe:(attempt,e)=>s.event('baseline-condition',{attempt,error:e.message})});
+  });
+  s.event('baseline',baseline);measure('baseline');
   s.startHelper();const focus=opt.mode==='mitigated'?'isolated':'steal';
   const create=()=>{const d=s.cli(['display','create','--width','720','--height','1280','--dpi','240','--focus',focus]);ensure(d.focus===focus&&d.focusIsolated===(focus==='isolated'),'Wrong focus policy/actual isolation');return d.displayId;};
   id=create();measure('helper-create');
@@ -102,6 +133,7 @@ async function main() {
    s.report.focus='isolated';const primaryBefore=snapshot();
    s.cli(['display','close','--display',String(id)]);id=create();virtualLaunched=false;
    s.action(id,'launch',['--package',fixturePackage,'--activity','.MainActivity'],'fresh root Activity');
+   resetVirtualFixture(s,id);
    s.tap(id,`${fixturePackage}:id/click_target`);
    ensure(s.hierarchy(id).includes('text="CLICK:1"'),'Fresh virtual tap failed');
    s.tap(id,`${fixturePackage}:id/text_input`,0.85);
@@ -113,6 +145,7 @@ async function main() {
    s.event('isolated-back',{code:empty.error.code,owned:true,activity:null});
    s.action(id,'launch',['--package',fixturePackage,'--activity','.MainActivity'],'PAGE:MAIN restored');
    ensure(s.hierarchy(id).includes('text="PAGE:MAIN"'),'Relaunch failed');
+   resetVirtualFixture(s,id);
    s.tap(id,`${fixturePackage}:id/text_input`,0.85);
    s.action(id,'text',['--text','AwakeX'],'AwakeX in virtual input');
    s.action(id,'key',['--key','DELETE'],'Awake in virtual input');
@@ -123,14 +156,14 @@ async function main() {
    const capture=phase=>{const file=path.join(s.root,'latest.png');s.cli(['observe','screenshot','--display',String(id),'--output',file]);const bytes=fs.readFileSync(file),stats=pngStats(bytes);fs.unlinkSync(file);ensure(stats.width===720&&stats.height===1280&&stats.nonBlackRatio>0.01,'Black or invalid frame');s.event('isolated-frame',{phase,...stats});};
    capture('awake');
    s.event('action',{action:'sleep',expected:'primary off; isolated hierarchy unavailable, frame/input retained'});
-   s.cli(['action','sleep']);ensure(s.cli(['observe','screen-state']).on===false,'Primary did not sleep');
+   s.cli(['action','sleep']);await waitPrimaryState(s,false);
    capture('asleep-before-input');const missing=s.envelope(['observe','hierarchy','--display',String(id)]);requireWindowsUnavailable(missing);
    s.event('isolated-no-windows',{code:missing.error.code});
    // 息屏时无新层级，不猜坐标；键盘注入后用唤醒后的精确文本验证真实落点。
    s.event('action',{package:fixturePackage,displayId:id,action:'text/key',expected:'append Sleep, DELETE; after wake INPUT:AwakeSlee'});
    s.cli(['action','text','--display',String(id),'--text','Sleep']);s.cli(['action','key','--display',String(id),'--key','DELETE']);capture('asleep-after-input');
    ensure(s.cli(['observe','screen-state']).on===false,'Virtual injection woke primary');
-   s.cli(['action','wake']);s.cli(['action','unlock']);
+   s.cli(['action','wake']);s.cli(['action','unlock']);await waitPrimaryState(s,true);
    ensure(s.hierarchy(id).includes('text="INPUT:AwakeSlee"'),'Sleeping injection or wake hierarchy recovery failed');
    const primaryAfter=node(s.hierarchy(0),primaryInputID);
    ensure(attr(primaryAfter,'text')===primaryBefore.primaryInput,'Sleeping virtual input changed primary text');

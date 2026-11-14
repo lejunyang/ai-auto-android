@@ -12,6 +12,16 @@ export const fixturePackage = 'dev.aiauto.fixture';
 export const ensure = (ok,message) => { if (!ok) throw Error(message); };
 export const pause = ms => new Promise(resolve => setTimeout(resolve,ms));
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+/** 仅本地daemon瞬断且重新确认同一设备时重发一次只读命令；任何输入/安装/清理都不重发。 */
+export function retryObservedRead(first,args,confirm,retry) {
+ const readonly=args[0]==='-s'&&args[2]==='shell'&&(['getprop','dumpsys','ps','sha256sum'].includes(args[3])||(args[3]==='pm'&&args[4]==='path'));
+ if(readonly&&!first.error&&first.status!==0&&/daemon still not running|cannot connect to daemon at tcp:5037/.test(String(first.stderr))&&confirm())return retry();
+ return first;
+}
+/** IME注册列表可能超过32KiB，必须取当前客户端等原始行，不能截掉真正的当前状态。 */
+export function currentImeEvidence(text) {
+ return text.split(/\r?\n/).filter(l=>/^\s*(mCurClient=|mCurMethodId=|mCurTokenDisplayId=|mCurFocusedWindow=|mCurFocusedWindowClient=|mCurAttribute=|mInputShown=|mShowRequested=|mShowExplicitlyRequested=|mShowForced=|mImeWindowVis=|mInteractive=)/.test(l)||l.includes('mSelfReportedDisplayId=')).join('\n');
+}
 export function options(argv,extra=[],values=[]) {
  const result={};
  for(let i=0;i<argv.length;i+=2) {
@@ -38,7 +48,15 @@ export class DisplaySession {
   this.report={run:opt.run,startedAt:new Date().toISOString(),steps:[]};
  }
  exec(program,args,allow=false) {
-  const r=spawnSync(program,args,{encoding:'utf8',timeout:45000,maxBuffer:8*1024*1024,windowsHide:true,env:{...process.env,MSYS_NO_PATHCONV:'1',AACTL_ADB_PATH:this.opt.adb}});
+  const invoke=argv=>spawnSync(program,argv,{encoding:'utf8',timeout:45000,maxBuffer:8*1024*1024,windowsHide:true,env:{...process.env,MSYS_NO_PATHCONV:'1',AACTL_ADB_PATH:this.opt.adb}});
+  let r=invoke(args);
+  if(program===this.opt.adb)r=retryObservedRead(r,args,()=>{
+   const found=invoke(['devices','-l']),all=String(found.stdout).split(/\r?\n/).filter(l=>l&&!l.startsWith('List of devices'));
+   if(found.status!==0||all.length!==1||!all[0].startsWith(`${this.serial} `)||!/\sdevice\s/.test(all[0])||(this.identity&&all[0]!==this.identity))return false;
+   const identity=invoke(['-s',this.serial,'shell','getprop','ro.build.fingerprint']);
+   if(identity.status!==0||identity.stdout.trim()!==fingerprint)return false;
+   this.event('readonly-daemon-retry',{command:args[3],sameTransport:true});return true;
+  },()=>invoke(args));
   ensure(!r.error,`Process error: ${r.error?.message}`);if(!allow) ensure(r.status===0,`${path.basename(program)} failed: ${r.stderr?.slice(0,300)}`);
   return {status:r.status,stdout:(r.stdout??'').trim(),stderr:(r.stderr??'').trim()};
  }
@@ -53,12 +71,46 @@ export class DisplaySession {
  event(step,evidence={}) {const entry={step,elapsedMs:Date.now()-this.started,...evidence};this.report.steps.push(entry);console.error(JSON.stringify(entry));}
  envelope(args) {
   this.guard();const r=this.exec(this.opt.aactl,[...args,'--device',this.serial,'--json'],true);
-  const value=JSON.parse(r.stdout);ensure(value.schemaVersion==='1.0'&&typeof value.ok==='boolean'&&(r.status===0)===value.ok,'Invalid CLI envelope');return value;
+  const value=JSON.parse(r.stdout);ensure(value.schemaVersion==='1.0'&&typeof value.ok==='boolean'&&(r.status===0)===value.ok,'Invalid CLI envelope');this.lastEnvelope={args:[...args],observedAt:new Date().toISOString(),result:value};return value;
  }
  cli(args) {const r=this.envelope(args);ensure(r.ok,`${r.error?.code}: ${r.error?.message}`);return r.data;}
  hierarchy(id) {
   const r=this.cli(['observe','hierarchy','--display',String(id)]),ids=[...r.xml.matchAll(/<display id="(\d+)"/g)].map(m=>Number(m[1]));
-  ensure(r.format==='uiautomator-windows-xml'&&ids.length===1&&ids[0]===id,'Wrong hierarchy display/format');this.lastXML=r.xml;this.lastHierarchy={displayId:id,observedAt:new Date().toISOString()};return r.xml;
+  ensure(r.format==='uiautomator-windows-xml'&&ids.length===1&&ids[0]===id,'Wrong hierarchy display/format');this.lastXML=r.xml;this.lastHierarchy={displayId:id,observedAt:new Date().toISOString()};this.lastObservation={...this.lastHierarchy,xml:r.xml};return r.xml;
+ }
+ focusObservation() {
+  const xml=this.hierarchy(0),raw={...this.lastHierarchy,xml,window:this.shell('dumpsys','window'),ime:this.shell('dumpsys','input_method'),processes:this.shell('ps','-A','-o','PID,NAME'),activity:this.shell('dumpsys','activity','activities')};
+  this.lastObservation=raw;return raw;
+ }
+ failureObservation(id) {
+  // 非层级判据（如电源状态）超时前主动采关联层级；原错误响应与无输出必须如实保留。
+  const result=this.envelope(['observe','hierarchy','--display',String(id)]);
+  this.lastObservation={displayId:id,observedAt:new Date().toISOString(),xml:result.ok?result.data.xml:'',hierarchyError:result.error,window:this.shell('dumpsys','window'),ime:this.shell('dumpsys','input_method'),processes:this.shell('ps','-A','-o','PID,NAME'),activity:this.shell('dumpsys','activity','activities')};
+ }
+ preserveEvidence(reason) {
+  if(!this.safe)return;
+  // 使用触发判据的原始层级，不重新dump覆盖它；截图和相关系统分段在任何清理/重试前采集。
+  const raw=this.lastObservation;ensure(raw&&typeof raw.xml==='string','No original observation to preserve');
+  const index=(this.report.evidence?.length??0)+1,prefix=`evidence-${index}`;
+  const write=(name,value)=>{const bytes=Buffer.isBuffer(value)?value:Buffer.from(value);const total=fs.readdirSync(this.root).reduce((n,f)=>n+fs.statSync(path.join(this.root,f)).size,0);ensure(total+bytes.length<1024*1024,'Evidence exceeds 1MiB');fs.writeFileSync(path.join(this.root,`${prefix}-${name}`),bytes);};
+  const redact=text=>text.replace(/\b(text|content-desc|title)="[^"]*"/g,'$1="[redacted]"');
+  write('hierarchy.xml',redact(raw.xml));
+  if(this.lastEnvelope)write('response.json',JSON.stringify(this.lastEnvelope,(_key,value)=>typeof value==='string'?redact(value):value,2));
+  if(raw.hierarchyError)write('hierarchy-error.json',JSON.stringify(raw.hierarchyError));
+  const window=raw.window??this.shell('dumpsys','window'),ime=raw.ime??this.shell('dumpsys','input_method'),activity=raw.activity??this.shell('dumpsys','activity','activities');
+  const primary=window.split(/^\s*Display: mDisplayId=/m).find(p=>/^0\b/.test(p))??'';
+  write('window.txt',(/mTopFocusedDisplayId=\d+/.exec(window)?.[0]??'')+'\nDisplay: mDisplayId='+primary);
+  write('ime.txt',currentImeEvidence(ime));
+  write('activity.txt',activity.split(/^Display #/m).filter(p=>p.startsWith('0 (activities')||p.startsWith(`${raw.displayId} (activities`)).join('\nDisplay #').slice(0,32768));
+  write('processes.txt',(raw.processes??this.shell('ps','-A','-o','PID,NAME')).split(/\r?\n/).filter(l=>/settings|fixture|inputmethod/.test(l)).join('\n'));
+  const target=path.join(this.root,`${prefix}-screen.png`);this.cli(['observe','screenshot','--display',String(raw.displayId),'--output',target]);ensure(fs.statSync(target).size<=512*1024,'Screenshot budget exceeded');
+  ensure(fs.readdirSync(this.root).reduce((n,f)=>n+fs.statSync(path.join(this.root,f)).size,0)<1024*1024,'Evidence total exceeds 1MiB');
+  this.report.evidence??=[];this.report.evidence.push({reason,prefix,source:raw.observedAt,capturedAt:new Date().toISOString(),displayId:raw.displayId,hierarchy:'original observation, redacted'});
+  // 系统搜索进程可能在基线输入后重启；退出记录与crash缓冲必须在模拟器销毁前保存。
+  write('crash.txt',this.shell('logcat','-d','-b','crash','-t','80').slice(-32768));
+  write('exit-info.txt',this.shell('dumpsys','activity','exit-info','com.google.android.settings.intelligence').slice(0,32768));
+  write('timeline.json',JSON.stringify(this.report.steps,null,2));
+  this.lastPreservedObservation=raw;
  }
  action(id,kind,args,expected,packageName=fixturePackage) {
   // 调用方先读取当前状态并提供期望；每步结束必须重新观察，不在这里重试输入。
@@ -110,20 +162,9 @@ export class DisplaySession {
  finish(error) {
   if(error){
    this.report.ok=false;this.report.error=error.message.slice(0,1000);
-   // 失败后重新观察，不能把动作前缓存冒充动作后证据；抓取失败也明确标注来源时间。
-   let fresh=false;
-   if(this.safe)try{this.hierarchy(0);fresh=true;}catch(e){this.report.hierarchyEvidenceError=e.message.slice(0,300);}
-   this.report.failureHierarchy={...this.lastHierarchy,capturedAfterFailure:fresh};
-   fs.writeFileSync(path.join(this.root,'failure-hierarchy.xml'),this.lastXML.replace(/\b(text|content-desc|title)="[^"]*"/g,'$1="[redacted]"').slice(0,65536));
-   if(this.safe)try {
-    this.guard();const log=this.raw(['logcat','-d','-t','40','-s','displayd:I']).stdout;
-    fs.writeFileSync(path.join(this.root,'failure-log-window.txt'),log.slice(-16384));
-    // 一次性模拟器只显示本地fixture或无账户设置搜索；图片限512KiB，证据总额小于1MiB。
-    if(this.lastXML.includes(`package="${fixturePackage}"`)||this.lastXML.includes('package="com.google.android.settings.intelligence"')) {
-     const target=path.join(this.root,'failure-primary.png');this.cli(['observe','screenshot','--display','0','--output',target]);
-     if(fs.statSync(target).size>512*1024)fs.unlinkSync(target);
-    }
-   }catch(e){this.report.evidenceError=e.message.slice(0,300);}
+   // 在截图/清理调用覆盖响应缓存之前保存触发失败的实际信封，不能只保留断言的泛化报错。
+   if(this.lastEnvelope)fs.writeFileSync(path.join(this.root,'failure-response.json'),JSON.stringify(this.lastEnvelope,(_key,value)=>typeof value==='string'?value.replace(/\b(text|content-desc|title)="[^"]*"/g,'$1="[redacted]"'):value,2));
+   if(!this.failureAlreadyPreserved&&this.lastObservation!==this.lastPreservedObservation)try{this.preserveEvidence('failure');}catch(e){this.report.evidenceError=e.message.slice(0,300);}
   }
   this.cleanup();this.report.finishedAt=new Date().toISOString();fs.writeFileSync(path.join(this.root,'report.json'),JSON.stringify(this.report,null,2));console.log(JSON.stringify(this.report));if(!this.report.ok)process.exitCode=1;
  }

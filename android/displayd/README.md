@@ -173,5 +173,7 @@ JVM 测试独立覆盖协议解析、预算、uid 白名单、版本标志与凭
 T1b 的 API 35 PIN 往返验证了 DEVICE_LOCKED → DISPLAY_ASLEEP → 重建后正常帧。
 焦点策略 v2 的 `steal` CLI 流程在 API35 连续三个冷启动通过：息屏层级/输入/取帧、
 65秒保活和上述PIN往返均保留，见[焦点规格进度](../../.trae/specs/vdisplay-mcp-and-focus/progress.md) Round13。`isolated` 的完整三次验收
-首轮在主屏搜索基线准备失败，未启动helper；MCP stdio尚未验收。
+先遇到主屏搜索基线脚手架问题；修复并通过完整基线后，最小复现发现息屏无窗口输出时CLI
+仍返回ACTION_FAILED而非约定的WINDOWS_UNAVAILABLE，停在该产品错误契约，完整三次未通过。
+原始证据见焦点规格进度Round19；MCP stdio尚未验收。
 API33/34、真机/OEM仍留待后续任务，不把标志能力字段当成这些平台的实测结论。

@@ -39,7 +39,7 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - [x] 提交：`test(emulator): measure primary-display focus under virtual display input`
       （若有缓解实现，另加 `feat(displayd): ...`）
 
-修订二已用M3c两策略验收取代旧单一策略回归要求。当前停在M3c isolated首轮的主屏搜索基线失败（progress.md Round14）；steal三次完整通过，isolated完整通过0/3。M3c未验收，M4/M5未开始。
+修订二已用M3c两策略验收取代旧单一策略要求。本轮按新规则自主修复脚手架，现停在产品契约失败：F2原始dump无文件，CLI却返回ACTION_FAILED而非WINDOWS_UNAVAILABLE（progress.md Round19）。steal三次完整通过，isolated完整通过0/3，M4/M5未开始。
 
 ## M4：MCP 端到端验收与文档
 
@@ -67,6 +67,7 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - d167811：M3c Go客户端、service、CLI、MCP策略透传与测试。
 - 4c9468c：M3c无窗口输出错误、CLI/MCP映射与测试。
 - M3c脚本保存提交：`test(emulator): verify both focus policies end to end`；steal三次通过，isolated首轮基线失败，整体未验收。
+- 本轮脚手架与原始响应提交：`test(emulator): harden focus setup and preserve failure responses`；F2已进入产品检查，错误契约失败后停止。
 - M4、M5未开始。
 
 ## M5：接收文档清理移交（依赖 M4 验收通过）
@@ -116,9 +117,10 @@ scripts/emulator、docs/virtual-display.md与本规格状态。三道既有风�
 - [x] 原始dump矩阵、取帧及注入独立复现，记录字节数/文件存在性/显示组
 - [x] displayd焦点枚举解析/范围/固定标志先RED后GREEN，返回策略及API33真实隔离能力
 - [x] Go客户端、service、CLI、MCP逐层透传及拒绝非法值测试
-- [x] 无窗口输出专用错误与CLI/MCP映射，畸形/截断仍拒绝
+- [ ] 无窗口输出专用错误设备验收（本地映射测试通过；F2设备仍返回ACTION_FAILED，未达契约）
 - [x] steal冷启动连续3次完整息屏/65秒/PIN往返/重建通过
 - [ ] isolated冷启动连续3次通过，复用完整焦点判据、BACK/空屏/恢复与息屏输入/取帧/错误
+- [x] 基线稳定等待/按最新状态重试、fixture复位、电源条件等待与原始失败证据补强，均有脚本测试
 - [x] make comments、make test、make verify、make build、make android-verify
 - [x] 按职责提交displayd、CLI/MCP、ADB错误及设备验收脚本（部分成果，非阶段验收通过）
 

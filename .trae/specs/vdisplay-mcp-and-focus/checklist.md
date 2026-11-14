@@ -50,9 +50,11 @@
 - [x] 两构建在主屏唤醒/息屏下的原始文件存在性、字节数、显示组、帧与输入独立复现
 - [x] focus默认isolated、显式steal，固定标志映射且不接受原始flags
 - [x] v2协议、API33明确focusIsolated=false，Go/CLI/MCP逐层测试通过
-- [x] 无窗口输出WINDOWS_UNAVAILABLE与CLI/MCP映射，XML校验和三道旧风险门保持
+- [x] 无窗口输出本地错误映射测试、XML校验和三道旧风险门保持
+- [ ] 无窗口输出设备端返回WINDOWS_UNAVAILABLE（F2实测ACTION_FAILED，未达契约）
 - [x] steal场景冷启动连续3次完整通过（Round13）
-- [ ] isolated场景冷启动连续3次完整通过（Round14首轮主屏基线失败，helper未启动）
+- [ ] isolated场景冷启动连续3次完整通过（Round19已进入产品检查，错误契约阻塞，完整0/3）
+- [x] 原始层级/截图/系统分段/时间线/实际CLI响应在重试及清理前保留，缺失来源明确标注
 - [ ] M3c整体通过；M4/M5才可开始
 
 ## 验证
