@@ -108,3 +108,8 @@ android-verify:
 release: verify
 	@VERSION="$(VERSION)" DIST_DIR="$(DIST_DIR)" GO="$(GO)" ANDROID_GRADLEW="$(ANDROID_GRADLEW)" \
 		./scripts/release.sh
+
+# 测试用途：独立验证虚拟显示验收脚本的设备守卫、主屏归属和黑帧判据，不启动设备。
+.PHONY: emulator-vdisplay-test
+emulator-vdisplay-test:
+	@node --test scripts/emulator/virtual-display.test.mjs

@@ -375,3 +375,79 @@
 - 提交检查补充：帮助输出原始采集含 CRLF 与末尾空行；首次暂存被 Git 报末尾空行。
   已只规范化行尾与末尾空白，正文没有补写/改写，复核暂存 diff --check 通过；
   Round6 的原始 SHA-256 对应采集时字节，规范化后的版本作为回归 fixture。
+
+## Round 8：T4 首次尝试失败与脚本修正（2026-11-14）
+
+- 前置 T2b 已提交 afa8a1c，四项验证与真实CLI/Go层级均通过，阶段清理完成后才恢复T4。
+  仅修改新增模拟器脚本、文档、Makefile新增测试目标与本规格状态；没有回修产品目录。
+- 脚本按新契约核对 format 与唯一目标display组；主屏隔离改用 dumpsys activity activities
+  中 display0 的 topResumedActivity，不把普通层级当作主屏。普通层级仅记录实际来源。
+  PIN严格断言 DEVICE_LOCKED → 清PIN/无凭据解锁 → DISPLAY_ASLEEP → close/create/relaunch。
+- seriesA-1 是一次失败的完整尝试，不计入成功次数：2026-11-14T04:18:53Z开始，
+  04:19:41Z清理结束，emulator-5554、transport_id=14，固定AVD/参数、API35，指纹
+  google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+  建屏/列屏/启动、CLICK:1、帧变化与主屏前台保持通过；普通层级返回fixture。
+  ASCII后置校验失败后立即停止，第2/3轮没有执行，helper/forward/文件清理并关闭模拟器。
+  未到设置测试PIN/超时步骤。
+- 失败证据约98KiB（fixture PNG 78353字节、脱敏XML16047字节、日志时间窗0字节、报告
+  3807字节），未超1MiB。检查可见字段与截图后定位为脚本点选问题：text_input的真实
+  bounds为[18,47][702,119]，中心y=83落在标题栏下沿（约y84）被遮挡；精确输入节点
+  focused=false，但脚本原来匹配到了window/fixture_root的focused=true。
+  读取AOSP InputShellCommand确认text路径为每个KeyEvent设置displayId，未据此更改产品。
+- 修正仅限固定profile的验收脚本：每次从最新窗口列表与截图观察，选择输入框bounds内
+  可见下部（85%高度）；必须核对text_input本身的focused=true才输入。动作失败不重试，
+  后续系列从冷启动重新计数，没有拼接seriesA步骤。失败XML还补充title脱敏。
+- 脚本独立Node测试4项通过：非模拟器拒绝、黑/非黑像素区分、PNG预算/截断、按display0
+  读取主屏Activity（含输出顺序颠倒与缺主屏）；node --check通过。新Makefile目标
+  emulator-vdisplay-test仅执行这些本地测试，不启动设备，不改变既有目标行为。
+- seriesB从新冷启动系列重新开始，固定同一CLI/helper/fixture产物，未混用seriesA结果。
+  三轮最终结果与全量验证在下一轮追加记录；本节不把正在运行的轮次计作完成。
+
+## Round 9：T4 连续三次完整通过与最终验证（2026-11-14）
+
+- seriesB-1/2/3 使用同一修正后的验收脚本（SHA-256
+  fe6a675075fee147e6c3c5254820d669160024fa7e34d255cec5e465ebd6df2d）、同一make build
+  真实aactl，逐次冷启动，任何失败即停止后续轮次。没有复用seriesA部分步骤。
+  本轮初版脚本1次失败、修正后连续3/3通过；仅3次样本，不宣称长期无flaky。
+- 三次均为唯一 emulator-5554，AVD osdk-test-35、API35 google_apis x86_64、
+  emulator37.1.11；后台启动参数固定为
+  -avd osdk-test-35 -read-only -no-snapshot -no-boot-anim -no-audio，boot_completed=1。
+  环境均320×640/160dpi、en-US、navigation_mode=2；虚拟屏720×1280/240dpi。
+  三轮设备指纹均为F35：
+  google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+- 固定产物（均由本仓库构建，未下载/提交APK）：
+  - CLI：8b223c6a8d4f5eb0671f520c24478e50beebc6f3ae8476d8de6311e50f7e757d。
+  - helper：681af2fb0d9c23051deaae137530ab6c737aefa135da8be0b3138949dcd15ec3。
+  - dev.aiauto.fixture debug APK（versionCode1/versionName1.0.0；设备ABI x86_64）：
+    1e88acf7a0b88f00df212648ca93c3487b37d0cb50e19b92569b80aa8462f6f8。
+
+| 轮次（均F35） | UTC开始→结束 | transport | 建屏/启动与隔离 | 输入/层级/帧 | 息屏/保活 | PIN往返与重建 | 停止与清理 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| seriesB-1 | 04:23:56.281→04:26:46.235 | 15 | create/list/launch通过，display2；主屏桌面不变 | CLICK:1、ASCII、BACK、滑动正偏移通过；点按后PNG78353字节 | CLICK:2通过；等待66679ms，groupAwake=true；非黑PNG80934字节 | DEVICE_LOCKED→清PIN/解锁→DISPLAY_ASLEEP；close2/create3/relaunch，PNG81259字节正常 | stop通过，无PID/虚拟屏/forward/临时文件，恢复超时，关模拟器 |
+| seriesB-2 | 04:27:32.662→04:30:11.914 | 16 | 同上 | 同上，点按后PNG78353字节 | CLICK:2通过；等待66191ms，groupAwake=true；非黑PNG80934字节 | 同上，重建PNG81259字节正常 | 同上 |
+| seriesB-3 | 04:31:06.132→04:34:15.590 | 18 | 同上 | 同上，点按后PNG78353字节 | CLICK:2通过；等待66579ms，groupAwake=true；非黑PNG80721字节 | 同上，重建PNG81259字节正常 | 同上 |
+
+- 三轮每个正常帧均解码720×1280，921600/921600像素非黑；主屏screen-state在sleep后
+  和保活后均on=false。超时临时设15000，原值2147483647在finally恢复；测试PIN均明确
+  清除后才调用无凭据wake/unlock，没有在凭据锁定期间唤醒虚拟组。
+- 主屏隔离不用普通层级：display0的topResumedActivity一直是
+  com.google.android.apps.nexuslauncher/.NexusLauncherActivity；目标窗口列表只返回
+  display2/重建display3，format=uiautomator-windows-xml。
+- **普通层级歧义实测**：最近一次输入在虚拟屏之后，三轮真实不带--display的
+  observe hierarchy均ok=true、format=uiautomator-xml、package仅dev.aiauto.fixture，
+  即返回虚拟屏内容，而主屏Activity仍为桌面。仅观察记录，不作为通过条件或主屏判据；
+  文档限制与后续N60.5已准备登记。
+- 边界反例：不存在的display2147483647返回DISPLAY_NOT_FOUND；stop后status返回
+  DISPLAYD_NOT_RUNNING。锁定与休眠错误都不生成输出PNG，不以黑帧当成功。
+- 全量最终验证退出0：make comments（588手写文件/16检查器自测）、make test
+  （Go303个顶层Test定义，含默认跳过的1个显式设备测试；本阶段前的Go设备冒烟另行通过；
+  协议14schemas、14合法+38非法+4兼容=56项；Skills3份与镜像）、make verify、make build、
+  make android-verify（单测/assembleDebug/lintDebug，612项，0failure/error、1既有跳过；
+  displayd34项，Gradle配置/任务缓存复用）。make emulator-vdisplay-test 4项通过，
+  node --check通过；44个本地文档链接存在，git diff --check通过。
+- 所有轮次finally清理，外层每轮确认无emulator/qemu进程后才启动下一轮；最终adb devices
+  空、无emulator/qemu。失败产物seriesA-1总98207字节，三份成功报告各5927字节，均未超限；
+  已将摘要记入本节后清理整个本轮证据目录，未提交截图、日志、缓存或构建产物。
+- 文档已准备：操作指南、架构/协议/导航/README、Skills导航说明；N59第3项指向本规格，
+  N60登记MCP、发布打包、API33/34、真机/OEM、普通层级歧义和摄像头决策。先提交脚本与
+  验收证据，再提交文档，不把尚未提交的文档标为已交付。禁止目录与main未改，未push。
