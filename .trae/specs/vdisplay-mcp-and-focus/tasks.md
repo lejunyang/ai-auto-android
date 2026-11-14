@@ -39,7 +39,7 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - [x] 提交：`test(emulator): measure primary-display focus under virtual display input`
       （若有缓解实现，另加 `feat(displayd): ...`）
 
-修订二已用M3c两策略验收取代旧单一策略要求。Round20修复exec-out合并诊断后，最小复现CLI已返回WINDOWS_UNAVAILABLE；steal三次完整通过，isolated完整验收重新从0/3计数，M4/M5尚未开始。
+修订二已用M3c两策略验收取代旧单一策略要求。Round20修复exec-out合并诊断，最小复现CLI返回WINDOWS_UNAVAILABLE；Round21的isolated A1完整通过、A2在helper启动前搜索进程STATE CHANGE退出。搜索基线三次修复后仍不稳定，按用户阈值停止；连续通过计数归零，M4/M5未开始。
 
 ## M4：MCP 端到端验收与文档
 
@@ -119,7 +119,7 @@ scripts/emulator、docs/virtual-display.md与本规格状态。三道既有风�
 - [x] Go客户端、service、CLI、MCP逐层透传及拒绝非法值测试
 - [x] 无窗口输出专用错误设备验收（Round20最小复现实际CLI返回WINDOWS_UNAVAILABLE）
 - [x] steal冷启动连续3次完整息屏/65秒/PIN往返/重建通过
-- [ ] isolated冷启动连续3次通过，复用完整焦点判据、BACK/空屏/恢复与息屏输入/取帧/错误
+- [ ] isolated冷启动连续3次通过（Round21 A1完整通过、A2基线失败，连续计数归零并触发三修停机阈值）
 - [x] 基线稳定等待/按最新状态重试、fixture复位、电源条件等待与原始失败证据补强，均有脚本测试
 - [x] make comments、make test、make verify、make build、make android-verify
 - [x] 按职责提交displayd、CLI/MCP、ADB错误及设备验收脚本（部分成果，非阶段验收通过）

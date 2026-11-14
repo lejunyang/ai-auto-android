@@ -172,9 +172,11 @@ JVM 测试独立覆盖协议解析、预算、uid 白名单、版本标志与凭
 模拟器冒烟证据见 `.trae/specs/virtual-display-screen-off/progress.md` Round 1。
 T1b 的 API 35 PIN 往返验证了 DEVICE_LOCKED → DISPLAY_ASLEEP → 重建后正常帧。
 焦点策略 v2 的 `steal` CLI 流程在 API35 连续三个冷启动通过：息屏层级/输入/取帧、
-65秒保活和上述PIN往返均保留，见[焦点规格进度](../../.trae/specs/vdisplay-mcp-and-focus/progress.md) Round13。`isolated` 的完整三次验收
+65秒保活和上述PIN往返均保留，见[焦点规格进度](../../.trae/specs/vdisplay-mcp-and-focus/progress.md) Round13。
 此前息屏无窗口输出被CLI误报ACTION_FAILED，原因是exec-out把cat诊断合入stdout且退出0。
 主机端现只精确识别本次随机路径的完整ENOENT诊断为WINDOWS_UNAVAILABLE，同时保留退出1、
 分离stderr形态；截断、超限、其它诊断和畸形XML继续拒绝。不带显示编号的旧行为本次不改。
-历史证据见焦点规格进度Round19，后续设备结果见新追加轮次；MCP stdio尚待验收。
+Round20最小复现已得到真实WINDOWS_UNAVAILABLE。Round21的isolated首轮完整通过，
+第二轮在helper启动前因系统搜索进程STATE CHANGE退出而丢失基线；同一基线三次修复后
+仍不稳定，按停机阈值停止，未达到连续三次。MCP stdio尚待验收。
 API33/34、真机/OEM仍留待后续任务，不把标志能力字段当成这些平台的实测结论。

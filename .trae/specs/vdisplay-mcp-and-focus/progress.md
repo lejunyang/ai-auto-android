@@ -880,3 +880,40 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
 - 指纹仍google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys，API35、320×640/160dpi、en-US、导航2。CLI SHA256=8838361972da00ac63833780e2debedbfd4e1e40011db0463d03dfd4ca99ef20；helper626142bb…、fixture1e88acf7…不变。原始CLI响应、raw-result、截图、系统分段和时间线保留在忽略目录scripts/emulator/build/focus/execout-fixed-minimal-1，清理前保存；无evidenceError/cleanupError。
 - 自查本规格新增ADB调用：显示0截图复用exec-out screencap及完整PNG校验；显式目标input/am及getprop/sha256sum/proc操作走shell；helper管理通过转发上的JSON/帧协议。新增exec-out cat缺文件分类仅此一处；诊断脚本先test -f再读取，未发现其它把exec-out错误当作分离stderr的新增假设。本次只查，不扩改历史默认层级问题，该项待路线图登记。
 - helper/显示/转发/临时文件均0，未设置PIN或修改全局设置，emu kill成功，宿主emulator/qemu为空。下一步完整isolated三次从冷启动重新计数，未把最小复现计入通过。
+
+## Round 21：isolated一轮完整通过，搜索基线三修后仍不稳定，按阈值停止（2026-11-14）
+
+- 使用feabd87产物及完全未改的cd15435脚手架，从冷启动串行安排A1/A2/A3。没有追加第四次搜索修复、放宽判据、重复盲注入或把失败计入通过。API35指纹、helper/fixture/CLI摘要与Round20一致；唯一emulator-5554，固定只读启动参数与profile。
+
+| 轮次 | UTC起止 / transport | 九步焦点与主屏探针 | BACK/重启 | 息屏帧/输入/错误/恢复 | 结果 |
+| --- | --- | --- | --- | --- | --- |
+| execout-isolated-A1 | 11:23:58.953→11:30:20.791 / 62 | 全9步通过，top=0、S/0、IME服务/Insets/窗口可见、输入focused=true、探针全部落主屏 | DISPLAY_EMPTY、owned=true、Activity=null；重启与复位后Awake | 息屏WINDOWS_UNAVAILABLE，前后720×1280帧全部非黑；注入Sleep/DELETE不唤醒主屏，唤醒后INPUT:AwakeSlee，主屏Primaryabcdefhi不变 | 完整通过1轮 |
+| execout-isolated-A2 | 11:31:22.771→11:32:26.160 / 63 | 52.443秒完整基线通过，57.329秒首个字符a动作，随后搜索输入窗口0；helper尚未启动，未进行虚拟屏操作 | 未执行 | 未执行 | 基线失败，连续计数归零 |
+| execout-isolated-A3 | 未启动 | — | — | — | 按三修阈值停止 |
+
+- A1第一次打开搜索时先读到输入、随后消失；原脚手架先保存原始证据，再重读Settings首页重新定位，只重试一次即成功。这是既有有界恢复的执行记录，未改脚本；整个完整轮次最终通过。没有用这次成功抹去A2失败。
+- A2因果链由清理前原始证据确认：基线当前IME客户端搜索PID1670/显示0，所有原判据成立；11:32:17.028系统令PID1670以reason15 (STATE CHANGE)、status0、description=change ... state=empty退出，crash缓冲为空。随后原XML仅有SystemUI及Settings首页，matchingWindows=0、inputNodes=0；不是重复窗口，更不是虚拟屏产品抢焦点。当前恢复只包住Primary基线构建，首个字符探针在其外；本轮没有把恢复边界向后挪动来做第四次修补。
+- 同一搜索基线已连续做过三次脚手架修复：Round15稳定节点/有界重定位、Round16完整基线与同客户端两次一致、Round18仅在helper前按新首页证据重建一次。第三版在A2仍失稳，触发用户“同一个脚手架问题连续修了3次仍不稳定，按产品行为问题对待：停下来报告”的规则。最新用户保留此规则，未授权重置次数；因此停止M3c，不进入M4/M5。A1是独立完整成功，不满足连续3次要求。
+
+### 各次修复后的原始证据索引
+
+以下均在清理前保存，位于Git忽略的scripts/emulator/build/focus/；不提交原始制品。旧轮证据缺口仍按Round16记录，不事后补造。
+
+| 修复后失败 | 目录/总字节 | 原始脱敏XML SHA-256 | 截图 SHA-256 | 原始系统与时间线 |
+| --- | --- | --- | --- | --- |
+| 第1次后 | isolated-B1 / 219466 | 1834f6bc5b7bae44645438729e024605c436592bcf4ca46ed2d5e959d25433d6 | e6581ed43e08e66db0d97017c86e617323c29abd2a91f08c97f472e7d37c52f2 | window/IME前缀/activity/processes/timeline；旧轮无exit-info，不能据此断言退出原因 |
+| 第2次后 | isolated-raw-F1 / 178217 | c7eaf32b6190ec72c87b71f0b33acb87a196a665e9e3891e511858fafbe13e7f | 61066c2464280fcaeab730e4b5f2095b26ac79fe73a57b8e64aa528cb2429345 | window/当前IME/activity/processes/crash/exit-info/timeline及真实响应 |
+| 第3次后 | execout-isolated-A2 / 211466 | 1958349a950ef67f9e412b4e6c7022889156a2dea732e792b708d7a0406665c4 | e61be079197f59fe98c6e9b380936e6dc3b443660c69c302c376bac82656c9f3 | 同上；exit-info SHA256 808fc5cd765954e4e80af14f42cd73dac9a9465905907f70c4cd0eebb167eadc |
+
+- A2实际触发CLI层级响应是成功的Settings首页XML，不是WINDOWS_UNAVAILABLE回归：failure-response.json 29037字节，SHA256=5293a2b7064e895b38c9b26f6a83bfa1f6ab1af68c30b41b240b05e81a011848；时间线SHA256=fc56e4522bd4f0316b4db7caf4838218b290e4c597d6531bcaf0bbd515ff1499。现场XML/截图/系统分段/时间线无evidenceError，目录小于1MiB。
+- A1/A2均finally完成helper/虚拟屏/forward/临时文件为0、未设置PIN或修改全局设置、emu kill成功，无cleanupError/killError；宿主复核adb devices空、emulator/qemu进程为空。
+
+### 本轮验证与未完成范围
+
+- make comments退出0：597文件、16检查器自测；make test退出0：Go327个顶层Test定义（不是子用例执行数，含既有默认跳过设备冒烟）、全部包测试/vet及linux/darwin/windows交叉vet，协议56项，Skills3份与镜像检查通过。定向ADB包go test -count=1通过。
+- make verify退出0；make build退出0，重建CLI仍8838361972da00ac63833780e2debedbfd4e1e40011db0463d03dfd4ca99ef20，与物理运行产物一致。
+- make android-verify退出0（BUILD SUCCESSFUL in 9s，199任务，4执行/195缓存）：单测、assembleDebug、lintDebug通过；614项、0failure/error、1既有跳过，app564、fixture8、web-fixture6、displayd36。
+- Node脚手架/原验收单测本轮再次23/23通过。三道既有风险门相对基线完整diff为空。没有新增MCP工具、没有修改App/Bridge/fixture/其它规格/main，未push。
+- 本轮产品补丁提交feabd87，8文件：internal/adb/direct.go及测试、模块README、虚拟显示错误表、本规格4文件。当前收尾提交仅更新模块README与本规格状态，保存真实未完成结果。
+- 本轮没有新增脚手架修复：沿用此前六项，遇到搜索第三次修复仍失稳即按阈值停止。M4真实MCP stdio三次未执行，仍0/3；M5 P01、P02、P03、P04、P05、P06、P07、P08、P09、P10、P11、P12、P13、P14、P15均未进入处理/未验收。合并后移交文档已只读查看，未把准备阅读当作交付。
+- 用户列出的路线图后续项尚未写入docs/next-phase-tasks.md，待M3c解除阻塞后按串行阶段收尾：虚拟屏ui.scroll；wait/assert/scrollUntil、视觉与Bridge多显示；fixture API35 edge-to-edge遮挡；无显示编号层级活动窗口与缺文件误报；isolated无IME/中文输入；API33/34、真机/OEM、硬件键盘矩阵。搜索基线STATE CHANGE与恢复边界也需先解决或调整三修停机规则。未把这些待办标成完成。

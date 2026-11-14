@@ -187,8 +187,9 @@ DISPLAY_EMPTY：目标已经过service归属校验（主屏0除外）且有效du
 失败证据须在重试/清理前保留实际触发判据的脱敏完整层级、截图、dumpsys分段及时间线，
 不得以事后重新读取的层级替换原始观察。
 
-当前产品验收阻塞：Round19原始dump未产生文件，而CLI返回ACTION_FAILED/无效XML，
-尚未满足WINDOWS_UNAVAILABLE契约。按产品问题停机，不降低错误判据、不越过M3c进入M4/M5。
+Round19的错误契约阻塞已在Round20修复并通过真实CLI最小复现。当前停机原因见Round21：
+isolated A1完整通过，A2在helper启动前因搜索进程STATE CHANGE丢失输入窗口；同一搜索
+基线已修复三次仍不稳定，按上面的阈值停止，不做第四次修补，不进入M4/M5。
 
 ## exec-out修复与合并后收尾授权（2026-11-14）
 
