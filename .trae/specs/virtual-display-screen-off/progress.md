@@ -475,3 +475,36 @@
 - 全部本轮设备证据临时目录已清；最终adb devices空、无emulator/qemu，未设真实设备PIN、
   未操作非模拟器、未改AVD/system image/osdk或用户配置、未下载依赖/二进制/APK。
   main仍f861a61，未push；仅提交允许目录的源码、脱敏文本fixture、脚本、文档与状态。
+
+## 集成方最终复核（2026-11-14）
+
+- 复核对象 `1690312`（分支共 9 个提交，基线 `f861a61`）。逐提交核对范围：未触及
+  `android/app/`、`internal/mcpserver/`、`internal/bridge/` 与其它规格目录；无二进制；
+  主工作区 `main` 未变；未 push。
+- 代码审阅：`internal/adb/displayd.go` 的身份核对（shell 属主、精确进程名、
+  `/proc/net/unix` inode 与进程 fd 归属）、`internal/vdisplay/client.go` 的有界读取与
+  forward 清理、`internal/adb/hierarchy_windows.go` 的显示分组筛选，均与规格一致，
+  失败路径都拒绝而不回退主屏。
+- 独立重跑：`make comments`（588 个手写文件）、`make test`、`make verify`、
+  `make build`、`make android-verify` 全部退出 0。
+- 独立设备验收：AVD `osdk-test-35`、`-read-only -no-snapshot`、唯一设备
+  `emulator-5554`、同一指纹；用单独构建的 `aactl`（同一提交）手工执行，未使用
+  T4 验收脚本。
+  - 未启动时 `display status` 返回 `DISPLAYD_NOT_RUNNING`；指向不存在的 `--helper`
+    返回 `DISPLAYD_HELPER_MISSING`；helper 放在可执行文件同目录时 `display start`
+    无需参数即成功。
+  - `display create` 得到 displayId 2；`--display 99` 与 `--display 7` 返回
+    `DISPLAY_NOT_FOUND`，`--display 0` 返回 `INVALID_ARGUMENT`，均未落到主屏。
+  - `action launch --display 2` 后 display 2 前台为 fixture，display 0 前台仍为桌面。
+  - `observe hierarchy --display 2` 返回 `uiautomator-windows-xml`，只含
+    `display id="2"`，42 个节点全部属于 fixture 包。
+  - 不带 `--display` 的 `observe hierarchy` 同样返回 fixture 内容（且坐标被裁到主屏
+    尺寸）——普通层级歧义再次复现，与文档记录一致。
+  - `action tap --display 2` 后计数由 `CLICK:0` 变为 `CLICK:1`。
+  - `screen_off_timeout=15000`、`action sleep` 后等待 40 秒：显示组 0 为 Dozing、
+    显示组 1 为 Awake，`display status` 的 `groupAwake=true`，虚拟屏截图 78353 字节，
+    目视为 fixture 界面且计数为 1。
+  - `display stop` 后无进程、无虚拟屏、无转发、设备临时文件已清；再取帧返回
+    `DISPLAYD_NOT_RUNNING`。模拟器已关闭。
+- 复核中另记一条既有行为（非本规格引入，未处理）：主屏息屏时不带 `--display` 的
+  `observe screenshot` 返回成功和一张 2195 字节的全黑图。
