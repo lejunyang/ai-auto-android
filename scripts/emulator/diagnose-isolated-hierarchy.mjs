@@ -2,8 +2,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { DisplaySession,options,ensure,attr,sha256 } from './focus-session.mjs';
-import { openPrimarySearch,searchInput,primaryInputID,primaryPackage,waitStable,recoverPrimaryBaseline } from './focus-baseline.mjs';
+import { DisplaySession,options,ensure,sha256 } from './focus-session.mjs';
+import { primaryPackage, primaryInputID, openPrimaryInput, inputWindowDiagnostics } from './focus-baseline.mjs';
 import { parseFocus,waitTypingBaseline,waitPrimaryState,requireWindowsUnavailable,resetVirtualFixture } from './measure-virtual-display-focus.mjs';
 import { pngStats } from './virtual-display-png.mjs';
 const opt=options(process.argv.slice(2)),s=new DisplaySession(opt,'focus');s.report.diagnosticOnly=true;
@@ -11,10 +11,8 @@ const remote='/data/local/tmp/aactl-isolated-diagnostic.xml';
 const snapshot=()=>{const r=s.focusObservation();return parseFocus(r.window,r.ime,r.processes,r.xml);};
 const save=(name,value)=>fs.writeFileSync(path.join(s.root,name),value);
 try {
- await s.prepare({startHelper:false});s.action(0,'launch',['--package','com.android.settings','--activity','.Settings'],'primary search','com.android.settings');
- const baseline=await recoverPrimaryBaseline(s,async()=>{await openPrimarySearch(s);s.tap(0,primaryInputID,0.5,primaryPackage);
-  ensure((await waitStable(()=>s.hierarchy(0),xml=>{const n=searchInput(xml);return n&&attr(n,'focused')==='true'?n:null;})).ready,'Primary input focus not stable');
-  s.action(0,'text',['--text','Primary'],'primary baseline',primaryPackage);return waitTypingBaseline(snapshot);});s.event('baseline',baseline);
+ await s.prepare({startHelper:false});await openPrimaryInput(s);
+ s.action(0,'text',['--text','Primary'],'SSID preset text=Primary; never Save',primaryPackage);s.event('baseline',await waitTypingBaseline(snapshot));
  s.startHelper();const create=()=>s.cli(['display','create','--width','720','--height','1280','--dpi','240','--focus','isolated']).displayId;
  const old=create();s.cli(['display','close','--display',String(old)]);const id=create();
  s.action(id,'launch',['--package','dev.aiauto.fixture','--activity','.MainActivity'],'fixture on recreated screen');resetVirtualFixture(s,id);s.tap(id,'dev.aiauto.fixture:id/text_input',0.85);

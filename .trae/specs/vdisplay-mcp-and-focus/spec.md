@@ -187,9 +187,7 @@ DISPLAY_EMPTY：目标已经过service归属校验（主屏0除外）且有效du
 失败证据须在重试/清理前保留实际触发判据的脱敏完整层级、截图、dumpsys分段及时间线，
 不得以事后重新读取的层级替换原始观察。
 
-Round19的错误契约阻塞已在Round20修复并通过真实CLI最小复现。当前停机原因见Round21：
-isolated A1完整通过，A2在helper启动前因搜索进程STATE CHANGE丢失输入窗口；同一搜索
-基线已修复三次仍不稳定，按上面的阈值停止，不做第四次修补，不进入M4/M5。
+Round19错误契约已在Round20修复；Round21旧搜索基线的三修停机由负责人明确更换基线解除。Round24的SSID基线isolated连续三次完整通过，M3c完成，随后串行执行M4/M5。
 
 ## exec-out修复与合并后收尾授权（2026-11-14）
 
@@ -197,3 +195,11 @@ isolated A1完整通过，A2在helper启动前因搜索进程STATE CHANGE丢失�
 exec-out退出0/stdout ENOENT诊断，并保留退出1/stderr分支；其它形态及无显示参数行为不变。
 1a5b356普通合并后，M5在本分支合并后的文档上核实P01–P15，并按现有任务格式更新
 docs/next-phase-tasks.md；这一最新授权替代此前该文件禁止修改的限制，其它边界保持。
+
+## 主屏基线替换（2026-11-14，项目负责人决定）
+
+用系统添加网络对话框com.android.settings/.wifi.WifiDialogActivity替代设置搜索页，
+SSID节点com.android.settings:id/ssid自带焦点；空值精确为提示语Enter the SSID，输入后
+精确为Primary。保留全部原焦点/IME判据，删除搜索进程重建等旧专用处理。仅在一次性
+模拟器打开，绝不点Save；按新层级定位Cancel关闭，并核对cmd wifi list-networks前后一致。
+此替换解除Round21旧基线三修停机，不继续修补设置搜索页；其它停机和串行规则保持。

@@ -1,6 +1,6 @@
 /**
- * 脚本用途：主屏设置搜索输入时，逐步测量虚拟屏fixture对焦点和IME的影响；两种helper使用同一判据。
- * 安全约束：只在固定一次性模拟器操作本地fixture/系统搜索，不修改设置，不使用聚焦或IME策略探针。
+ * 脚本用途：主屏添加网络对话框输入时，逐步测量虚拟屏fixture对焦点和IME的影响；两种helper使用同一判据。
+ * 安全约束：只在固定一次性模拟器操作本地fixture/添加网络对话框（不得保存），不修改设置，不使用聚焦或IME策略探针。
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { DisplaySession, options, ensure, node, attr, fixturePackage } from './focus-session.mjs';
 import { pngStats } from './virtual-display-png.mjs';
 import { assertEmptyOwnedDisplay, topActivityOnDisplay } from './verify-virtual-display.mjs';
-import { primaryPackage, primaryInputID, openPrimarySearch, inputWindowDiagnostics, waitStable, searchInput, recoverPrimaryBaseline } from './focus-baseline.mjs';
+import { primaryPackage, primaryInputID, openPrimaryInput, inputWindowDiagnostics } from './focus-baseline.mjs';
 export { primaryPackage, primaryInputID } from './focus-baseline.mjs';
 
 /** 证据严格取显示0与当前IME客户端；即使顶层焦点在其它显示也不替换主屏数据。 */
@@ -18,7 +18,7 @@ export function parseFocus(windowDump,imeDump,processes,xml) {
  const client=field(imeDump,/^\s*mCurClient=(ClientState\{[^}]+\}|null)/m,'IME client');
  const display=/mSelfReportedDisplayId=(\d+)/.exec(client),pid=/mPid=(\d+)/.exec(client);
  const clientProcess=pid?processes.split(/\r?\n/).map(s=>s.trim()).find(s=>s.split(/\s+/)[0]===pid[1])?.replace(/^\d+\s+/,''):null;
- ensure(client==='null'||(display&&clientProcess),`Cannot attribute current IME client: ${client}; process=${clientProcess}; candidates=${processes.split(/\r?\n/).filter(l=>/settings.intelligence|fixture|inputmethod/.test(l)).join(',')}`);
+ ensure(client==='null'||(display&&clientProcess),`Cannot attribute current IME client: ${client}; process=${clientProcess}; candidates=${processes.split(/\r?\n/).filter(l=>/settings|fixture|inputmethod/.test(l)).join(',')}`);
  const primaryWindows=[...xml.matchAll(/<window\b[^>]*>[\s\S]*?<\/window>/g)].map(m=>m[0]);
  const appWindows=primaryWindows.filter(w=>w.includes(`resource-id="${primaryInputID}"`));
  if(appWindows.length!==1)throw Error(`Primary input window not unique: ${JSON.stringify(inputWindowDiagnostics(xml))}`);
@@ -38,7 +38,7 @@ export function parseFocus(windowDump,imeDump,processes,xml) {
 export function requireBaseline(b) {
  ensure(b.primaryInput==='Primary'&&b.primaryInputFocused&&b.clientProcess===primaryPackage&&b.clientDisplay===0&&b.inputShown&&b.primaryImeVisible&&b.primaryImeWindow,'Primary typing baseline not established');
 }
-/** 基线必须连续两次满足原全部条件且客户端不变，避免冷启动包状态切换的短暂可见窗口。 */
+/** 基线必须连续两次满足全部焦点、精确文本和当前IME条件，拒绝只观察到瞬态成功。 */
 export async function waitTypingBaseline(snapshot,{attempts=6,wait=()=>new Promise(resolve=>setTimeout(resolve,250)),observe=()=>{}}={}) {
  let previous=null,lastError;
  for(let attempt=1;attempt<=attempts;attempt++) {
@@ -57,8 +57,14 @@ export function resetVirtualFixture(s,id) {
 /** KEYCODE_SLEEP/WAKE注入返回不代表电源转换完成；只轮询状态，不重复注入按键。 */
 export async function waitPrimaryState(s,on,{attempts=8,wait=()=>new Promise(resolve=>setTimeout(resolve,250))}={}) {
  for(let attempt=1;attempt<=attempts;attempt++) {
-  const state=s.cli(['observe','screen-state']);s.event('screen-state-poll',{attempt,expectedOn:on,state});
-  if(state.on===on)return state;
+  const result=s.envelope(['observe','screen-state']);
+  s.event('screen-state-poll',{attempt,expectedOn:on,...(result.ok?{state:result.data}:{error:result.error})});
+  if(result.ok&&result.data.on===on)return result.data;
+  if(!result.ok){
+   // 只读状态API已标明可重试；错误仍计入原8次预算，保留原响应后再观察，绝不重发电源键。
+   ensure(result.error?.code==='ACTION_FAILED'&&result.error.retryable===true,`Screen state observation failed: ${JSON.stringify(result.error)}`);
+   s.preserveStateReadFailure();
+  }
   if(attempt<attempts)await wait();
  }
  s.failureObservation(0);s.preserveEvidence('screen-state-timeout');
@@ -85,22 +91,17 @@ async function main() {
  let probeIndex=0;
  const measure=step=>{
   const before=snapshot(),virtualBefore=virtual(),probe=String.fromCharCode(97+probeIndex++);
-  s.action(0,'text',['--text',probe],`append ${probe} to primary search input`,primaryPackage);
+  s.action(0,'text',['--text',probe],`append ${probe} to primary SSID input`,primaryPackage);
   const after=snapshot(),virtualAfter=virtual();
   const r={phase:step,mode:opt.mode,before,virtualBefore,probe,after,virtualAfter,probeLanded:after.primaryInput===before.primaryInput+probe};
   s.event('measurement',r);return r;
  };
  try {
   await s.prepare({startHelper:false});
-  s.report.systemApps=['com.android.settings',primaryPackage,'com.google.android.deskclock','com.google.android.inputmethod.latin'].map(p=>s.describeSystemApp(p));
-  s.hierarchy(0);s.action(0,'launch',['--package','com.android.settings','--activity','.Settings'],'Settings primary search entry','com.android.settings');
-  const baseline=await recoverPrimaryBaseline(s,async()=>{
-   await openPrimarySearch(s);s.tap(0,primaryInputID,0.5,primaryPackage);
-   const focused=await waitStable(()=>s.hierarchy(0),xml=>{const n=searchInput(xml);return n&&attr(n,'focused')==='true'?n:null;});
-   ensure(focused.ready,'Search input did not acquire stable focus before typing');
-   s.action(0,'text',['--text','Primary'],'primary search text=Primary',primaryPackage);
-   return waitTypingBaseline(snapshot,{observe:(attempt,e)=>s.event('baseline-condition',{attempt,error:e.message})});
-  });
+  s.report.systemApps=[primaryPackage,'com.google.android.deskclock','com.google.android.inputmethod.latin'].map(p=>s.describeSystemApp(p));
+  await openPrimaryInput(s);
+  s.action(0,'text',['--text','Primary'],'SSID preset text=Primary; never Save',primaryPackage);
+  const baseline=await waitTypingBaseline(snapshot,{observe:(attempt,e)=>s.event('baseline-condition',{attempt,error:e.message})});
   s.event('baseline',baseline);measure('baseline');
   s.startHelper();const focus=opt.mode==='mitigated'?'isolated':'steal';
   const create=()=>{const d=s.cli(['display','create','--width','720','--height','1280','--dpi','240','--focus',focus]);ensure(d.focus===focus&&d.focusIsolated===(focus==='isolated'),'Wrong focus policy/actual isolation');return d.displayId;};

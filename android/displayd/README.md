@@ -176,7 +176,8 @@ T1b 的 API 35 PIN 往返验证了 DEVICE_LOCKED → DISPLAY_ASLEEP → 重建�
 此前息屏无窗口输出被CLI误报ACTION_FAILED，原因是exec-out把cat诊断合入stdout且退出0。
 主机端现只精确识别本次随机路径的完整ENOENT诊断为WINDOWS_UNAVAILABLE，同时保留退出1、
 分离stderr形态；截断、超限、其它诊断和畸形XML继续拒绝。不带显示编号的旧行为本次不改。
-Round20最小复现已得到真实WINDOWS_UNAVAILABLE。Round21的isolated首轮完整通过，
-第二轮在helper启动前因系统搜索进程STATE CHANGE退出而丢失基线；同一基线三次修复后
-仍不稳定，按停机阈值停止，未达到连续三次。MCP stdio尚待验收。
+Round20最小复现及Round24三个完整isolated冷启动均得到真实WINDOWS_UNAVAILABLE；
+主屏输入采用Settings主进程的添加网络对话框SSID，全部焦点/IME/文本判据保持，
+BACK/空屏/重启、息屏取帧/输入及唤醒后层级恢复均通过。对话框只取消不保存，网络列表不变。
+旧搜索基线的失败仍保留在历史记录，未计为成功。MCP stdio尚待验收。
 API33/34、真机/OEM仍留待后续任务，不把标志能力字段当成这些平台的实测结论。

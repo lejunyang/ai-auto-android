@@ -34,12 +34,12 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - [x] 记录未缓解时的逐步结果
 - [x] 尝试缓解并重新测量；有效则实现并补测试，无效则如实记录
 - [x] API34+固定标志RED/GREEN及两组独立测量通过（Round4/5）
-- [ ] 原验收脚本在新标志下完整通过（Round9首轮息屏后层级读取失败，未到65秒/PIN）
-- [ ] M3阶段验收通过
+- [x] 修订二替代单一策略回归：steal完整三次（Round13），isolated完整三次（Round24）
+- [x] M3阶段按修订二验收通过（Round24）
 - [x] 提交：`test(emulator): measure primary-display focus under virtual display input`
       （若有缓解实现，另加 `feat(displayd): ...`）
 
-修订二已用M3c两策略验收取代旧单一策略要求。Round20修复exec-out合并诊断，最小复现CLI返回WINDOWS_UNAVAILABLE；Round21的isolated A1完整通过、A2在helper启动前搜索进程STATE CHANGE退出。搜索基线三次修复后仍不稳定，按用户阈值停止；连续通过计数归零，M4/M5未开始。
+修订二已用M3c两策略验收取代旧单一策略要求。Round24的新SSID基线isolated三次完整通过，steal原三次不涉及输入基线而保留；M3/M3b/M3c整体通过，进入M4，再进入M5。
 
 ## M4：MCP 端到端验收与文档
 
@@ -68,7 +68,8 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - 4c9468c：M3c无窗口输出错误、CLI/MCP映射与测试。
 - M3c脚本保存提交：`test(emulator): verify both focus policies end to end`；steal三次通过，isolated首轮基线失败，整体未验收。
 - 本轮脚手架与原始响应提交：`test(emulator): harden focus setup and preserve failure responses`；F2已进入产品检查，错误契约失败后停止。
-- M4、M5未开始。
+- M3c收尾提交：test(emulator): use a stable primary-input baseline；证据见Round22–24。
+- M4待验收，M5依赖M4。
 
 ## M5：接收文档清理移交（依赖 M4 验收通过）
 
@@ -99,7 +100,7 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - [x] 两种构建独立复现点按输入框→BACK，记录IME、Activity与窗口分组
 - [x] RED/GREEN：DISPLAY_EMPTY与DISPLAY_NOT_FOUND分离，CLI/MCP映射与无回退测试
 - [x] 修订按键到达检查，明确BACK退出根Activity、空屏错误与重新启动恢复
-- [ ] 其余隔离/息屏65秒/PIN往返与重建判据保持，冷启动连续3次完整通过
+- [x] 按修订二拆分替代：steal三次保留65秒/PIN往返，isolated三次验证焦点与息屏限制（Round24）
 - [x] 提交：`fix(adb): report an empty display distinctly from a missing one`
 - [x] 提交：`test(emulator): adapt virtual display acceptance to IME-less displays`（部分成果保存，非阶段验收通过）
 
@@ -119,7 +120,7 @@ scripts/emulator、docs/virtual-display.md与本规格状态。三道既有风�
 - [x] Go客户端、service、CLI、MCP逐层透传及拒绝非法值测试
 - [x] 无窗口输出专用错误设备验收（Round20最小复现实际CLI返回WINDOWS_UNAVAILABLE）
 - [x] steal冷启动连续3次完整息屏/65秒/PIN往返/重建通过
-- [ ] isolated冷启动连续3次通过（Round21 A1完整通过、A2基线失败，连续计数归零并触发三修停机阈值）
+- [x] isolated新SSID基线冷启动连续3次完整通过（Round24，B1/B2/B3）
 - [x] 基线稳定等待/按最新状态重试、fixture复位、电源条件等待与原始失败证据补强，均有脚本测试
 - [x] make comments、make test、make verify、make build、make android-verify
 - [x] 按职责提交displayd、CLI/MCP、ADB错误及设备验收脚本（部分成果，非阶段验收通过）

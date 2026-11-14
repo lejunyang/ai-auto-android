@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseFocus, requireBaseline, requireWindowsUnavailable, primaryInputID, primaryPackage, waitTypingBaseline, resetVirtualFixture, waitPrimaryState } from './measure-virtual-display-focus.mjs';
 import { options, DisplaySession, retryObservedRead, currentImeEvidence } from './focus-session.mjs';
-import { waitStable, openPrimarySearch, inputWindowDiagnostics, recoverPrimaryBaseline } from './focus-baseline.mjs';
+import { waitStable, inputWindowDiagnostics } from './focus-baseline.mjs';
 const xml=`<displays><display id="0"><window active="true" focused="true"><node resource-id="${primaryInputID}" text="Primary" focused="true" /></window><window title="Localized keyboard" type="TYPE_INPUT_METHOD"></window></display></displays>`;
 const windows='mTopFocusedDisplayId=2\n  Display: mDisplayId=2\n mCurrentFocus=virtual\n mFocusedApp=virtual\n type=ime visible=true\n  Display: mDisplayId=0\n mCurrentFocus=primary-window\n mFocusedApp=primary-app\n type=ime visible=false';
 const ime=' mCurClient=ClientState{abc mUid=123 mPid=456 mSelfReportedDisplayId=2} mCurSeq=3\n mCurMethodId=fixed-ime\n mCurTokenDisplayId=0\n mInputShown=true\n history mInputShown=false';
@@ -44,14 +44,6 @@ test('stability needs two consecutive matches and resets on missing or changed t
  assert.equal(reset.ready,true);assert.equal(at,4);
  at=0;const never=await waitStable(()=>String(at++),s=>s,{attempts:3,wait:async()=>{}});
  assert.equal(never.ready,false);assert.equal(at,3);
-});
-test('search retry preserves failed observation and uses newly located coordinates',async()=>{
- const home=x=>`<node package="com.android.settings" text="Search settings" resource-id="search" bounds="[${x},0][${x+20},20]"/>`;
- const input=`<node resource-id="${primaryInputID}" bounds="[0,0][20,20]"/>`;
- let taps=0,reads=0;const actions=[],evidence=[];
- const s={hierarchy(){reads++;return taps===2?input:home(taps===0?0:100);},action(...args){actions.push(args);taps++;},event(){},preserveEvidence(reason){evidence.push(reason);}};
- assert.equal((await openPrimarySearch(s,{attempts:2,wait:async()=>{}})).ready,true);
- assert.equal(taps,2);assert.deepEqual(actions.map(a=>a[2]),[['--x','10','--y','10'],['--x','110','--y','10']]);assert.deepEqual(evidence,['search-open-1']);assert.ok(reads>=8);
 });
 test('input window diagnostics distinguish no input from duplicate windows',()=>{
  const missing=inputWindowDiagnostics('<displays><window><node package="com.android.settings"/></window></displays>');
@@ -95,9 +87,26 @@ test('fixture reset is a visible typed tap and must clear both process counters 
  assert.throws(()=>resetVirtualFixture({...s,tap:()=>clear.replace('CLICK:0','CLICK:1')},3));assert.throws(()=>resetVirtualFixture({...s,tap:()=>clear.replace('text=""','text="retained"')},3));
 });
 test('power transition waits on bounded observations without repeating input and saves timeout context',async()=>{
- let reads=0,saved=0,context=0;const s={cli(args){assert.deepEqual(args,['observe','screen-state']);return {on:++reads<3};},event(){},failureObservation(){context++;},preserveEvidence(){saved++;}};
+ let reads=0,saved=0,context=0;const s={envelope(args){assert.deepEqual(args,['observe','screen-state']);return {ok:true,data:{on:++reads<3}};},event(){},failureObservation(){context++;},preserveEvidence(){saved++;}};
  await waitPrimaryState(s,false,{wait:async()=>{}});assert.equal(reads,3);assert.equal(saved,0);
- reads=0;s.cli=()=>{reads++;return {on:true};};await assert.rejects(waitPrimaryState(s,false,{attempts:3,wait:async()=>{}}));assert.equal(reads,3);assert.equal(context,1);assert.equal(saved,1);
+ reads=0;s.envelope=()=>{reads++;return {ok:true,data:{on:true}};};await assert.rejects(waitPrimaryState(s,false,{attempts:3,wait:async()=>{}}));assert.equal(reads,3);assert.equal(context,1);assert.equal(saved,1);
+});
+test('retryable state observation consumes the same bounded budget and is preserved before re-reading',async()=>{
+ let reads=0;const order=[],error={code:'ACTION_FAILED',retryable:true,message:'state unavailable'};
+ const s={envelope(){order.push('read');return ++reads===1?{ok:false,error}:{ok:true,data:{on:false}};},event(){},preserveStateReadFailure(){order.push('save');},failureObservation(){order.push('context');},preserveEvidence(){order.push('timeout-save');}};
+ await waitPrimaryState(s,false,{attempts:2,wait:async()=>{}});assert.deepEqual(order,['read','save','read']);
+ for(const failure of [{...error,retryable:false},{...error,code:'DEVICE_OFFLINE'}]){reads=0;await assert.rejects(waitPrimaryState({...s,envelope(){reads++;return {ok:false,error:failure};}},false,{attempts:3,wait:async()=>{}}));assert.equal(reads,1);}
+ reads=0;await assert.rejects(waitPrimaryState({...s,envelope(){reads++;return {ok:false,error};}},false,{attempts:3,wait:async()=>{}}));assert.equal(reads,3);
+});
+test('state read evidence keeps the actual error before collecting associated display output',()=>{
+ const base=path.resolve('scripts/emulator/build');fs.mkdirSync(base,{recursive:true});const root=fs.mkdtempSync(path.join(base,'state-evidence-test-'));
+ try {
+  const original={result:{ok:false,error:{code:'ACTION_FAILED',retryable:true}}},s=Object.create(DisplaySession.prototype);Object.assign(s,{root,report:{},lastEnvelope:original});
+  s.shell=(_dump,kind)=>kind==='display'?'mScreenState=OFF':'mWakefulness=Asleep\nunrelated';
+  s.failureObservation=()=>{assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root,'state-read-1-response.json'))),original);s.lastEnvelope={result:'new observation'};};
+  s.preserveEvidence=()=>assert.equal(s.lastEnvelope,original);
+  s.preserveStateReadFailure();assert.equal(s.lastEnvelope,original);assert.equal(s.report.stateReadFailures,1);assert.equal(fs.readFileSync(path.join(root,'state-read-1-related-display.txt'),'utf8'),'mScreenState=OFF');
+ }finally{for(const f of fs.readdirSync(root))fs.unlinkSync(path.join(root,f));fs.rmdirSync(root);}
 });
 test('failure saves the actual response before screenshot observation can replace the cache',t=>{
  const base=path.resolve('scripts/emulator/build');fs.mkdirSync(base,{recursive:true});const root=fs.mkdtempSync(path.join(base,'response-test-'));const previous=process.exitCode;
@@ -107,13 +116,6 @@ test('failure saves the actual response before screenshot observation can replac
   s.cleanup=()=>{};s.preserveEvidence=()=>{s.lastEnvelope={result:{ok:true,data:{format:'png'}}};};s.finish(Error('assertion'));
   const response=JSON.parse(fs.readFileSync(path.join(root,'failure-response.json'),'utf8'));assert.equal(response.result.error.code,'ACTUAL_ERROR');assert.equal(response.args.at(-1),'3');
  }finally{process.exitCode=previous;for(const f of fs.readdirSync(root))fs.unlinkSync(path.join(root,f));fs.rmdirSync(root);}
-});
-test('baseline rebuild requires fresh homepage evidence and is forbidden after helper startup',async()=>{
- const calls=[];let builds=0;const s={helperStarted:false,preserveEvidence(){calls.push('save');},hierarchy(){calls.push('observe');return '<node package="com.android.settings" text="Search settings"/>';},event(){}};
- assert.equal(await recoverPrimaryBaseline(s,async()=>{calls.push('build');if(++builds===1)throw Error('state change');return 'ready';}),'ready');assert.deepEqual(calls,['build','save','observe','build']);
- await assert.rejects(recoverPrimaryBaseline({...s,helperStarted:true},async()=>{throw Error('must not execute');}),/after product/);
- builds=0;await assert.rejects(recoverPrimaryBaseline({...s,hierarchy:()=>'<displays/>'},async()=>{builds++;throw Error('missing');}));assert.equal(builds,1);
- builds=0;await assert.rejects(recoverPrimaryBaseline(s,async()=>{builds++;throw Error('still missing');}));assert.equal(builds,2);
 });
 test('offline, extra device or changed transport stops before any further device read',()=>{
  const online='emulator-5554 device product:fixed transport_id:58';let reads=0;

@@ -87,6 +87,16 @@ export class DisplaySession {
   const result=this.envelope(['observe','hierarchy','--display',String(id)]);
   this.lastObservation={displayId:id,observedAt:new Date().toISOString(),xml:result.ok?result.data.xml:'',hierarchyError:result.error,window:this.shell('dumpsys','window'),ime:this.shell('dumpsys','input_method'),processes:this.shell('ps','-A','-o','PID,NAME'),activity:this.shell('dumpsys','activity','activities')};
  }
+ preserveStateReadFailure() {
+  // CLI内部的原始display输出未导出；先保存真实错误，再采同现场关联原文，不能冒称为内部字节。
+  const original=this.lastEnvelope,index=(this.report.stateReadFailures??0)+1,prefix=`state-read-${index}`;
+  const write=(name,value)=>{const bytes=Buffer.from(value),total=fs.readdirSync(this.root).reduce((n,f)=>n+fs.statSync(path.join(this.root,f)).size,0);ensure(total+bytes.length<1024*1024,'Evidence exceeds 1MiB');fs.writeFileSync(path.join(this.root,`${prefix}-${name}`),bytes);};
+  write('response.json',JSON.stringify(original,null,2));
+  const display=this.shell('dumpsys','display');ensure(Buffer.byteLength(display)<=128*1024,'Display diagnostic exceeds budget');write('related-display.txt',display);
+  write('related-power.txt',this.shell('dumpsys','power').split(/\r?\n/).filter(l=>/mWakefulness|mDisplayGroup|mUserActivitySummary|mWakeLockSummary|mDisplayReady|mScreenState|Display Power|mHoldingDisplaySuspendBlocker/.test(l)).join('\n'));
+  this.failureObservation(0);this.lastEnvelope=original;this.preserveEvidence('retryable-state-observation');this.lastEnvelope=original;
+  this.report.stateReadFailures=index;
+ }
  preserveEvidence(reason) {
   if(!this.safe)return;
   // 使用触发判据的原始层级，不重新dump覆盖它；截图和相关系统分段在任何清理/重试前采集。
@@ -106,9 +116,9 @@ export class DisplaySession {
   const target=path.join(this.root,`${prefix}-screen.png`);this.cli(['observe','screenshot','--display',String(raw.displayId),'--output',target]);ensure(fs.statSync(target).size<=512*1024,'Screenshot budget exceeded');
   ensure(fs.readdirSync(this.root).reduce((n,f)=>n+fs.statSync(path.join(this.root,f)).size,0)<1024*1024,'Evidence total exceeds 1MiB');
   this.report.evidence??=[];this.report.evidence.push({reason,prefix,source:raw.observedAt,capturedAt:new Date().toISOString(),displayId:raw.displayId,hierarchy:'original observation, redacted'});
-  // 系统搜索进程可能在基线输入后重启；退出记录与crash缓冲必须在模拟器销毁前保存。
+  // 主屏基线由Settings主进程承载；退出记录与crash缓冲必须在模拟器销毁前保存。
   write('crash.txt',this.shell('logcat','-d','-b','crash','-t','80').slice(-32768));
-  write('exit-info.txt',this.shell('dumpsys','activity','exit-info','com.google.android.settings.intelligence').slice(0,32768));
+  write('exit-info.txt',this.shell('dumpsys','activity','exit-info','com.android.settings').slice(0,32768));
   write('timeline.json',JSON.stringify(this.report.steps,null,2));
   this.lastPreservedObservation=raw;
  }
@@ -142,6 +152,11 @@ export class DisplaySession {
  }
  cleanup() {
   if(!this.safe)return;
+  // 原始失败现场由finish先保存，再取消测试对话框；取消失败仍继续清helper并关闭模拟器。
+  try {this.primaryBaselineCleanup?.();}catch(e){
+   this.report.ok=false;this.report.baselineCleanupError=e.message;
+   try{this.preserveEvidence('baseline-cleanup');}catch(e){this.report.evidenceError=e.message;}
+  }
   // 即使测试失败也清理本会话；身份变化时 guard 拒绝后续设备访问。
   try {
    this.guard();if(this.helperStarted)this.cli(['display','stop']);this.helperStarted=false;

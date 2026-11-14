@@ -917,3 +917,37 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
 - 本轮产品补丁提交feabd87，8文件：internal/adb/direct.go及测试、模块README、虚拟显示错误表、本规格4文件。当前收尾提交仅更新模块README与本规格状态，保存真实未完成结果。
 - 本轮没有新增脚手架修复：沿用此前六项，遇到搜索第三次修复仍失稳即按阈值停止。M4真实MCP stdio三次未执行，仍0/3；M5 P01、P02、P03、P04、P05、P06、P07、P08、P09、P10、P11、P12、P13、P14、P15均未进入处理/未验收。合并后移交文档已只读查看，未把准备阅读当作交付。
 - 用户列出的路线图后续项尚未写入docs/next-phase-tasks.md，待M3c解除阻塞后按串行阶段收尾：虚拟屏ui.scroll；wait/assert/scrollUntil、视觉与Bridge多显示；fixture API35 edge-to-edge遮挡；无显示编号层级活动窗口与缺文件误报；isolated无IME/中文输入；API33/34、真机/OEM、硬件键盘矩阵。搜索基线STATE CHANGE与恢复边界也需先解决或调整三修停机规则。未把这些待办标成完成。
+
+## Round 22：替换主屏输入基线，独立复核与先失败测试（2026-11-14）
+
+- 开工ba60258，status干净；worktree/main身份未变。项目负责人依据集成方实测决定放弃独立搜索进程，改用Settings主进程的WIFI_DIALOG；本轮不是旧搜索恢复的第四次加固。所有旧历史结论原样保留。
+- 独立复核wifi-baseline-review-1，UTC13:30:19.752→13:33:39.023，transport2。显式am start -W --display 0 -a com.android.settings.WIFI_DIALOG返回Status: ok、WifiDialogActivity。窗口Add network，topFocusedDisplay=0；ssid bounds[36,114][240,162]、focused=true、空值text精确Enter the SSID。当前IME LatinIME、mUid=1000/PID990/显示0、mInputShown=true。没有点输入框或Save。
+- 四次输入p1/p2/p3/p4分别严格得到p1、p1p2、p1p2p3、p1p2p3p4；第一动作到末次观察97秒，Settings PID990保持。独立复核不是集成方记录的转引，完整焦点/IME九步仍由后续完整验收逐项验证。
+- 收尾依据最新层级定位android:id/button2，包com.android.settings、文字Cancel，点按一次后SSID节点消失。cmd wifi list-networks前后完整原文相等，只有系统AndroidWifi的open/owe两行，无新增网络。未设置PIN或修改全局设置，finally清理全0、emu kill成功，无宿主模拟器残留。原始脱敏初始XML/系统快照与时间线在忽略目录focus/wifi-baseline-review-1。
+- 新增基线测试先RED（缺少新导出函数），实现后GREEN；删除搜索入口重试/搜索进程重建及其两项测试，不保留第二套基线；最小复现脚本同步。精确区分提示语与预置Primary，重复SSID、错误包/文本/失焦、错误Cancel/Save、网络列表变化及取消不关闭都拒绝；取消最多一次后只读观察，失败现场先保存再清理。
+- Node基线/焦点/原回归25项通过。新增.test.mjs的测试注释最初不满足检查器对mjs脚本的固定用途前缀，补脚本用途注释；不涉及设备判据或动作修改。
+- steal原三次的主屏基线是NexusLauncher，按dumpsys display0分段验证前台Activity，从未使用主屏文本或设置搜索；原脚本完全未改。故保留Round13三次完整65秒/PIN/重建证据，不因本次主屏输入基线替换重跑。
+- 新系列wifi-isolated-A1/A2/A3使用同一新脚本从冷启动计数；尚不提前勾选整体通过。
+
+## Round 23：状态等待脚手架处理可重试观察失败，三次重新计数（2026-11-14）
+
+- wifi-isolated-A1/A2完整通过；A3在全部九步、BACK/空屏、重启后主屏全部焦点/IME判据均通过。Sleep只注入一次，第一观察为ON；第二次observe screen-state返回ACTION_FAILED、retryable=true（The device screen state could not be read from ADB output.），等待脚手架用cli()立即抛错，未用完原8次观察预算。该轮失败，不把两次成功拼作连续通过。
+- 脚手架根因：把既有只读API明确标记可重试的失败当作有界状态等待的终止，而非一次未满足的观察。此次只为screen-state的ACTION_FAILED且retryable=true在原8次预算内重新读取，不重复Sleep/Wake，不改变最终on必须等于目标的判据。离线/其它错误码/不可重试错误立即失败，耗尽预算仍失败；没有修改产品解析器或接受缺失状态为OFF。
+- A3真实失败响应、当时可得的脱敏层级/截图/WMS/IME/Activity/退出记录/时间线都在清理前保存到focus/wifi-isolated-A3，no evidenceError。其XML来源为最后一次唤醒时观察，不能冒称为CLI内部display输出；CLI内部原始dumpsys display未导出，具体缺字段原因未核实，作为局限保留。
+- 新增保留方法：每次可重试状态失败先写实际CLI响应，再采相关原始dumpsys display、power分段和当前UIA/截图，区分关联采集与CLI内部字节；保存后才继续只读观察。仍每轮1MiB限额，超额/采集失败不悄悄跳过。
+- 先写失败脚本测试（旧wait用cli导致两项失败），再实现；覆盖错误先保存再重读、同一总预算、持续失败终止、不可重试/离线立即停止；另测关联采集不能覆盖原响应。不是搜索页的第四次修复；本轮不增加新基线重建。
+- A3最终Cancel一次关闭成功、网络列表不变；helper/显示/forward/临时文件为0、未设PIN/改全局设置、emu kill成功。新系列wifi-isolated-B1/B2/B3从冷启动从零计数，不纳入A系列任何轮。
+
+## Round 24：新基线isolated连续三冷启动完整通过，M3c完成（2026-11-14）
+
+| 轮次 | UTC起止 | transport | 完整结果 |
+| --- | --- | --- | --- |
+| wifi-isolated-B1 | 2026-11-14T13:55:30.193Z → 2026-11-14T14:00:47.860Z | 10 | 9步/全部主屏探针、BACK空屏/重启、息屏与恢复、取消/网络不变、清理均通过 |
+| wifi-isolated-B2 | 2026-11-14T14:02:01.452Z → 2026-11-14T14:07:41.372Z | 11 | 9步/全部主屏探针、BACK空屏/重启、息屏与恢复、取消/网络不变、清理均通过 |
+| wifi-isolated-B3 | 2026-11-14T14:08:42.645Z → 2026-11-14T14:13:24.404Z | 12 | 9步/全部主屏探针、BACK空屏/重启、息屏与恢复、取消/网络不变、清理均通过 |
+
+- 三轮同一实现，均0次状态读取失败/重试；未拼接A系列结果。主屏始终top=0、窗口Add network active/focused=true、SSID focused=true，IME客户端Settings/显示0，服务mInputShown/Insets/IME窗口可见全部true。每步主屏字符探针成功；虚拟屏CLICK:1、Virtual→DELETE得Virtua。未指定显示DELETE在本时序落主屏，虚拟输入不变。
+- BACK时owned=true、前台Activity=null、DISPLAY_EMPTY；重启后AwakeX→DELETE得Awake，主屏Primaryabcdefhi不变。Sleep条件均明确观察到OFF，虚拟屏帧720×1280全部非黑，层级严格WINDOWS_UNAVAILABLE；息屏Sleep/DELETE注入不唤醒主屏，唤醒后INPUT:AwakeSlee、主屏文本不变、层级恢复。
+- 每轮最新层级Cancel一次关闭添加网络对话框，前后网络列表原文相等，仅系统AndroidWifi open/owe；从未点Save。helper/显示/forward/临时文件0，未设PIN/改全局设置，emu kill成功，换轮前无emulator/qemu。一次性复核探针文件已删除，仅保留忽略目录的原始证据。
+- 指纹google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys；AVD osdk-test-35/API35/google_apis/x86_64，320×640/160dpi/en-US/导航2，虚拟720×1280/240dpi。helper626142bb4c8a26740b05560876f29d246b50c839cbf3e54e606c724f5310deee，fixture1e88acf7a0b88f00df212648ca93c3487b37d0cb50e19b92569b80aa8462f6f8，CLI8838361972da00ac63833780e2debedbfd4e1e40011db0463d03dfd4ca99ef20。
+- 本地Node27/27、comments598文件/16自测、diff --check通过。原steal脚本未改，Round13三次65秒保活/PIN往返/重建保持；其主屏判据是Launcher/dumpsys，不涉及本次输入基线。M3/M3b/M3c按修订二完成，提交后进入M4；另补测一次新SSID基线steal焦点供文档对照，不作为原三次回归的替代。
