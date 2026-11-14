@@ -1,11 +1,19 @@
 /** 脚本用途：验证主屏证据按显示隔离、当前IME归属与基线判据，防止历史或虚拟屏数据冒充主屏。 */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFocus, requireBaseline, primaryInputID, primaryPackage } from './measure-virtual-display-focus.mjs';
+import { parseFocus, requireBaseline, requireWindowsUnavailable, primaryInputID, primaryPackage } from './measure-virtual-display-focus.mjs';
 import { options } from './focus-session.mjs';
 const xml=`<displays><display id="0"><window active="true" focused="true"><node resource-id="${primaryInputID}" text="Primary" focused="true" /></window><window title="Localized keyboard" type="TYPE_INPUT_METHOD"></window></display></displays>`;
 const windows='mTopFocusedDisplayId=2\n  Display: mDisplayId=2\n mCurrentFocus=virtual\n mFocusedApp=virtual\n type=ime visible=true\n  Display: mDisplayId=0\n mCurrentFocus=primary-window\n mFocusedApp=primary-app\n type=ime visible=false';
 const ime=' mCurClient=ClientState{abc mUid=123 mPid=456 mSelfReportedDisplayId=2} mCurSeq=3\n mCurMethodId=fixed-ime\n mCurTokenDisplayId=0\n mInputShown=true\n history mInputShown=false';
+
+test('missing window output requires its own code and actionable recovery',()=>{
+ const error={code:'WINDOWS_UNAVAILABLE',message:'Wake primary, or rebuild with steal'};
+ assert.doesNotThrow(()=>requireWindowsUnavailable({ok:false,error}));
+ for(const code of ['DISPLAY_EMPTY','DISPLAY_NOT_FOUND','ACTION_FAILED'])assert.throws(()=>requireWindowsUnavailable({ok:false,error:{...error,code}}));
+ assert.throws(()=>requireWindowsUnavailable({ok:true,error}));
+ assert.throws(()=>requireWindowsUnavailable({ok:false,error:{...error,message:'no windows'}}));
+});
 test('reversed displays keep primary focus and current virtual IME client distinct',()=>{
  const r=parseFocus(windows,ime,'PID NAME\n456 virtual.app',xml);
  assert.equal(r.focusWindow,'primary-window');assert.equal(r.focusApp,'primary-app');assert.equal(r.primaryImeVisible,false);assert.equal(r.clientDisplay,2);assert.equal(r.clientProcess,'virtual.app');assert.equal(r.inputShown,true);assert.equal(r.imeTokenDisplay,0);assert.equal(r.primaryInput,'Primary');assert.equal(r.topFocusedDisplay,2);assert.equal(r.primaryImeWindow,true);

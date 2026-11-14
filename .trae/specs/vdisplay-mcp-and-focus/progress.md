@@ -631,3 +631,81 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
 - ADB整包测试通过；CLI/MCP映射覆盖主屏0及helper归属屏7，每次固定5次ADB调用并清理，
   无回退。新增否定用例覆盖超时、权限失败、截断和损坏XML不能冒充“无窗口输出”。
   docs/virtual-display.md只同步专用错误表，M4完整使用说明仍等待设备验收。
+
+## Round 13：M3c steal连续三次冷启动完整通过（2026-11-14）
+
+- 原verify-virtual-display.mjs显式create/recreate --focus steal，协议检查改为v2；文本后
+  DELETE精确得到INPUT:E2EAsci，再核对当前IME客户端显示为目标且mInputShown=true后发BACK，
+  要求IME隐藏且根Activity/窗口仍在。按策略恢复BACK语义，不使用isolated的退出断言。
+- 除重建时显式透传steal外，原息屏/PIN段归一化换行后逐字相同：主屏活动按display0的
+  dumpsys分段核对，息屏后读层级/点按CLICK:2/帧改变，65秒不发显示动作，凭据锁拒绝帧，
+  清测试PIN后DISPLAY_ASLEEP无帧，再close/create/relaunch恢复正常帧，全部保留。
+- 三轮同一脚本SHA-256 5555e8f922bceb4c84ec8578fd2b51c07cc5f1b43120dc988bff2deac456ebea，
+  CLI 10c4ba81c9c96a84954607545cafd2cd2297b41a7f97d4ea140ba005da436ab7，
+  helper 626142bb4c8a26740b05560876f29d246b50c839cbf3e54e606c724f5310deee，
+  fixture仍1e88acf7a0b88f00df212648ca93c3487b37d0cb50e19b92569b80aa8462f6f8。
+  每轮独立冷启动固定AVD/-read-only/-no-snapshot，唯一emulator-5554、完整F35环境未变。
+
+| 轮次/transport | UTC起止 | 主屏/输入/息屏层级与帧 | 无输入保活 | PIN往返与重建 | 清理 |
+| --- | --- | --- | --- | --- | --- |
+| m3c-steal-A1 / 45 | 09:38:38.096→09:41:23.587 | 全通过，主屏NexusLauncher不变 | 66.022秒，groupAwake=true | DEVICE_LOCKED→DISPLAY_ASLEEP→新屏正常帧 | 通过 |
+| m3c-steal-A2 / 46 | 09:42:40.987→09:45:38.157 | 全通过，同上 | 66.030秒，groupAwake=true | 同上 | 通过 |
+| m3c-steal-A3 / 47 | 09:47:29.956→09:50:18.766 | 全通过，同上 | 66.001秒，groupAwake=true | 同上 | 通过 |
+
+- 三次实际设备验收连续成功，无失败轮拼接；helper/显示/forward/设备临时文件均0，
+  测试PIN已清、screen_off_timeout恢复2147483647。A2后冷启动驱动立即检查时仍有
+  emulator.exe退出尾部进程，守卫停止在启动第三轮之前；稍后核对其自行退出、设备列表
+  空且无emulator/qemu才启动A3，没有强杀进程或启动额外设备轮次。A3后等待宿主进程退出
+  并再次确认0。isolated完整场景尚未运行，因此M3c整体/M4/M5仍未验收。
+
+## Round 14：isolated首轮主屏搜索基线失败，停在M3c（2026-11-14）
+
+- 焦点测量脚本完整保留原9步和所有原基线/缓解判据，并增加--scenario acceptance：
+  原焦点测量后显式关闭含时钟的屏、新建isolated屏，以空任务前提验证根BACK→DISPLAY_EMPTY→
+  同屏重新启动；再要求主屏焦点/IME/输入内容保持，息屏取帧与文本/DELETE正常、层级返回
+  WINDOWS_UNAVAILABLE、唤醒后精确文本及两屏层级恢复。息屏时不猜坐标。
+  以上新增设备步骤尚未执行，不能因脚本写完或Node测试通过而勾选。
+- m3c-isolated-A1：UTC09:52:17.090→09:52:58.626，transport49，固定F35环境与Round13相同。
+  脚本SHA-256 0e6ad696c10e8abbc10b5d72f230389c222a4df9dafa8c2e7772c8ab02f07bc3，
+  CLI/helper/fixture摘要仍为Round13同一组；四个系统App的版本/系统APK摘要再次采集并一致。
+- 已完成动作：主屏启动Settings，按最新层级进入搜索、点按输入框、发送Primary文本。
+  随后的主屏基线快照在parseFocus中抛出Primary input window not unique；没有baseline事件，
+  未完成输入节点focused、精确文本、当前IME客户端S/0、mInputShown及显示0可见IME的全套核验。
+  此时尚未调用startHelper，也没有创建虚拟屏，不能把失败归因于新策略或声称虚拟屏打断了输入。
+- 失败后重新读取display0层级成功（failureHierarchy.capturedAfterFailure=true），其脱敏
+  XML26150字节只有com.android.settings和com.android.systemui、两个window，没有搜索输入
+  resource-id=open_search_view_edit_text。它是失败后观察，不能冒充抛错瞬间原始输入。
+  当前页面不符合脚本仅fixture/设置搜索截图采集条件，因此没有截图；displayd日志窗口0字节，
+  报告4814字节，总证据30964字节。根因未定位，没有收集到系统搜索的崩溃或生命周期证据。
+- **isolated完整通过0/3，首轮失败，后两轮未启动；M3c整体未验收**。未降低窗口唯一性、
+  focused/文本/IME判据，没有重试来拼凑结果，也没有更换基线应用。steal三次通过的事实保留，
+  不能代替isolated验收。按用户停止条件不继续设备实验，不开始M4或M5。
+- finally核对helper/显示/forward/固定临时文件均0、emu kill；本轮从未设PIN、未改全局设置。
+  宿主确认adb devices为空、emulator/qemu列表[]。三个steal轮次的PIN/超时清理见Round13。
+- P01–P15全部仍为未核实（已只读接收，M5阶段未开始），没有修订README/architecture/
+  protocol/Skills或同步镜像；不把现有make skills-check通过当作这些条目已处理。
+
+### 停止后的全量本地检查与保存
+
+- make comments与make verify退出0：595个手写文件、16个检查器自测；metadata有效。
+- make test再次退出0：Go325个顶层Test定义（定义数不等于子用例执行数，含原默认跳过
+  的显式设备冒烟）、全部包测试/vet、linux/darwin/windows交叉vet通过；协议56项、Skills3份
+  与镜像一致性通过。ADB整包及CLI/MCP无窗口输出映射的定向测试通过。
+- make build退出0，CLI摘要仍Round13所列。make android-verify退出0（10秒、199任务），
+  testDebugUnitTest/assembleDebug/lintDebug通过；614项、0failure/error、1既有跳过，分布
+  app564、fixture8、web-fixture6、displayd36。Android README补充实际验证边界及v1→v2升级顺序。
+- Node焦点5项/原验收脚本6项，共11项通过；脚本node --check通过。三道既有风险门完整文件
+  相对5beaf3b无diff，没有放宽XML校验。MCP工具数量仍20，本轮只新增创建的focus参数及输出字段。
+- 按职责保存e6eb6a4（displayd，8文件）、d167811（主机策略，11文件）、4c9468c（错误，9文件）；
+  脚本、模块README与本规格状态另行保存test(emulator): verify both focus policies end to end。
+  此提交是失败停止时的部分成果，不是两场景全部通过，不包含M4/M5交付。
+- 需要汇合登记的后续项：定位并稳定系统设置搜索基线，补充输入前后Activity/窗口/IME/PID
+  及有界生命周期/崩溃现场证据，保持判据后从头执行isolated三冷启动；再执行M4/M5。
+  fixture的API35 edge-to-edge遮挡仍另立规格；API33未隔离、API34/真机/OEM/硬件键盘未验，
+  两种策略在API35的层级/焦点代价不能外推到所有系统。虚拟屏文本仍限ASCII。
+- 未改android/app、internal/bridge、其它规格、路线图或其它worktree；未下载依赖/二进制，
+  未改AVD/system image/osdk配置或main，未push。本轮没有越过阶段依赖或改写历史验收结果。
+- 收尾产物清理：本轮对照构建184156字节，三个原始探针目录分别68290/68271/160898字节，
+  三个steal报告各6599字节，isolated失败目录30964字节。先核对八个绝对路径均在当前
+  worktree内、无reparse point、无跟踪文件且匹配Git忽略规则，再用LiteralPath非强制
+  Remove-Item递归清理；八项Test-Path均false，未删除其它轮次或用户文件。

@@ -45,6 +45,16 @@
 - [ ] 修订后回归冷启动连续3次完整通过（当前首轮失败，0/3）
 - [ ] M3b阶段验收通过
 
+## M3c证据（修订二替代旧单一策略要求）
+
+- [x] 两构建在主屏唤醒/息屏下的原始文件存在性、字节数、显示组、帧与输入独立复现
+- [x] focus默认isolated、显式steal，固定标志映射且不接受原始flags
+- [x] v2协议、API33明确focusIsolated=false，Go/CLI/MCP逐层测试通过
+- [x] 无窗口输出WINDOWS_UNAVAILABLE与CLI/MCP映射，XML校验和三道旧风险门保持
+- [x] steal场景冷启动连续3次完整通过（Round13）
+- [ ] isolated场景冷启动连续3次完整通过（Round14首轮主屏基线失败，helper未启动）
+- [ ] M3c整体通过；M4/M5才可开始
+
 ## 验证
 
 - [x] `make comments`

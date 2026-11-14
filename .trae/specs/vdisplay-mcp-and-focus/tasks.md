@@ -39,7 +39,7 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - [x] 提交：`test(emulator): measure primary-display focus under virtual display input`
       （若有缓解实现，另加 `feat(displayd): ...`）
 
-当前停在M3b首轮回归的息屏后层级读取失败（progress.md Round9）；BACK因果链、空屏错误及重新启动恢复已验证，完整回归0/3。M3/M3b未验收，M4/M5未开始。
+修订二已用M3c两策略验收取代旧单一策略回归要求。当前停在M3c isolated首轮的主屏搜索基线失败（progress.md Round14）；steal三次完整通过，isolated完整通过0/3。M3c未验收，M4/M5未开始。
 
 ## M4：MCP 端到端验收与文档
 
@@ -63,6 +63,10 @@ M1 → M2 → M3 → M3b → M3c → M4 → M5 串行，同一 worktree、同一
 - 5ac8c79：M3两组实测完成，原脚本回归失败，整体未验收。
 - 7676beb：M3b空屏错误、CLI/MCP映射、RED/GREEN与BACK因果链记录。
 - M3b脚本保存提交：`test(emulator): adapt virtual display acceptance to IME-less displays`；首轮息屏后层级读取失败，整体未验收。
+- e6eb6a4：M3c displayd焦点策略/v2协议及RED/GREEN。
+- d167811：M3c Go客户端、service、CLI、MCP策略透传与测试。
+- 4c9468c：M3c无窗口输出错误、CLI/MCP映射与测试。
+- M3c脚本保存提交：`test(emulator): verify both focus policies end to end`；steal三次通过，isolated首轮基线失败，整体未验收。
 - M4、M5未开始。
 
 ## M5：接收文档清理移交（依赖 M4 验收通过）
@@ -113,10 +117,10 @@ scripts/emulator、docs/virtual-display.md与本规格状态。三道既有风�
 - [x] displayd焦点枚举解析/范围/固定标志先RED后GREEN，返回策略及API33真实隔离能力
 - [x] Go客户端、service、CLI、MCP逐层透传及拒绝非法值测试
 - [x] 无窗口输出专用错误与CLI/MCP映射，畸形/截断仍拒绝
-- [ ] steal冷启动连续3次完整息屏/65秒/PIN往返/重建通过
+- [x] steal冷启动连续3次完整息屏/65秒/PIN往返/重建通过
 - [ ] isolated冷启动连续3次通过，复用完整焦点判据、BACK/空屏/恢复与息屏输入/取帧/错误
-- [ ] make comments、make test、make verify、make build、make android-verify
-- [ ] 按职责提交displayd、CLI/MCP、ADB错误及设备验收脚本
+- [x] make comments、make test、make verify、make build、make android-verify
+- [x] 按职责提交displayd、CLI/MCP、ADB错误及设备验收脚本（部分成果，非阶段验收通过）
 
 提交建议：feat(displayd): add an explicit focus policy for virtual displays；
 feat(cli): expose the virtual display focus policy；fix(adb): explain missing window dumps instead of reporting invalid XML；

@@ -1,7 +1,7 @@
 /**
  * 脚本用途：仅在一次性 emulator-5554 上经真实 aactl 验证虚拟显示、主屏息屏与 PIN 往返。
  * 安全约束：只允许 osdk-test-35/API35；不访问真机、不配置 AVD、不自动下载产物；
- * PIN 与超时只在 test-only 路径暂设，finally 恢复并关闭模拟器。辅助进程协议全部经 CLI。
+ * PIN 与超时只在 test-only 路径暂设，finally 恢复并关闭模拟器。辅助进程协议全部经 CLI；本脚本显式选择steal策略。
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -71,14 +71,14 @@ async function main() {
   const opt = options(process.argv.slice(2)), serial = opt.device;
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "build", "virtual-display", opt.run);
   ensure(!fs.existsSync(root), "Refusing to overwrite an existing evidence directory"); fs.mkdirSync(root, { recursive: true });
-  const report = { run: opt.run, device: serial, startedAt: new Date().toISOString(), steps: [], environment: {} };
+  const report = { focus: "steal", run: opt.run, device: serial, startedAt: new Date().toISOString(), steps: [], environment: {} };
   let identity, originalTimeout, pinSet = false, helperStarted = false, lastXML = "", lastFrame, safeToClean = false;
   // 测试凭据不进入 trace、命令日志或报告；不对外部设备使用这一固定 fixture。
   const testPin = "2468";
   const event = (step, evidence = {}) => { const entry = { step, elapsedMs: Date.now() - started, ...evidence }; report.steps.push(entry); console.error(JSON.stringify(entry)); };
   const started = Date.now();
   const exec = (program, args, allowFailure = false) => {
-    const result = spawnSync(program, args, { encoding: "utf8", timeout: 45000, maxBuffer: 8 * 1024 * 1024, windowsHide: true, env: { ...process.env, MSYS_NO_PATHCONV: "1" } });
+    const result = spawnSync(program, args, { encoding: "utf8", timeout: 45000, maxBuffer: 8 * 1024 * 1024, windowsHide: true, env: { ...process.env, MSYS_NO_PATHCONV: "1", AACTL_ADB_PATH: opt.adb } });
     if (!allowFailure) ensure(!result.error && result.status === 0, `Process failed (${path.basename(program)}): ${(result.stderr ?? "").slice(0, 500)}`);
     return { status: result.status, stdout: (result.stdout ?? "").trim(), stderr: (result.stderr ?? "").trim() };
   };
@@ -140,9 +140,10 @@ async function main() {
     ensure(/versionCode=1\b/.test(shell("dumpsys", "package", fixturePackage)), "Unexpected fixture version");
     cli(["action", "unlock"]); cli(["action", "key", "--key", "HOME"]); await pause(1500);
     const mainBefore = mainActivity(); ensure(mainBefore.startsWith("com.google.android.apps.nexuslauncher/"), "Primary display is not the launcher");
-    const hello = cli(["display", "start", "--helper", opt.helper]); helperStarted = true; ensure(hello.protocolVersion === 1, "Wrong protocol");
-    let screen = cli(["display", "create", "--width", "720", "--height", "1280", "--dpi", "240"]), id = screen.displayId;
-    ensure(cli(["display", "list"]).displays.some(s => s.displayId === id), "Created display is absent");
+    const hello = cli(["display", "start", "--helper", opt.helper]); helperStarted = true; ensure(hello.protocolVersion === 2, "Wrong protocol");
+    let screen = cli(["display", "create", "--width", "720", "--height", "1280", "--dpi", "240", "--focus", "steal"]), id = screen.displayId;
+    ensure(screen.focus === "steal" && screen.focusIsolated === false, "Wrong focus policy");
+    ensure(cli(["display", "list"]).displays.some(s => s.displayId === id && s.focus === "steal" && s.focusIsolated === false), "Created display is absent");
     event("action", { package: fixturePackage, action: "app.launch", displayId: id, expected: "PAGE:MAIN on virtual display; primary unchanged" });
     cli(["action", "launch", "--display", String(id), "--package", fixturePackage, "--activity", ".MainActivity"]);
     ensure(hierarchy(id).includes('text="PAGE:MAIN"'), "Fixture did not launch on target display");
@@ -162,29 +163,20 @@ async function main() {
     cli(["action", "text", "--display", String(id), "--text", "E2EAscii"]); ensure(hierarchy(id).includes("E2EAscii"), "ASCII text did not reach fixture");
     event("action", { package: fixturePackage, action: "ui.pressKey", key: "DELETE", displayId: id, expected: "INPUT:E2EAsci" });
     cli(["action", "key", "--display", String(id), "--key", "DELETE"]); ensure(hierarchy(id).includes('text="INPUT:E2EAsci"'), "Text/key postcondition failed");
-    // 无虚拟屏IME时BACK直接作用于根Activity；单独验证退出与空屏，再显式重建测试前提。
-    ensure(fixtureNode(hierarchy(id), "text_input").includes('focused="true"'), "Input lost focus before BACK");
-    event("action", { package: fixturePackage, action: "ui.pressKey", key: "BACK", displayId: id, expected: "root Activity exits, display remains owned and empty" });
+    // steal允许IME服务虚拟屏：第一次BACK必须只收键盘，根Activity和窗口仍在。
+    const imeBefore = shell("dumpsys", "input_method");
+    ensure(/mInputShown=true/.test(imeBefore) && new RegExp(`mCurClient=ClientState\\{[^}]*mSelfReportedDisplayId=${id}(?:\\s|})`).test(imeBefore), "Virtual IME was not shown before steal BACK");
+    event("action", { package: fixturePackage, action: "ui.pressKey", key: "BACK", displayId: id, expected: "hide virtual IME and retain root Activity" });
     cli(["action", "key", "--display", String(id), "--key", "BACK"]);
-    const empty = cliEnvelope(["observe", "hierarchy", "--display", String(id)]);
-    const owned = cli(["display", "list"]).displays.some(d => d.displayId === id);
-    const afterBackActivity = topActivityOnDisplay(shell("dumpsys", "activity", "activities"), id);
-    assertEmptyOwnedDisplay(empty, owned, afterBackActivity);
+    ensure(hierarchy(id).includes('text="INPUT:E2EAsci"'), "steal BACK removed the fixture window");
+    ensure(topActivityOnDisplay(shell("dumpsys", "activity", "activities"), id)?.startsWith(fixturePackage + "/") && /mInputShown=false/.test(shell("dumpsys", "input_method")), "steal BACK did not only hide IME");
     ensure(mainActivity() === mainBefore, "Primary activity changed after virtual BACK");
-    event("2-back-empty", { displayId: id, code: empty.error.code, owned, activity: afterBackActivity });
-    event("action", { package: fixturePackage, action: "app.launch", displayId: id, expected: "PAGE:MAIN restored on same display" });
-    cli(["action", "launch", "--display", String(id), "--package", fixturePackage, "--activity", ".MainActivity"]);
-    const relaunched = hierarchy(id); ensure(relaunched.includes('text="PAGE:MAIN"'), "Fixture did not recover after empty display");
-    // 根页面退出后不承诺进程内状态仍在；若进程被回收，明确建立原CLICK:1前提，后续仍严格验CLICK:2。
-    if (relaunched.includes('text="CLICK:0"')) ensure(tapNode(id, "click_target").includes('text="CLICK:1"'), "Could not restore click precondition");
-    else ensure(relaunched.includes('text="CLICK:1"'), "Unexpected click state after relaunch");
-    ensure(mainActivity() === mainBefore, "Primary activity changed after virtual relaunch");
-    event("2-back-relaunch", { displayId: id, restored: true, clickPrecondition: 1 });
+    event("2-steal-back", { displayId: id, inputShown: false, activityRetained: true });
     const list = nodeBounds(hierarchy(id), "vertical_scroll_target");
     event("action", { package: fixturePackage, action: "ui.swipe", displayId: id, expected: "positive VERTICAL_OFFSET", condition: "fresh list bounds and post-action hierarchy" });
     cli(["action", "swipe", "--display", String(id), "--x1", String(list.x), "--y1", String(Math.floor(list.y2 - (list.y2 - list.y1) / 5)), "--x2", String(list.x), "--y2", String(Math.floor(list.y1 + (list.y2 - list.y1) / 5)), "--duration", "400"]);
     ensure(/text="VERTICAL_OFFSET:[1-9]\d*"/.test(hierarchy(id)), "Swipe did not change list offset");
-    event("2-inputs", { text: "ASCII fixture verified", key: "DELETE", back: "DISPLAY_EMPTY + relaunch", swipe: "positive vertical offset" });
+    event("2-inputs", { text: "ASCII fixture verified", key: "DELETE", back: "IME hidden + Activity retained", swipe: "positive vertical offset" });
     shell("settings", "put", "system", "screen_off_timeout", "15000");
     ensure(shell("settings", "get", "system", "screen_off_timeout") === "15000", "Timeout write failed");
     cli(["action", "sleep"]); await pause(1000); ensure(cli(["observe", "screen-state"]).on === false, "Primary display did not sleep");
@@ -206,7 +198,7 @@ async function main() {
     const result = cliEnvelope(["observe", "screenshot", "--display", String(id), "--output", path.join(root, "recovery.png")]);
     {
       ensure(!result.ok && result.error.code === "DISPLAY_ASLEEP" && !fs.existsSync(path.join(root, "recovery.png")), "Expected DISPLAY_ASLEEP without a frame after removing test PIN");
-      cli(["display", "close", "--display", String(id)]); screen = cli(["display", "create", "--width", "720", "--height", "1280", "--dpi", "240"]); id = screen.displayId;
+      cli(["display", "close", "--display", String(id)]); screen = cli(["display", "create", "--width", "720", "--height", "1280", "--dpi", "240", "--focus", "steal"]); id = screen.displayId;
       cli(["action", "launch", "--display", String(id), "--package", fixturePackage, "--activity", ".MainActivity"]); ensure(hierarchy(id).includes('text="PAGE:MAIN"'), "Fixture rebuild launch failed");
       event("4-recovery", { behavior: "DISPLAY_ASLEEP + close/create/relaunch", displayId: id, frame: capture(id) });
     }

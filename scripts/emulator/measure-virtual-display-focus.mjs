@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DisplaySession, options, ensure, node, attr, fixturePackage } from './focus-session.mjs';
 import { pngStats } from './virtual-display-png.mjs';
+import { assertEmptyOwnedDisplay, topActivityOnDisplay } from './verify-virtual-display.mjs';
 export const primaryPackage='com.google.android.settings.intelligence';
 export const primaryInputID=`${primaryPackage}:id/open_search_view_edit_text`;
 
@@ -37,8 +38,15 @@ export function requireBaseline(b) {
  ensure(b.primaryInput==='Primary'&&b.primaryInputFocused&&b.clientProcess===primaryPackage&&b.clientDisplay===0&&b.inputShown&&b.primaryImeVisible&&b.primaryImeWindow,'Primary typing baseline not established');
 }
 
+/** 无窗口输出不等于空屏或坏XML，必须保留可执行的恢复建议。 */
+export function requireWindowsUnavailable(result) {
+ ensure(!result.ok&&result.error?.code==='WINDOWS_UNAVAILABLE'&&result.error.message.includes('Wake')&&result.error.message.includes('steal'),'Expected actionable WINDOWS_UNAVAILABLE');
+}
+
 async function main() {
- const opt=options(process.argv.slice(2),[],['mode']);ensure(['unmitigated','mitigated'].includes(opt.mode),'--mode unmitigated|mitigated required');
+ const opt=options(process.argv.slice(2),[],['mode','scenario']);ensure(['unmitigated','mitigated'].includes(opt.mode),'--mode unmitigated|mitigated required');
+ ensure(opt.scenario===undefined||opt.scenario==='acceptance','--scenario acceptance is the only extension');
+ ensure(!opt.scenario||opt.mode==='mitigated','isolated acceptance requires mitigated mode');
  const s=new DisplaySession(opt,'focus');s.report.mode=opt.mode;let id,virtualLaunched=false;
  const snapshot=()=>parseFocus(s.shell('dumpsys','window'),s.shell('dumpsys','input_method'),s.shell('ps','-A','-o','PID,NAME'),s.hierarchy(0));
  const virtual=()=>{
@@ -63,7 +71,9 @@ async function main() {
   ensure(search.length===1,'Search settings entry not unique');s.tap(0,attr(search[0],'resource-id'),0.5,'com.android.settings');
   s.tap(0,primaryInputID,0.5,primaryPackage);s.action(0,'text',['--text','Primary'],'primary search text=Primary',primaryPackage);
   const baseline=snapshot();s.event('baseline',baseline);requireBaseline(baseline);measure('baseline');
-  s.startHelper();id=s.cli(['display','create','--width','720','--height','1280','--dpi','240']).displayId;measure('helper-create');
+  s.startHelper();const focus=opt.mode==='mitigated'?'isolated':'steal';
+  const create=()=>{const d=s.cli(['display','create','--width','720','--height','1280','--dpi','240','--focus',focus]);ensure(d.focus===focus&&d.focusIsolated===(focus==='isolated'),'Wrong focus policy/actual isolation');return d.displayId;};
+  id=create();measure('helper-create');
   s.hierarchy(0);s.action(id,'launch',['--package',fixturePackage,'--activity','.MainActivity'],'fixture PAGE:MAIN on virtual display');
   ensure(s.hierarchy(id).includes('text="PAGE:MAIN"'),'Virtual fixture launch failed');virtualLaunched=true;measure('launch-fixture');
   s.tap(id,`${fixturePackage}:id/click_target`);measure('tap-non-input');
@@ -86,6 +96,45 @@ async function main() {
    ensure(rows.every(r=>r.before.topFocusedDisplay===0&&r.before.clientProcess===primaryPackage&&r.before.clientDisplay===0&&r.before.inputShown&&r.before.primaryImeVisible&&r.before.primaryImeWindow&&r.before.windowActive&&r.before.windowFocused&&r.before.primaryInputFocused&&r.probeLanded),'Mitigation did not preserve all primary input criteria');
    ensure(rows.find(r=>r.phase==='text')?.virtualBefore.input==='Virtual','Virtual ASCII text did not arrive');
    ensure(rows.find(r=>r.phase==='key-targeted')?.virtualBefore.input==='Virtua','Virtual key did not arrive');
+  }
+  if(opt.scenario==='acceptance') {
+   // 原焦点测量完整保留；清除时钟/fixture任务后，用新的空屏验证根Activity的BACK语义。
+   s.report.focus='isolated';const primaryBefore=snapshot();
+   s.cli(['display','close','--display',String(id)]);id=create();virtualLaunched=false;
+   s.action(id,'launch',['--package',fixturePackage,'--activity','.MainActivity'],'fresh root Activity');
+   s.tap(id,`${fixturePackage}:id/click_target`);
+   ensure(s.hierarchy(id).includes('text="CLICK:1"'),'Fresh virtual tap failed');
+   s.tap(id,`${fixturePackage}:id/text_input`,0.85);
+   s.action(id,'text',['--text','BackCheck'],'BackCheck reaches focused virtual input');
+   ensure(s.hierarchy(id).includes('text="INPUT:BackCheck"'),'Virtual input missing before BACK');
+   s.action(id,'key',['--key','BACK'],'root Activity ends; owned empty display');
+   const empty=s.envelope(['observe','hierarchy','--display',String(id)]);
+   assertEmptyOwnedDisplay(empty,s.cli(['display','list']).displays.some(d=>d.displayId===id&&d.focus==='isolated'&&d.focusIsolated===true),topActivityOnDisplay(s.shell('dumpsys','activity','activities'),id));
+   s.event('isolated-back',{code:empty.error.code,owned:true,activity:null});
+   s.action(id,'launch',['--package',fixturePackage,'--activity','.MainActivity'],'PAGE:MAIN restored');
+   ensure(s.hierarchy(id).includes('text="PAGE:MAIN"'),'Relaunch failed');
+   s.tap(id,`${fixturePackage}:id/text_input`,0.85);
+   s.action(id,'text',['--text','AwakeX'],'AwakeX in virtual input');
+   s.action(id,'key',['--key','DELETE'],'Awake in virtual input');
+   ensure(s.hierarchy(id).includes('text="INPUT:Awake"'),'Virtual key/text recovery failed');
+   const p=snapshot();
+   ensure(p.topFocusedDisplay===0&&p.clientProcess===primaryPackage&&p.clientDisplay===0&&p.inputShown&&p.primaryImeVisible&&p.primaryImeWindow&&p.windowActive&&p.windowFocused&&p.primaryInputFocused&&p.primaryInput===primaryBefore.primaryInput,'Primary input changed across BACK/relaunch');
+   s.event('isolated-relaunch',{primary:p,virtualInput:'Awake'});
+   const capture=phase=>{const file=path.join(s.root,'latest.png');s.cli(['observe','screenshot','--display',String(id),'--output',file]);const bytes=fs.readFileSync(file),stats=pngStats(bytes);fs.unlinkSync(file);ensure(stats.width===720&&stats.height===1280&&stats.nonBlackRatio>0.01,'Black or invalid frame');s.event('isolated-frame',{phase,...stats});};
+   capture('awake');
+   s.event('action',{action:'sleep',expected:'primary off; isolated hierarchy unavailable, frame/input retained'});
+   s.cli(['action','sleep']);ensure(s.cli(['observe','screen-state']).on===false,'Primary did not sleep');
+   capture('asleep-before-input');const missing=s.envelope(['observe','hierarchy','--display',String(id)]);requireWindowsUnavailable(missing);
+   s.event('isolated-no-windows',{code:missing.error.code});
+   // 息屏时无新层级，不猜坐标；键盘注入后用唤醒后的精确文本验证真实落点。
+   s.event('action',{package:fixturePackage,displayId:id,action:'text/key',expected:'append Sleep, DELETE; after wake INPUT:AwakeSlee'});
+   s.cli(['action','text','--display',String(id),'--text','Sleep']);s.cli(['action','key','--display',String(id),'--key','DELETE']);capture('asleep-after-input');
+   ensure(s.cli(['observe','screen-state']).on===false,'Virtual injection woke primary');
+   s.cli(['action','wake']);s.cli(['action','unlock']);
+   ensure(s.hierarchy(id).includes('text="INPUT:AwakeSlee"'),'Sleeping injection or wake hierarchy recovery failed');
+   const primaryAfter=node(s.hierarchy(0),primaryInputID);
+   ensure(attr(primaryAfter,'text')===primaryBefore.primaryInput,'Sleeping virtual input changed primary text');
+   s.event('isolated-rewoken',{hierarchyRestored:true,virtualInput:'AwakeSlee',primaryText:attr(primaryAfter,'text')});
   }
   s.report.ok=true;
  }catch(e){s.report.ok=false;s.report.error=e.message;}

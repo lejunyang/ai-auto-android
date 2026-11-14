@@ -165,3 +165,15 @@ DISPLAY_EMPTY：目标已经过service归属校验（主屏0除外）且有效du
 提示先在该显示启动应用；未归属仍DISPLAY_NOT_FOUND。错误必须保持CLI/MCP路径一致、无主屏回退。
 修订按键验收不依赖BACK隐藏输入法，单独验证BACK结束根Activity、空屏与重新启动恢复；
 隔离/息屏65秒/PIN往返检查不削弱，连续三个冷启动通过后才进入M4，再进入M5。
+
+## M3c实施决定（2026-11-14）
+
+- 焦点策略字段统一命名focus（CLI为--focus），取值isolated/steal，省略默认isolated。
+  helper协议提升为v2，传输端点仍aactl-displayd-v1；客户端拒绝版本不匹配，不猜测旧helper策略。
+- create/list/status每块屏返回focus与focusIsolated。后者表示当前API下启用了隔离标志，
+  不是OEM实测保证；API33始终false，hello.capabilities.focusIsolation为API34+。
+- 原始标志仍拒绝；API33两策略15819，API34+ isolated=130507、steal=64971，均排除SECURE。
+- 无文件/空窗口输出用WINDOWS_UNAVAILABLE提示唤醒主屏或steal重建；有效XML中的空屏仍
+  DISPLAY_EMPTY，未归属仍DISPLAY_NOT_FOUND，畸形/截断XML仍拒绝。CLI通用退出码10不变。
+- 原验收脚本明确使用steal，另扩展焦点测量脚本为isolated完整场景。两场景各须三个
+  完整冷启动通过后再进入M4/M5；目前steal已三次通过，isolated首轮主屏基线失败，阶段未验收。

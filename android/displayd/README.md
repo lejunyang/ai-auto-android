@@ -132,7 +132,8 @@ API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`�
 | `steal` | `15819`，`focusIsolated:false` | `64971`，`focusIsolated:false` | 可息屏读层级，但会抢占顶层焦点、打断主屏输入法 |
 
 API 34+ 的 `isolated` 追加 `VIRTUAL_DISPLAY_FLAG_STEAL_TOP_FOCUS_DISABLED`（`1 << 16`）。
-`focus` 是请求策略，`focusIsolated` 是当前 API 下实际是否隔离；API33不伪装隔离成功。
+`focus` 是请求策略，`focusIsolated` 表示当前 API 下是否启用了隔离标志，不是OEM行为保证；
+API33不支持该隔离能力，不能依赖 `isolated` 保护主屏输入。
 输入法不服务 `isolated` 虚拟屏，文本只能使用按键注入支持的受限 ASCII；BACK直接交给
 应用，根页面会退出，不先收键盘。`steal` 下输入法可服务虚拟屏，BACK先收键盘的行为不同。
 两种策略都不承诺中文/IME文本注入。
@@ -140,6 +141,8 @@ API 34+ 的 `isolated` 追加 `VIRTUAL_DISPLAY_FLAG_STEAL_TOP_FOCUS_DISABLED`（
 协议提升为 v2，因为新客户端必须获得策略和实际隔离字段，不能把 v1 的缺失字段当作
 已隔离。行/帧编码及预算不变，固定 socket 名 `aactl-displayd-v1` 保留为传输端点；
 版本通过 `hello.protocolVersion` 协商，版本不匹配应重建并重新启动 helper。
+升级前先用旧版 CLI 停止 v1 helper，再更新 CLI/helper 并启动；新版客户端按 v2 握手，
+不会向版本不匹配的进程发送包括 shutdown 在内的管理命令。
 不含 `SECURE`，安全窗口
 仍由系统遮黑。每 2 秒在虚拟屏 displayId 所属组上报 `userActivity`，不调用 `wakeUp`。
 每次上报前检查当前前台用户的 `isDeviceSecure && isDeviceLocked`，凭据锁定时不调用
@@ -168,5 +171,7 @@ API 33 **无法按屏查询电源组**：`groupAwake=null`、`groupAwakeQuery=fa
 JVM 测试独立覆盖协议解析、预算、uid 白名单、版本标志与凭据锁定决策。API 35
 模拟器冒烟证据见 `.trae/specs/virtual-display-screen-off/progress.md` Round 1。
 T1b 的 API 35 PIN 往返验证了 DEVICE_LOCKED → DISPLAY_ASLEEP → 重建后正常帧。
-API 33/34、真机、OEM、CLI 端到端、主屏息屏和 15 秒超时保活等完整兼容验收仍留待
-后续任务；本模块不宣称这些设备场景已验收。
+焦点策略 v2 的 `steal` CLI 流程在 API35 连续三个冷启动通过：息屏层级/输入/取帧、
+65秒保活和上述PIN往返均保留，见[焦点规格进度](../../.trae/specs/vdisplay-mcp-and-focus/progress.md) Round13。`isolated` 的完整三次验收
+首轮在主屏搜索基线准备失败，未启动helper；MCP stdio尚未验收。
+API33/34、真机/OEM仍留待后续任务，不把标志能力字段当成这些平台的实测结论。
