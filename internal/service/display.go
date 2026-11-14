@@ -70,8 +70,8 @@ func (s *Service) ManageDisplay(ctx context.Context, r DisplayRequest) (any, err
 }
 
 func (s *Service) observeDisplay(ctx context.Context, r ObserveRequest) (ObserveResult, error) {
-	if *r.DisplayID <= 0 || *r.DisplayID > 2147483647 {
-		return ObserveResult{}, apperr.New(apperr.CodeDisplayNotFound, "Expected positive virtual display ID.", false, nil)
+	if *r.DisplayID < 0 || *r.DisplayID > 2147483647 {
+		return ObserveResult{}, apperr.New(apperr.CodeDisplayNotFound, "Expected non-negative display ID.", false, nil)
 	}
 	if r.TargetPackage != "" || r.MaxDepth != 0 {
 		return ObserveResult{}, invalid("Virtual display observation does not accept semantic options.")
@@ -79,10 +79,10 @@ func (s *Service) observeDisplay(ctx context.Context, r ObserveRequest) (Observe
 	if r.Kind != ObserveScreenshot && r.Kind != ObserveHierarchy {
 		return ObserveResult{}, invalid("Virtual displays support screenshot and hierarchy observations only.")
 	}
-	if s.displays == nil {
-		return ObserveResult{}, unavailable("virtual display observation")
-	}
-	if r.Kind == ObserveScreenshot {
+	if r.Kind == ObserveScreenshot && *r.DisplayID > 0 {
+		if s.displays == nil {
+			return ObserveResult{}, unavailable("virtual display observation")
+		}
 		frame, err := s.displays.Capture(ctx, r.Device, *r.DisplayID)
 		if err != nil {
 			return ObserveResult{}, err
@@ -100,14 +100,20 @@ func (s *Service) observeDisplay(ctx context.Context, r ObserveRequest) (Observe
 }
 
 func (s *Service) targetDisplay(ctx context.Context, device string, id int) (DirectBackend, error) {
-	if id <= 0 || id > 2147483647 {
-		return nil, apperr.New(apperr.CodeDisplayNotFound, "Expected positive virtual display ID.", false, nil)
+	if id < 0 || id > 2147483647 {
+		return nil, apperr.New(apperr.CodeDisplayNotFound, "Expected non-negative display ID.", false, nil)
 	}
-	if s.displays == nil || s.displayTarget == nil {
+	if s.displayTarget == nil {
 		return nil, unavailable("virtual display actions")
 	}
-	if err := s.displays.RequireDisplay(ctx, device, id); err != nil {
-		return nil, err
+	// 零值明确指向主屏，不能向只管理虚拟屏的 helper 查询归属。
+	if id > 0 {
+		if s.displays == nil {
+			return nil, unavailable("virtual display actions")
+		}
+		if err := s.displays.RequireDisplay(ctx, device, id); err != nil {
+			return nil, err
+		}
 	}
 	target := s.displayTarget(id)
 	if target == nil {

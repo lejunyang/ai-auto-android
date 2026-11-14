@@ -357,7 +357,12 @@ type ReplayStepResult struct {
 
 // New 使用可选直接后端和 Bridge 后端创建共享服务。
 func New(direct DirectBackend, bridge BridgeBackend) *Service {
-	return &Service{direct: direct, bridge: bridge}
+	s := &Service{direct: direct, bridge: bridge}
+	// 显式主屏不依赖 displayd；只有真实 ADB 客户端能构造按显示的独立视图。
+	if client, ok := direct.(*adb.Client); ok {
+		s.displayTarget = func(id int) DirectBackend { return client.WithDisplay(id) }
+	}
+	return s
 }
 
 // ListDevices 列出直接后端可见的规范化设备。

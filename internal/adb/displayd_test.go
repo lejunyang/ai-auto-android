@@ -46,7 +46,7 @@ func TestDisplaydAPIFloorAndInvalidTarget(t *testing.T) {
 	_, err := NewClient("adb", f).InspectDisplayd(context.Background(), "FIRST")
 	assertAppErrorCode(t, err, apperr.CodeUnsupportedAPI)
 	f = &fakeADB{}
-	_, err = NewClient("adb", f).WithDisplay(0).Tap(context.Background(), "FIRST", 1, 2)
+	_, err = NewClient("adb", f).WithDisplay(-1).Tap(context.Background(), "FIRST", 1, 2)
 	assertAppErrorCode(t, err, apperr.CodeDisplayNotFound)
 	if len(f.calls) != 0 {
 		t.Fatal("invalid target sent to adb")

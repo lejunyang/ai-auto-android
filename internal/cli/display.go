@@ -15,8 +15,8 @@ func parseDisplayOption(options map[string]string) (*int, error) {
 	if err != nil {
 		return nil, err
 	}
-	if id <= 0 || id > 2147483647 {
-		return nil, usageError("display must be a positive virtual display ID.")
+	if id < 0 || id > 2147483647 {
+		return nil, usageError("display must be a non-negative display ID; 0 explicitly selects the primary display.")
 	}
 	return &id, nil
 }
@@ -65,6 +65,9 @@ func (a *App) executeDisplay(ctx context.Context, automation service.Automation,
 			return nil, err
 		}
 		r.DisplayID = *id
+		if r.DisplayID == 0 {
+			return nil, usageError("Only a positive helper-owned display ID can be closed.")
+		}
 	}
 	display, ok := automation.(service.DisplayAutomation)
 	if !ok {

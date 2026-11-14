@@ -109,7 +109,7 @@ func TestDisplayManagementCommandSurface(t *testing.T) {
 
 func TestDisplayRejectsInvalidAndUnsupportedOptions(t *testing.T) {
 	for _, args := range [][]string{
-		{"action", "tap", "--device", "SERIAL", "--x", "1", "--y", "2", "--display", "0"},
+		{"action", "tap", "--device", "SERIAL", "--x", "1", "--y", "2", "--display", "-1"},
 		{"action", "sleep", "--device", "SERIAL", "--display", "7"},
 		{"observe", "hierarchy", "--device", "SERIAL", "--display", "bad"},
 		{"display", "create", "--device", "SERIAL", "--width", "1", "--height", "1280", "--dpi", "240"},
@@ -127,5 +127,36 @@ func TestDisplayRejectsInvalidAndUnsupportedOptions(t *testing.T) {
 				t.Fatal("invalid args reached service")
 			}
 		})
+	}
+}
+
+// 显式主屏与未指定目标不同，零值必须完整传到服务层；关闭操作仍仅限虚拟屏。
+func TestExplicitPrimaryDisplayReachesService(t *testing.T) {
+	for _, args := range [][]string{
+		{"action", "tap", "--x", "1", "--y", "2"},
+		{"action", "swipe", "--x1", "1", "--y1", "2", "--x2", "3", "--y2", "4"},
+		{"action", "text", "--text", "hello"},
+		{"action", "key", "--key", "BACK"},
+		{"action", "launch", "--package", "dev.aiauto.fixture"},
+	} {
+		r := runActionCommand(t, append(args, "--device", "SERIAL", "--display", "0")...)
+		if r.DisplayID == nil || *r.DisplayID != 0 {
+			t.Fatalf("lost explicit primary target: %+v", r)
+		}
+	}
+	for _, kind := range []string{"hierarchy", "screenshot"} {
+		fake := &displayCapturingAutomation{}
+		app, stdout := testApp(&commandExecutor{}, "")
+		app.Automation = fake
+		args := []string{"observe", kind, "--device", "SERIAL", "--display", "0", "--json"}
+		if kind == "screenshot" {
+			args = append(args, "--output", t.TempDir()+"/frame.png")
+		}
+		if app.Run(context.Background(), args) != 0 {
+			t.Fatal(stdout.String())
+		}
+		if fake.observed.DisplayID == nil || *fake.observed.DisplayID != 0 {
+			t.Fatal(fake.observed)
+		}
 	}
 }

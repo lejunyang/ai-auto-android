@@ -106,7 +106,7 @@ type ActionResult struct {
 
 // Screenshot 从明确在线设备读取并完整校验 PNG 截图。
 func (c *Client) Screenshot(ctx context.Context, serial string) (Screenshot, error) {
-	if c.displayID != nil {
+	if c.displayID != nil && *c.displayID > 0 {
 		return Screenshot{}, apperr.New(apperr.CodeCapabilityMissing, "Virtual display screenshots require displayd capture.", false, nil)
 	}
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
@@ -365,8 +365,8 @@ func (c *Client) runAction(
 }
 
 func (c *Client) requireOnlineDevice(ctx context.Context, serial string) error {
-	if c.displayID != nil && (*c.displayID <= 0 || *c.displayID > 2147483647) {
-		return apperr.New(apperr.CodeDisplayNotFound, "Target must be a positive helper-owned virtual display ID.", false, nil)
+	if c.displayID != nil && (*c.displayID < 0 || *c.displayID > 2147483647) {
+		return apperr.New(apperr.CodeDisplayNotFound, "Target must be 0 (primary) or a positive helper-owned virtual display ID.", false, nil)
 	}
 	if err := ValidateSerial(serial); err != nil {
 		return err

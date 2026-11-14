@@ -7,12 +7,12 @@ M1 → M2 → M3 → M4 串行，同一 worktree、同一分支，单一执行�
 
 目录所有权：`internal/adb/`、`internal/vdisplay/`、`internal/service/`、`internal/cli/`。
 
-- [ ] 先写失败测试
-- [ ] 层级、截图、点按、滑动、按键、文本、启动接受显示编号 0
-- [ ] 显示编号 0 不要求辅助进程运行；正整数仍须归属辅助进程
-- [ ] 不带目标显示时命令行逐字不变（既有测试保持通过）
-- [ ] `make test`
-- [ ] 提交：`feat(cli): accept display 0 as the explicit primary display`
+- [x] 先写失败测试
+- [x] 层级、截图、点按、滑动、按键、文本、启动接受显示编号 0
+- [x] 显示编号 0 不要求辅助进程运行；正整数仍须归属辅助进程
+- [x] 不带目标显示时命令行逐字不变（既有测试保持通过）
+- [x] `make test`
+- [x] 提交：`feat(cli): accept display 0 as the explicit primary display`
 
 ## M2：MCP 出口
 

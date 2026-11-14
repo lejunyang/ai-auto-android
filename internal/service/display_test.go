@@ -129,3 +129,32 @@ func TestSleepServiceUsesDedicatedMainScreenOperation(t *testing.T) {
 
 // 保持编译期检查，确保真实客户端实现同一组固定管理方法。
 var _ DisplayBackend = (*vdisplay.Client)(nil)
+
+// 主屏必须绕过 helper 的归属门；即使没有 helper 也能读写，负数仍拒绝。
+func TestExplicitPrimaryDoesNotRequireHelper(t *testing.T) {
+	main, target := &fakeDirect{}, &fakeDirect{}
+	s := New(main, nil)
+	s.displayTarget = func(id int) DirectBackend {
+		if id != 0 {
+			t.Fatal(id)
+		}
+		return target
+	}
+	id := 0
+	for _, kind := range []string{ObserveScreenshot, ObserveHierarchy} {
+		if _, err := s.Observe(context.Background(), ObserveRequest{Device: "SERIAL", Kind: kind, DisplayID: &id}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, action := range []string{ActionTap, ActionSwipe, ActionSetText, ActionPressKey, ActionLaunch} {
+		if _, err := s.ExecuteAction(context.Background(), ActionRequest{Device: "SERIAL", Action: action, DisplayID: &id}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if target.callCount != 7 || main.callCount != 0 {
+		t.Fatal("wrong explicit primary route")
+	}
+	id = -1
+	_, err := s.ExecuteAction(context.Background(), ActionRequest{Device: "SERIAL", Action: ActionTap, DisplayID: &id})
+	assertServiceCode(t, err, apperr.CodeDisplayNotFound)
+}

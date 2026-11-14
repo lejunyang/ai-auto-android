@@ -5,6 +5,7 @@ package adb
 import (
 	"context"
 	"github.com/lejunyang/ai-auto-android/internal/process"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -21,19 +22,20 @@ func TestDisplayInputArgumentsAndLegacyCompatibility(t *testing.T) {
 		{"text", func(c *Client) error { _, e := c.Text(context.Background(), "FIRST", "hello world"); return e }, []string{"text", "hello%sworld"}},
 	}
 	for _, tt := range tests {
-		for _, target := range []bool{false, true} {
-			t.Run(tt.name+map[bool]string{true: "/display", false: "/legacy"}[target], func(t *testing.T) {
+		for _, id := range []int{-1, 0, 7} {
+			target := id >= 0
+			t.Run(tt.name+"/"+strconv.Itoa(id), func(t *testing.T) {
 				f := &fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {}}, errors: []error{nil, nil}}
 				c := NewClient("adb", f)
 				if target {
-					c = c.WithDisplay(7)
+					c = c.WithDisplay(id)
 				}
 				if err := tt.call(c); err != nil {
 					t.Fatal(err)
 				}
 				args := []string{"-s", "FIRST", "shell", "input"}
 				if target {
-					args = append(args, "-d", "7")
+					args = append(args, "-d", strconv.Itoa(id))
 				}
 				args = append(args, tt.args...)
 				assertArgs(t, f.calls[1], args...)
@@ -43,32 +45,33 @@ func TestDisplayInputArgumentsAndLegacyCompatibility(t *testing.T) {
 }
 
 func TestDisplayLaunchAndHierarchyNeverUsePrimaryFallback(t *testing.T) {
-	for _, target := range []bool{false, true} {
-		t.Run(map[bool]string{false: "legacy", true: "display"}[target], func(t *testing.T) {
+	for _, id := range []int{-1, 0, 7} {
+		target := id >= 0
+		t.Run(strconv.Itoa(id), func(t *testing.T) {
 			f := &fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {}}, errors: []error{nil, nil}}
 			c := NewClient("adb", f)
 			if target {
-				c = c.WithDisplay(7)
+				c = c.WithDisplay(id)
 			}
 			if _, err := c.Launch(context.Background(), "FIRST", "com.example.app", ""); err != nil {
 				t.Fatal(err)
 			}
 			if target {
-				assertArgs(t, f.calls[1], "-s", "FIRST", "shell", "am", "start", "-W", "--display", "7", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-p", "com.example.app")
+				assertArgs(t, f.calls[1], "-s", "FIRST", "shell", "am", "start", "-W", "--display", strconv.Itoa(id), "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-p", "com.example.app")
 			} else {
 				assertArgs(t, f.calls[1], "-s", "FIRST", "shell", "monkey", "-p", "com.example.app", "-c", "android.intent.category.LAUNCHER", "1")
 			}
 			f = &fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {}}, errors: []error{nil, nil}}
 			c = NewClient("adb", f)
 			if target {
-				c = c.WithDisplay(7)
+				c = c.WithDisplay(id)
 			}
 			if _, err := c.Launch(context.Background(), "FIRST", "com.example.app", ".MainActivity"); err != nil {
 				t.Fatal(err)
 			}
 			args := []string{"-s", "FIRST", "shell", "am", "start", "-W"}
 			if target {
-				args = append(args, "--display", "7")
+				args = append(args, "--display", strconv.Itoa(id))
 			}
 			args = append(args, "-n", "com.example.app/.MainActivity")
 			assertArgs(t, f.calls[1], args...)
@@ -82,10 +85,14 @@ func TestDisplayLaunchAndHierarchyNeverUsePrimaryFallback(t *testing.T) {
 			f = &fakeADB{results: results, errors: make([]error, len(results))}
 			c = NewClient("adb", f)
 			if target {
-				c = c.WithDisplay(7)
+				c = c.WithDisplay(id)
 			}
-			if _, err := c.Hierarchy(context.Background(), "FIRST"); err != nil {
+			got, err := c.Hierarchy(context.Background(), "FIRST")
+			if err != nil {
 				t.Fatal(err)
+			}
+			if target && (got.Format != "uiautomator-windows-xml" || !strings.Contains(got.XML, `<display id="`+strconv.Itoa(id)+`">`) || strings.Contains(got.XML, `<display id="`+strconv.Itoa(7-id)+`">`)) {
+				t.Fatal("wrong display group", got)
 			}
 			index := 1
 			if target {
@@ -113,6 +120,15 @@ func TestDisplayHierarchyRejectsUnsupportedAPIBeforeDump(t *testing.T) {
 			t.Fatal("dump attempted without support")
 		}
 	}
+}
+
+// 主屏截图继续使用既有 screencap 路径，显式零值不依赖辅助进程。
+func TestExplicitPrimaryScreenshotUsesLegacyCommand(t *testing.T) {
+	f := &fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {Stdout: validPNG(t)}}, errors: []error{nil, nil}}
+	if _, err := NewClient("adb", f).WithDisplay(0).Screenshot(context.Background(), "FIRST"); err != nil {
+		t.Fatal(err)
+	}
+	assertArgs(t, f.calls[1], "-s", "FIRST", "exec-out", "screencap", "-p")
 }
 
 func TestForwardAbstractUsesExactSocket(t *testing.T) {
