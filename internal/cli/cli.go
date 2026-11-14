@@ -134,18 +134,31 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 		}, nil
 	}
 
-	path, err := a.Locator.Resolve()
+	// 诊断使用同一次解析得到的来源，保持路径与来源一致；旧测试端口仍可只提供 Resolve。
+	resolution := adb.Resolution{Source: "unknown"}
+	var err error
+	if locator, ok := a.Locator.(interface {
+		ResolveWithSource() (adb.Resolution, error)
+	}); ok {
+		resolution, err = locator.ResolveWithSource()
+	} else {
+		resolution.Path, err = a.Locator.Resolve()
+	}
 	if err != nil {
 		return nil, err
 	}
-	client := adb.NewClient(path, a.Executor)
+	client := adb.NewClient(resolution.Path, a.Executor)
 
 	switch args[0] {
 	case "doctor":
 		if len(args) != 1 {
 			return nil, usageError("Usage: aactl doctor [--json]")
 		}
-		return client.Doctor(ctx)
+		report, err := client.Doctor(ctx)
+		return struct {
+			adb.DoctorReport
+			ADBSource string `json:"adbSource"`
+		}{report, resolution.Source}, err
 	case "devices":
 		return a.executeDevices(ctx, client, a.directAutomation(client), args[1:])
 	case "device":
