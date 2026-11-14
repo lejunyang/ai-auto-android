@@ -27,3 +27,67 @@
   - windows：platform-tools_r37.0.1-win.zip，8044989 字节，SHA-1 e03e78b1d80b396f1c3358e31251cb31740e1110，SHA-256 45f4d63113e895ebde0c90f194099a4676b6ac653bd28d54314a9e022bbc1a99。
 - 首次手工下载核对命令漏设任务要求的许可环境变量；该缓存未用于发布。已删除这三份缓存，显式设置 AACTL_ACCEPT_ANDROID_SDK_LICENSE=android-sdk-license 并加前置校验后重新从同一 Google 官方地址下载，size/SHA-1 与 XML 全部匹配，SHA-256 与首次计算一致。后续真实发布必须经过程序许可门；未绕过确认或换源。本次纠正不隐去原始过程。
 - 缓存在仓库外 TEMP/aactl-release-bundles-cache；XML 与二进制不入 Git。官方归档只读结构审查无异常路径/链接；Go debug/macho 确认 macOS ADB 同时含 CpuAmd64/CpuArm64，依赖系统 framework；debug/elf 的 Linux ADB 只依赖系统库，无归档 lib64 依赖。Windows 包保留两个指定 DLL。此项仅静态结构审查，不是 macOS/Linux 运行验证。
+
+## Round 4 — 2026-11-15 R3 真实发布、隔离环境与设备验收
+
+### 构建和归档
+
+- 实现提交 71ea6f72547c7c475ec6d01770f8225c0689b55f；真实版本 dev-71ea6f7。显式设置 AACTL_ACCEPT_ANDROID_SDK_LICENSE=android-sdk-license 与仓库外 PLATFORM_TOOLS_CACHE，使用固定 Go/Node/JDK/SDK，运行 make release，输出到忽略目录 artifacts/release-bundles/dist。Gradle :app:assembleDebug :displayd:assembleDebug 成功（1m10s，73任务，6执行/67缓存）。未上传或发布远端资产。
+- SOURCE_DATE_EPOCH 未设置，取该提交时间 1794668686（2026-11-15T00:04:46+09:00）；tar/zip 逐项列表中的时间、固定排序及0755/0644权限正确，顶级目录与归档去扩展名一致。九资产 SHA256SUMS 全部重新计算并通过；无裸 CLI 资产或额外文件。
+- 每个归档公共文件：README.txt、aactl-displayd.apk、aactl（Windows 为 aactl.exe）。helper为80915字节，SHA-256 7a0d8904db3e7a4e90143ceba8d764b27ad6957971b823b266640ac12620c53c。完整包额外文件如下；没有自动加入 LICENSE。
+
+| 归档 | 字节数 | MiB | 归档内容（顶级目录内） |
+| --- | ---: | ---: | --- |
+| aactl_dev-71ea6f7_darwin_arm64.tar.gz | 11555764 | 11.02 | README.txt、aactl、aactl-displayd.apk、platform-tools/adb、platform-tools/NOTICE.txt |
+| aactl_dev-71ea6f7_darwin_arm64_slim.tar.gz | 2963508 | 2.83 | README.txt、aactl、aactl-displayd.apk |
+| aactl_dev-71ea6f7_darwin_amd64.tar.gz | 11772808 | 11.23 | README.txt、aactl、aactl-displayd.apk、platform-tools/adb、platform-tools/NOTICE.txt |
+| aactl_dev-71ea6f7_darwin_amd64_slim.tar.gz | 3181363 | 3.03 | README.txt、aactl、aactl-displayd.apk |
+| aactl_dev-71ea6f7_windows_amd64.zip | 7684529 | 7.33 | README.txt、aactl.exe、aactl-displayd.apk、platform-tools/adb.exe、platform-tools/AdbWinApi.dll、platform-tools/AdbWinUsbApi.dll、platform-tools/NOTICE.txt |
+| aactl_dev-71ea6f7_windows_amd64_slim.zip | 3241320 | 3.09 | README.txt、aactl.exe、aactl-displayd.apk |
+| aactl_dev-71ea6f7_linux_amd64.tar.gz | 7895309 | 7.53 | README.txt、aactl、aactl-displayd.apk、platform-tools/adb、platform-tools/NOTICE.txt |
+| aactl_dev-71ea6f7_linux_amd64_slim.tar.gz | 3139841 | 2.99 | README.txt、aactl、aactl-displayd.apk |
+| ai-auto-android_dev-71ea6f7_debug.apk | 76156488 | 72.63 | 独立 App debug APK，不放入平台包 |
+
+九资产 SHA-256（与 SHA256SUMS 一致）：
+
+```text
+803baa5efcbdc2849e48922b0f2f5a8b19deb2a8dae79a1d8ead907b76b52151  aactl_dev-71ea6f7_darwin_amd64.tar.gz
+d14b56ab1f971597e6f9a24d9034f7f57ee7416fccc963fb872fd123fdc405a4  aactl_dev-71ea6f7_darwin_amd64_slim.tar.gz
+935c6897414387d80ddf425e079435d26d8710c25997512ca0c7b3e06a040c06  aactl_dev-71ea6f7_darwin_arm64.tar.gz
+299b1da228922fcf24ecf20cce6c936fde283a5421c414961e15375d17adef73  aactl_dev-71ea6f7_darwin_arm64_slim.tar.gz
+53888a06c6705be623f391d2f638d7f3ff433cf35ecab142f370b91cad320541  aactl_dev-71ea6f7_linux_amd64.tar.gz
+974563dfb9f75e692a2fff4b75bdc372c07d88c615058d08c59ceba9e528acad  aactl_dev-71ea6f7_linux_amd64_slim.tar.gz
+fd26552761ca3a1e964e6139b5d664dc8da849ecac4b368fa66a3e33a83f42a5  aactl_dev-71ea6f7_windows_amd64.zip
+6102e04268686e91ed18f69f74d91666bb6b4f6c76b06e14ca307d453579f3df  aactl_dev-71ea6f7_windows_amd64_slim.zip
+c71fb5b704be898d45095a5ecd0021bbf150d2a56c80e83bd44d51b5a4412093  ai-auto-android_dev-71ea6f7_debug.apk
+```
+
+### Windows 隔离解压
+
+- 两包解压到仓库外 TEMP/aactl-release-bundles-864657eba0d64fefab95ab01eeead272。清除 AACTL_ADB_PATH、ANDROID_HOME、ANDROID_SDK_ROOT，PATH 仅 C:/WINDOWS/System32（不含 adb）；另用专属空 USERPROFILE 避免默认用户 SDK 干扰。清除 AACTL_DISPLAYD_APK，排除 helper 环境覆盖。
+- 完整包 doctor --json 退出0、healthy=true、adbSource=bundled，adbPath精确指向解压目录 platform-tools/adb.exe，版本37.0.1-15733141。
+- 精简包同环境 doctor --json 退出4，error.code=ADB_NOT_FOUND，明确提示使用 full aactl bundle 或安装官方 Platform-Tools 并设置 AACTL_ADB_PATH。
+- 原始 doctor-full.json、doctor-slim.json、逐包 archive-listings.txt、摘要和打包测试 JSONL 保存在忽略证据目录。未在 macOS arm64、macOS amd64 或 Linux amd64 系统执行任何归档程序；这些包仅通过结构/权限/时间和摘要检查。
+
+### 模拟器单次冒烟
+
+- 启动前设备列表为空，无 emulator/qemu；已有 ADB server PID8332 为测试前进程，版本37.0.1，最终保留。
+- 明确启动 E:/osdk-data/data/installs/android-emulator/37.1.11/emulator.exe：-avd osdk-test-35 -read-only -no-snapshot -no-boot-anim -no-audio -port 5554 -no-window。额外 -port 固定serial，-no-window支持后台验证，Start-Process 使用 WindowStyle Hidden。未加载快照，未修改基础AVD、PIN、安全设置或授权。
+- 唯一设备 emulator-5554，transportId=22（每一步由CLI connection.transportId复核），API35、google_apis/x86_64 system image revision9；320×640、160dpi、en-US、navigation_mode=2（手势）。boot_completed=1。设备指纹：google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+- 六步骤只使用解压完整包的 CLI/ADB；各步前复查唯一设备、在线状态、固定transport和fingerprint，动作后再读取状态验证，不盲重试：
+  1. devices list：count1且唯一serial一致。
+  2. observe screenshot --display 0 --device emulator-5554：PNG320×640、205038字节，SHA-256 033052ada3f8e377c67a385270f29299052d53b9b497c29ee58ecaef18009874，人工查看为正常主屏，无敏感数据。
+  3. display start --device emulator-5554（不传 --helper、无helper环境变量）：protocolVersion2、apiLevel35；shell PID3994；设备APK摘要与包内helper一致。
+  4. display create --width 320 --height 640 --dpi 160：displayId2、focus=isolated、focusIsolated=true；status确认displayGroupId1、groupAwake=true、state2。
+  5. display close --display 2：closed=true，随后list.displays为空。
+  6. display stop：stopped=true，随后shell进程、/data/local/tmp/aactl-displayd*及forward均为空。
+- 之后只向 emulator-5554 发送一次 emu kill；最终CLI devices count0，宿主emulator/qemu为0。无本任务新增ADB服务残留；原PID8332仍在。cleanup-device.json和cleanup-host.json保留零残留证据。
+- 本轮是打包的单次冒烟，不替代原v2协议/焦点测试或跨平台真机矩阵；v1拒绝握手由既有internal/vdisplay单测随全量通过，未另行重跑真实v1→v2升级。
+
+### 脚手架问题与修正（判据未放宽）
+
+- 首次 osdk exec -- make 找不到裸命令，改为明确的共享m2-base make.exe，Go也使用1.26.5真实exe；无安装/改pin。
+- 一次全量格式检查发现用于静态依赖审查的临时 artifacts/release-bundles/deps.go 未格式化；移除该一次性文件后重跑全部检查通过。未把临时源码留在仓库或排除格式检查。
+- 首次模拟器查询到online但boot_completed尚为空，等待后读取到1才开始操作，没有在未就绪设备上做动作。
+- 临时守卫误用ADB不支持的get-transport-id，动作前即失败；从CLI原始devices JSON确认字段位于connection.transportId，修正后以固定22检查。截图尚未执行，未重复动作。
+- emu kill后20秒检查发现退出中的emulator launcher；官方stdout明示等待20秒优雅退出。未杀未知进程、未再次发送关闭；随后只读复核时进程已自然退出，设备与宿主最终零残留，原失败事实保留。后续脚手架应给关闭观察留足60秒并持续核实相同归属。

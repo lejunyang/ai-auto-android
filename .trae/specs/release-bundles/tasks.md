@@ -10,10 +10,10 @@
 | R3 实测 | 依赖 R2；仅新增发布验证脚本/测试及本规格证据；真实构建与 Windows 包隔离、emulator-5554 冒烟 | 九资产摘要、八包内容/大小、doctor 两结果、设备指纹、helper v2、清理与退出 | test(release): verify packaged tools and emulator smoke | 先保留限额脱敏证据，再清设备临时目录及已启动 emulator；身份不符停止动作 |
 | R4 文档验收 | 依赖 R3；README、security-distribution、virtual-display、troubleshooting、路线图仅 N60.2、本规格 | 实测大小、安装/许可/冲突/升级、平台限制、全量结果、干净 worktree | docs(release): document bundled installation and acceptance | 不把未验收写成完成，不回写其它规格 |
 
-- [ ] R0 规格已提交
-- [ ] R1 RED/GREEN 与定向验证
-- [ ] R2 离线 RED/GREEN、固定清单、打包/CI
-- [ ] R3 真实构建、隔离运行、模拟器与清理
+- [x] R0 规格已提交
+- [x] R1 RED/GREEN 与定向验证
+- [x] R2 离线 RED/GREEN、固定清单、打包/CI
+- [x] R3 真实构建、隔离运行、模拟器与清理
 - [ ] R4 文档、路线图 N60.2 与全量验收
 
 手动边界：真机 RSA/权限、安全设置必须用户确认，本任务无需操作；disposable emulator 的既有调试通道可自动使用，不安装 App、不启用无障碍/MediaProjection、不自动确认其它操作。
