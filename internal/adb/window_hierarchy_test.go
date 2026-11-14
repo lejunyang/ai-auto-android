@@ -4,6 +4,7 @@ package adb
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -138,4 +139,52 @@ func TestDisplayHierarchyReportsEmptyAfterFullValidation(t *testing.T) {
 	assertAppErrorCode(t, err, "DISPLAY_EMPTY")
 	_, err = selectDisplayWindows([]byte(`<displays></displays><broken`), 7)
 	assertAppErrorCode(t, err, apperr.CodeActionFailed)
+}
+
+// 无文件/空文件是系统没有提供窗口，不是畸形XML；截断、权限失败与设备失败不能混为此错误。
+type missingWindowExecutor struct {
+	fakeADB
+	missing bool
+}
+
+func (e *missingWindowExecutor) Run(ctx context.Context, program string, args []string, options process.Options) (process.Result, error) {
+	if len(args) > 4 && args[2] == "exec-out" && e.missing {
+		e.calls = append(e.calls, append([]string(nil), args...))
+		return process.Result{ExitCode: 1, Stderr: []byte("cat: " + args[4] + ": No such file or directory\n")}, errors.New("exit 1")
+	}
+	return e.fakeADB.Run(ctx, program, args, options)
+}
+func TestMissingWindowDumpsHaveActionableError(t *testing.T) {
+	for _, data := range [][]byte{nil, []byte(" \n\t")} {
+		_, err := selectDisplayWindows(data, 7)
+		assertAppErrorCode(t, err, "WINDOWS_UNAVAILABLE")
+	}
+	for _, missing := range []bool{false, true} {
+		e := &missingWindowExecutor{missing: missing, fakeADB: fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {Stdout: []byte("35")}, {}, {}, {}}, errors: make([]error, 5)}}
+		_, err := NewClient("adb", e).WithDisplay(7).Hierarchy(context.Background(), "FIRST")
+		assertAppErrorCode(t, err, "WINDOWS_UNAVAILABLE")
+		if err == nil || !strings.Contains(err.Error(), "isolated") || !strings.Contains(err.Error(), "steal") || len(e.calls) != 5 || e.calls[4][3] != "rm" {
+			t.Fatal("recovery/cleanup", err, e.calls)
+		}
+	}
+}
+
+func TestWindowDumpFailuresDoNotMasqueradeAsNoWindows(t *testing.T) {
+	for _, tc := range []struct {
+		result process.Result
+		err    error
+		code   string
+	}{
+		{process.Result{}, process.ErrTimeout, apperr.CodeDeadlineExceeded},
+		{process.Result{ExitCode: 1, Stderr: []byte("Permission denied")}, errors.New("exit 1"), apperr.CodeDeviceUnreachable},
+		{process.Result{OutputTruncated: true}, nil, apperr.CodeActionFailed},
+		{process.Result{Stdout: []byte("<displays><display")}, nil, apperr.CodeActionFailed},
+	} {
+		f := &fakeADB{results: []process.Result{{Stdout: []byte(twoOnlineDevices)}, {Stdout: []byte("35")}, {}, tc.result, {}}, errors: []error{nil, nil, nil, tc.err, nil}}
+		_, err := NewClient("adb", f).WithDisplay(7).Hierarchy(context.Background(), "FIRST")
+		assertAppErrorCode(t, err, tc.code)
+		if len(f.calls) != 5 {
+			t.Fatal("fallback or missing cleanup", f.calls)
+		}
+	}
 }

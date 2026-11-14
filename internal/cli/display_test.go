@@ -34,7 +34,10 @@ func TestDisplayActionArgumentsReachSharedService(t *testing.T) {
 }
 
 // CLI使用真实service/adb解析器，空屏错误不能被信封改写或触发普通dump回退。
-type emptyHierarchyExecutor struct{ calls [][]string }
+type emptyHierarchyExecutor struct {
+	calls    [][]string
+	noOutput bool
+}
 
 func (e *emptyHierarchyExecutor) Run(_ context.Context, _ string, args []string, _ process.Options) (process.Result, error) {
 	e.calls = append(e.calls, append([]string(nil), args...))
@@ -45,6 +48,9 @@ func (e *emptyHierarchyExecutor) Run(_ context.Context, _ string, args []string,
 	case strings.Contains(line, "getprop ro.build.version.sdk"):
 		return process.Result{Stdout: []byte("35")}, nil
 	case strings.Contains(line, "exec-out cat"):
+		if e.noOutput {
+			return process.Result{}, nil
+		}
 		return process.Result{Stdout: []byte("<displays/>")}, nil
 	default:
 		return process.Result{}, nil
@@ -90,6 +96,21 @@ func TestCLIEmptyDisplayAndMissingDisplayRemainDistinct(t *testing.T) {
 		}
 		if id == "0" && helper.calls != 0 {
 			t.Fatal("primary required helper")
+		}
+	}
+}
+
+func TestCLIMissingWindowDumpPreservesRecovery(t *testing.T) {
+	for _, id := range []string{"0", "7"} {
+		e := &emptyHierarchyExecutor{noOutput: true}
+		app, out := testApp(e, "")
+		app.Automation = service.NewWithDisplays(adb.NewClient("adb", e), &cliOwnedDisplays{})
+		if app.Run(context.Background(), []string{"observe", "hierarchy", "--device", "SERIAL", "--display", id, "--json"}) != apperr.ExitInternal {
+			t.Fatal(out.String())
+		}
+		r := decodeEnvelope(t, out.Bytes())
+		if r.Error == nil || r.Error.Code != "WINDOWS_UNAVAILABLE" || r.Error.Retryable || !strings.Contains(r.Error.Message, "Wake") || !strings.Contains(r.Error.Message, "steal") || len(e.calls) != 5 {
+			t.Fatal(out.String(), e.calls)
 		}
 	}
 }

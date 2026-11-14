@@ -11,12 +11,20 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
 )
 
+// 无输出与有效XML中的空显示不同；只说明系统未提供任何窗口，不能据此判断目标不存在。
+func windowsUnavailable(id int) error {
+	return apperr.New(apperr.CodeWindowsUnavailable, "UIAutomator produced no windows. A common cause is the primary display sleeping while the target uses isolated focus. Wake the primary display, or close and recreate the virtual display with focus=steal (destroys its apps).", false, map[string]any{"displayId": id})
+}
+
 func selectDisplayWindows(data []byte, id int) ([]byte, error) {
 	invalid := func() ([]byte, error) {
 		return nil, apperr.New(apperr.CodeActionFailed, "Invalid or truncated UIAutomator display-window XML.", false, nil)
 	}
 	if len(data) > maxHierarchyOutput {
 		return nil, apperr.New(apperr.CodeMessageTooLarge, "UI hierarchy exceeds its byte budget.", false, nil)
+	}
+	if len(bytes.TrimSpace(data)) == 0 {
+		return nil, windowsUnavailable(id)
 	}
 	decoder := xml.NewDecoder(bytes.NewReader(data))
 	depth := 0

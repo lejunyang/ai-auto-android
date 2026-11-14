@@ -112,7 +112,7 @@ scripts/emulator、docs/virtual-display.md与本规格状态。三道既有风�
 - [x] 原始dump矩阵、取帧及注入独立复现，记录字节数/文件存在性/显示组
 - [x] displayd焦点枚举解析/范围/固定标志先RED后GREEN，返回策略及API33真实隔离能力
 - [x] Go客户端、service、CLI、MCP逐层透传及拒绝非法值测试
-- [ ] 无窗口输出专用错误与CLI/MCP映射，畸形/截断仍拒绝
+- [x] 无窗口输出专用错误与CLI/MCP映射，畸形/截断仍拒绝
 - [ ] steal冷启动连续3次完整息屏/65秒/PIN往返/重建通过
 - [ ] isolated冷启动连续3次通过，复用完整焦点判据、BACK/空屏/恢复与息屏输入/取帧/错误
 - [ ] make comments、make test、make verify、make build、make android-verify

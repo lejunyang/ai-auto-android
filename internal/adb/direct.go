@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"image/png"
@@ -169,6 +170,12 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 		"-s", serial, "exec-out", "cat", hierarchyRemotePath,
 	}, process.Options{Timeout: 10 * time.Second, MaxOutput: maxHierarchyOutput})
 	if err != nil {
+		// 只识别本次随机路径的明确ENOENT；超时、离线、权限失败和截断仍保留原错误。
+		missing := strings.TrimSpace(string(result.Stderr)) == "cat: "+hierarchyRemotePath+": No such file or directory"
+		var appError *apperr.Error
+		if c.displayID != nil && !result.OutputTruncated && result.ExitCode == 1 && missing && errors.As(err, &appError) && appError.Code == apperr.CodeDeviceUnreachable {
+			return Hierarchy{}, windowsUnavailable(*c.displayID)
+		}
 		return Hierarchy{}, err
 	}
 	if result.OutputTruncated || len(result.Stdout) > maxHierarchyOutput {

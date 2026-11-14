@@ -290,3 +290,16 @@ func TestMCPEmptyDisplayAndMissingDisplayRemainDistinct(t *testing.T) {
 		}
 	}
 }
+
+func TestMCPMissingWindowDumpPreservesRecovery(t *testing.T) {
+	for _, id := range []int{0, 7} {
+		fake := &scriptedADB{results: []process.Result{onlineDevices(), {Stdout: []byte("35")}, {}, {}, {}}, errors: make([]error, 5)}
+		client := adb.NewClient("adb", fake)
+		s := connectClient(t, service.NewWithDisplays(client, &mcpOwnedDisplays{}))
+		r := callDisplayTool(t, s, ToolObserve, map[string]any{"device": "SERIAL", "kind": "hierarchy", "displayId": id}, false)
+		message := toolErrorText(t, r)
+		if !strings.Contains(message, `"code":"WINDOWS_UNAVAILABLE"`) || !strings.Contains(message, "Wake") || !strings.Contains(message, "steal") || len(fake.calls) != 5 {
+			t.Fatal(message, fake.calls)
+		}
+	}
+}
