@@ -1,5 +1,14 @@
 # MCP 文本输入与 webcam 通道验证
 
+> **现状更正（2026-11-14，基线 `984ee31`）**
+>
+> 本文为历史实测/评审记录，以下正文保留当时结论；本次仅核查仓库与后续证据，未操作设备。
+>
+> - tools/list 的 11 是当轮数量；当前基线 `ToolNames` 为 16，不能照抄为现有工具清单。
+> - “本机没装软件/缺一个 OBS 或 Unity Capture 就能换码”的后续实验已完成且失败：两者无 PnP 实例，emulator 不枚举。未验的是 Linux v4l2loopback 和 Windows MF，见[后续取证](host-virtual-camera-verdict.md)与[当前结论](camera-virtual-stacks.md)。历史安装状态不是本轮宿主清点结果。
+>
+> 逐条核查依据见[审计进度](../.trae/specs/docs-stale-audit/progress.md)。
+
 本文记录两件事：把桥侧 setText 暴露到 MCP（已完成并端到端实测），
 以及 `webcam0` 通道能否满足「模拟器待命、按需扫指定码」（已验到底，结论明确）。
 

@@ -347,3 +347,11 @@ P02/P08含边界歧义表述；P13中App表格部分作为待集成复核项，�
 | 文件所有权 | 24个差异路径均属本任务（20份docs + 本规格4文件）；根README和3份只读docs逐字节一致，既有规格/skills/代码/测试/脚本/配置无diff |
 
 本轮没有启动模拟器、发现/连接/操作设备，没有运行安装/下载命令，没有push。make verify仅使用仓库指定fake ADB/离线验证入口；未用历史设备证据冒充本轮重测。后续仅按主题提交与检查最终工作区，不重复已通过且未受纯文档变化影响的测试。
+
+## D5：提交与交付
+
+- 规格独立提交：`18b3294`（docs(spec): add stale documentation audit change spec）。
+- 活文档主题提交：`57f25bf`（docs: reconcile roadmap and current capability status），覆盖路线图、动作面、备选/摄像头选型、录制、UI汇总、USB/故障排查与安全数据边界，同时提交逐条证据。
+- 本次收尾提交：`docs: annotate historical findings and complete navigation`，只提交9份历史文首更正、docs导航和本规格验收状态/本条记录。其hash由提交后git log核对并在最终交付中报告。
+- 提交后再次执行git diff --check与git status --short --branch，确认本worktree干净；工作树由集成方后续汇合使用，不删除本分支或worktree。
+- R01-R40/H01-H30覆盖70组改动，U01-U05明确未核实/未验收边界，P01-P15供集成方处理。没有改写既有规格，也没有替并行vdisplay MCP任务落状态。
