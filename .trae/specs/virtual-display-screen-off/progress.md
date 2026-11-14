@@ -508,3 +508,32 @@
     `DISPLAYD_NOT_RUNNING`。模拟器已关闭。
 - 复核中另记一条既有行为（非本规格引入，未处理）：主屏息屏时不带 `--display` 的
   `observe screenshot` 返回成功和一张 2195 字节的全黑图。
+
+## PR #2 CI 更正：通用窗口层级文件名与跨平台编译（2026-11-14）
+
+- 核实 Go 文件选择：`hierarchy_windows.go` / `hierarchy_windows_test.go` 的
+  `_windows` 后缀使它们只在 Windows 下参与编译；Linux、Darwin 的 `go list`
+  均把两者列入 `IgnoredGoFiles`，导致 `direct.go:184:24` 的
+  `undefined: selectDisplayWindows`。按当前 Go 工具链的全部 GOOS/GOARCH 后缀
+  检查相对 `main` 新增的 Go 文件，仅这两个文件命中平台命名规则。
+- 使用 `git mv` 更名为 `internal/adb/window_hierarchy.go` 与
+  `internal/adb/window_hierarchy_test.go`；Git 确认两项均为 100% 内容相同的重命名，
+  未改行为逻辑。历史「集成方最终复核」中的 `internal/adb/hierarchy_windows.go`
+  文件名应按此更正，历史条目保留；仓库中没有其它需更新的旧文件名引用。
+- 本地防回归入口：`Makefile` 新增 `go-cross-vet`，纳入 `make test`；
+  `scripts/check-go-platforms.mjs` 依次为 linux、darwin、windows 执行
+  `go vet ./...`，覆盖生产与测试源码编译，不执行目标系统的测试二进制。
+  Node 直接传入子进程 `GOOS` 与 `CGO_ENABLED=0`，兼容 Windows/POSIX 环境变量设置，
+  并避免依赖交叉 C 编译器；沿用 Makefile 的 `GO` 工具路径。
+- 修复前先用新增入口验证：`make go-cross-vet` 首个目标输出
+  `GOOS=linux CGO_ENABLED=0 go vet ./...`，随后报
+  `internal\adb\direct.go:184:24: undefined: selectDisplayWindows`；
+  vet 退出 1，make 退出 2，确认该入口能在本机发现本次回归。
+- 修复后在 Windows/amd64、Go 1.26.5 上完成：`make comments` 退出 0
+  （589 个手写文件、16 个检查器自测）、`make test`、`make verify`、`make build`
+  均退出 0；`make test` 中 linux、darwin、windows 三次 `go vet ./...` 均输出
+  `GOOS=<target>: PASS`。三个目标的 `go list` 均纳入新实现与测试文件，
+  不再将它们列入 `IgnoredGoFiles`；`node --check` 与 `git diff --check` 通过。
+- 仅更名、增加验证入口并追加本条更正；未改 Android、MCP、Bridge 或其它规格，
+  未启动模拟器，`main` 仍为 `f861a61`，未 push。本地跨平台编译通过不代替
+  尚未重新运行的 GitHub Actions 结果，也不扩大此前设备验收结论。

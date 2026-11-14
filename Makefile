@@ -35,7 +35,7 @@ endif
 
 
 .PHONY: verify doctor fake-adb-smoke protocol-smoke protocol-test skills-sync skills-smoke skills-check comments
-.PHONY: go-fmt go-test go-vet test build android-test android-lint android-build android-verify release
+.PHONY: go-fmt go-test go-vet go-cross-vet test build android-test android-lint android-build android-verify release
 
 verify: fake-adb-smoke protocol-smoke skills-smoke comments
 	@./scripts/verify-toolchains.sh --metadata-only
@@ -73,7 +73,11 @@ go-test:
 go-vet:
 	@$(GO) vet ./...
 
-test: protocol-test skills-check go-fmt go-test go-vet
+# 验证用途：在本机编译三个系统的生产与测试源码，发现误用平台文件后缀导致的缺失符号。
+go-cross-vet:
+	@node scripts/check-go-platforms.mjs "$(GO)"
+
+test: protocol-test skills-check go-fmt go-test go-vet go-cross-vet
 
 # 产物名按平台带扩展名。Windows 下若把 -o 指向已存在的同名无扩展名文件，go build 会以
 # 「build output already exists and is not an object file」失败，使该目标首次成功、
