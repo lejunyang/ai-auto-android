@@ -9,6 +9,8 @@
 - [x] 未修改 `android/app/`、`internal/mcpserver/`、`internal/bridge/`
 - [x] 未触碰文件传输出口与 `TestFileTransferHasNoCLIEntryPoint`
 - [x] 未 push 到远端
+- [x] 文档写明窗口列表、普通层级歧义、休眠重建销毁语义、任务迁移与API33限制
+- [x] MCP/发布/API33-34/真机OEM/普通层级歧义后续项登记，未描述为已交付
 
 以上已核对至 T4，既有规格历史未改，未触及禁止目录与主工作区。
 

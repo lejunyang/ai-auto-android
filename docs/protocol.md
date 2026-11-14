@@ -39,6 +39,34 @@ Schema 位于 [`../protocol/schema/v1/`](../protocol/schema/v1/)，运行限制�
 失败时 `data` 为 `null`，`error` 至少包含稳定 `code`、可读 `message` 和
 `retryable`。自动化应按 `code` 分支，不应匹配可能调整的英文消息。
 
+### 虚拟显示 CLI 结果
+
+`display start|status|stop|create|list|close` 与观察/动作的 `--display N` 仅由电脑侧
+CLI 提供，不增加公共 action Schema、MCP 或 App Bridge 出口。`action sleep` 在
+service 中为 `device.sleep`，用 KEYCODE_SLEEP 使主屏息屏，不接受目标显示参数。
+
+层级结果分两种 `format`：
+
+| format | XML 形态与含义 |
+| --- | --- |
+| `uiautomator-xml` | 普通活动窗口的单个 `hierarchy` 根；未指定显示时的既有行为 |
+| `uiautomator-windows-xml` | `displays` 根下只含目标 `display id="N"`，其下有窗口及各自层级 |
+
+按显示读取发 `dump --windows`，解析全部输入后只返回目标组；无该编号、重复编号、
+畸形、截断或超过8MiB时失败，绝不返回其它显示。`sizeBytes` 与 `sha256` 对应筛选后
+的 XML。普通层级在虚拟屏持有焦点时可能返回虚拟屏内容；不能当作主屏身份判据。
+
+独立 displayd v1 线协议使用16384字节头、最多16MiB定长PNG体，详见
+[设备端契约](../android/displayd/README.md)，不与 Bridge NDJSON 上限混用。
+辅助进程及虚拟屏错误包括 DISPLAYD_HELPER_MISSING、DISPLAYD_NOT_RUNNING、
+DISPLAYD_IDENTITY_MISMATCH、UNSUPPORTED_API、DISPLAY_NOT_FOUND、DEVICE_LOCKED、
+DISPLAY_ASLEEP；这些新增错误目前走通用退出码10，须按 `error.code` 区分。
+层级命令的 API 能力拒绝仍使用 CAPABILITY_UNAVAILABLE。
+
+API33 的 groupAwake 为 null；API34+ 可按屏查询。凭据锁定时拒帧，解锁后组仍休眠
+返回 DISPLAY_ASLEEP，调用方需 close/create 后重新启动应用，原屏应用内容会销毁。
+完整参数及限制见[虚拟显示操作](virtual-display.md)。
+
 ## Bridge 帧
 
 每行是一条完整 JSON-RPC 2.0 消息，使用 UTF-8 并以 `\n` 结束。请求的公共字段：

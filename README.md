@@ -61,6 +61,28 @@ aactl recording replay --device SERIAL \
 aactl bridge close --device SERIAL --json
 ```
 
+## 虚拟显示与主屏息屏（CLI）
+
+API33+ 可用 shell 身份的 `displayd` 创建后台虚拟屏，使用 `--display N` 在其上
+启动、截图、读取窗口列表和输入；`aactl action sleep --device SERIAL` 使主屏息屏。
+helper 需从源码构建，当前 Release 不打包它；APK 不安装，只作 app_process 产物。
+
+```bash
+make android-verify
+aactl display start --device SERIAL --helper android/displayd/build/outputs/apk/debug/displayd-debug.apk --json
+aactl display create --device SERIAL --width 720 --height 1280 --dpi 240 --json
+aactl observe hierarchy --device SERIAL --display N --json
+aactl observe screenshot --device SERIAL --display N --output virtual.png --json
+aactl display stop --device SERIAL --json
+```
+
+`N` 使用 create 返回的编号。按显示的层级是窗口列表，`format=uiautomator-windows-xml`；
+普通层级读取的是活动窗口，虚拟屏有焦点时可能返回虚拟屏内容。凭据锁定拒绝取帧；
+组休眠后必须关闭重建，其上应用内容会销毁。已在主屏运行的应用向虚拟屏启动会整体
+移过去。API33 无法查询显示组唤醒状态，真机/OEM 与 API33/34 兼容性尚未验收。
+MCP 与 App Bridge 不提供虚拟屏入口。完整命令、恢复与证据见
+[虚拟显示操作](docs/virtual-display.md)。
+
 ## MCP 配置
 
 `aactl mcp serve` 通过 stdio 暴露 16 个类型化工具，其中视觉候选工具只读且不会执行

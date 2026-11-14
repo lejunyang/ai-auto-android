@@ -451,3 +451,27 @@
 - 文档已准备：操作指南、架构/协议/导航/README、Skills导航说明；N59第3项指向本规格，
   N60登记MCP、发布打包、API33/34、真机/OEM、普通层级歧义和摄像头决策。先提交脚本与
   验收证据，再提交文档，不把尚未提交的文档标为已交付。禁止目录与main未改，未push。
+
+## Round 10：T4 文档交付与最终范围复核（2026-11-14）
+
+- T4验收提交74be592只含新增脚本、Makefile新增本地测试目标与规格状态；此前完整三次
+  证据、失败与重计数、全量验证已记Round8/9。此后没有改产品代码或验收脚本。
+- 文档交付：新增docs/virtual-display.md操作指南，并同步architecture/protocol/导航、
+  根README、Skills导航说明。写清helper定位/SHA/身份、全部CLI参数、两种XML format、
+  普通层级返回活动窗口的三轮实测、主屏独立判据、锁定/休眠错误与close/create销毁语义、
+  主屏任务整体迁移、API30命令下界/整体API33门槛，以及API33 groupAwake=null限制。
+  不宣称真机/OEM、API33/34、中文/IME、MCP、发布打包或无线重连已验收。
+- docs/next-phase-tasks.md的N59第3项指向本规格；N60登记MCP、发布打包、API33/34、
+  真机/OEM、普通层级焦点歧义与摄像头安全决策，各有依赖、步骤、目录所有权/汇合点、
+  证据、建议提交边界和回滚清理，不修改MVP或其它规格历史。
+- 相关Skill使用说明位于skills/README.md，未改三份Skill正文/镜像，保留通用技能的
+  现有确认与禁止动作边界，不向它们开放测试PIN路径。该选择保持本轮允许目录与
+  既有镜像一致性检查，所有3份Skills及镜像验证通过。
+- 文档本地链接44项存在，git diff --check通过；只有文档/状态在全量验证后收尾，
+  没有代码变化需要重复全套设备验收。最终make build产物SHA仍与三轮实际CLI一致。
+- 偏离/修正均已记录：Round3的首次boot顺序（已加硬检查重跑）、Round5的CRCRLF预检、
+  Round6纠正--display-id假设、Round8的输入框遮挡与精确焦点判据；本轮没有越界修补，
+  最终三次seriesB没有失败或拼接。中途失败不被删除或改写成成功记录。
+- 全部本轮设备证据临时目录已清；最终adb devices空、无emulator/qemu，未设真实设备PIN、
+  未操作非模拟器、未改AVD/system image/osdk或用户配置、未下载依赖/二进制/APK。
+  main仍f861a61，未push；仅提交允许目录的源码、脱敏文本fixture、脚本、文档与状态。

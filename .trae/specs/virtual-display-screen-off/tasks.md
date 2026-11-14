@@ -5,7 +5,7 @@
 `progress.md`）只由当前任务的执行者修改。
 
 当前状态（Round 9）：T2b 新契约与 T4 连续三次 API35 冷启动验收、全量验证均通过。
-测试与文档按两个提交收尾；真机/OEM、API33/34 与其它未验证项保留在后续路线图。
+测试与文档按两个提交完成；真机/OEM、API33/34 与其它未验证项保留在后续路线图。
 
 ## T1：设备端辅助进程 `displayd`
 
@@ -88,16 +88,17 @@ PIN/息屏/超时端到端仍属 T4。API 33 的 `groupAwake=null` 限制见 Rou
 - [x] 验收脚本按规格「验收」第 1–5 步执行，显式 serial，记录设备指纹
 - [x] 连续运行 3 次并记录结果；失败产物限额、脱敏，验收后清理
 - [x] 普通层级焦点歧义已实测；主屏隔离改用display0的topResumedActivity
-- [ ] `docs/architecture.md`、`docs/protocol.md`、`docs/next-phase-tasks.md`、
+- [x] `docs/architecture.md`、`docs/protocol.md`、`docs/next-phase-tasks.md`、
       `docs/README.md`、`README.md` 与相关 skill 说明
-- [ ] 后续项登记进 `docs/next-phase-tasks.md`：MCP 出口、发布打包、真机矩阵
+- [x] 后续项登记进 `docs/next-phase-tasks.md`：MCP、发布打包、API33/34、真机/OEM、普通层级歧义
 - [x] 全量：`make comments`、`make test`、`make verify`、`make build`、
       `make android-verify`
 - [x] 提交：`test(emulator): verify virtual display under screen-off`
-- [ ] 提交：`docs: document virtual display and screen-off operation`
+- [x] 提交：`docs: document virtual display and screen-off operation`
 
 ## 实际提交
 
 - T1：`feat(displayd): add shell-uid virtual display helper`（本轮单一提交）。
 - T1b：`ae9486f`；T2：`6e065ef`；T3：`d33eca8`。
 - T2b：`afa8a1c`（新契约；集成方规格更正为 `f544271`）。
+- T4验收：`74be592`；T4文档：`docs: document virtual display and screen-off operation`（本提交）。

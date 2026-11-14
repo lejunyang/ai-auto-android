@@ -42,6 +42,7 @@ Android App                                                   v
 | `cmd/aactl`、`internal/cli` | 参数解析、稳定 JSON 信封、交互读取配对码 |
 | `internal/service` | CLI 与 MCP 共用的设备、观察、动作和回放语义 |
 | `internal/adb` | ADB 定位、诊断、设备归一化、类型化命令和端口转发 |
+| `internal/vdisplay`、`android/displayd` | 仅 CLI 的 shell 辅助进程部署、身份核验、虚拟屏管理和有界取帧 |
 | `internal/bridge` | Bridge 握手、短期会话、NDJSON 客户端和 forward 生命周期 |
 | `internal/mcpserver` | 六个 MCP tools；视觉候选只读，不暴露配对、Bridge 管理或任意 shell |
 | `protocol/` | JSON Schema Draft 2020-12、版本、限制和契约夹具 |
@@ -69,6 +70,39 @@ ADB 授权，不要求安装 Android App。
 所有设备操作都要求 `--device SERIAL`。子进程使用可执行文件加参数数组，
 没有用户可控的 shell 字符串，也没有任意 shell 接口。直接后端得到的是像素、
 UIAutomator XML 或坐标，不提供 Accessibility 选择器与录制。
+
+### 虚拟显示辅助进程
+
+CLI 的 `display` 与可选 `--display` 在直接 ADB 后端上增加 shell 身份辅助进程。
+APK 只作 `app_process` 的 CLASSPATH，不安装、不申请权限、不改 App/Bridge/MCP。
+虚拟屏需要 API33+；只有 API35 模拟器已做设备验证，API33/34 与真机/OEM 尚待验收。
+
+```text
+CLI display / observe --display / action --display
+  -> CLI 专用 service 装配
+     -> internal/vdisplay -> 检查 shell 进程及 socket inode/fd 归属
+        -> 每次独立 adb forward tcp:0 localabstract:aactl-displayd-v1
+        -> displayd -> VirtualDisplay + ImageReader -> 有界 PNG
+     -> input -d / am start --display
+     -> uiautomator dump --windows -> 严格解析 -> 仅返回目标 display 的窗口列表
+```
+
+helper 在连接解析前校验对端 uid，仅接受0/2000；电脑侧在转发前后核对进程和监听
+套接字归属，不信任同名未知套接字。部署比对本地/远端 SHA-256；每次调用结束或失败
+都会尝试移除自己的 forward，stop 等待进程退出并清固定临时文件。
+
+截图来自 helper 的 ImageReader，目标错误时不回退主屏。层级返回
+`format=uiautomator-windows-xml`，只含目标显示的窗口组；底层 `--windows` 的源码
+门槛是 API30，API未知或过低时不会发 dump。不带目标的普通 dump 保持既有 argv，
+但读的是活动窗口：虚拟屏持有焦点时可能返回虚拟屏内容，不能用来证明主屏不变。
+
+主屏 `device.sleep` 使用 KEYCODE_SLEEP。helper 每2秒向虚拟屏组上报用户活动；
+凭据锁定时不保活、不唤醒，截图返回 DEVICE_LOCKED。锁定解除后该组可能继续休眠，
+返回 DISPLAY_ASLEEP；必须关闭重建，原屏应用内容会销毁。API33 无按屏组查询，
+groupAwake 如实为 null，不能保证发现所有“组睡眠但 Display 仍 ON”的情况。
+已在主屏运行的任务再向虚拟屏启动会整体移过去，不自动另开实例。
+
+详细命令、窗口列表形态、恢复与验收入口见[虚拟显示操作](virtual-display.md)。
 
 ### App Bridge 后端
 

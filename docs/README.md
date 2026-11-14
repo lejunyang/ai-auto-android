@@ -6,6 +6,7 @@
 | --- | --- |
 | [架构](architecture.md) | 当前组件、双后端、数据流、信任边界和实现边界 |
 | [协议 v1](protocol.md) | CLI 信封、Bridge JSON-RPC、版本协商、动作和稳定错误码 |
+| [虚拟显示与主屏息屏](virtual-display.md) | helper 构建、CLI、窗口列表、焦点歧义、休眠重建与模拟器验收 |
 | [录制与回放](recording.md) | 语义录制、当前事件范围、选择器、secret 和回放报告 |
 | [真机 USB 验收](device-usb-acceptance.md) | USB 模式、开发者权限、安装、Bridge 和录制回放 smoke |
 | [安全与分发](security-distribution.md) | 风险模型、Google Play 边界、侧载、签名与校验要求 |

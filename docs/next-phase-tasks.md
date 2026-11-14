@@ -1306,9 +1306,10 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
 2. **任意 keycode 与组合键**：`pressKeyCode(int)` 与 `pressKeyCodes`。本轮只把
    协议、直连与 MCP 三处枚举对齐到既有 21 键白名单，未开放任意值。开放会引入
    POWER、CALL、系统设置等键。
-3. **多显示屏**：`By.displayId`、`getDisplayWidth(int)`、
-   `Configurator#setDefaultDisplayId`。MVP 是单屏假设，无障碍跨 display 取节点
-   在 API 30 上能力不一致，会引入版本分叉。
+3. **多显示屏**：电脑侧 shell helper 与 CLI 的安全决策、实现和验收以独立规格
+   [virtual-display-screen-off](../.trae/specs/virtual-display-screen-off/spec.md) 与
+   [进度证据](../.trae/specs/virtual-display-screen-off/progress.md) 为准。
+   不包含 MCP、Bridge 或 App AI 的跨显示出口；后续项见 N60，不回写已完成 MVP。
 4. **视觉动作类型扩展**：`android_visual_action_execute` 目前只允许
    tap / long-click / swipe，是刻意收窄。
 5. **OCR**：`visual-observation-proposal.schema.json` 的 `source` 已预留 `ocr`，
@@ -1326,6 +1327,33 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
 
    （`ime.show` 原与本条并列，现已按「聚焦输入控件」语义在桥侧实现，见
    `.trae/specs/ime-show-focus/`，故从待决清单移除。）
+
+### [ ] Task N60：虚拟显示后续（未实现，分别立项）
+
+目标：在既有电脑侧 CLI 边界上补充发布、兼容性和显式观察语义；任何子项实施前
+都创建独立 change spec，不把路线图计划写成已交付。本次仅登记，未执行下列工作。
+
+| 子项 | 具体步骤与依赖 | 允许修改范围与验收证据 | 建议提交边界 |
+| --- | --- | --- | --- |
+| N60.1 MCP 出口 | 依赖本规格验收；先定义模型动作策略、显示目标和销毁确认，再接命令与观察；保持 Bridge/App 会话边界 | `internal/mcpserver/` 及独立规格；协议仅由集成任务改。证据需含禁止动作、无效目标不回退与真实调用测试 | `feat(mcp): expose approved virtual display operations` |
+| N60.2 发布打包 | 依赖稳定 helper 契约；发布 APK 与 CLI 同版本、固定命名及摘要，验证同目录自动定位与版本不匹配处理 | `scripts/release.sh`、发布配置及独立规格；证据为干净目录解包后的 start/stop 与 SHA-256 | `build(release): package matching displayd helper` |
+| N60.3 API33/34 验证 | 依赖固定 emulator profile；分别验证独立组/焦点标志、API33 groupAwake=null、锁定/休眠/重建、窗口筛选与65秒保活；不以API35推断 | `scripts/emulator/` 新独立脚本/证据目录；若发现产品缺陷，另拆修复任务。每个API记录指纹、连续运行结果和清理 | `test(emulator): verify displayd on API 33 and 34` |
+| N60.4 真机与 OEM 矩阵 | 依赖N60.3；固定型号、ROM、API、ABI、调试方式及fixture版本，核验权限、取帧、输入/IME、锁定与任务迁移 | 独立设备验收脚本与报告；须有每设备明确serial、环境和失败产物，不能将模拟器结论算作真机通过 | `test(device): record virtual display OEM compatibility` |
+| N60.5 普通层级焦点歧义 | API35 已观察到虚拟屏最后输入后普通层级返回fixture；先定义固定主屏与活动窗口的显式语义/兼容策略，再实现并测试双屏交替输入 | `internal/adb/`、必要的service/CLI及独立规格；证据须交叉核对display0/虚拟屏归属，保留既有命令的兼容说明 | `fix(observe): make hierarchy display ownership explicit` |
+| N60.6 摄像头能力决策 | 当前未实现；先审查授权、数据来源与安全边界，再决定是否立项，不随显示功能顺带实现 | 仅独立决策规格；未获决策前不得增加注入或捕获入口 | `docs(spec): define camera automation boundaries` |
+
+并行波次与目录所有权：波次A可分别派发N60.1（mcpserver）、N60.2（release）、
+N60.3（新增emulator脚本）、N60.5（adb/service/CLI）；不得同时修改同一文件。
+N60.4在N60.3后单独进行，N60.6只有决策文档。共享协议、规格状态、导航和矩阵报告
+由单一集成任务在汇合点修改，各任务只交付自己目录的实现与证据。
+
+人工步骤：真机RSA、无障碍/录屏/安装与敏感权限必须用户完成，因为模拟器 test-only
+预置不能代表真实授权；不得自动设置真机PIN或修改其安全设置。模拟器兼容测试继续
+使用明确 test-only 路径，减少重复人工确认。
+
+失败后的回滚/清理：首个失败停止动作并保留限额脱敏证据；清理自己创建的虚拟屏、
+helper、forward和临时文件，恢复模拟器测试PIN/超时并关闭模拟器；不得杀未知进程或
+删除其它任务产物。发布实验只清理独立输出目录，MCP/普通层级改动可按独立提交回滚。
 
 ## UI 产品体验探索（不改变既有验收）
 

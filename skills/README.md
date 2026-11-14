@@ -43,3 +43,18 @@ skills-ref validate skills/android-device-discovery
 skills-ref validate skills/android-device-observation
 skills-ref validate skills/android-device-automation
 ```
+
+## 虚拟显示的 CLI 补充说明
+
+仓库新增的虚拟屏管理、`--display N` 和 `action sleep` 仅供电脑侧 CLI 使用，
+命令与恢复流程见[虚拟显示操作](../docs/virtual-display.md)。三份已发布 Skill 的
+信任、确认与禁止动作边界不变，不能把本功能理解为新增 MCP 或 App AI 权限。
+
+使用显式目标显示的最新截图/窗口列表定位；窗口列表的 format 为
+`uiautomator-windows-xml`。普通层级可能返回持焦点的虚拟屏，不能据此判断主屏。
+显示目标或 helper 失败时不得去掉参数向主屏重试。DEVICE_LOCKED 等待用户正常解锁；
+DISPLAY_ASLEEP 需关闭重建并重新启动应用，须说明原屏应用内容被销毁的效果。
+已在主屏运行的任务向虚拟屏启动会整体移过去；API33 的 groupAwake=null。
+
+本轮说明集中在此目录导航中，未更改 Skill 正文或 Trae 镜像，也未向通用技能开放
+模拟器脚本的测试 PIN 路径；该路径只用于明确授权的 disposable emulator 验收。
