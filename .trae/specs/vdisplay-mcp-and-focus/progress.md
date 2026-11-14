@@ -198,3 +198,65 @@
 - 本次M3仅保存失败准备与真实证据摘要，提交信息为
   `test(emulator): record blocked primary-display focus setup`，**不是M3验收提交**；
   与原建议完成提交信息的差异来自阶段停止。M4工具设备验收和文档交付均未执行。
+
+## 集成方焦点实测（2026-11-14）
+
+- 复核对象 `0acf58b`。M1、M2 的提交范围与三道既有风险门文件（diff 为空）已核对；
+  M3 停在基线未建立，判断正确。以下是集成方为定位卡点做的手工实验，环境与前面
+  各轮相同（AVD `osdk-test-35`、`-read-only -no-snapshot`、唯一设备 `emulator-5554`、
+  同一指纹、主屏 320×640/160dpi、虚拟屏 720×1280/240dpi）。
+- **基线失败的根因**：没有辅助进程时把 fixture 放到主屏，`--display 0` 的层级显示
+  输入框 `bounds=[12,31][308,79]`、`focusable=true`、`focused=false`，而状态栏占
+  `[0,0][320,24]`、标题栏延伸到 y=80。输入框被标题栏完全盖住，点按落在标题栏上。
+  这是 fixture 在 API 35 edge-to-edge 下的布局问题，不是焦点现象。
+- **换用系统设置搜索框后基线成立**：`am start -a android.settings.SETTINGS`，按
+  `--display 0` 层级点按搜索栏，`aactl action text --display 0 --text Primary`。
+  结果：输入框 `text=[Primary] focused=true`；`mCurClient` 属于
+  `com.google.android.settings.intelligence`、`mSelfReportedDisplayId=0`；
+  `mInputShown=true`；显示 0 的窗口列表含输入法窗口；`mTopFocusedDisplayId=0`。
+
+### 未缓解（当前 displayd，标志位 64971）
+
+| 步骤 | 主屏输入法是否显示 | 输入法服务的客户端 | 顶层焦点显示 | 主屏窗口 active/focused | 主屏输入框 |
+| --- | --- | --- | --- | --- | --- |
+| 基线 | 是 | 设置搜索（显示 0） | 0 | true/true | `Primary`，有焦点 |
+| 启动辅助进程并创建虚拟屏 | 是 | 设置搜索（显示 0） | 0 | true/true | 不变 |
+| 在虚拟屏启动 fixture | **否** | **fixture（显示 2）** | **2** | **false/false** | 文本不变 |
+| 虚拟屏点按非输入区 | 否 | fixture（显示 2） | 2 | false/false | 文本不变 |
+| 虚拟屏点按输入框 | **是，且显示在主屏** | **fixture（显示 2）** | 2 | false/false | 文本不变 |
+
+结论：未缓解时，在虚拟屏上启动应用就会打断主屏输入——主屏键盘收起、输入法改为
+服务虚拟屏应用。点按虚拟屏输入框后键盘重新出现在**主屏**上，但服务对象是虚拟屏的
+输入框，用户此时在主屏键盘上敲的字会进入虚拟屏应用。虚拟屏的输入法策略原值为
+HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应用）在已被打断的状态下
+没有继续测量。
+
+### 缓解后（一次性探针，标志位 130507 = 64971 | 1<<16）
+
+探针即 Round 0 的一次性程序（非仓库产物），只改了创建标志。`Display.getFlags()`
+由 20360 变为 24456（多出 `1 << 12`，即显示层的「禁止抢占顶层焦点」）。
+
+| 步骤 | 主屏输入法是否显示 | 输入法服务的客户端 | 顶层焦点显示 | 主屏窗口 active/focused | 主屏输入框 |
+| --- | --- | --- | --- | --- | --- |
+| 重新建立基线 | 是 | 设置搜索（显示 0） | 0 | true/true | `Primary`，有焦点 |
+| 创建虚拟屏 | 是 | 设置搜索（显示 0） | 0 | true/true | 不变 |
+| 在虚拟屏启动 fixture | 是 | 设置搜索（显示 0） | 0 | true/true | 不变 |
+| 虚拟屏点按非输入区 | 是 | 设置搜索（显示 0） | 0 | true/true | 不变 |
+| 虚拟屏点按输入框 | 是 | 设置搜索（显示 0） | 0 | true/true | 不变 |
+| 虚拟屏 `input -d N text Virtual` | 是 | 设置搜索（显示 0） | 0 | true/true | 不变 |
+| 虚拟屏 `input -d N keyevent KEYCODE_DEL` | 是 | 设置搜索（显示 0） | 0 | true/true | 不变 |
+| 在虚拟屏启动时钟 | 是 | 设置搜索（显示 0） | 0 | true/true | 不变 |
+| 主屏 `action text --display 0 --text X` | 是 | 设置搜索（显示 0） | 0 | true/true | `PrimaryX` |
+| 不带显示的 `input text Q` | 是 | 设置搜索（显示 0） | 0 | true/true | `PrimaryXQ` |
+
+虚拟屏一侧同时成立：取帧目视为 fixture，`INPUT:Virtua`（输入 Virtual 后删一字）、
+`CLICK` 计数递增；`dumpsys activity activities` 中显示 0 的前台仍是设置搜索，虚拟屏
+前台按步骤变化；`uiautomator dump --windows` 仍包含该虚拟屏的显示分组。
+
+结论：在 API 35 模拟器上，追加该标志后虚拟屏上的启动、点按、文本、按键都不再影响
+主屏的输入法与焦点，且虚拟屏自身的输入仍然有效。未带显示的按键落在主屏。
+
+- 这些是手工实验数据，用来确定方向；验收证据仍须由 M3 的脚本独立复现两组结果。
+- 未验证：API 34（标志自该版本起存在，未上机）、真机与 OEM、硬件键盘、虚拟屏上
+  需要输入法才能完成的输入（中文等，带该标志后输入法不会服务虚拟屏）。
+- 清理：探针已停止，设备临时文件与转发已清，模拟器已关闭。
