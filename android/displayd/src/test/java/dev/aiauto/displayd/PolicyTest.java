@@ -46,6 +46,22 @@ public class PolicyTest {
         Policy.captureAllowed(false);
         rejects("DEVICE_LOCKED", () -> Policy.captureAllowed(true));
     }
+    @Test public void captureRejectsSleepingGroupEvenWhenDisplayReportsOn() throws Exception {
+        rejects("DISPLAY_ASLEEP", () -> Policy.captureAllowed(false, false, 2));
+    }
+    @Test public void captureRejectsOffDisplayWhenGroupQueryIsUnavailable() throws Exception {
+        rejects("DISPLAY_ASLEEP", () -> Policy.captureAllowed(false, null, 1));
+        rejects("DISPLAY_ASLEEP", () -> Policy.captureAllowed(false, null, 3));
+    }
+    @Test public void credentialLockTakesPriorityOverSleepingGroup() throws Exception {
+        rejects("DEVICE_LOCKED", () -> Policy.captureAllowed(true, false, 1));
+    }
+    @Test public void api33UnknownGroupIsNotPretendedAwake() throws Exception {
+        Policy.captureAllowed(false, null, 2);
+    }
+    @Test public void rejectedConnectionCloseFailureDoesNotEscape() throws Exception {
+        Policy.closeRejected(() -> { throw new java.io.IOException("peer close failed"); });
+    }
     @Test public void distinguishesCredentialLockFromSwipeKeyguard() {
         assertFalse(Policy.credentialLocked(false, false));
         assertFalse(Policy.credentialLocked(false, true));

@@ -127,3 +127,42 @@
     处理并使整个辅助进程退出。
 - 清理：`shutdown` 返回 `stopped:true`，`pidof` 无输出，无残留虚拟屏与转发，设备
   临时文件已删，模拟器已关闭。
+
+## Round 2：T1b 休眠拒帧与拒绝连接隔离（2026-11-14）
+
+- 开工核对 clean，HEAD=d76e054，分支 virtual-display-screen-off；两处 worktree 与用户描述
+  一致，未写主工作区。完成全部前置阅读后只修改 android/displayd 与本规格状态文件。
+- RED：新增 5 项回归测试，临时沿用原策略接线；`:displayd:testDebugUnitTest` 实际为
+  34 tests completed, 3 failed。失败分别为组休眠但 Display 仍 ON、API 33 非 ON、
+  拒绝连接 close 抛 IOException。锁定错误优先级与 API 33 未知组状态用例通过。
+- GREEN：编码前后检查凭据锁、显示有效性、按屏 interactive（API 34+）和 Display 状态，
+  组为 false 或屏非 ON 返回 DISPLAY_ASLEEP，不携带二进制体。拒绝连接统一使用已测试的
+  closeRejected，close IOException 不会逃到 accept 外层。API 33 继续返回未知组状态，
+  仅可拒绝非 ON，无法保证识别 state=ON 但组休眠的黑帧，README 明确保留此限制。
+- 恢复结论：明确错误 + 关闭重建，不自动唤醒。调查 AOSP android15-release 的
+  PowerManagerService.wakeUp，DEVICE_POWER 路径固定 DEFAULT_DISPLAY_GROUP；
+  applyWakeLockFlagsOnAcquireLocked 可按显示组，但依赖 TURN_SCREEN_ON/兼容策略。
+  本次 shell targetSdk=35，有 DEVICE_POWER、WAKE_LOCK，无 TURN_SCREEN_ON；未引入依赖
+  兼容豁免的唤醒路径，更没有在凭据锁定期间尝试唤醒。
+  来源：https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/services/core/java/com/android/server/power/PowerManagerService.java
+- API 35 原始 adb 复测（一次性有界 Node 标准库客户端，非 CLI 验收）：唯一设备
+  emulator-5554，启动参数与任务书一致，boot_completed=1；320×640、160 dpi、
+  navigation_mode=2。AVD osdk-test-35，google_apis x86_64，指纹
+  google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+  未修改超时、AVD/system image/osdk 配置。构建 APK SHA-256 与设备端一致：
+  e3f5350b5736e84ac97a560a0966e2942f6e7319d3f25c4ff94945951f0f3364。
+  - shell 进程 PID 3790；forward 分配 tcp:61534；hello v1，建屏 2，720×1280/240dpi。
+  - 启动 Settings 后取帧 78827 字节；设置测试 PIN 后 KEYCODE_SLEEP，
+    credentialLocked=true 时 capture 返回 DEVICE_LOCKED。
+  - 观察到 groupAwake=false 后清 PIN，KEYCODE_WAKEUP、wm dismiss-keyguard；
+    credentialLocked=false、state=2、groupAwake=false、保活时间戳恢复递增，
+    capture 返回 DISPLAY_ASLEEP，未返回旧缺陷中的 6358 字节黑帧。
+  - close 2、create 3、重新启动 Settings，groupAwake=true；78827 字节 PNG，
+    720×1280，已目视确认为正常 Settings 首页。关闭的应用内容须重新启动，README 明示。
+- 验证：make comments 通过（571 文件、16 个自测）；make android-verify 通过，
+  displayd 34 项，全 Android JUnit XML 汇总 612 项、0 failure/error、1 项既有跳过。
+  未开始 Go 或 CLI 实现；功能清单现有 T1 原始协议证据不代表 CLI 已验收。
+- 清理：shutdown stopped=true，pidof 无输出；仅剩 display 0；移除 tcp:61534 后
+  forward --list 空；设备 APK/日志 ls 返回不存在；测试 PIN 已清除。
+  emu kill 返回 OK，随后 devices 为空，emulator/qemu 进程已退出（退出存在短暂延迟）。
+  临时客户端、PNG 与日志只位于忽略的 displayd/build 下，未加入 Git。

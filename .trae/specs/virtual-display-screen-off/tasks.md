@@ -22,6 +22,18 @@
 证据：Round 1（29 项 JVM 单测、API 35 原始 adb 冒烟）；锁定策略为实现与单测证据，
 PIN/息屏/超时端到端仍属 T4。API 33 的 `groupAwake=null` 限制见 Round 1 与模块 README。
 
+## T1b：复核缺陷修复（T2 前置）
+
+目录所有权：`android/displayd/` 与本规格状态文件，串行汇合点为本阶段提交。
+失败时停止后续阶段，shutdown、移除本次 forward、删设备临时文件、清 PIN、关闭模拟器。
+
+- [x] 先写失败测试：休眠组拒帧、API 33 非 ON 拒帧、拒绝连接关闭异常隔离
+- [x] 编码前后检查组状态，新增 `DISPLAY_ASLEEP`；API 33 查询限制如实记录
+- [x] 调查固定框架唤醒路径，采用明确错误 + 关闭重建，README 说明销毁语义
+- [x] API 35 PIN 往返：锁定拒帧、解锁后休眠拒帧、重建恢复正常帧
+- [x] `make comments`、`make android-verify`
+- [x] 提交：`fix(displayd): reject capture while the display group is asleep`
+
 ## T2：Go 侧显示参数与辅助进程客户端
 
 目录所有权：`internal/adb/`、`internal/vdisplay/`、`internal/apperr/`。

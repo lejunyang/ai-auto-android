@@ -53,9 +53,9 @@ public final class Main {
                 try {
                     // 连接后第一步获取内核凭据；任何读取、调度或方法解析之前拒绝非授权 uid。
                     if (!Policy.acceptsUid(client.getPeerCredentials().getUid()) || !slots.tryAcquire()) {
-                        client.close(); continue;
+                        closeClient(client); continue;
                     }
-                } catch (IOException error) { client.close(); continue; }
+                } catch (IOException error) { closeClient(client); continue; }
                 clients.add(client);
                 workers.execute(() -> serve(client));
             }
@@ -100,7 +100,7 @@ public final class Main {
     }
 
     private static void closeClient(LocalSocket client) {
-        try { client.close(); } catch (IOException ignored) { /* 对端已关闭时无需额外清理。 */ }
+        Policy.closeRejected(client);
     }
 
     private void close() {

@@ -117,6 +117,7 @@ API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`�
 | `DISPLAY_NOT_FOUND` | 不归本进程所有（包括主屏 0）或已被系统移除，绝不回退主屏 |
 | `FRAME_NOT_READY` | 尚未收到图像，调用方重新观察后可另发请求 |
 | `DEVICE_LOCKED` | 当前前台用户被凭据锁定，拒绝帧，不尝试唤醒/解锁 |
+| `DISPLAY_ASLEEP` | 显示组明确未唤醒或显示状态非 ON，拒绝帧；关闭并重建虚拟屏（其上应用被销毁） |
 | `LOCK_STATE_UNAVAILABLE` | 无法可靠读取当前用户锁定状态，拒绝帧并跳过保活 |
 | `CAPTURE_FAILED` | PNG 编码器返回失败 |
 | `FRAMEWORK_ERROR` | 固定框架接口或隐藏 API 调用失败，详情仅在设备日志 |
@@ -126,11 +127,30 @@ API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`�
 销毁内容与触摸等策略，API 34+ 才启用独立焦点与设备显示组；不含 `SECURE`，安全窗口
 仍由系统遮黑。每 2 秒在虚拟屏 displayId 所属组上报 `userActivity`，不调用 `wakeUp`。
 每次上报前检查当前前台用户的 `isDeviceSecure && isDeviceLocked`，凭据锁定时不调用
-电源接口。取帧在编码前后各检查一次锁定状态；状态无法读取也拒绝。
+电源接口。取帧在编码前后各检查一次凭据锁、显示有效性、显示组唤醒状态与显示状态；
+锁定或组查询失败也拒绝，不发送帧体。拒绝连接时的关闭异常仅影响当前连接，不终止进程。
+
+### 显示组休眠后的恢复
+
+API 35 模拟器经历「设 PIN → 息屏 → 清除 PIN 并解锁」后，虚拟屏可能继续 Dozing，
+即使 `state=2`、保活时间戳递增也不能证明该组已唤醒。此时返回 `DISPLAY_ASLEEP`。
+调用方须 `display.close` 后 `display.create`，在新的 displayId 上重新启动应用；
+**关闭会销毁该屏上的应用内容**，不会搬回主屏，也不承诺保留应用状态。
+
+本实现不自动唤醒已休眠的显示组。API 35 的固定 `DEVICE_POWER` binder `wakeUp`
+只操作默认显示组；绑定显示的 WakeLock 唤醒路径另依赖 `TURN_SCREEN_ON` 权限/兼容
+策略（本次 shell targetSdk=35，未授予该权限），没有可靠恢复证据，不引入该路径。
+依据：[AOSP PowerManagerService](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/services/core/java/com/android/server/power/PowerManagerService.java)
+中的 `wakeUp` 与 `applyWakeLockFlagsOnAcquireLocked`。
+
+API 33 **无法按屏查询电源组**：`groupAwake=null`、`groupAwakeQuery=false`。取帧只
+能检查凭据锁与 `Display.getState()` 是否 ON；若系统在组休眠时仍报告 ON，无法可靠
+识别该情况，不能承诺拒绝所有休眠黑帧。没有使用主屏或全局状态代替；API 33 仍待设备验证。
 
 ## 验证边界
 
 JVM 测试独立覆盖协议解析、预算、uid 白名单、版本标志与凭据锁定决策。API 35
 模拟器冒烟证据见 `.trae/specs/virtual-display-screen-off/progress.md` Round 1。
-API 33/34、真机、OEM、锁定端到端、主屏息屏和 15 秒超时保活等完整兼容验收仍留待
+T1b 的 API 35 PIN 往返验证了 DEVICE_LOCKED → DISPLAY_ASLEEP → 重建后正常帧。
+API 33/34、真机、OEM、CLI 端到端、主屏息屏和 15 秒超时保活等完整兼容验收仍留待
 后续任务；本模块不宣称这些设备场景已验收。

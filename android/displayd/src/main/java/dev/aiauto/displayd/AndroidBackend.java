@@ -125,10 +125,10 @@ final class AndroidBackend implements AutoCloseable {
             }
             case "display.capture" -> {
                 Screen screen = owned(request.displayId());
-                Policy.captureAllowed(credentialLocked());
+                captureAllowed(request.displayId());
                 byte[] png = screen.capture();
-                // 编码期间设备可能被锁定，再检查一次；错误响应从不携带帧体。
-                Policy.captureAllowed(credentialLocked());
+                // 编码期间设备可能锁定或显示组休眠，再检查一次；错误响应从不携带帧体。
+                captureAllowed(request.displayId());
                 return new Reply(Protocol.fields("displayId", request.displayId(), "width", screen.width,
                         "height", screen.height, "format", "png", "bytes", png.length), png);
             }
@@ -145,6 +145,16 @@ final class AndroidBackend implements AutoCloseable {
         Screen screen = screens.get(id);
         if (screen == null) throw new Protocol.Failure("DISPLAY_NOT_FOUND", "display is not owned by this helper");
         return screen;
+    }
+
+    private void captureAllowed(int id) throws Exception {
+        // 先查凭据锁，锁定时不触碰任何电源操作；查询失败也不得发送帧。
+        Policy.captureAllowed(credentialLocked());
+        Display current = displays.getDisplay(id);
+        if (current == null || !current.isValid())
+            throw new Protocol.Failure("DISPLAY_NOT_FOUND", "display was removed by system");
+        Boolean awake = interactive == null ? null : (Boolean) interactive.invoke(power, id);
+        Policy.captureAllowed(credentialLocked(), awake, current.getState());
     }
 
     private List<Object> describe(boolean status) throws Exception {

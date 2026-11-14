@@ -32,4 +32,15 @@ final class Policy {
     static void captureAllowed(boolean credentialLocked) throws Protocol.Failure {
         if (credentialLocked) throw new Protocol.Failure("DEVICE_LOCKED", "device is credential locked");
     }
+    // 锁定优先；API 33 无法查组状态，只能拒绝已知非 ON 的屏，不能声称组已唤醒。
+    static void captureAllowed(boolean credentialLocked, Boolean groupAwake, int state) throws Protocol.Failure {
+        captureAllowed(credentialLocked);
+        if (Boolean.FALSE.equals(groupAwake) || state != 2)
+            throw new Protocol.Failure("DISPLAY_ASLEEP", "display group is asleep; close and recreate the display (destroys its apps)");
+    }
+    // 拒绝单个客户端的清理失败不能扩大成整个辅助进程退出。
+    static void closeRejected(java.io.Closeable client) {
+        try { client.close(); }
+        catch (java.io.IOException ignored) { /* 对端异常仅影响当前连接。 */ }
+    }
 }
