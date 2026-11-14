@@ -1,11 +1,15 @@
 # 宿主侧虚拟摄像头选型
 
+现状核对：2026-11-14，基线 `984ee31`。本文件维护选型状态；早期对 OBS/Unity 的
+推荐已被后续实测否定。依据见[摄像头当前路线](camera-virtual-stacks.md)与
+[DirectShow 实测](host-virtual-camera-verdict.md)，本轮未运行设备或核查宿主安装。
+
 **目的**：在宿主上提供一个可编程的虚拟摄像头，模拟器以 `-camera-back webcam0` 接入，
 实现「模拟器长期待命、按需扫到运行时生成的码」且**不重启模拟器**。
 
 前置结论见 `docs/mcp-text-input-and-webcam.md`：`webcam0` 通道已实测成立
 （`fake_camera` 从 `back` 变 `none`，相机应用拍到宿主真实画面），
-缺的只是宿主侧一个由软件驱动的摄像头设备。
+该证据只适用于实体摄像头，不能推断 OBS/Unity 软件后端同样可用。
 
 ## 1. 结论先行
 
@@ -15,9 +19,10 @@
 | --- | --- | --- |
 | 业务层（生成码、渲染帧） | 自己的代码 | 是 |
 | **统一 API** | **pyvirtualcam** | **是** |
-| 驱动层 | Windows/macOS 用 OBS，Linux 用 v4l2loopback | 否，各不相同 |
+| 驱动层 | Windows 的 OBS/Unity 已否定；Linux v4l2loopback、Windows MF、macOS 路线均未验 | 各平台单独验收 |
 
-`pyvirtualcam` 是关键：它在三种驱动之上提供一致接口，业务代码写一次即可。
+`pyvirtualcam` 可统一宿主推帧 API，但不解决 emulator 枚举。以下 macOS/第三方版本
+说明保留早期调研口径，本轮未重新核实，不能据此声称任何平台已经完成换码。
 
 ## 2. 为什么不是 Webcamoid / AkVirtualCamera
 
@@ -43,20 +48,13 @@ sudo modprobe v4l2loopback devices=1 video_nr=10 card_label="AACTL Virtual Cam"
 
 这是三个平台里最适合 CI / headless 环境的。
 
-### 3.2 Windows — OBS Studio（推荐）或 Unity Capture（更轻）
+### 3.2 Windows — OBS / Unity Capture 已否定
 
-| | OBS Studio | Unity Capture |
-| --- | --- | --- |
-| 体量 | ~140MB | ~1MB |
-| 安装 | 常规安装包 | 跑一个 `.bat` 注册 DirectShow 滤镜 |
-| 需要打开 GUI | **否**，装完注册即可写入 | 否 |
-| 维护 | 活跃，主流 | 社区项目，更新慢 |
-| 像素格式 | 常规 | 支持 RGBA（带透明通道） |
-
-**推荐 OBS**：虽然体量大两个数量级，但它是 pyvirtualcam 在 Windows 上的默认后端，
-装完后**不需要打开 OBS 窗口**就能写入——这点常被误解。
-
-若在意体量（比如要塞进 CI 镜像），Unity Capture 是合理替代，代价是手动注册与较弱的维护。
+两者都是 DirectShow 滤镜，无 PnP 实例；emulator 的 Media Foundation 路径不枚举。
+OBS 虽提供 NV12 等格式仍失败，因此原“OBS 推荐/Unity 轻量替代”不再适用。
+统一推帧 API、注册成功或 `fake_camera=none` 都不能代替 Android 相机数和解码后置。
+Windows MF Frame Server 是另一条待验路线，不能把 DirectShow 失败外推到它。
+完整对照数据见 [host verdict](host-virtual-camera-verdict.md) §1-3。
 
 ### 3.3 macOS — OBS Studio 30+（几乎是唯一选择）
 
@@ -109,9 +107,9 @@ macOS 上则做不到——这是 OBS 的设计限制，不是 pyvirtualcam 的�
 | 方案 | 每次换码耗时 | 一次性成本 |
 | --- | --- | --- |
 | 当前：重启换 `imagefile`/`videofile` | **约 90 秒**（冷启动 50s + 预置配对 40s） | 无 |
-| 虚拟摄像头 | **< 1 秒** | 宿主装一个软件 |
+| 待验虚拟摄像头路线 | 未核实；原“<1秒”仅为方案估计，Windows DirectShow 已失败 | Linux 内核模块或 Windows MF 构建环境；macOS 未验 |
 
-扫码若在自动化流程里反复出现，虚拟摄像头方案的优势随次数线性放大。
+只有枚举、相机数量与不重启解码两个不同 payload 均通过后，才能比较换码成本。
 
 ## 6. 与项目基线的关系
 
@@ -124,34 +122,24 @@ macOS 上则做不到——这是 OBS 的设计限制，不是 pyvirtualcam 的�
 
 这是它比「自建系统镜像」「刷 Magisk + LSPosed」优越的根本原因——那两条都要动 AVD 本身。
 
-## 7. 本机现状
+## 7. 宿主状态（当前未核实）
 
 | 项 | 状态 |
 | --- | --- |
-| OBS Studio | **未安装** |
-| OBS 虚拟摄像头 DirectShow 注册 | **未注册** |
+| OBS Studio | 早期未安装；后续实测记录已安装，当前是否保留未核实 |
+| OBS 虚拟摄像头 DirectShow 注册 | 后续已注册但 emulator 不枚举；当前注册状态未核实 |
 | Python | 3.14.7，满足 pyvirtualcam 要求 |
 | 实体摄像头 | `HD Webcam`（NV12），`webcam0` 通道已验证可用 |
 
-## 8. 建议的落地顺序
+## 8. 后续验证顺序与边界
 
-1. 宿主装 OBS（Windows 本机），确认虚拟摄像头注册成功；
-2. `pip install pyvirtualcam`，写一个最小验证：渲染一个已知 payload 的二维码推进去；
-3. 模拟器以 `-camera-back webcam0` 启动，用扫码 app 验证能读到该 payload；
-4. **验证换码**：不重启模拟器，改推第二个 payload，确认扫到的内容跟着变——
-   这是整件事成立与否的判据；
-5. 通过后再在 CLI/MCP 侧封装成 `aactl camera set-qr --payload <text>` 之类的命令，
-   并在 `scripts/emulator/` 的环境检查里加上虚拟摄像头存在性检测。
+1. 先选 Linux v4l2loopback 或 Windows MF 的独立环境，建立 change spec；N55 记录 Linux 目标、依赖与清理。
+2. 先确认 `emulator -webcam-list` 枚举候选，再检查 Android 相机数，最后验证不重启扫到两次不同的新 payload。枚举通过只算前置。
+3. 只在全部判据通过后评估 CLI/MCP 封装；当前没有产品化摄像头喂帧入口。失败时保留否定结论并清理该任务资源。
 
-**第 4 步是关键**，前三步都成立也不代表第 4 步成立（`imagefile` 就是栽在这里）。
-
-## 9. 需要你决定
-
-1. **是否接受宿主装 OBS**（约 140MB）。若在意体量，Windows 可改 Unity Capture，
-   但 macOS 没有轻量替代。
-2. **是否只做 Windows**。若团队只在 Windows 上跑自动化，可以直接用 Unity Capture，
-   1MB 且不需要 GUI，比 OBS 更贴合。
-3. 你点头后我可以把第 1–4 步跑完，给出端到端换码的实测结论。
+宿主内核模块、系统扩展与驱动安装涉及系统状态，后续实施需明确环境与授权，
+本次文档审计不执行安装、注册、推帧或任何设备步骤。macOS 的旧研究没有设备证据，
+保持未核实；Windows 不再建议重复安装 OBS/Unity 验证同一条已失败路线。
 
 ## 参考来源
 

@@ -1,8 +1,19 @@
 # 下一阶段可执行任务
 
-> 本文件是 N31-N54 唯一执行与状态源，不回写当前 MVP 验收清单。
+> 本文件是 N31-N60 路线图与任务级状态入口；N56 分项见
+> [UI 追踪](consumer-agent-ui-tasks.md)，动作面 A1-A17 另见
+> [动作面追踪](action-surface-tasks.md)。不回写当前 MVP 验收清单。
 >
-> **当前执行状态（2026-08-01）：** N31、N32、N34、N36、N39、N40、N42、
+> **现状核对（2026-11-14，基线 `984ee31`）：** N31-N34、N36、N38-N46
+> 已有各自范围内的交付证据；N35、N37、N47-N56 保持未完成或条件待办。
+> N57 的窗口、瞬时消息与剪贴板写入，N58 的 scroll-until、事件判据和选择器扩展
+> 已实现并有单测，但仍有未交付余项或设备验收缺口，整项不勾选。
+> 文件传输 CLI/MCP 与 `ime.show` 出口已实现；N59 保留其已决结论，未决项继续待办。
+> N60 以本 worktree 基线为准，不能把并行分支上的计划视为已合入能力。
+> 下方带日期的“实现/追加记录”按时序保留，早期“未完成”由后续记录收口，不能单独
+> 用作当前缺口。逐项证据见[本次审计](../.trae/specs/docs-stale-audit/progress.md)。
+>
+> **阶段记录（2026-08-01）：** N31、N32、N34、N36、N39、N40、N42、
 > N43、N44、N46 已取得对应实现、测试或设备证据并合入 `main`。N37/N38 的持续加密
 > Bridge RPC 和 Go/Kotlin 真实 socket 已通过，但跨平台、相机与真机矩阵仍待验收；
 > N33 已完成 ListView 重设计与 API 30/33/34 各 20 轮 clean 完整矩阵。下一阶段任务
@@ -30,7 +41,7 @@
 - 本地 SDK/cache 根由 `AACTL_TOOLCHAIN_ROOT` 显式配置，并兼容旧
   `ANDROID_TOOLS_ROOT`；仓库 runner 不绑定 macOS 卷名、Windows 盘符或用户目录。
 
-**跨平台与 CI 修复（2026-08-01）：** GitHub 公共 API 确认远端 `verify.yml`
+**跨平台与 CI 修复历史记录（2026-08-01，非当前远端状态）：** GitHub 公共 API 确认远端 `verify.yml`
 最新 run `30197184628` 的 Ubuntu/macOS Go、Android、协议、Skills 与 metadata
 均成功，Windows 唯一失败在 gofmt；三个附加跨平台 workflow 也仅 Windows 失败。
 独立 portability change 固定源码 checkout 为 LF、batch 为 CRLF，增加跨平台格式
@@ -1232,24 +1243,28 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
 > 来源：`artifacts/uiautomator-gap/uiautomator-capability-gap.md` 的三通道对比。
 > Wave A（协议与文档一致性）、Wave B（CLI 表面补齐）、Wave C（MCP 语义动作）
 > 已实现并合入，change spec 见 `.trae/specs/uiautomator-gap-alignment/`。
-> 本节只登记**尚未实施**的部分，不回写已完成 MVP 结论。
+> 本节同时保留后续已实施的收口指向与未完成余项，不回写已完成 MVP 结论。
 
 ### [ ] Task N57：Bridge 观察面扩展（多窗口、瞬时消息、剪贴板）
 
-**目标：** 把三处「已实现但不过线」的桥侧观察与动作能力接到协议与调用方。
+**目标：** 收口多窗口、瞬时消息和剪贴板能力；保持读取的独立安全决策边界。
+
+**现状（2026-11-14）：** 窗口、瞬时消息和剪贴板写入已由
+[window-toast-event-clipboard](../.trae/specs/window-toast-event-clipboard/tasks.md)
+（`6843cf5`）接通。真机窗口/Toast/写入验收仍待完成，`clipboard.get` 刻意无出口，
+因此 N57 保持未勾选。原“写入后读回”验收不能通过尚未开放的 get 自动完成。
 
 **具体步骤：**
 
-1. `WindowSnapshotter.snapshotWindows` 已枚举多窗口并用于节点查找，但
-   `ui.snapshot` 只序列化单个 root，窗口集合不过线。协议新增 `windows` 数组，
-   字段参照 UIAutomator 2.4.0 的 `UiWindow`：id、layer、type、package、title、
-   bounds、active、focused。
-2. `TransientMessageCapture` 已在无障碍服务内缓冲 Toast 与通知，但
-   `AndroidBridgeMethods.handle` 没有对应方法。新增 `ui.transientMessages`，
-   复用敏感节点脱敏策略，返回文本与时间戳。
-3. `clipboard.set` / `clipboard.get` 在协议与 App 内校验里都存在，桥侧 parser
-   的 29 个分支却没有映射，`ClipboardGateway` 在 `android/app/src/main` 下零
-   生产调用方。接线到 `AccessibilityActionRouter`，剪贴板内容不得进日志。
+1. 已实现独立 `ui.windows` 方法，CLI `bridge windows` 与 MCP
+   `android_observe kind=windows` 读取有界窗口数组；`ui.snapshot` 仍保留单 root 语义。
+2. 已实现 `ui.transientMessages`，CLI `bridge messages` 与 MCP
+   `kind=transientMessages` 返回脱敏文本及 `eventTimeMs`，读取不清空缓冲。
+3. `clipboard.set` 已接桥侧 parser/router，可由 CLI `bridge action --stdin` 调用；
+   没有专用 CLI 子命令，MCP `android_bridge_action` 仍排除剪贴板动作。
+   规格提出的 MCP 独立写入风险门尚未落地，应另立规格收口。`clipboard.get` 无出口，
+   锁定测试 `clipboard get has no bridge entry point` 保留。读取需先决策默认 IME
+   或前台夺焦路线，再独立立项；不得当作漏接线直接开放。
 
 **依赖与并行：** 依赖已合入的 Wave A 协议对齐。三项都要动
 `AccessibilityCommandJsonParser.kt` 与 `AndroidBridgeMethods.kt`，必须串行或
@@ -1260,26 +1275,32 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
 `internal/service/`。
 
 **验收证据：** Android 单测与 Go round-trip fixture；模拟器上对话框或输入法场景
-能定位到非活动窗口节点；Toast 文本带时间戳且已脱敏；剪贴板写入后读回一致。
+能定位到非活动窗口节点；Toast 文本带时间戳且已脱敏；剪贴板写入后由测试应用粘贴
+核对内容，不依赖未开放的读取出口。真实权限步骤仍由用户完成。
 
 **建议提交：** `feat(bridge): expose multi-window snapshot and transient messages`
 
 ### [ ] Task N58：可组合等待原语与选择器维度
 
-**目标：** 补齐两个结构性缺失的判据能力，并扩展选择器维度。
+**目标：** 收口可组合滚动、事件型判据和选择器维度，明确已支持范围与余项。
+
+**现状（2026-11-14）：** 已由 `6843cf5`、`0976f13`、`841b7a9`、`36e4d11`
+实现并有定向测试，见
+[事件判据](../.trae/specs/window-toast-event-clipboard/tasks.md)、
+[C10/C12](../.trae/specs/selector-consistency-c12-c10/tasks.md) 与
+[regex](../.trae/specs/selector-regex-match/tasks.md)。设备判据时机、长列表验收仍缺证据，
+`hint`、UIAutomator 式 `hasParent` 和深度查询尚不支持，整项保持未勾选。
 
 **具体步骤：**
 
-1. 新增 `ui.scrollUntil`：现状是 `ui.scrollIntoView`（按 target）与
-   `check wait`（按判据）两件分开的事，无法表达「滚动直到判据成立」。
-   对应 UIAutomator 的 `UiObject2.scrollUntil(Direction, Condition)`。
-2. 判据增加事件型条件。签名级核对确认 UIAutomator 的 `EventCondition` 一共只有
-   `newWindow()` 与 `scrollFinished(Direction)` 两个，因此范围明确有限。
-   现有 `window` 判据是文本比较而非「出现了新窗口」事件。
-3. 选择器维度扩展。`selectorCandidate.strategy` 只有 6 种，而 UIAutomator 2.3.0
-   的 `By` 有 31 个工厂。缺 `clazz`、`hint` 四件套（hint / hintContains /
-   hintStartsWith / hintEndsWith）、`hasParent`、`depth` / `minDepth` / `maxDepth`，
-   以及 text/desc 的 StartsWith / EndsWith 变体。
+1. `ui.scrollUntil` 已有服务层、CLI `check scroll-until` 和 MCP `android_scroll_until`，
+   复用直连判据求值器并限制 `maxScrolls`；仍需设备上的长列表后置证据。
+2. `newWindow` / `scrollFinished` 已接直连轮询求值，不承诺捕获每个真实事件，
+   也不能由此声称 App ReplayEngine 已支持这两种事件判据。
+3. 选择器策略现有 8 种，含 `className` / `package`；桥侧文本类策略的 `match`
+   支持 exact/contains/startsWith/endsWith/regex，默认 exact。Go `check` 的扁平选择器
+   没有该 `match` 字段。仍缺 `hint`、`hasParent` 和 depth/minDepth/maxDepth；
+   是否扩展这些结构能力需后续独立规格，不把 UIAutomator 工厂数量当本项目枚举数。
 
 **依赖与并行：** 依赖 N57。第 1、2 项与第 3 项都会动
 `internal/adb/predicate.go`，必须串行或交同一 owner。
@@ -1289,20 +1310,25 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
 `android/.../accessibility/action/AccessibilityActionRouter.kt`、
 `android/.../accessibility/selector/SelectorMatcher.kt`。
 
-**验收证据：** 长列表目标在第 N 屏时命中，`maxScrolls` 耗尽时零提交失败关闭；
+**验收证据：** 长列表目标在第 N 屏时命中，`maxScrolls` 耗尽后停止滚动并返回
+`satisfied:false`，如实记录已经发生的滚动，不声称零提交；
 跨 Activity 跳转时新窗口出现前不误判成立；选择器匹配单测覆盖新增维度。
 
 **建议提交：** `feat(protocol): add scroll-until and event predicates`
 
 ### [ ] Task N59：需安全决策的能力（决策前置，不得直接实施）
 
-以下能力技术可行，但都触及安全、授权或确定性边界，**必须先在独立 change spec
-里落决策**，不得在实现其它任务时顺手引入：
+本节保留已决能力的交付指向，其余能力仍触及安全、授权或确定性边界，**必须先在
+独立 change spec 里落决策**，不得在实现其它任务时顺手引入：
 
-1. **文件传输出口**：`Service.PushFile` / `PullFile` 已实现且在 `Automation`
-   接口内，但没有任何通道出口。暴露前需定义远端路径白名单、是否要求当次确认、
-   本地写入边界。当前由 `internal/cli/direct_surface_test.go` 的
-   `TestFileTransferHasNoCLIEntryPoint` 锁定该缺口不被顺手填上。
+1. **文件传输出口：已决并实现，非缺口。** CLI `aactl file push|pull` 由
+   [file-transfer-no-overwrite](../.trae/specs/file-transfer-no-overwrite/tasks.md)
+   （`4da5182`）交付；MCP `android_file_push` / `android_file_pull` 由
+   [mcp-file-and-ime-show](../.trae/specs/mcp-file-and-ime-show/tasks.md)
+   （`008cf40`）交付，走独立文件传输风险门。两者共享路径校验、传输前存在性检查、
+   无删除和无覆盖开关；未引入路径前缀白名单，MCP pull 写入运行服务的主机。
+   `TestFileTransferRefusesToOverwriteOrDelete` 已替代旧的无出口测试。
+   检查与写入仍有 TOCTOU 窗口，不承诺原子不覆盖；真机拒绝与空格路径证据仍见文末待验项。
 2. **任意 keycode 与组合键**：`pressKeyCode(int)` 与 `pressKeyCodes`。本轮只把
    协议、直连与 MCP 三处枚举对齐到既有 21 键白名单，未开放任意值。开放会引入
    POWER、CALL、系统设置等键。
@@ -1319,14 +1345,16 @@ v4l2loopback 与它们有本质区别：它是内核模块，创建真实的 `/d
 7. **多元素批量操作**：UIAutomator 2.4 的 `onElements`。判据现在只回
    `matchCount`，返回元素列表会让「对 N 个元素循环点击」成为可能，需要每步确认策略。
 8. **`task.finish` 的归属：已明确，非缺口。** 它是 App AI 的会话终止信号，
-   职责清楚且被 App 侧 25 处引用——`AutomationSessionEngine.kt:202` 据它判定会话
-   结束、`AutomationRiskPolicy.kt:138` 在风险白名单内、`OpenAICompatibleProvider.kt:218`
-   写进给大模型的动作清单、`LocalDemoProvider.kt:42` 是演示序列终点，录制回放与
+   职责包括 `AutomationSessionEngine` 判定会话
+   结束、`AutomationRiskPolicy` 风险白名单、`OpenAICompatibleProvider`
+   写进给大模型的动作清单、`LocalDemoProvider` 演示序列终点，录制回放与
    中文化同样认它。电脑侧没有「会话」可结束，因此它本就不该有 CLI 或 MCP 出口，
    `docs/protocol.md` 的「仅 App AI 会话终止信号」定位准确。此条不需要产品决策。
 
-   （`ime.show` 原与本条并列，现已按「聚焦输入控件」语义在桥侧实现，见
-   `.trae/specs/ime-show-focus/`，故从待决清单移除。）
+   （`ime.show` 原与本条并列，现已按「聚焦输入控件」语义实现，CLI `bridge ime-show`
+   与 MCP `android_ime_show` 均有出口，见
+   [ime-show-focus](../.trae/specs/ime-show-focus/spec.md) 及 `008cf40`。
+   结果不保证或验证键盘可见性，故从待决清单移除。）
 
 ### [ ] Task N60：虚拟显示后续（未实现，分别立项）
 
@@ -1458,7 +1486,7 @@ Sub-Agent 30-60 秒无输出时先查询状态；确认卡死后再停止。Agen
 能力覆盖：UIAutomator 的核心工作流「按选择器定位 → 执行元素级动作 → 等待条件
 成立」三个环节三通道都走得通——选择器定位有 8 种策略（含新补的 className/
 package）且支持 exact/contains/startsWith/endsWith 匹配方式，MCP 有
-`android_bridge_action`，元素级动作有 29 个桥侧分支，等待有 `wait` / `assert` /
+`android_bridge_action`，其允许的动作以独立白名单为准；等待有 `wait` / `assert` /
 `scrollUntil` 判据，多窗口与瞬时提示也已过线。
 
 **此前发现的 `text` 维度一致性缺陷已修复**：动作侧与判据侧现在都对选择器字段
@@ -1509,15 +1537,17 @@ package）且支持 exact/contains/startsWith/endsWith 匹配方式，MCP 有
 - 两项均**不触发** `requiresNewMajor`，前提是 C12 的 `match` 字段默认 `exact`。
   若为对齐判据侧而把动作侧默认改成 contains，那就是 `change-default-behavior`。
 
-### 仍剩余：`需权衡`（触及安全 / 授权 / 确定性边界）
+### 仍需权衡与已决指向（触及安全 / 授权 / 确定性边界）
 
-T1 任意 keycode、T2 组合键、T3 多显示屏、T5 层级压缩与超时调优、
+T1 任意 keycode、T2 组合键、T5 层级压缩与超时调优、
 T6 视觉动作类型扩展、T7 OCR、T8 多元素批量操作。
 
-七项均**未实施且不建议顺手实施**：它们各自的权衡点见
+以上六项均**未实施且不建议顺手实施**：它们各自的权衡点见
 `artifacts/uiautomator-gap/` 第 5.2 节。共同特征是「技术上都做得到」，
 因此更需要先有决策再动手，而不是因为能做就做。原 T4（文件传输）已决策并实施，
-不再属于本类。
+不再属于本类。T3 多显示屏的电脑侧 CLI 已由
+[virtual-display-screen-off](../.trae/specs/virtual-display-screen-off/tasks.md)
+（`d33eca8`、`74be592`）交付，MCP/Bridge/App 出口与兼容性余项见 N59/N60。
 
 ### 仍剩余：`有意不做`（不计入缺口）
 

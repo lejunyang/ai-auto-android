@@ -1,5 +1,16 @@
 # 界面判据与桥侧对齐：wait/assert、flaky 定位与桥侧实测
 
+> **现状更正（2026-11-14，基线 `984ee31`）**
+>
+> 本文为历史实测/评审记录，以下正文保留当时结论；本次仅核查仓库与后续证据，未操作设备。
+>
+> - 判据选择器的 text/description 已由 `0976f13` 统一为 normalize 后精确匹配；本记录 §1.3 的默认“包含”解释已被替换。显式 `operator=contains` 仍存在。桥侧 `match` 扩展不能套用到 Go `check` 的扁平选择器。
+> - 当轮 MCP 10 工具已扩为 16；长按/滚动及 Unicode 输入已有出口，不再是 §5.1 的未实现项。
+> - 测试预置已有 N32/N47 实现，早期 UI 预置脚本仍在，但新 UI 改版后其旧文案路径未重测；设备权限与 test-only 边界仍按 AGENTS.md。Instantiatable 的后续处理见[手势与 lint 记录](gestures-lint-and-camera.md)。
+> - 运行时换码候选已继续实测；Windows DirectShow 路线已否定，Linux/MF 未验，见[摄像头结论](camera-virtual-stacks.md)。
+>
+> 逐条核查依据见[审计进度](../.trae/specs/docs-stale-audit/progress.md)。
+
 本文记录本轮三件事：新增界面等待与断言（`ui.wait` / `ui.assert` 语义）、定位并修复
 一个长期存在的 flaky 测试、以及在模拟器上完成 App Bridge 侧 `ui.foreground` 的
 端到端验证（闭合前一轮遗留的最大验证缺口）。

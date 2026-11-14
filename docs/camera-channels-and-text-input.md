@@ -1,5 +1,15 @@
 # 扫码通道结论与能力盘点
 
+> **现状更正（2026-11-14，基线 `984ee31`）**
+>
+> 本文为历史实测/评审记录，以下正文保留当时结论；本次仅核查仓库与后续证据，未操作设备。
+>
+> - §4-6 的“中文输入无替代/建议先补桥”已由 CLI `bridge set-text` 与 MCP `android_bridge_set_text` 交付，错误信息亦已指向 Bridge。直连字符白名单仍保留。
+> - “多指协议也没有”和“桥侧长按/滚动无元素级版本”已过期；见[动作面追踪](action-surface-tasks.md)及 MCP `android_bridge_action`。
+> - 实体 webcam 接入后已有实测，OBS/Unity DirectShow 则被后续取证否定；Linux/MF 仍待验。摄像头结论以[当前状态入口](camera-virtual-stacks.md)为准，debug 帧注入建议未据此变为已实现。
+>
+> 逐条核查依据见[审计进度](../.trae/specs/docs-stale-audit/progress.md)。
+
 本文回答三个问题：`videofile` 是否满足「模拟器待命、按需扫码」的诉求、
 当前自动化能力是否齐备、ADB 文本限制要不要解除。
 

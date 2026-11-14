@@ -208,7 +208,7 @@ aactl devices connect HOST:PORT --json
 
 1. 已接受无障碍披露并配置目标包；
 2. 已在 Android 系统设置中手动启用本 App 的无障碍服务；
-3. App 的“桌面桥”页面已开启并显示未过期的一次性码；
+3. “我的 → 连接电脑”中的桌面桥已开启并显示未过期的一次性码；
 4. App 进程仍存活；当前 Bridge 不是独立的持久前台服务。
 
 然后：
@@ -290,6 +290,8 @@ aactl bridge snapshot --device SERIAL \
 
 直接文本只接受最多 10,000 字节的非敏感 ASCII 字母、数字、空格和
 `@._+-,:/`。中文、换行、密码和验证码不能通过直接文本命令输入。
+非敏感 Unicode 文本可用 CLI `bridge set-text` 或 MCP `android_bridge_set_text`，
+先建立 Bridge 并指定语义定位字段；不要放宽直连字符白名单。
 
 ## 录制
 

@@ -1,5 +1,15 @@
 # 手势暴露、lint 修复与运行时换码结论
 
+> **现状更正（2026-11-14，基线 `984ee31`）**
+>
+> 本文为历史实测/评审记录，以下正文保留当时结论；本次仅核查仓库与后续证据，未操作设备。
+>
+> - 中文输入、元素级长按/滚动和多指手势已有实现，分别见[输入记录](mcp-text-input-and-webcam.md)、`internal/mcpserver/bridge_action.go` 与[动作面追踪](action-surface-tasks.md)。直连 ASCII 限制和多指需 Bridge 的边界仍保留。
+> - §4 的 videofile “换码成立”仅适用于启动前确定的码序列；[后续覆盖实验](camera-channels-and-text-input.md)已证明不能换成运行时才产生的 payload。Windows DirectShow 虚拟相机也被后续实验否定，见[摄像头结论](camera-virtual-stacks.md)。
+> - `provision-bridge.mjs` 保留早期“桌面桥/无障碍执行”等 UI 查找文案，当前页面已改为“连接电脑/允许操作的应用”。本轮未运行设备，不把此记录的成功外推为脚本当前仍可用。
+>
+> 逐条核查依据见[审计进度](../.trae/specs/docs-stale-audit/progress.md)。
+
 本文记录本轮四件事：修复 Android lint 的 3 个 error、把 `ui.longClick` 与 `ui.scroll`
 暴露到 CLI 与 MCP、把桥侧预置固化为脚本、以及把运行时换码调研到底并得出结论。
 
