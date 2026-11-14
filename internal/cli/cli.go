@@ -18,6 +18,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/output"
 	"github.com/lejunyang/ai-auto-android/internal/process"
 	"github.com/lejunyang/ai-auto-android/internal/service"
+	"github.com/lejunyang/ai-auto-android/internal/vdisplay"
 	"github.com/lejunyang/ai-auto-android/internal/visual"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -153,6 +154,8 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 		return a.executeObserve(ctx, a.directAutomation(client), args[1:])
 	case "action":
 		return a.executeAction(ctx, a.directAutomation(client), args[1:])
+	case "display":
+		return a.executeDisplay(ctx, a.directAutomation(client), args[1:])
 	case "check":
 		return a.executeCheck(ctx, a.directAutomation(client), args[1:])
 	case "file":
@@ -172,7 +175,7 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 	case "mcp":
 		return nil, usageError("Usage: aactl mcp serve")
 	default:
-		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, check, file, recording, bridge, mcp.")
+		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, display, check, file, recording, bridge, mcp.")
 	}
 }
 
@@ -320,7 +323,7 @@ func (a *App) directAutomation(client *adb.Client) service.Automation {
 	if a.Automation != nil {
 		return a.Automation
 	}
-	return service.New(client, nil)
+	return service.NewWithDisplays(client, vdisplay.New(client))
 }
 
 func (a *App) automationService(client *adb.Client) (service.Automation, error) {

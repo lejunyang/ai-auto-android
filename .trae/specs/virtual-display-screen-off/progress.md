@@ -205,3 +205,28 @@
   git diff --check 通过。
 - 清理：客户端 Stop 后无 PID、仅剩 display 0、forward 列表空、固定 APK/日志不存在；
   emu kill 返回 OK，随后 adb devices 为空且无 emulator/qemu 进程。工作树未含构建产物。
+
+## Round 4：T3 service 与 CLI 出口（2026-11-14）
+
+- T2 已提交 6e065ef、验证与设备清理通过。仅修改 internal/service、internal/cli 与本规格
+  状态文件；未修改现有一致性测试、direct_surface_test.go 或其它出口。
+- RED：CLI 5 个动作显示参数、2 个观察显示参数、6 个 display 管理子命令与 sleep
+  按预期失败（Unknown option/command）。service 路由、5 种错误不回退、目标动作与
+  Sleep 专用操作回归测试同样先失败，能捕获原实现忽略 DisplayID 后触达主屏的问题。
+- GREEN：ObserveRequest/ActionRequest 增加可选 DisplayID；CLI 直连构造器单独装配
+  displayd 后端；通用 Automation 接口不增加显示管理方法，DisplayAutomation 独立。
+  虚拟屏截图走 Capture；层级与动作先 RequireDisplay，再使用复制的目标 ADB 客户端。
+  只允许规格中的 screenshot/hierarchy/tap/swipe/text/key/launch 指定显示，其他组合拒绝。
+- 新 CLI：display start --helper（可选）、status、stop、create --width --height --dpi、
+  list、close --display；全部要求 --device。上述 7 个观察/动作入口支持正整数 --display。
+  action sleep 使用 service 的 device.sleep 与 T2 的专用 KEYCODE_SLEEP，拒绝 --display，
+  只影响主屏。未修改普通按键白名单。
+- 没有一致性测试要求把 device.sleep 登记到公共 Schema，因此按任务书条件不改 protocol。
+  MCP 的现有 schema、模型动作白名单与工具列表均未变化；internal/mcpserver、Bridge、
+  Android App 均未修改，文件传输既有边界测试保持原样且通过。
+- 验证：make comments 通过（583 文件、16 自测）；make test、make verify、make build
+  退出 0。Go 共 295 个顶层 Test 定义，service 8、CLI 57（本轮各新增 4 个顶层测试，
+  含路由/管理/无效参数等表驱动子例）；协议 56 项、Skills 3 份与镜像通过。
+  定向 go test ./internal/service 与 CLI -run TestDisplay 均通过；git diff --check 通过。
+- 本轮未启动模拟器或创建转发、设备文件、PIN；阶段结束 adb devices 为空，无
+  emulator/qemu 进程。尚不以命令面单测勾选 CLI 设备功能，T4 须使用 make build 产物验收。

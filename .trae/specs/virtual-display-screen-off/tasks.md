@@ -50,13 +50,13 @@ PIN/息屏/超时端到端仍属 T4。API 33 的 `groupAwake=null` 限制见 Rou
 
 目录所有权：`internal/service/`、`internal/cli/`、`protocol/`（仅 `device.sleep`）。
 
-- [ ] 先写失败测试（命令面与 service 一致性）
-- [ ] `aactl display start|status|stop|create|list|close`
-- [ ] `observe screenshot|hierarchy` 与 `action tap|swipe|text|key|launch` 的 `--display`
-- [ ] `aactl action sleep`（`device.sleep`）
-- [ ] 任何失败都不回退到主屏执行
-- [ ] `make test`、`make verify`、`make build`
-- [ ] 提交：`feat(cli): add virtual display commands and screen-off action`
+- [x] 先写失败测试（命令面与 service 一致性）
+- [x] `aactl display start|status|stop|create|list|close`
+- [x] `observe screenshot|hierarchy` 与 `action tap|swipe|text|key|launch` 的 `--display`
+- [x] `aactl action sleep`（`device.sleep`）
+- [x] 任何失败都不回退到主屏执行
+- [x] `make test`、`make verify`、`make build`
+- [x] 提交：`feat(cli): add virtual display commands and screen-off action`
 
 ## T4：模拟器端到端验收与文档
 

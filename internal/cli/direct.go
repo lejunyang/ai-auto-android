@@ -37,15 +37,20 @@ func (a *App) executeObserve(
 	switch args[0] {
 	case "screenshot":
 		options, err := parseNamedOptions(args[1:], optionSpec{
-			allowed:  map[string]bool{"device": true, "output": true},
+			allowed:  map[string]bool{"device": true, "output": true, "display": true},
 			required: []string{"device", "output"},
 		})
 		if err != nil {
 			return nil, err
 		}
+		displayID, err := parseDisplayOption(options)
+		if err != nil {
+			return nil, err
+		}
 		screenshot, err := automation.Observe(ctx, service.ObserveRequest{
-			Device: options["device"],
-			Kind:   service.ObserveScreenshot,
+			DisplayID: displayID,
+			Device:    options["device"],
+			Kind:      service.ObserveScreenshot,
 		})
 		if err != nil {
 			return nil, err
@@ -63,15 +68,20 @@ func (a *App) executeObserve(
 		}, nil
 	case "hierarchy":
 		options, err := parseNamedOptions(args[1:], optionSpec{
-			allowed:  map[string]bool{"device": true},
+			allowed:  map[string]bool{"device": true, "display": true},
 			required: []string{"device"},
 		})
 		if err != nil {
 			return nil, err
 		}
+		displayID, err := parseDisplayOption(options)
+		if err != nil {
+			return nil, err
+		}
 		hierarchy, err := automation.Observe(ctx, service.ObserveRequest{
-			Device: options["device"],
-			Kind:   service.ObserveHierarchy,
+			DisplayID: displayID,
+			Device:    options["device"],
+			Kind:      service.ObserveHierarchy,
 		})
 		if err != nil {
 			return nil, err
@@ -258,15 +268,19 @@ func (a *App) executeAction(
 	if len(args) == 0 {
 		return nil, usageError(
 			"Usage: aactl action tap|swipe|long-press|scroll|text|key|launch|stop|" +
-				"drag|multi-tap|path-gesture|rotate|wake|unlock|ime-hide|ime-select|" +
+				"drag|multi-tap|path-gesture|rotate|wake|sleep|unlock|ime-hide|ime-select|" +
 				"deeplink [options]")
 	}
 	switch args[0] {
 	case "tap":
 		options, err := parseNamedOptions(args[1:], optionSpec{
-			allowed:  optionSet("device", "x", "y"),
+			allowed:  optionSet("device", "x", "y", "display"),
 			required: []string{"device", "x", "y"},
 		})
+		if err != nil {
+			return nil, err
+		}
+		displayID, err := parseDisplayOption(options)
 		if err != nil {
 			return nil, err
 		}
@@ -279,16 +293,21 @@ func (a *App) executeAction(
 			return nil, err
 		}
 		return automation.ExecuteAction(ctx, service.ActionRequest{
-			Device: options["device"],
-			Action: service.ActionTap,
-			X:      x,
-			Y:      y,
+			Device:    options["device"],
+			Action:    service.ActionTap,
+			DisplayID: displayID,
+			X:         x,
+			Y:         y,
 		})
 	case "swipe":
 		options, err := parseNamedOptions(args[1:], optionSpec{
-			allowed:  optionSet("device", "x1", "y1", "x2", "y2", "duration"),
+			allowed:  optionSet("device", "x1", "y1", "x2", "y2", "duration", "display"),
 			required: []string{"device", "x1", "y1", "x2", "y2"},
 		})
+		if err != nil {
+			return nil, err
+		}
+		displayID, err := parseDisplayOption(options)
 		if err != nil {
 			return nil, err
 		}
@@ -310,6 +329,7 @@ func (a *App) executeAction(
 		return automation.ExecuteAction(ctx, service.ActionRequest{
 			Device:     options["device"],
 			Action:     service.ActionSwipe,
+			DisplayID:  displayID,
 			StartX:     values["x1"],
 			StartY:     values["y1"],
 			EndX:       values["x2"],
@@ -375,43 +395,58 @@ func (a *App) executeAction(
 		})
 	case "text":
 		options, err := parseNamedOptions(args[1:], optionSpec{
-			allowed:  optionSet("device", "text"),
+			allowed:  optionSet("device", "text", "display"),
 			required: []string{"device", "text"},
 		})
 		if err != nil {
 			return nil, err
 		}
+		displayID, err := parseDisplayOption(options)
+		if err != nil {
+			return nil, err
+		}
 		return automation.ExecuteAction(ctx, service.ActionRequest{
-			Device: options["device"],
-			Action: service.ActionSetText,
-			Text:   options["text"],
+			Device:    options["device"],
+			Action:    service.ActionSetText,
+			DisplayID: displayID,
+			Text:      options["text"],
 		})
 	case "key":
 		options, err := parseNamedOptions(args[1:], optionSpec{
-			allowed:  optionSet("device", "key"),
+			allowed:  optionSet("device", "key", "display"),
 			required: []string{"device", "key"},
 		})
 		if err != nil {
 			return nil, err
 		}
+		displayID, err := parseDisplayOption(options)
+		if err != nil {
+			return nil, err
+		}
 		return automation.ExecuteAction(ctx, service.ActionRequest{
-			Device: options["device"],
-			Action: service.ActionPressKey,
-			Key:    options["key"],
+			Device:    options["device"],
+			Action:    service.ActionPressKey,
+			DisplayID: displayID,
+			Key:       options["key"],
 		})
 	case "launch":
 		options, err := parseNamedOptions(args[1:], optionSpec{
-			allowed:  optionSet("device", "package", "activity"),
+			allowed:  optionSet("device", "package", "activity", "display"),
 			required: []string{"device", "package"},
 		})
 		if err != nil {
 			return nil, err
 		}
+		displayID, err := parseDisplayOption(options)
+		if err != nil {
+			return nil, err
+		}
 		return automation.ExecuteAction(ctx, service.ActionRequest{
-			Device:   options["device"],
-			Action:   service.ActionLaunch,
-			Package:  options["package"],
-			Activity: options["activity"],
+			Device:    options["device"],
+			Action:    service.ActionLaunch,
+			DisplayID: displayID,
+			Package:   options["package"],
+			Activity:  options["activity"],
 		})
 	case "stop":
 		options, err := parseNamedOptions(args[1:], optionSpec{
@@ -434,7 +469,7 @@ func (a *App) executeAction(
 		}
 		return nil, usageError(
 			"Unknown action. Supported actions: tap, swipe, long-press, scroll, text, key, " +
-				"launch, stop, drag, multi-tap, path-gesture, rotate, wake, unlock, " +
+				"launch, stop, drag, multi-tap, path-gesture, rotate, wake, sleep, unlock, " +
 				"ime-hide, ime-select, deeplink.")
 	}
 }
@@ -573,7 +608,7 @@ func (a *App) executeActionExtra(
 		})
 		return actionResult, true, actionErr
 
-	case "wake", "unlock", "ime-hide":
+	case "wake", "sleep", "unlock", "ime-hide":
 		options, parseErr := parseNamedOptions(args[1:], optionSpec{
 			allowed:  optionSet("device"),
 			required: []string{"device"},
@@ -583,6 +618,7 @@ func (a *App) executeActionExtra(
 		}
 		action := map[string]string{
 			"wake":     service.ActionDeviceWake,
+			"sleep":    service.ActionDeviceSleep,
 			"unlock":   service.ActionDeviceUnlock,
 			"ime-hide": service.ActionImeHide,
 		}[args[0]]
