@@ -48,7 +48,7 @@ func TestDisplaydEmulatorLifecycle(t *testing.T) {
 			t.Errorf("stop: %v", err)
 		}
 	}()
-	screen, err := c.Create(ctx, serial, 720, 1280, 240)
+	screen, err := c.Create(ctx, serial, 720, 1280, 240, "isolated")
 	if err != nil {
 		t.Fatal(err)
 	}

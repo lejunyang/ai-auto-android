@@ -25,6 +25,41 @@ type fakeDisplays struct {
 	captures, requires int
 }
 
+// 管理层独立校验并规范默认策略，不能依赖CLI或MCP恰好检查过参数。
+type focusDisplays struct {
+	DisplayBackend
+	focus string
+	calls int
+}
+
+func (f *focusDisplays) Create(_ context.Context, _ string, _, _, _ int, focus string) (vdisplay.Screen, error) {
+	f.focus = focus
+	f.calls++
+	return vdisplay.Screen{Focus: focus}, nil
+}
+func TestDisplayCreateFocusReachesBackend(t *testing.T) {
+	for _, focus := range []string{"", "isolated", "steal", "bad"} {
+		backend := &focusDisplays{}
+		s := New(&fakeDirect{}, nil)
+		s.displays = backend
+		_, err := s.ManageDisplay(context.Background(), DisplayRequest{Command: "create", Device: "SERIAL", Width: 720, Height: 1280, DPI: 240, Focus: focus})
+		if focus == "bad" {
+			assertServiceCode(t, err, apperr.CodeInvalidArgument)
+			if backend.calls != 0 {
+				t.Fatal("invalid focus forwarded")
+			}
+			continue
+		}
+		want := focus
+		if want == "" {
+			want = "isolated"
+		}
+		if err != nil || backend.focus != want || backend.calls != 1 {
+			t.Fatal(backend, err)
+		}
+	}
+}
+
 type windowsDirect struct{ fakeDirect }
 
 func (f *windowsDirect) Hierarchy(context.Context, string) (adb.Hierarchy, error) {

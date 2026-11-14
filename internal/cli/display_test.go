@@ -171,6 +171,39 @@ func TestDisplayManagementCommandSurface(t *testing.T) {
 	}
 }
 
+// 默认与两种显式策略均到达共享服务，非法值和非创建命令不得携带策略。
+func TestDisplayCreateFocusOption(t *testing.T) {
+	for _, focus := range []string{"", "isolated", "steal", "bad", "ISOLATED"} {
+		fake := &displayCapturingAutomation{}
+		app, out := testApp(&commandExecutor{}, "")
+		app.Automation = fake
+		args := []string{"display", "create", "--device", "SERIAL", "--width", "720", "--height", "1280", "--dpi", "240", "--json"}
+		if focus != "" {
+			args = append(args, "--focus", focus)
+		}
+		code := app.Run(context.Background(), args)
+		if focus == "bad" || focus == "ISOLATED" {
+			if code == 0 || len(fake.managed) != 0 {
+				t.Fatal("invalid focus accepted")
+			}
+			continue
+		}
+		want := focus
+		if want == "" {
+			want = "isolated"
+		}
+		if code != 0 || len(fake.managed) != 1 || fake.managed[0].Focus != want {
+			t.Fatal(out.String(), fake.managed)
+		}
+	}
+	fake := &displayCapturingAutomation{}
+	app, _ := testApp(&commandExecutor{}, "")
+	app.Automation = fake
+	if app.Run(context.Background(), []string{"display", "list", "--device", "SERIAL", "--focus", "steal"}) == 0 || len(fake.managed) != 0 {
+		t.Fatal("focus allowed outside create")
+	}
+}
+
 func TestDisplayRejectsInvalidAndUnsupportedOptions(t *testing.T) {
 	for _, args := range [][]string{
 		{"action", "tap", "--device", "SERIAL", "--x", "1", "--y", "2", "--display", "-1"},

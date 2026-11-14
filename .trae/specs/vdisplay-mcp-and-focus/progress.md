@@ -603,3 +603,17 @@ HIDE 并不能阻止这一点。后续步骤（文本、按键、启动另一应
   （17秒、47任务），36项0failure/error；README同步v2、字段、两策略/数值/API33及BACK代价。
   Go客户端/服务/CLI/MCP透传及非法参数/缺失或矛盾能力响应测试通过；三道风险门文件未改。
   阶段完整设备验收尚未开始，本节不勾选两策略的三次冷启动或M4/M5。
+
+## Round 11：M3c策略透传与主机校验（2026-11-14）
+
+- displayd实现/测试/README与本规格计划、复现记录已保存e6eb6a4，共8文件。
+- Go Create接受二值focus，省略/空内部值规范为isolated，非法值在建立forward前拒绝；
+  每次hello必须v2且focusIsolation能力与API一致，create/list/status逐屏校验focus与
+  focusIsolated，不接受缺策略、未知值或API34+矛盾隔离声明。API33单测明确验证false。
+- service独立校验、CLI仅create接受--focus，MCP仅android_display_create接受focus枚举，
+  默认isolated，schema及输出仍additionalProperties:false；响应/create/list/status包含
+  focus与focusIsolated。没有增加工具，20个工具数量不变；没有helper启停出口或原始flags。
+- 客户端真实握手/序列化与清理测试、service后端透传、CLI默认/两值/非法值、MCP schema/
+  默认/两值/错误类型/额外字段/其它管理方法拒绝均通过。既有动作面、三道风险门完全未改。
+- make test退出0：协议56项、Skills3份、Go包测试/vet及三系统交叉vet通过；make build
+  退出0。设备端两策略完整冷启动与M4/M5尚未开始，不以本地测试代替设备验收。

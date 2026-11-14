@@ -44,7 +44,7 @@ func (f *displayAutomationFake) ManageDisplay(_ context.Context, r service.Displ
 	f.managed = append(f.managed, r)
 	switch r.Command {
 	case "create":
-		return vdisplay.Screen{DisplayID: 7, Width: r.Width, Height: r.Height, DPI: r.DPI}, f.failure
+		return vdisplay.Screen{DisplayID: 7, Width: r.Width, Height: r.Height, DPI: r.DPI, Focus: r.Focus, FocusIsolated: r.Focus == "isolated"}, f.failure
 	case "close":
 		return vdisplay.CloseResult{DisplayID: r.DisplayID, Closed: true}, f.failure
 	case "status":
@@ -171,6 +171,42 @@ func TestMCPDisplayManagementSurfaceAndErrors(t *testing.T) {
 				t.Fatal("lost error code", code, r)
 			}
 		}
+	}
+}
+
+// Schema严格限制策略枚举与字段面，默认策略和响应中的实际隔离能力都必须保留。
+func TestMCPDisplayFocusPolicySchemaAndForwarding(t *testing.T) {
+	f := &displayAutomationFake{}
+	s := connectClient(t, f)
+	for _, focus := range []string{"", "isolated", "steal"} {
+		args := map[string]any{"device": "SERIAL", "width": 720, "height": 1280, "dpi": 240}
+		if focus != "" {
+			args["focus"] = focus
+		}
+		r := callDisplayTool(t, s, ToolDisplayCreate, args, true)
+		want := focus
+		if want == "" {
+			want = "isolated"
+		}
+		out := structuredObject(t, r)
+		if f.managed[len(f.managed)-1].Focus != want || out["focus"] != want || out["focusIsolated"] != (want == "isolated") {
+			t.Fatal("policy lost", out, f.managed)
+		}
+	}
+	before := len(f.managed)
+	for _, value := range []any{"bad", "ISOLATED", "", 130507, nil} {
+		callDisplayTool(t, s, ToolDisplayCreate, map[string]any{"device": "SERIAL", "width": 720, "height": 1280, "dpi": 240, "focus": value}, false)
+	}
+	for _, name := range []string{ToolDisplayList, ToolDisplayStatus, ToolDisplayClose} {
+		args := map[string]any{"device": "SERIAL", "focus": "steal"}
+		if name == ToolDisplayClose {
+			args["displayId"] = 7
+		}
+		callDisplayTool(t, s, name, args, false)
+	}
+	callDisplayTool(t, s, ToolDisplayCreate, map[string]any{"device": "SERIAL", "width": 720, "height": 1280, "dpi": 240, "flags": 130507}, false)
+	if len(f.managed) != before {
+		t.Fatal("unsafe input reached management")
 	}
 }
 

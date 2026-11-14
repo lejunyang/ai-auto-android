@@ -32,6 +32,7 @@ func (a *App) executeDisplay(ctx context.Context, automation service.Automation,
 		allowed["helper"] = true
 	case "status", "stop", "list":
 	case "create":
+		allowed["focus"] = true
 		for _, key := range []string{"width", "height", "dpi"} {
 			allowed[key] = true
 			required = append(required, key)
@@ -48,6 +49,13 @@ func (a *App) executeDisplay(ctx context.Context, automation service.Automation,
 	}
 	r := service.DisplayRequest{Command: args[0], Device: options["device"], Helper: options["helper"]}
 	if r.Command == "create" {
+		r.Focus = options["focus"]
+		if r.Focus == "" {
+			r.Focus = "isolated"
+		}
+		if r.Focus != "isolated" && r.Focus != "steal" {
+			return nil, usageError("focus must be isolated or steal.")
+		}
 		for name, target := range map[string]*int{"width": &r.Width, "height": &r.Height, "dpi": &r.DPI} {
 			value, err := parseIntegerOption(options, name)
 			if err != nil {

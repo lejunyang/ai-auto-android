@@ -18,7 +18,85 @@ import (
 	"time"
 )
 
-const helloJSON = `{"id":1,"ok":true,"result":{"protocolVersion":1,"apiLevel":35,"supported":true,"capabilities":{"binaryPng":true,"credentialLockGuard":true,"virtualDisplay":true,"groupAwakeQuery":true},"limits":{"maxMessageBytes":16384,"maxFrameBytes":16777216,"maxDisplays":2,"minDimension":128,"maxDimension":2048,"minDpi":72,"maxDpi":640}}}` + "\n"
+const helloJSON = `{"id":1,"ok":true,"result":{"protocolVersion":2,"apiLevel":35,"supported":true,"capabilities":{"binaryPng":true,"credentialLockGuard":true,"virtualDisplay":true,"groupAwakeQuery":true,"focusIsolation":true},"limits":{"maxMessageBytes":16384,"maxFrameBytes":16777216,"maxDisplays":2,"minDimension":128,"maxDimension":2048,"minDpi":72,"maxDpi":640}}}` + "\n"
+
+// 假设备仍经过真实握手/序列化，核对策略透传、API33降级与响应能力字段，避免只测结构体赋值。
+func TestFocusPolicyWireAndAPI33Honesty(t *testing.T) {
+	for _, api := range []int{33, 35} {
+		for _, focus := range []string{"", "isolated", "steal"} {
+			want := focus
+			if want == "" {
+				want = "isolated"
+			}
+			isolated := api >= 34 && want == "isolated"
+			result := Screen{DisplayID: 7, Width: 720, Height: 1280, DPI: 240, Focus: want, FocusIsolated: isolated}
+			response, _ := json.Marshal(map[string]any{"id": 1, "ok": true, "result": result})
+			c, h := fakeClient(t, nil)
+			h.state.APILevel = api
+			requests := make(chan map[string]any, 2)
+			c.dial = func(context.Context, string) (net.Conn, error) {
+				a, b := net.Pipe()
+				go func() {
+					defer b.Close()
+					line, _ := bufio.NewReader(b).ReadBytes('\n')
+					var req map[string]any
+					_ = json.Unmarshal(line, &req)
+					requests <- req
+					data := string(response) + "\n"
+					if req["method"] == "hello" {
+						data = helloJSON
+						if api == 33 {
+							data = strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(data, `"apiLevel":35`, `"apiLevel":33`), `"groupAwakeQuery":true`, `"groupAwakeQuery":false`), `"focusIsolation":true`, `"focusIsolation":false`)
+						}
+					}
+					_, _ = b.Write([]byte(data))
+				}()
+				return a, nil
+			}
+			got, err := c.Create(context.Background(), "SERIAL", 720, 1280, 240, focus)
+			if err != nil || got.Focus != want || got.FocusIsolated != isolated {
+				t.Fatalf("api=%d focus=%q: %+v %v", api, focus, got, err)
+			}
+			<-requests
+			request := <-requests
+			if request["focus"] != want || request["width"] != float64(720) || len(request) != 6 || h.removed != 1 {
+				t.Fatal("wire/cleanup", request, h)
+			}
+		}
+	}
+	c, h := fakeClient(t, nil)
+	_, err := c.Create(context.Background(), "SERIAL", 720, 1280, 240, "raw")
+	requireCode(t, err, apperr.CodeInvalidArgument)
+	if h.forwarded != 0 {
+		t.Fatal("invalid focus reached device")
+	}
+}
+
+func TestFocusPolicyResponsesRejectMissingUnknownAndFalseIsolation(t *testing.T) {
+	for _, fields := range []string{``, `,"focus":"other","focusIsolated":true`, `,"focus":"isolated","focusIsolated":false`, `,"focus":"steal","focusIsolated":true`} {
+		screen := `{"displayId":7,"width":720,"height":1280,"dpi":240` + fields + `}`
+		for _, method := range []string{"create", "list", "status"} {
+			result := screen
+			if method == "list" {
+				result = `{"displays":[` + screen + `]}`
+			}
+			if method == "status" {
+				result = `{"displays":[` + screen + `],"keepAwakeIntervalMs":2000}`
+			}
+			c, _ := fakeClient(t, []byte(`{"id":1,"ok":true,"result":`+result+"}\n"))
+			var err error
+			switch method {
+			case "create":
+				_, err = c.Create(context.Background(), "SERIAL", 720, 1280, 240, "isolated")
+			case "list":
+				_, err = c.List(context.Background(), "SERIAL")
+			case "status":
+				_, err = c.Status(context.Background(), "SERIAL")
+			}
+			requireCode(t, err, apperr.CodeProtocol)
+		}
+	}
+}
 
 type fakeHost struct {
 	removed, forwarded int
@@ -162,7 +240,7 @@ func TestMissingHelperProcessAndInvalidDisplayNeverConnect(t *testing.T) {
 }
 
 func TestVersionMismatchAndDisconnectRemoveForward(t *testing.T) {
-	for _, data := range []string{strings.Replace(helloJSON, `"protocolVersion":1`, `"protocolVersion":2`, 1), ""} {
+	for _, data := range []string{strings.Replace(helloJSON, `"protocolVersion":2`, `"protocolVersion":1`, 1), ""} {
 		t.Run(data, func(t *testing.T) {
 			c, h := fakeClient(t, nil)
 			c.dial = func(context.Context, string) (net.Conn, error) {

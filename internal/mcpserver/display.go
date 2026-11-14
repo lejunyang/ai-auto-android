@@ -39,6 +39,7 @@ type displayManagementInput struct {
 	Height    int    `json:"height,omitempty"`
 	DPI       int    `json:"dpi,omitempty"`
 	DisplayID int    `json:"displayId,omitempty"`
+	Focus     string `json:"focus,omitempty"`
 }
 
 // displayToolError 仅为新显示入口保留稳定错误码，省略目标的既有工具错误行为不变。
@@ -61,7 +62,7 @@ func registerDisplayTools(server *mcp.Server, automation service.Automation) {
 	for _, entry := range []struct{ name, command, description string }{
 		{ToolDisplayList, "list", "List only helper-owned virtual displays. Requires the operator to run aactl display start first."},
 		{ToolDisplayStatus, "status", "Read credential lock, virtual display group and keepalive status. Requires an operator-started helper."},
-		{ToolDisplayCreate, "create", "Create a bounded virtual display (128..2048 pixels, 72..640 dpi; at most two). Flags and helper configuration are fixed; an operator must start the helper through CLI first."},
+		{ToolDisplayCreate, "create", "Create a bounded virtual display (128..2048 pixels, 72..640 dpi; at most two). focus defaults to isolated (preserves primary input, no hierarchy while primary sleeps); steal supports screen-off hierarchy but interrupts primary input. Raw flags and helper configuration are fixed; an operator must start the helper through CLI first."},
 		{ToolDisplayClose, "close", "Close one helper-owned virtual display. This destroys application content on that display; it is not moved to the primary display. The primary display cannot be closed."},
 	} {
 		annotations := readOnlyAnnotations()
@@ -76,7 +77,10 @@ func registerDisplayTools(server *mcp.Server, automation service.Automation) {
 			if !ok {
 				return nil, nil, modelToolError{Code: apperr.CodeDisplaydNotRunning, Message: "Display management is unavailable; an operator must run aactl display start --device SERIAL.", Retryable: false}
 			}
-			result, err := displays.ManageDisplay(ctx, service.DisplayRequest{Device: input.Device, Command: entry.command, Width: input.Width, Height: input.Height, DPI: input.DPI, DisplayID: input.DisplayID})
+			if entry.command == "create" && input.Focus == "" {
+				input.Focus = "isolated"
+			}
+			result, err := displays.ManageDisplay(ctx, service.DisplayRequest{Device: input.Device, Command: entry.command, Width: input.Width, Height: input.Height, DPI: input.DPI, DisplayID: input.DisplayID, Focus: input.Focus})
 			return nil, result, displayToolError(err)
 		})
 	}
@@ -89,6 +93,7 @@ func displayManagementSchema(command string) json.RawMessage {
 	properties := `"device":` + deviceSchema()
 	required := `"device"`
 	if command == "create" {
+		properties += `,"focus":{"type":"string","enum":["isolated","steal"],"default":"isolated"}`
 		properties += `,"width":{"type":"integer","minimum":128,"maximum":2048},"height":{"type":"integer","minimum":128,"maximum":2048},"dpi":{"type":"integer","minimum":72,"maximum":640}`
 		required += `,"width","height","dpi"`
 	}
@@ -99,8 +104,8 @@ func displayManagementSchema(command string) json.RawMessage {
 	return objectSchema(`"required":[`+required+`]`, `"properties":{`+properties+`}`)
 }
 func displayManagementOutputSchema(command string) json.RawMessage {
-	screenProperties := `"displayId":{"type":"integer","minimum":1},"width":{"type":"integer","minimum":128,"maximum":2048},"height":{"type":"integer","minimum":128,"maximum":2048},"dpi":{"type":"integer","minimum":72,"maximum":640}`
-	screen := `{"type":"object","required":["displayId","width","height","dpi"],"properties":{` + screenProperties + `},"additionalProperties":false}`
+	screenProperties := `"displayId":{"type":"integer","minimum":1},"width":{"type":"integer","minimum":128,"maximum":2048},"height":{"type":"integer","minimum":128,"maximum":2048},"dpi":{"type":"integer","minimum":72,"maximum":640},"focus":{"type":"string","enum":["isolated","steal"]},"focusIsolated":{"type":"boolean"}`
+	screen := `{"type":"object","required":["displayId","width","height","dpi","focus","focusIsolated"],"properties":{` + screenProperties + `},"additionalProperties":false}`
 	switch command {
 	case "create":
 		return json.RawMessage(screen)
@@ -109,7 +114,7 @@ func displayManagementOutputSchema(command string) json.RawMessage {
 	case "list":
 		return objectSchema(`"required":["displays"]`, `"properties":{"displays":{"type":"array","maxItems":2,"items":`+screen+`}}`)
 	default:
-		statusScreen := `{"type":"object","required":["displayId","width","height","dpi","state","displayGroupId","groupAwake"],"properties":{` + screenProperties + `,"state":{"type":"integer"},"displayGroupId":{"type":"integer"},"groupAwake":{"type":["boolean","null"]}},"additionalProperties":false}`
+		statusScreen := `{"type":"object","required":["displayId","width","height","dpi","focus","focusIsolated","state","displayGroupId","groupAwake"],"properties":{` + screenProperties + `,"state":{"type":"integer"},"displayGroupId":{"type":"integer"},"groupAwake":{"type":["boolean","null"]}},"additionalProperties":false}`
 		return objectSchema(`"required":["credentialLocked","displays","keepAwakeIntervalMs","lastActivityUptimeMs","keepAwakeError"]`, `"properties":{"credentialLocked":{"type":"boolean"},"displays":{"type":"array","maxItems":2,"items":`+statusScreen+`},"keepAwakeIntervalMs":{"const":2000},"lastActivityUptimeMs":{"type":"integer","minimum":0},"keepAwakeError":{"type":["string","null"]}}`)
 	}
 }

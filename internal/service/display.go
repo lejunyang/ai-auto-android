@@ -14,8 +14,8 @@ const ActionDeviceSleep = "device.sleep"
 
 // DisplayRequest 描述固定管理子命令，不允许任意 shell 或框架标志。
 type DisplayRequest struct {
-	Command, Device, Helper       string
-	Width, Height, DPI, DisplayID int
+	Command, Device, Helper, Focus string
+	Width, Height, DPI, DisplayID  int
 }
 
 // DisplayAutomation 与通用动作分离，由适配器显式决定允许的管理出口。
@@ -28,7 +28,7 @@ type DisplayBackend interface {
 	Start(context.Context, string, string) (vdisplay.Hello, error)
 	Status(context.Context, string) (vdisplay.Status, error)
 	Stop(context.Context, string) (vdisplay.StopResult, error)
-	Create(context.Context, string, int, int, int) (vdisplay.Screen, error)
+	Create(context.Context, string, int, int, int, string) (vdisplay.Screen, error)
 	List(context.Context, string) (vdisplay.ListResult, error)
 	Close(context.Context, string, int) (vdisplay.CloseResult, error)
 	Capture(context.Context, string, int) (adb.Screenshot, error)
@@ -63,7 +63,11 @@ func (s *Service) ManageDisplay(ctx context.Context, r DisplayRequest) (any, err
 	case "stop":
 		return s.displays.Stop(ctx, r.Device)
 	case "create":
-		return s.displays.Create(ctx, r.Device, r.Width, r.Height, r.DPI)
+		focus, err := vdisplay.NormalizeFocus(r.Focus)
+		if err != nil {
+			return nil, err
+		}
+		return s.displays.Create(ctx, r.Device, r.Width, r.Height, r.DPI, focus)
 	case "list":
 		return s.displays.List(ctx, r.Device)
 	case "close":

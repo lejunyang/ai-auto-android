@@ -57,10 +57,27 @@ type Hello struct {
 
 // Screen 是辅助进程拥有的虚拟屏尺寸与标识。
 type Screen struct {
-	DisplayID int `json:"displayId"`
-	Width     int `json:"width"`
-	Height    int `json:"height"`
-	DPI       int `json:"dpi"`
+	DisplayID     int    `json:"displayId"`
+	Width         int    `json:"width"`
+	Height        int    `json:"height"`
+	DPI           int    `json:"dpi"`
+	Focus         string `json:"focus"`
+	FocusIsolated bool   `json:"focusIsolated"`
+}
+
+// NormalizeFocus 限定二值策略并提供安全默认值；不接受原始框架标志。
+func NormalizeFocus(focus string) (string, error) {
+	if focus == "" {
+		return "isolated", nil
+	}
+	if focus != "isolated" && focus != "steal" {
+		return "", apperr.New(apperr.CodeInvalidArgument, "focus must be isolated or steal.", false, nil)
+	}
+	return focus, nil
+}
+
+func validScreenFocus(screen Screen, api int) bool {
+	return (screen.Focus == "isolated" || screen.Focus == "steal") && screen.FocusIsolated == (api >= 34 && screen.Focus == "isolated")
 }
 
 // ListResult 列出本进程拥有的虚拟屏。
@@ -115,7 +132,7 @@ func dimensions(w, h, dpi int) bool {
 	return w >= 128 && w <= 2048 && h >= 128 && h <= 2048 && dpi >= 72 && dpi <= 640
 }
 
-func (c *Client) wire(ctx context.Context, port int, method string, fields map[string]int, out any) ([]byte, error) {
+func (c *Client) wire(ctx context.Context, port int, method string, fields map[string]any, out any) ([]byte, error) {
 	conn, err := c.dial(ctx, net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 	if err != nil {
 		return nil, apperr.Wrap(apperr.CodeDisplaydNotRunning, "Cannot connect to verified displayd.", true, err)
@@ -184,7 +201,7 @@ func (c *Client) wire(ctx context.Context, port int, method string, fields map[s
 	return body, nil
 }
 
-func (c *Client) call(ctx context.Context, serial, method string, fields map[string]int, out any) (body []byte, returnErr error) {
+func (c *Client) call(ctx context.Context, serial, method string, fields map[string]any, out any) (body []byte, returnErr error) {
 	if err := adb.ValidateSerial(serial); err != nil {
 		return nil, err
 	}
@@ -216,14 +233,14 @@ func (c *Client) call(ctx context.Context, serial, method string, fields map[str
 	if _, err = c.wire(ctx, fwd.LocalPort, "hello", nil, &hello); err != nil {
 		return nil, err
 	}
-	if hello.ProtocolVersion != 1 {
-		return nil, apperr.New(apperr.CodeVersionMismatch, "displayd protocol v1 is required; rebuild and restart the helper.", false, nil)
+	if hello.ProtocolVersion != 2 {
+		return nil, apperr.New(apperr.CodeVersionMismatch, "displayd protocol v2 is required; rebuild and restart the helper.", false, nil)
 	}
 	if !hello.Supported || hello.APILevel < 33 {
 		return nil, apperr.New(apperr.CodeUnsupportedAPI, "Virtual displays require API 33+.", false, nil)
 	}
 	limits := map[string]int{"maxMessageBytes": maxMessage, "maxFrameBytes": maxFrame, "maxDisplays": 2, "minDimension": 128, "maxDimension": 2048, "minDpi": 72, "maxDpi": 640}
-	if hello.APILevel != state.APILevel || !hello.Capabilities["binaryPng"] || !hello.Capabilities["credentialLockGuard"] || !hello.Capabilities["virtualDisplay"] || hello.Capabilities["groupAwakeQuery"] != (state.APILevel >= 34) {
+	if hello.APILevel != state.APILevel || !hello.Capabilities["binaryPng"] || !hello.Capabilities["credentialLockGuard"] || !hello.Capabilities["virtualDisplay"] || hello.Capabilities["groupAwakeQuery"] != (state.APILevel >= 34) || hello.Capabilities["focusIsolation"] != (state.APILevel >= 34) {
 		return nil, protocolError("Unexpected helper API or capabilities.")
 	}
 	for key, value := range limits {
@@ -235,7 +252,28 @@ func (c *Client) call(ctx context.Context, serial, method string, fields map[str
 		*out.(*Hello) = hello
 		return nil, nil
 	}
-	return c.wire(ctx, fwd.LocalPort, method, fields, out)
+	body, err = c.wire(ctx, fwd.LocalPort, method, fields, out)
+	if err != nil {
+		return nil, err
+	}
+	// 版本握手后仍逐屏核对策略与实际能力，不能把API33请求isolated误报为隔离成功。
+	var screens []Screen
+	switch r := out.(type) {
+	case *Screen:
+		screens = []Screen{*r}
+	case *ListResult:
+		screens = r.Displays
+	case *Status:
+		for _, entry := range r.Displays {
+			screens = append(screens, entry.Screen)
+		}
+	}
+	for _, screen := range screens {
+		if !validScreenFocus(screen, hello.APILevel) {
+			return nil, protocolError("Invalid display focus policy or isolation capability.")
+		}
+	}
+	return body, nil
 }
 
 // Capture 读取指定虚拟屏的 PNG。
@@ -244,7 +282,7 @@ func (c *Client) Capture(ctx context.Context, serial string, id int) (adb.Screen
 		return adb.Screenshot{}, err
 	}
 	var head captureHeader
-	body, err := c.call(ctx, serial, "display.capture", map[string]int{"displayId": id}, &head)
+	body, err := c.call(ctx, serial, "display.capture", map[string]any{"displayId": id}, &head)
 	if err != nil {
 		return adb.Screenshot{}, err
 	}
@@ -296,13 +334,17 @@ func (c *Client) RequireDisplay(ctx context.Context, serial string, id int) erro
 }
 
 // Create 校验尺寸后创建新屏，不允许调用方指定框架标志。
-func (c *Client) Create(ctx context.Context, serial string, width, height, dpi int) (Screen, error) {
+func (c *Client) Create(ctx context.Context, serial string, width, height, dpi int, focus string) (Screen, error) {
+	focus, err := NormalizeFocus(focus)
+	if err != nil {
+		return Screen{}, err
+	}
 	if !dimensions(width, height, dpi) {
 		return Screen{}, apperr.New(apperr.CodeInvalidArgument, "width/height must be 128..2048, dpi 72..640.", false, nil)
 	}
 	var r Screen
-	_, err := c.call(ctx, serial, "display.create", map[string]int{"width": width, "height": height, "dpi": dpi}, &r)
-	if err == nil && (r.DisplayID <= 0 || r.Width != width || r.Height != height || r.DPI != dpi) {
+	_, err = c.call(ctx, serial, "display.create", map[string]any{"width": width, "height": height, "dpi": dpi, "focus": focus}, &r)
+	if err == nil && (r.DisplayID <= 0 || r.Width != width || r.Height != height || r.DPI != dpi || r.Focus != focus) {
 		err = protocolError("Invalid created display.")
 	}
 	return r, err
@@ -314,7 +356,7 @@ func (c *Client) Close(ctx context.Context, serial string, id int) (CloseResult,
 		return CloseResult{}, err
 	}
 	var r CloseResult
-	_, err := c.call(ctx, serial, "display.close", map[string]int{"displayId": id}, &r)
+	_, err := c.call(ctx, serial, "display.close", map[string]any{"displayId": id}, &r)
 	if err == nil && (r.DisplayID != id || !r.Closed) {
 		err = protocolError("Invalid close result.")
 	}
