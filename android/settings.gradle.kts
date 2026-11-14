@@ -1,4 +1,4 @@
-// 配置用途：固定仓库并注册主 App、测试 fixture 与 debug-only 控制面安全内核。
+// 配置用途：固定仓库并注册主 App、测试 fixture、控制面安全内核与 shell 显示辅助进程。
 pluginManagement {
     repositories {
         google()
@@ -19,5 +19,6 @@ rootProject.name = "AiAutoAndroid"
 include(":app")
 include(":device-fixture")
 include(":web-fixture")
+include(":displayd")
 include(":test-control-core")
 project(":test-control-core").projectDir = file("test-control/core")

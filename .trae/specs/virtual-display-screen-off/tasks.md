@@ -8,16 +8,19 @@
 
 目录所有权：`android/displayd/`、`android/settings.gradle.kts`。
 
-- [ ] 先写失败测试：请求解析、尺寸与数量范围校验、对端 uid 判定、消息超限拒绝
-- [ ] 新建 Gradle 模块，产出可作为 `app_process` CLASSPATH 的 APK
-- [ ] 以 shell 身份创建虚拟屏（标志固定，API 33 下限，API 34+ 才设独立焦点）
-- [ ] `localabstract` 服务端：对端凭据校验、有界按行 JSON、帧的二进制返回
-- [ ] 方法：`hello`、`display.create|list|close|capture`、`status`、`shutdown`
-- [ ] 常驻脱离 `adb shell` 会话；退出时释放全部虚拟屏
-- [ ] 保持虚拟屏显示组唤醒；凭据锁定时不唤醒，`display.capture` 返回锁定错误
-- [ ] 模拟器冒烟：用原始 `adb` 命令启动辅助进程并走通 create → capture → shutdown
-- [ ] `make comments`、`make android-verify`
-- [ ] 提交：`feat(displayd): add shell-uid virtual display helper`
+- [x] 先写失败测试：请求解析、尺寸与数量范围校验、对端 uid 判定、消息超限拒绝
+- [x] 新建 Gradle 模块，产出可作为 `app_process` CLASSPATH 的 APK
+- [x] 以 shell 身份创建虚拟屏（标志固定，API 33 下限，API 34+ 才设独立焦点）
+- [x] `localabstract` 服务端：对端凭据校验、有界按行 JSON、帧的二进制返回
+- [x] 方法：`hello`、`display.create|list|close|capture`、`status`、`shutdown`
+- [x] 常驻脱离 `adb shell` 会话；退出时释放全部虚拟屏
+- [x] 保持虚拟屏显示组唤醒；凭据锁定时不唤醒，`display.capture` 返回锁定错误
+- [x] 模拟器冒烟：用原始 `adb` 命令启动辅助进程并走通 create → capture → shutdown
+- [x] `make comments`、`make android-verify`
+- [x] 提交：`feat(displayd): add shell-uid virtual display helper`
+
+证据：Round 1（29 项 JVM 单测、API 35 原始 adb 冒烟）；锁定策略为实现与单测证据，
+PIN/息屏/超时端到端仍属 T4。API 33 的 `groupAwake=null` 限制见 Round 1 与模块 README。
 
 ## T2：Go 侧显示参数与辅助进程客户端
 
@@ -59,4 +62,4 @@
 
 ## 实际提交
 
-（完成后填写）
+- T1：`feat(displayd): add shell-uid virtual display helper`（本轮单一提交）。
