@@ -37,7 +37,7 @@
 | 以 shell 身份 `DisplayManager.createVirtualDisplay`，标志 64971 | 成功，得到独立显示组、`FLAG_TRUSTED`、`FLAG_ALWAYS_UNLOCKED` |
 | `am start --display N` | 成功，主屏前台不变 |
 | `input -d N tap` / `input -d N keyevent` | 成功，虚拟屏页面跳转，主屏不变 |
-| `uiautomator dump --display-id N` | 成功，返回虚拟屏层级 |
+| `uiautomator dump --display-id N` | **结论已更正，见下**：命令返回了虚拟屏层级，但并非该参数生效 |
 | 取帧（辅助进程持有的 `ImageReader`） | 成功，PNG 内容正确 |
 | 主屏 `KEYCODE_SLEEP`，无锁屏凭据 | 主屏显示组 Dozing，虚拟屏显示组 Awake，点按、层级、取帧全部正常 |
 | 主屏息屏并被 PIN 锁定 | 两个显示组都 Dozing；虚拟屏上启动、点按、层级仍可用，但帧全黑；`input -d N keyevent KEYCODE_WAKEUP` 唤醒的是主屏而不是虚拟屏 |
@@ -46,6 +46,17 @@
 
 **已知注意点**：已在主屏运行的应用再向虚拟屏启动时，整个任务会被移到虚拟屏，
 而不是另开一份。
+
+**更正（2026-11-14，Round 6）**：AOSP 的 android13 至 android16 发布分支与 main 的
+`DumpCommand` 都不解析 `--display-id`，只识别 `--compressed` 与 `--windows`。普通
+dump 读取的是**活动窗口**（`getRootInActiveWindow`），未知参数被忽略。Round 0 里
+拿到虚拟屏层级，是因为当时焦点恰好在虚拟屏上，不是因为参数起了作用。由此得出
+两条约束：
+
+1. 按显示读取层级不能用 `--display-id`，改用 `uiautomator dump --windows`，其输出
+   按显示分组并带显示编号，可以核对目标。
+2. 不带目标显示的普通层级读取拿到的是活动窗口。虚拟屏持有焦点时，它可能返回
+   虚拟屏的内容而不是主屏的。这是既有主屏命令在虚拟屏存在时的一个已知歧义。
 
 **未验证**：真机与 OEM ROM、API 33/34、虚拟屏显示组自身的息屏超时（该 AVD 的
 `screen_off_timeout` 为无限大）、用户在主屏输入时输入法与焦点是否受影响、虚拟屏
@@ -84,9 +95,15 @@
 ### Go 侧
 
 - `internal/adb`：`Forward` 支持转发到 `localabstract`；点按、滑动、按键、ASCII
-  文本、启动应用、层级 dump 增加可选的目标显示参数，分别对应 `input -d N`、
-  `am start --display N`、`uiautomator dump --display-id N`。不带该参数时行为与
-  现在逐字一致。
+  文本、启动应用增加可选的目标显示参数，分别对应 `input -d N`、
+  `am start --display N`。不带该参数时行为与现在逐字一致。
+- 按显示读取层级：发出 `uiautomator dump --windows`，解析输出后**只返回目标显示
+  编号对应的那一组窗口**。输出里没有该显示编号、无法解析或被截断时明确失败，
+  不回退到普通 dump，也不返回其它显示的内容。该能力按 AOSP 源码里 `--windows`
+  被解析的最低版本做 API 门槛，低于门槛或读不到 API level 时拒绝且不发出命令。
+  返回的 XML 是窗口列表形态，与普通 dump 的单根形态不同，文档里要写明。
+- 不带目标显示的普通层级读取保持命令行逐字不变。它在虚拟屏持有焦点时的歧义
+  不在本规格内修复，但验收必须实测并如实记录，同时登记为后续项。
 - 新包 `internal/vdisplay`：辅助进程的部署（推送、远端 SHA-256 校验）、启动、
   探活、类型化客户端与清理。产物路径由 `--helper` 或环境变量显式给出，缺省在
   `aactl` 可执行文件同目录查找；找不到时报出可操作的错误。
