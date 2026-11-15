@@ -52,12 +52,15 @@ func TestDisplayLaunchAndHierarchyNeverUsePrimaryFallback(t *testing.T) {
 			c := NewClient("adb", f)
 			if target {
 				c = c.WithDisplay(id)
+				f.results = []process.Result{{Stdout: []byte(twoOnlineDevices)}, {Stdout: []byte("com.example.app/.MainActivity\n")}, {}}
+				f.errors = make([]error, 3)
 			}
 			if _, err := c.Launch(context.Background(), "FIRST", "com.example.app", ""); err != nil {
 				t.Fatal(err)
 			}
 			if target {
-				assertArgs(t, f.calls[1], "-s", "FIRST", "shell", "am", "start", "-W", "--display", strconv.Itoa(id), "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-p", "com.example.app")
+				assertArgs(t, f.calls[1], "-s", "FIRST", "shell", "cmd", "package", "resolve-activity", "--brief", "--components", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "com.example.app")
+				assertArgs(t, f.calls[2], "-s", "FIRST", "shell", "am", "start", "-W", "--display", strconv.Itoa(id), "-n", "com.example.app/.MainActivity")
 			} else {
 				assertArgs(t, f.calls[1], "-s", "FIRST", "shell", "monkey", "-p", "com.example.app", "-c", "android.intent.category.LAUNCHER", "1")
 			}

@@ -309,15 +309,46 @@ func (c *Client) Launch(ctx context.Context, serial, packageName, activity strin
 	if c.displayID != nil {
 		args = []string{"-s", serial, "shell", "am", "start", "-W", "--display", strconv.Itoa(*c.displayID)}
 		if activity == "" {
-			args = append(args, "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-p", packageName)
-		} else {
-			args = append(args, "-n", component)
+			var err error
+			component, err = c.resolveDisplayLauncher(ctx, serial, packageName)
+			if err != nil {
+				return ActionResult{}, err
+			}
 		}
+		args = append(args, "-n", component)
 	}
 	if err := c.runAction(ctx, serial, args, process.Options{Timeout: 20 * time.Second}); err != nil {
 		return ActionResult{}, err
 	}
 	return ActionResult{Device: serial, Action: "app.launch"}, nil
+}
+
+// resolveDisplayLauncher 避免虚拟设备上下文中的隐式Intent解析失败；固定--components去掉--brief可能附带的元数据。
+// 不从多行中挑选、拼接或回退，只有单个同包组件才可成为后续显式启动参数。
+func (c *Client) resolveDisplayLauncher(ctx context.Context, serial, packageName string) (string, error) {
+	r, err := c.run(ctx, []string{"-s", serial, "shell", "cmd", "package", "resolve-activity", "--brief", "--components", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", packageName}, process.Options{Timeout: 10 * time.Second, MaxOutput: 1024})
+	failed := func() error {
+		return apperr.New(apperr.CodeActionFailed, "Cannot resolve a single same-package launcher component for the requested display; no activity was started and no primary-display fallback was attempted.", false, map[string]any{"package": packageName, "displayId": *c.displayID})
+	}
+	if err != nil {
+		if r.ExitCode > 0 {
+			return "", failed()
+		}
+		return "", err
+	}
+	if r.OutputTruncated || len(r.Stdout) > 1024 || len(r.Stderr) != 0 {
+		return "", failed()
+	}
+	component := strings.TrimSuffix(string(r.Stdout), "\n")
+	component = strings.TrimSuffix(component, "\r")
+	if strings.ContainsAny(component, "\r\n\t ") || strings.Count(component, "/") != 1 {
+		return "", failed()
+	}
+	validated, err := validateActivity(packageName, component)
+	if err != nil || validated != component {
+		return "", failed()
+	}
+	return component, nil
 }
 
 // Stop 对已校验包执行 force-stop，不接受任意 Shell 片段。
