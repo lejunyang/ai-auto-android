@@ -1,6 +1,7 @@
 package dev.aiauto.displayd;
 
 import static org.junit.Assert.*;
+import static dev.aiauto.displayd.FrameworkDisplayFlags.VirtualDisplayRequest.*;
 import org.junit.Test;
 
 /** 测试用途：验证 shell 身份、尺寸数量帧上限与锁定策略，防止主屏回退和凭据锁定后唤醒。 */
@@ -76,10 +77,10 @@ public class PolicyTest {
         assertEquals(15819, Policy.flags(33));
         for (int api : new int[]{34, 35, 36}) {
             assertEquals(130507, Policy.flags(api));
-            assertEquals(1 << 16, Policy.flags(api) & (1 << 16));
+            assertEquals(STEAL_TOP_FOCUS_DISABLED, Policy.flags(api) & STEAL_TOP_FOCUS_DISABLED);
         }
-        assertEquals(0, Policy.flags(33) & (1 << 16));
-        for (int api : new int[]{33, 34, 35, 36}) assertEquals(0, Policy.flags(api) & (1 << 2));
+        assertEquals(0, Policy.flags(33) & STEAL_TOP_FOCUS_DISABLED);
+        for (int api : new int[]{33, 34, 35, 36}) assertEquals(0, Policy.flags(api) & SECURE);
     }
     @Test public void focusPoliciesHaveFixedFlagsAndHonestIsolation() throws Exception {
         // 纯策略测试覆盖API33降级与所有版本禁止SECURE，调用方不能选择任意标志。
@@ -87,7 +88,7 @@ public class PolicyTest {
             for (String focus : new String[]{"isolated", "steal"}) {
                 int expected = api == 33 ? 15819 : focus.equals("isolated") ? 130507 : 64971;
                 assertEquals(expected, Policy.flags(api, focus));
-                assertEquals(0, Policy.flags(api, focus) & (1 << 2));
+                assertEquals(0, Policy.flags(api, focus) & SECURE);
                 assertEquals(api >= 34 && focus.equals("isolated"), Policy.focusIsolated(api, focus));
             }
         }

@@ -1,5 +1,7 @@
 package dev.aiauto.displayd;
 
+import static dev.aiauto.displayd.FrameworkDisplayFlags.VirtualDisplayRequest.*;
+
 /** 功能用途：隔离身份、版本、锁定与资源预算规则，使安全边界可在普通 JVM 上验证。 */
 final class Policy {
     static final int MAX_MESSAGE_BYTES = 16384;
@@ -31,10 +33,10 @@ final class Policy {
         if (api < 33) throw new Protocol.Failure("UNSUPPORTED_API", "requires API 33+");
         focus(focus);
         // 固定排除SECURE；只把二值策略映射为固定组合，API33以focusIsolated=false如实报告降级。
-        int base = 1 | (1 << 1) | (1 << 3) | (1 << 6) | (1 << 7) | (1 << 8)
-                | (1 << 10) | (1 << 11) | (1 << 12) | (1 << 13);
-        if (api >= 34) base |= (1 << 14) | (1 << 15);
-        return focusIsolated(api, focus) ? base | (1 << 16) : base;
+        int base = PUBLIC | PRESENTATION | OWN_CONTENT_ONLY | SUPPORTS_TOUCH | ROTATES_WITH_CONTENT
+                | DESTROY_CONTENT_ON_REMOVAL | TRUSTED | OWN_DISPLAY_GROUP | ALWAYS_UNLOCKED | TOUCH_FEEDBACK_DISABLED;
+        if (api >= 34) base |= OWN_FOCUS | DEVICE_DISPLAY_GROUP;
+        return focusIsolated(api, focus) ? base | STEAL_TOP_FOCUS_DISABLED : base;
     }
     static boolean shouldKeepAwake(boolean credentialLocked, int count) {
         return !credentialLocked && count > 0;

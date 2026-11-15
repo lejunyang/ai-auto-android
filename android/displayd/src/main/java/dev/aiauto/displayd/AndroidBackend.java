@@ -278,7 +278,8 @@ final class AndroidBackend implements AutoCloseable {
                 description.put("cameraInfo", camera.describe());
                 description.put("displayFlags", actualFlags);
                 // 读取系统附加的实际标志，不把 VirtualDevice 的结果套用普通屏推断。
-                description.put("focusIsolated", (actualFlags & (1 << 12)) != 0 && (actualFlags & (1 << 11)) != 0);
+                description.put("focusIsolated", (actualFlags & FrameworkDisplayFlags.DisplayResult.STEAL_TOP_FOCUS_DISABLED) != 0
+                        && (actualFlags & FrameworkDisplayFlags.DisplayResult.OWN_FOCUS) != 0);
             }
             if (status) {
                 Class<?> infoClass = Class.forName("android.view.DisplayInfo");
@@ -288,6 +289,11 @@ final class AndroidBackend implements AutoCloseable {
                 int groupId = info.getClass().getField("displayGroupId").getInt(info);
                 description.put("state", current.getState());
                 description.put("displayGroupId", groupId);
+                if (camera != null) {
+                    // 只读系统真实移除策略，不能把创建请求中的销毁标志当作已生效证据。
+                    try { description.put("removeMode", infoClass.getField("removeMode").getInt(info)); }
+                    catch (ReflectiveOperationException error) { description.put("removeMode", null); }
+                }
                 // API 33 没有按显示组查询的 binder API；未知值必须如实返回 null，不能借用主屏状态。
                 description.put("groupAwake", interactive == null ? null : interactive.invoke(power, id));
             }

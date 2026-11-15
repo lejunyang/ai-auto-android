@@ -83,6 +83,13 @@ func (c *Client) CreateWithCamera(ctx context.Context, serial string, width, hei
 
 const maxCameraImage = 8 * 1024 * 1024
 
+// Android Display.getFlags()结果命名空间，不能用于VirtualDisplayConfig的请求标志。
+const (
+	androidDisplayFlagSecure                = 0x0002
+	androidDisplayFlagOwnFocus              = 0x0800
+	androidDisplayFlagStealTopFocusDisabled = 0x1000
+)
+
 func invalidImage(reason string) error {
 	return apperr.New(apperr.CodeCameraImageInvalid, reason, false, nil)
 }

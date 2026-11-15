@@ -1,8 +1,14 @@
 package dev.aiauto.displayd;
 
+import static dev.aiauto.displayd.FrameworkDisplayFlags.VirtualDisplayRequest.*;
+
 /** 功能用途：约束摄像头启用、图片文件预算与等比居中规则，纯逻辑不依赖设备框架。 */
 final class CameraPolicy {
     static final int MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+    // 保留普通屏的请求组策略；销毁内容是独立安全约束，绝不能按Display结果位误删。
+    static int displayFlags(int requestFlags) {
+        return (requestFlags | DESTROY_CONTENT_ON_REMOVAL) & ~SECURE;
+    }
     static final String PATH_PATTERN = "/data/local/tmp/aactl-camera-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.img";
     static void requireAvailable(boolean enabled, int api) throws Protocol.Failure {
         if (!enabled) throw new Protocol.Failure("VIRTUAL_CAMERA_NOT_ENABLED",

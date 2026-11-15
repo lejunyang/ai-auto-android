@@ -73,8 +73,7 @@ final class VirtualCameraBackend implements AutoCloseable {
                     .invoke(device, configBuilder.getMethod("build").invoke(config));
             cameraId = String.valueOf(camera.getClass().getMethod("getId").invoke(camera));
             VirtualDisplayConfig displayConfig = new VirtualDisplayConfig.Builder("aactl-displayd", width, height, dpi)
-                    // 组由 VirtualDevice 分配；保留 OWN_DISPLAY_GROUP 会请求与设备分离的显示组。
-                    .setSurface(surface).setFlags(flags & ~(1 << 8)).build();
+                    .setSurface(surface).setFlags(CameraPolicy.displayFlags(flags)).build();
             VirtualDisplay display = (VirtualDisplay) device.getClass()
                     .getMethod("createVirtualDisplay", VirtualDisplayConfig.class, Executor.class, VirtualDisplay.Callback.class)
                     .invoke(device, displayConfig, null, null);

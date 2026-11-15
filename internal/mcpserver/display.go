@@ -117,7 +117,7 @@ func displayManagementOutputSchema(command string) json.RawMessage {
 	case "list":
 		return objectSchema(`"required":["displays"]`, `"properties":{"displays":{"type":"array","maxItems":2,"items":`+screen+`}}`)
 	default:
-		statusScreen := `{"type":"object","required":["displayId","width","height","dpi","focus","focusIsolated","state","displayGroupId","groupAwake"],"properties":{` + screenProperties + `,"state":{"type":"integer"},"displayGroupId":{"type":"integer"},"groupAwake":{"type":["boolean","null"]}},"additionalProperties":false}`
+		statusScreen := `{"type":"object","required":["displayId","width","height","dpi","focus","focusIsolated","state","displayGroupId","groupAwake"],"properties":{` + screenProperties + `,"removeMode":{"type":["integer","null"]},"state":{"type":"integer"},"displayGroupId":{"type":"integer"},"groupAwake":{"type":["boolean","null"]}},"additionalProperties":false}`
 		return objectSchema(`"required":["credentialLocked","displays","keepAwakeIntervalMs","lastActivityUptimeMs","keepAwakeError"]`, `"properties":{"credentialLocked":{"type":"boolean"},"displays":{"type":"array","maxItems":2,"items":`+statusScreen+`},"keepAwakeIntervalMs":{"const":2000},"lastActivityUptimeMs":{"type":"integer","minimum":0},"keepAwakeError":{"type":["string","null"]}}`)
 	}
 }

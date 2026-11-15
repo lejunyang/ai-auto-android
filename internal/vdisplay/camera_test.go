@@ -142,6 +142,30 @@ func TestCameraWireAndTypedErrors(t *testing.T) {
 		requireCode(t, err, code)
 	}
 }
+
+func TestCameraStatusRemoveModePreservesUnknown(t *testing.T) {
+	for _, mode := range []string{"1", "null"} {
+		c, _ := cameraWire(t, true, func(r map[string]any) string {
+			if r["method"] != "status" {
+				t.Error(r)
+			}
+			screen := strings.TrimSuffix(cameraScreenJSON, "}") + `,"state":2,"displayGroupId":1,"groupAwake":true,"removeMode":` + mode + `}`
+			return cameraOK(`{"displays":[` + screen + `],"keepAwakeIntervalMs":2000}`)
+		})
+		status, err := c.Status(context.Background(), "SERIAL")
+		if err != nil || len(status.Displays) != 1 {
+			t.Fatal(status, err)
+		}
+		got := status.Displays[0].RemoveMode
+		if mode == "null" {
+			if got != nil {
+				t.Fatal("unknown removeMode reported as verified", got)
+			}
+		} else if got == nil || *got != 1 {
+			t.Fatal(got)
+		}
+	}
+}
 func TestCameraImageSnapshotAndCleanup(t *testing.T) {
 	for _, failure := range []string{"", "push", "helper", "cleanup"} {
 		t.Run(failure, func(t *testing.T) {

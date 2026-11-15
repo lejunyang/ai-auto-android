@@ -82,7 +82,7 @@ func NormalizeFocus(focus string) (string, error) {
 
 func validScreenFocus(screen Screen, api int) bool {
 	if screen.Camera != "" {
-		return screen.Camera == "back" && api >= 35 && screen.CameraInfo != nil && screen.CameraInfo.VirtualDeviceID > 0 && screen.CameraInfo.CameraID != "" && screen.DisplayFlags != nil && (*screen.DisplayFlags&2) == 0 && screen.FocusIsolated == ((*screen.DisplayFlags&(1<<11)) != 0 && (*screen.DisplayFlags&(1<<12)) != 0) && (screen.Focus == "isolated" || screen.Focus == "steal")
+		return screen.Camera == "back" && api >= 35 && screen.CameraInfo != nil && screen.CameraInfo.VirtualDeviceID > 0 && screen.CameraInfo.CameraID != "" && screen.DisplayFlags != nil && (*screen.DisplayFlags&androidDisplayFlagSecure) == 0 && screen.FocusIsolated == ((*screen.DisplayFlags&androidDisplayFlagOwnFocus) != 0 && (*screen.DisplayFlags&androidDisplayFlagStealTopFocusDisabled) != 0) && (screen.Focus == "isolated" || screen.Focus == "steal")
 	}
 	return (screen.Focus == "isolated" || screen.Focus == "steal") && screen.FocusIsolated == (api >= 34 && screen.Focus == "isolated")
 }
@@ -98,6 +98,7 @@ type ScreenStatus struct {
 	State          int   `json:"state"`
 	DisplayGroupID int   `json:"displayGroupId"`
 	GroupAwake     *bool `json:"groupAwake"`
+	RemoveMode     *int  `json:"removeMode,omitempty"`
 }
 
 // Status 透传锁定、保活与显示组状态，不把 API 33 的未知值当作唤醒。
