@@ -192,6 +192,78 @@ func TestDisplayManagementCommandSurface(t *testing.T) {
 	}
 }
 
+func TestVirtualCameraCLIContracts(t *testing.T) {
+	for _, args := range [][]string{
+		{"display", "start", "--virtual-camera"},
+		{"display", "create", "--width", "640", "--height", "480", "--dpi", "240", "--camera", "back"},
+		{"camera", "set-image", "--display", "7", "--image", "C:/space path/image.png"},
+	} {
+		fake := &displayCapturingAutomation{}
+		app, out := testApp(&commandExecutor{}, "")
+		app.Automation = fake
+		if app.Run(context.Background(), append(args, "--device", "SERIAL", "--json")) != 0 || len(fake.managed) != 1 {
+			t.Fatal(out.String(), fake.managed)
+		}
+		r := fake.managed[0]
+		switch args[1] {
+		case "start":
+			if !r.VirtualCamera {
+				t.Fatal(r)
+			}
+		case "create":
+			if r.Camera != "back" || r.Focus != "isolated" {
+				t.Fatal(r)
+			}
+		case "set-image":
+			if r.Command != "camera.set-image" || r.DisplayID != 7 || r.Image != "C:/space path/image.png" {
+				t.Fatal(r)
+			}
+		}
+	}
+	for _, args := range [][]string{
+		{"display", "start", "--virtual-camera", "--virtual-camera"},
+		{"display", "start", "--virtual-camera=false"},
+		{"display", "list", "--virtual-camera"},
+		{"display", "create", "--width", "640", "--height", "480", "--dpi", "240", "--camera", "front"},
+		{"camera", "set-image", "--display", "0", "--image", "image.png"},
+		{"camera", "set-image", "--display", "7", "--image", "image.png", "--force", "true"},
+	} {
+		fake := &displayCapturingAutomation{}
+		app, _ := testApp(&commandExecutor{}, "")
+		app.Automation = fake
+		if app.Run(context.Background(), append(args, "--device", "SERIAL")) == 0 || len(fake.managed) != 0 {
+			t.Fatal("invalid camera command reached backend", args)
+		}
+	}
+}
+
+type cameraCLIError struct {
+	displayCapturingAutomation
+	code string
+}
+
+func (f *cameraCLIError) ManageDisplay(context.Context, service.DisplayRequest) (any, error) {
+	return nil, apperr.New(f.code, "camera diagnostic", false, nil)
+}
+func TestVirtualCameraCLIErrors(t *testing.T) {
+	for _, code := range []string{apperr.CodeVirtualCameraNotEnabled, apperr.CodeVirtualCameraUnavailable, apperr.CodeCameraImageInvalid} {
+		fake := &cameraCLIError{code: code}
+		app, out := testApp(&commandExecutor{}, "")
+		app.Automation = fake
+		want := apperr.ExitUnsupported
+		if code == apperr.CodeCameraImageInvalid {
+			want = apperr.ExitArgument
+		}
+		if app.Run(context.Background(), []string{"camera", "set-image", "--device", "SERIAL", "--display", "7", "--image", "image.png", "--json"}) != want {
+			t.Fatal(out.String())
+		}
+		e := decodeEnvelope(t, out.Bytes())
+		if e.OK || e.Error == nil || e.Error.Code != code || e.Error.Retryable {
+			t.Fatal(e)
+		}
+	}
+}
+
 // 默认与两种显式策略均到达共享服务，非法值和非创建命令不得携带策略。
 func TestDisplayCreateFocusOption(t *testing.T) {
 	for _, focus := range []string{"", "isolated", "steal", "bad", "ISOLATED"} {

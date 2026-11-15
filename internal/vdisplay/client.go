@@ -48,21 +48,25 @@ const maxFrame = 16777216
 
 // Hello 固定协议版本、能力和预算，客户端不会采信更大的远端上限。
 type Hello struct {
-	ProtocolVersion int             `json:"protocolVersion"`
-	APILevel        int             `json:"apiLevel"`
-	Supported       bool            `json:"supported"`
-	Capabilities    map[string]bool `json:"capabilities"`
-	Limits          map[string]int  `json:"limits"`
+	ProtocolVersion   int             `json:"protocolVersion"`
+	APILevel          int             `json:"apiLevel"`
+	Supported         bool            `json:"supported"`
+	Capabilities      map[string]bool `json:"capabilities"`
+	Limits            map[string]int  `json:"limits"`
+	VirtualCameraUser int             `json:"virtualCameraUser,omitempty"`
 }
 
 // Screen 是辅助进程拥有的虚拟屏尺寸与标识。
 type Screen struct {
-	DisplayID     int    `json:"displayId"`
-	Width         int    `json:"width"`
-	Height        int    `json:"height"`
-	DPI           int    `json:"dpi"`
-	Focus         string `json:"focus"`
-	FocusIsolated bool   `json:"focusIsolated"`
+	DisplayID     int         `json:"displayId"`
+	Width         int         `json:"width"`
+	Height        int         `json:"height"`
+	DPI           int         `json:"dpi"`
+	Focus         string      `json:"focus"`
+	FocusIsolated bool        `json:"focusIsolated"`
+	Camera        string      `json:"camera,omitempty"`
+	CameraInfo    *CameraInfo `json:"cameraInfo,omitempty"`
+	DisplayFlags  *int        `json:"displayFlags,omitempty"`
 }
 
 // NormalizeFocus 限定二值策略并提供安全默认值；不接受原始框架标志。
@@ -77,6 +81,9 @@ func NormalizeFocus(focus string) (string, error) {
 }
 
 func validScreenFocus(screen Screen, api int) bool {
+	if screen.Camera != "" {
+		return screen.Camera == "back" && api >= 35 && screen.CameraInfo != nil && screen.CameraInfo.VirtualDeviceID > 0 && screen.CameraInfo.CameraID != "" && screen.DisplayFlags != nil && (*screen.DisplayFlags&2) == 0 && screen.FocusIsolated == ((*screen.DisplayFlags&(1<<11)) != 0 && (*screen.DisplayFlags&(1<<12)) != 0) && (screen.Focus == "isolated" || screen.Focus == "steal")
+	}
 	return (screen.Focus == "isolated" || screen.Focus == "steal") && screen.FocusIsolated == (api >= 34 && screen.Focus == "isolated")
 }
 
@@ -178,6 +185,9 @@ func (c *Client) wire(ctx context.Context, port int, method string, fields map[s
 		}
 		// 仅接受设备端 README 的固定错误集合，未知协议错误不能伪造电脑侧错误语义。
 		allowed := map[string]bool{"INVALID_REQUEST": true, "UNKNOWN_METHOD": true, "INVALID_ARGUMENT": true, "MESSAGE_TOO_LARGE": true, "FRAME_TOO_LARGE": true, "DISPLAY_LIMIT": true, "UNSUPPORTED_API": true, "DISPLAY_NOT_FOUND": true, "FRAME_NOT_READY": true, "DEVICE_LOCKED": true, "DISPLAY_ASLEEP": true, "LOCK_STATE_UNAVAILABLE": true, "CAPTURE_FAILED": true, "FRAMEWORK_ERROR": true, "SHUTTING_DOWN": true}
+		allowed[apperr.CodeVirtualCameraNotEnabled] = true
+		allowed[apperr.CodeVirtualCameraUnavailable] = true
+		allowed[apperr.CodeCameraImageInvalid] = true
 		if !allowed[response.Error.Code] {
 			return nil, protocolError("Unknown displayd error code.")
 		}
@@ -251,6 +261,11 @@ func (c *Client) call(ctx context.Context, serial, method string, fields map[str
 	if method == "hello" {
 		*out.(*Hello) = hello
 		return nil, nil
+	}
+	if method == "camera.setImage" || fields["camera"] == "back" {
+		if !hello.Capabilities["virtualCamera"] {
+			return nil, cameraNotEnabled()
+		}
 	}
 	body, err = c.wire(ctx, fwd.LocalPort, method, fields, out)
 	if err != nil {
@@ -398,6 +413,10 @@ func ResolveHelper(explicit string) (string, error) {
 
 // Start 比对 SHA-256、部署并启动；已有实例只在产物一致且身份可验证时复用。
 func (c *Client) Start(ctx context.Context, serial, helper string) (Hello, error) {
+	return c.start(ctx, serial, helper, false)
+}
+
+func (c *Client) start(ctx context.Context, serial, helper string, camera bool) (result Hello, returnErr error) {
 	path, err := ResolveHelper(helper)
 	if err != nil {
 		return Hello{}, err
@@ -423,7 +442,28 @@ func (c *Client) Start(ctx context.Context, serial, helper string) (Hello, error
 		return Hello{}, err
 	}
 	if state.PID == 0 {
-		if err = c.host.StartDisplayd(ctx, serial); err != nil {
+		if camera {
+			host, ok := c.host.(CameraHost)
+			if !ok {
+				return Hello{}, cameraNotEnabled()
+			}
+			association, e := host.EnsureCameraAssociation(ctx, serial)
+			if e != nil {
+				return Hello{}, e
+			}
+			defer func() {
+				if returnErr != nil {
+					cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+					defer cancel()
+					_, stopErr := c.Stop(cleanup, serial)
+					returnErr = errors.Join(returnErr, stopErr, host.CleanupCameraAssociation(cleanup, serial, association.UserID))
+				}
+			}()
+			err = host.StartDisplaydCamera(ctx, serial, association)
+		} else {
+			err = c.host.StartDisplayd(ctx, serial)
+		}
+		if err != nil {
 			return Hello{}, err
 		}
 	}
@@ -435,6 +475,9 @@ func (c *Client) Start(ctx context.Context, serial, helper string) (Hello, error
 		if state.PID > 0 && state.Bound {
 			var r Hello
 			_, err = c.call(ctx, serial, "hello", nil, &r)
+			if err == nil && camera && !r.Capabilities["virtualCamera"] {
+				err = cameraNotEnabled()
+			}
 			return r, err
 		}
 		select {
@@ -448,11 +491,23 @@ func (c *Client) Start(ctx context.Context, serial, helper string) (Hello, error
 
 // Stop 等待辅助进程退出后移除固定临时文件；不会杀死身份未知的进程。
 func (c *Client) Stop(ctx context.Context, serial string) (StopResult, error) {
+	user := -1
 	state, err := c.host.InspectDisplayd(ctx, serial)
 	if err != nil {
 		return StopResult{}, err
 	}
 	if state.PID > 0 {
+		if _, ok := c.host.(CameraHost); ok && state.APILevel >= 35 {
+			var hello Hello
+			if _, err = c.call(ctx, serial, "hello", nil, &hello); err != nil {
+				return StopResult{}, err
+			}
+			if hello.Capabilities["virtualCamera"] {
+				user = hello.VirtualCameraUser
+			} else {
+				user = -2
+			}
+		}
 		var r StopResult
 		if _, err = c.call(ctx, serial, "shutdown", nil, &r); err != nil {
 			return r, err
@@ -467,6 +522,14 @@ func (c *Client) Stop(ctx context.Context, serial string) (StopResult, error) {
 			return StopResult{}, err
 		}
 		if state.PID == 0 && !state.Bound {
+			if host, ok := c.host.(CameraHost); ok && user != -2 && state.APILevel >= 35 {
+				if err = host.CleanupCameraAssociation(ctx, serial, user); err != nil {
+					return StopResult{}, err
+				}
+				if err = host.CleanupCameraImages(ctx, serial); err != nil {
+					return StopResult{}, err
+				}
+			}
 			if err = c.host.RemoveDisplaydFiles(ctx, serial); err != nil {
 				return StopResult{}, err
 			}

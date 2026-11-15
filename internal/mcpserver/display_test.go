@@ -44,7 +44,14 @@ func (f *displayAutomationFake) ManageDisplay(_ context.Context, r service.Displ
 	f.managed = append(f.managed, r)
 	switch r.Command {
 	case "create":
-		return vdisplay.Screen{DisplayID: 7, Width: r.Width, Height: r.Height, DPI: r.DPI, Focus: r.Focus, FocusIsolated: r.Focus == "isolated"}, f.failure
+		screen := vdisplay.Screen{DisplayID: 7, Width: r.Width, Height: r.Height, DPI: r.DPI, Focus: r.Focus, FocusIsolated: r.Focus == "isolated"}
+		if r.Camera != "" {
+			flags := 6144
+			screen.Camera = r.Camera
+			screen.DisplayFlags = &flags
+			screen.CameraInfo = &vdisplay.CameraInfo{CameraID: "0", VirtualDeviceID: 8, Streams: []vdisplay.CameraStream{}}
+		}
+		return screen, f.failure
 	case "close":
 		return vdisplay.CloseResult{DisplayID: r.DisplayID, Closed: true}, f.failure
 	case "status":
@@ -152,7 +159,7 @@ func TestMCPDisplayManagementSurfaceAndErrors(t *testing.T) {
 		callDisplayTool(t, s, "android_display_create", map[string]any{"device": "SERIAL", "width": 720, "height": 1280, "dpi": 240, field: "x"}, false)
 	}
 	callDisplayTool(t, s, "android_display_close", map[string]any{"device": "SERIAL", "displayId": 0}, false)
-	for _, code := range []string{apperr.CodeDisplaydNotRunning, apperr.CodeDisplayNotFound, apperr.CodeDeviceLocked, apperr.CodeDisplayAsleep, "DISPLAY_LIMIT"} {
+	for _, code := range []string{apperr.CodeDisplaydNotRunning, apperr.CodeDisplayNotFound, apperr.CodeDeviceLocked, apperr.CodeDisplayAsleep, "DISPLAY_LIMIT", apperr.CodeVirtualCameraNotEnabled, apperr.CodeVirtualCameraUnavailable, apperr.CodeCameraImageInvalid} {
 		f.failure = apperr.New(code, "test", false, nil)
 		for _, name := range []string{"android_display_list", ToolObserve, ToolActionExecute} {
 			args := map[string]any{"device": "SERIAL"}
@@ -207,6 +214,29 @@ func TestMCPDisplayFocusPolicySchemaAndForwarding(t *testing.T) {
 	callDisplayTool(t, s, ToolDisplayCreate, map[string]any{"device": "SERIAL", "width": 720, "height": 1280, "dpi": 240, "flags": 130507}, false)
 	if len(f.managed) != before {
 		t.Fatal("unsafe input reached management")
+	}
+}
+
+func TestMCPCameraEnumAndOperatorBoundary(t *testing.T) {
+	f := &displayAutomationFake{}
+	s := connectClient(t, f)
+	args := map[string]any{"device": "SERIAL", "width": 640, "height": 480, "dpi": 240, "camera": "back"}
+	r := callDisplayTool(t, s, ToolDisplayCreate, args, true)
+	if len(f.managed) != 1 || f.managed[0].Camera != "back" || structuredObject(t, r)["camera"] != "back" {
+		t.Fatal(r, f.managed)
+	}
+	for _, v := range []any{"front", "", true, nil} {
+		args["camera"] = v
+		callDisplayTool(t, s, ToolDisplayCreate, args, false)
+	}
+	delete(args, "camera")
+	args["virtualCamera"] = true
+	callDisplayTool(t, s, ToolDisplayCreate, args, false)
+	for _, name := range []string{"android_camera_set_image", "android_display_start", "android_display_stop"} {
+		callDisplayTool(t, s, name, map[string]any{"device": "SERIAL", "image": "host.png"}, false)
+	}
+	if len(f.managed) != 1 {
+		t.Fatal("operator action leaked through MCP", f.managed)
 	}
 }
 

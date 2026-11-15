@@ -32,6 +32,53 @@ type focusDisplays struct {
 	calls int
 }
 
+type cameraDisplays struct {
+	focusDisplays
+	cameraCalls   int
+	camera, image string
+}
+
+func (f *cameraDisplays) StartWithCamera(context.Context, string, string) (vdisplay.Hello, error) {
+	f.cameraCalls++
+	return vdisplay.Hello{}, nil
+}
+func (f *cameraDisplays) CreateWithCamera(_ context.Context, _ string, _, _, _ int, focus, camera string) (vdisplay.Screen, error) {
+	f.cameraCalls++
+	f.focus = focus
+	f.camera = camera
+	return vdisplay.Screen{}, nil
+}
+func (f *cameraDisplays) SetCameraImage(_ context.Context, _ string, _ int, image string) (vdisplay.CameraImageResult, error) {
+	f.cameraCalls++
+	f.image = image
+	return vdisplay.CameraImageResult{}, nil
+}
+func TestVirtualCameraServiceRoutingAndValidation(t *testing.T) {
+	f := &cameraDisplays{}
+	s := New(&fakeDirect{}, nil)
+	s.displays = f
+	for _, r := range []DisplayRequest{
+		{Command: "start", Device: "SERIAL", VirtualCamera: true},
+		{Command: "create", Device: "SERIAL", Camera: "back"},
+		{Command: "camera.set-image", Device: "SERIAL", DisplayID: 7, Image: "image.png"},
+	} {
+		if _, err := s.ManageDisplay(context.Background(), r); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if f.cameraCalls != 3 || f.calls != 0 || f.focus != "isolated" || f.camera != "back" || f.image != "image.png" {
+		t.Fatal(f)
+	}
+	_, err := s.ManageDisplay(context.Background(), DisplayRequest{Command: "create", Device: "SERIAL", Camera: "front"})
+	assertServiceCode(t, err, apperr.CodeInvalidArgument)
+	if f.cameraCalls != 3 {
+		t.Fatal("invalid camera reached backend")
+	}
+	s.displays = &focusDisplays{}
+	_, err = s.ManageDisplay(context.Background(), DisplayRequest{Command: "create", Device: "SERIAL", Camera: "back"})
+	assertServiceCode(t, err, apperr.CodeVirtualCameraNotEnabled)
+}
+
 func (f *focusDisplays) Create(_ context.Context, _ string, _, _, _ int, focus string) (vdisplay.Screen, error) {
 	f.focus = focus
 	f.calls++

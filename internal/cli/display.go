@@ -30,9 +30,17 @@ func (a *App) executeDisplay(ctx context.Context, automation service.Automation,
 	switch args[0] {
 	case "start":
 		allowed["helper"] = true
+		allowed["virtual-camera"] = true
+		args = append([]string(nil), args...)
+		for i, value := range args {
+			if value == "--virtual-camera" {
+				args[i] = "--virtual-camera=true"
+			}
+		}
 	case "status", "stop", "list":
 	case "create":
 		allowed["focus"] = true
+		allowed["camera"] = true
 		for _, key := range []string{"width", "height", "dpi"} {
 			allowed[key] = true
 			required = append(required, key)
@@ -48,7 +56,17 @@ func (a *App) executeDisplay(ctx context.Context, automation service.Automation,
 		return nil, err
 	}
 	r := service.DisplayRequest{Command: args[0], Device: options["device"], Helper: options["helper"]}
+	if value, exists := options["virtual-camera"]; exists {
+		if value != "true" {
+			return nil, usageError("Use --virtual-camera to explicitly enable camera support.")
+		}
+		r.VirtualCamera = true
+	}
 	if r.Command == "create" {
+		r.Camera = options["camera"]
+		if r.Camera != "" && r.Camera != "back" {
+			return nil, usageError("camera must be back.")
+		}
 		r.Focus = options["focus"]
 		if r.Focus == "" {
 			r.Focus = "isolated"
@@ -82,4 +100,27 @@ func (a *App) executeDisplay(ctx context.Context, automation service.Automation,
 		return nil, usageError("Virtual display management is unavailable in this service.")
 	}
 	return display.ManageDisplay(ctx, r)
+}
+
+// executeCamera 只接受操作员本机图片路径，MCP 不注册对应入口。
+func (a *App) executeCamera(ctx context.Context, automation service.Automation, args []string) (any, error) {
+	if len(args) == 0 || args[0] != "set-image" {
+		return nil, usageError("Usage: aactl camera set-image --device SERIAL --display N --image PATH")
+	}
+	options, err := parseNamedOptions(args[1:], optionSpec{allowed: optionSet("device", "display", "image"), required: []string{"device", "display", "image"}})
+	if err != nil {
+		return nil, err
+	}
+	id, err := parseDisplayOption(options)
+	if err != nil {
+		return nil, err
+	}
+	if *id == 0 {
+		return nil, usageError("Camera image requires a positive helper-owned display ID.")
+	}
+	display, ok := automation.(service.DisplayAutomation)
+	if !ok {
+		return nil, usageError("Virtual camera management is unavailable in this service.")
+	}
+	return display.ManageDisplay(ctx, service.DisplayRequest{Command: "camera.set-image", Device: options["device"], DisplayID: *id, Image: options["image"]})
 }

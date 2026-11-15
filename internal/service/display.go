@@ -15,7 +15,16 @@ const ActionDeviceSleep = "device.sleep"
 // DisplayRequest 描述固定管理子命令，不允许任意 shell 或框架标志。
 type DisplayRequest struct {
 	Command, Device, Helper, Focus string
+	Camera, Image                  string
+	VirtualCamera                  bool
 	Width, Height, DPI, DisplayID  int
+}
+
+// CameraDisplayBackend 把操作员启动/图片路径与可由模型请求的摄像头屏创建区分开。
+type CameraDisplayBackend interface {
+	StartWithCamera(context.Context, string, string) (vdisplay.Hello, error)
+	CreateWithCamera(context.Context, string, int, int, int, string, string) (vdisplay.Screen, error)
+	SetCameraImage(context.Context, string, int, string) (vdisplay.CameraImageResult, error)
 }
 
 // DisplayAutomation 与通用动作分离，由适配器显式决定允许的管理出口。
@@ -57,6 +66,13 @@ func (s *Service) ManageDisplay(ctx context.Context, r DisplayRequest) (any, err
 	}
 	switch r.Command {
 	case "start":
+		if r.VirtualCamera {
+			camera, ok := s.displays.(CameraDisplayBackend)
+			if !ok {
+				return nil, apperr.New(apperr.CodeVirtualCameraNotEnabled, "Operator must rebuild and restart helper with --virtual-camera", false, nil)
+			}
+			return camera.StartWithCamera(ctx, r.Device, r.Helper)
+		}
 		return s.displays.Start(ctx, r.Device, r.Helper)
 	case "status":
 		return s.displays.Status(ctx, r.Device)
@@ -67,7 +83,23 @@ func (s *Service) ManageDisplay(ctx context.Context, r DisplayRequest) (any, err
 		if err != nil {
 			return nil, err
 		}
+		if r.Camera != "" {
+			if r.Camera != "back" {
+				return nil, invalid("camera must be back")
+			}
+			camera, ok := s.displays.(CameraDisplayBackend)
+			if !ok {
+				return nil, apperr.New(apperr.CodeVirtualCameraNotEnabled, "Operator must rebuild and restart helper with --virtual-camera", false, nil)
+			}
+			return camera.CreateWithCamera(ctx, r.Device, r.Width, r.Height, r.DPI, focus, r.Camera)
+		}
 		return s.displays.Create(ctx, r.Device, r.Width, r.Height, r.DPI, focus)
+	case "camera.set-image":
+		camera, ok := s.displays.(CameraDisplayBackend)
+		if !ok {
+			return nil, apperr.New(apperr.CodeVirtualCameraNotEnabled, "Operator must rebuild and restart helper with --virtual-camera", false, nil)
+		}
+		return camera.SetCameraImage(ctx, r.Device, r.DisplayID, r.Image)
 	case "list":
 		return s.displays.List(ctx, r.Device)
 	case "close":

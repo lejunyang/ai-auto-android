@@ -169,6 +169,8 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 		return a.executeAction(ctx, a.directAutomation(client), args[1:])
 	case "display":
 		return a.executeDisplay(ctx, a.directAutomation(client), args[1:])
+	case "camera":
+		return a.executeCamera(ctx, a.directAutomation(client), args[1:])
 	case "check":
 		return a.executeCheck(ctx, a.directAutomation(client), args[1:])
 	case "file":
