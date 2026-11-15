@@ -43,3 +43,9 @@
 - 真机helper证据对应第二轮报告中的制品SHA；后续只改初始化失败诊断与测试/文档，没有重新执行真机操作。不能声称最终制品已完成真实相机流验收。
 - 本次等待中ADB仍只有324462538298/transport24，未启动emulator。已通过异步问题请用户断开真机，满足单设备规则后才能执行：steal冷启动一次、isolated冷启动一次、MCP stdio冷启动一次、virtual-camera错误路径冷启动一次。四项当前均未运行，不记通过；VC5与最终汇合保持未完成。
 - 无需新的产品授权；待解决的是物理设备连接条件。真机此前已stop、精确关联/工具临时文件/forward清理、摄像头5/2/2/0恢复；没有留待用户清理的工具资源。当前应用读回/GPU/输入法/息屏与三档真实请求仍按device-acceptance.md由负责人/集成方后续验收。
+
+## 集成审查退回：更正与修复启动
+
+- 已复读AGENTS，工作区干净，分支virtual-display-screen-off，HEAD 0f62a64；main worktree不动。本轮只修四项审查问题，不启动模拟器，不触碰现有dalvik-cache目录，不修改三份风险门。
+- 更正此前第13行及VC2–VC4记录中的“摄像头屏由VirtualDevice分配组，不沿用普通屏OWN_DISPLAY_GROUP”：该说法错误。原代码把DisplayManager请求标志与Display结果标志混用，`flags & ~(1 << 8)`实际去掉DESTROY_CONTENT_ON_REMOVAL，未去掉请求OWN_DISPLAY_GROUP；旧实测24456/20360均含Display.FLAG_OWN_DISPLAY_GROUP=256，不能证明设备组策略，也未读取removeMode。历史行保持原样，本轮以新增纯策略/实际removeMode/对照取证纠正，不再把旧注册/清理证据作为销毁内容证据。
+- 修复计划见VC8–VC11；普通清理与相机清理独立尝试并公开分类失败；缓存先比对存在性/mtime与调用来源，再决定是否有权限清理。原模拟器四轮继续待验，GPU/画面读回/输入法/息屏能力不新增通过结论。
