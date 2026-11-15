@@ -28,12 +28,17 @@ type cameraHostFake struct {
 	local, remote                           string
 	bytes                                   []byte
 	cleanupUsers                            []int
+	associationCreated                      bool
 }
 
 func (h *cameraHostFake) CleanupCameraImages(context.Context, string) error { return nil }
 
 func (h *cameraHostFake) EnsureCameraAssociation(context.Context, string) (adb.CameraAssociation, error) {
 	h.ensured++
+	return adb.CameraAssociation{UserID: 10, ID: 71, Created: h.associationCreated}, nil
+}
+
+func (h *cameraHostFake) FindCameraAssociation(context.Context, string, int) (adb.CameraAssociation, error) {
 	return adb.CameraAssociation{UserID: 10, ID: 71}, nil
 }
 func (h *cameraHostFake) CleanupCameraAssociation(_ context.Context, _ string, user int) error {
@@ -296,8 +301,9 @@ func TestCameraStartFailureCleanupAndRunningHelperProtection(t *testing.T) {
 	h.state.PID = 0
 	h.state.Bound = false
 	h.startupErr = errors.New("start failed")
+	h.associationCreated = true
 	_, err := c.StartWithCamera(context.Background(), "SERIAL", path)
-	if err == nil || h.ensured != 1 || h.cleaned < 1 {
+	if err == nil || h.ensured != 1 || h.cleaned != 1 {
 		t.Fatal(err, h)
 	}
 	c, h = cameraWire(t, false, func(map[string]any) string { return "" })

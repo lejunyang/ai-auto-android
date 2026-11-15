@@ -40,7 +40,35 @@ type KeptCameraAssociation struct {
 
 // StopKeepingCameraAssociation 仅供操作员显式保留关联，普通模式运行helper忽略此请求。
 func (c *Client) StopKeepingCameraAssociation(ctx context.Context, serial string) (StopResult, error) {
-	return c.stop(ctx, serial, true)
+	return c.stop(ctx, serial, true, -1)
+}
+
+// cameraStartFailure 保留原错误码/原因链，同时明确新建或既有关联的处理结果，不隐瞒清理失败。
+func cameraStartFailure(cause error, stopped StopResult, stopErr error, association adb.CameraAssociation, associationErr error) error {
+	action, message := "kept", "pre-existing camera association left unchanged; use display stop without --keep-camera-association to remove it"
+	if association.Created {
+		action, message = "removed", "new camera association removed"
+		if associationErr != nil {
+			action, message = "removeFailed", "new camera association removal failed; inspect details"
+		}
+	}
+	code, retryable := apperr.CodeActionFailed, false
+	var original *apperr.Error
+	if errors.As(cause, &original) {
+		code, retryable = original.Code, original.Retryable
+	}
+	failure := apperr.Wrap(code, "Camera helper start failed; "+message+".", retryable, errors.Join(cause, stopErr, associationErr))
+	failure.Details = map[string]any{
+		"startError": cause.Error(), "helperCleanup": stopped,
+		"cameraAssociation": map[string]any{"userId": association.UserID, "id": association.ID, "created": association.Created, "action": action},
+	}
+	if stopErr != nil {
+		failure.Details["helperCleanupError"] = stopErr.Error()
+	}
+	if associationErr != nil {
+		failure.Details["associationCleanupError"] = associationErr.Error()
+	}
+	return failure
 }
 
 // CameraInfo 如实报告设备归属和逐流绘制状态；无流时 Streams 为空数组。

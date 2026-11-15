@@ -481,8 +481,13 @@ func (c *Client) start(ctx context.Context, serial, helper string, camera bool) 
 				if returnErr != nil {
 					cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 					defer cancel()
-					_, stopErr := c.Stop(cleanup, serial)
-					returnErr = errors.Join(returnErr, stopErr, host.CleanupCameraAssociation(cleanup, serial, association.UserID))
+					// 先保留关联停止helper，随后只回收本次新建的关联；按启动用户清理，不随前台切换。
+					stopped, stopErr := c.stop(cleanup, serial, true, association.UserID)
+					var associationErr error
+					if association.Created {
+						associationErr = host.CleanupCameraAssociation(cleanup, serial, association.UserID)
+					}
+					returnErr = cameraStartFailure(returnErr, stopped, stopErr, association, associationErr)
 				}
 			}()
 			err = host.StartDisplaydCamera(ctx, serial, association)
@@ -517,11 +522,10 @@ func (c *Client) start(ctx context.Context, serial, helper string, camera bool) 
 
 // Stop 等待辅助进程退出后移除固定临时文件；不会杀死身份未知的进程。
 func (c *Client) Stop(ctx context.Context, serial string) (StopResult, error) {
-	return c.stop(ctx, serial, false)
+	return c.stop(ctx, serial, false, -1)
 }
 
-func (c *Client) stop(ctx context.Context, serial string, keepAssociation bool) (StopResult, error) {
-	user := -1
+func (c *Client) stop(ctx context.Context, serial string, keepAssociation bool, user int) (StopResult, error) {
 	state, err := c.host.InspectDisplayd(ctx, serial)
 	if err != nil {
 		return StopResult{}, err

@@ -20,8 +20,11 @@ const cameraProfile = "android.app.role.COMPANION_DEVICE_APP_STREAMING"
 
 var companionMaxIDLine = regexp.MustCompile(`^Max ID: [0-9]+$`)
 
-// CameraAssociation 是当前前台用户的工具专用伴生关联；编号只从系统 list 读回。
-type CameraAssociation struct{ UserID, ID int }
+// CameraAssociation 的编号只从系统list读回；Created区分本次新建，防止启动失败误删既有授权。
+type CameraAssociation struct {
+	UserID, ID int
+	Created    bool
+}
 
 func cameraUnavailable(reason string) error {
 	return apperr.New(apperr.CodeVirtualCameraUnavailable, reason, false, nil)
@@ -120,7 +123,7 @@ func (c *Client) EnsureCameraAssociation(ctx context.Context, serial string) (as
 		return association, nil
 	}
 	defer func() {
-		if returnErr != nil {
+		if returnErr != nil && association.Created {
 			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			defer cancel()
 			returnErr = errors.Join(returnErr, c.CleanupCameraAssociation(cleanup, serial, user))
@@ -129,6 +132,8 @@ func (c *Client) EnsureCameraAssociation(ctx context.Context, serial string) (as
 	if err = c.requireOnlineDevice(ctx, serial); err != nil {
 		return association, err
 	}
+	// 发起过新建即负责部分失败的精确回收；复用路径在此之前返回，绝不取得删除权。
+	association.Created = true
 	_, err = c.run(ctx, []string{"-s", serial, "shell", "cmd", "companiondevice", "associate", strconv.Itoa(user), cameraPackage, cameraMAC, cameraProfile, "true"}, process.Options{})
 	if err != nil {
 		return association, cameraUnavailable("Cannot create camera companion association: " + err.Error())

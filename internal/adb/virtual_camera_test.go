@@ -56,7 +56,7 @@ func TestCameraAssociationExactCreateReuseAndCleanup(t *testing.T) {
 		f := &cameraADBExecutor{associated: stale}
 		c := NewClient("adb", f)
 		got, err := c.EnsureCameraAssociation(context.Background(), "FIRST")
-		if err != nil || got.ID != 90 || got.UserID != 10 {
+		if err != nil || got.ID != 90 || got.UserID != 10 || got.Created == stale {
 			t.Fatal(got, err)
 		}
 		creates := 0
