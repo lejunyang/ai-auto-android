@@ -33,9 +33,9 @@ fixture 在真机的安装确认、CAMERA 单独授权、主动打开测试页�
 - [x] VC11 验证、文档与本地提交（五项make、最终脚本ok/cleaned、Gradle停止；模拟器仍待验）
 
 - [x] VC1 规格提交（bdefd6c）
-- [x] VC2 helper（代码与42项JVM单测；GPU出流待人工端到端验收）
+- [x] VC2 helper（当前48项JVM单测；旧验收产物的isolated/640×480 GPU出流已由集成方与负责人验证，其它档位/策略仍待验）
 - [x] VC3 Go/CLI/MCP（定向/全量Go测试通过）
-- [x] VC4 fixture（代码、10项单测、lint/build；未在真机安装）
+- [x] VC4 fixture（当前14项单测、lint/build；旧fixture已由负责人安装并完成上述读回，新重连/布局构建未安装、待负责人复验）
 - [ ] VC5 模拟器
 - [x] VC6 真机 helper（空屏注册、图片接收、实际标志与清理通过；不包含端到端人工验收）
 - [ ] VC7 文档、汇合与全量验证（文档和五项make已通过，等待VC5设备证据汇合）
@@ -51,7 +51,8 @@ fixture 在真机的安装确认、CAMERA 单独授权、主动打开测试页�
 | VC16 / 16 汇合 B/E | 双授权人工前提、系统权限复查仅作推断；完整dump警示/关闭重建、最近任务行为/N60.6登记；真机A与helper脚本、五项make、提交和停daemon | VC13–VC15；docs、规格、仅N60.6，脚本固定fixture包且显式N | PAGE:MAIN、ok/cleaned、无工具资源/相机5；docs(camera)；权限框/离线/锁定即停；不安装、不改权限、不清最近任务，模拟器不启动 |
 
 - [x] VC12 采纳集成方与负责人既有端到端证据（仅已给定范围；原始证据仓库外）
-- [ ] VC13 A 显示定向launcher解析与真机PAGE:MAIN
-- [ ] VC14 C 可用性诊断与完整dump
-- [ ] VC15 D 新fixture修复（真机仍待负责人重装后验收）
-- [ ] VC16 B/E 文档、验证、提交与清理
+- [x] VC13 A 显示定向launcher解析与真机PAGE:MAIN（c9572a7、9e21f2e；显示65，仅包名启动并读到同包PAGE:MAIN，无权限框）
+- [x] VC14 C 可用性诊断与完整dump（c580cda、9e21f2e；4项JVM状态测试、Go/MCP兼容测试，全部脚本审查；未主动制造服务崩溃）
+- [x] VC15 D 新fixture代码修复（6a4c1bf；4项新增纯逻辑测试及lint/build通过，真机仍待负责人重装后验收）
+- [ ] VC15 新fixture真机重连/文本可见性/4:3几何复验（Agent未安装）
+- [x] VC16 B/E 文档、验证与清理（两处授权/推断/最近任务已记录；五项make通过，脚本ok/cleaned，相机5、Gradle无daemon；本轮提交见progress）

@@ -1,6 +1,6 @@
 # 虚拟屏静态图片摄像头
 
-操作员可在 API 35+ 且系统支持 VirtualCamera 的设备上，创建一个虚拟设备拥有的虚拟屏和后置摄像头。普通虚拟屏继续使用原来的 DisplayManager 路径。当前已验证 NX888J/API36 的 helper 注册、归属、图片接收和清理；**尚未完成真实应用画面读回、GPU 出流及有应用的焦点/输入法/息屏验收**。
+操作员可在 API35+ 且系统支持 VirtualCamera 的设备上，创建虚拟设备拥有的虚拟屏和后置摄像头。普通屏继续使用原 DisplayManager 路径。集成方与负责人已在NX888J/API36验证 **isolated、fixture、640×480单流的GPU出流、图片读回/切换及33分钟运行**；对应的是下述验收产物。高分辨率、steal读回、IME、息屏和第三方应用仍未验证。
 
 ## 操作员命令
 
@@ -20,7 +20,9 @@ aactl display stop --device SERIAL --json
 
 图片按比例居中，余下区域黑色；不会拉伸或裁切。未设置图片时为黑色。支持运行中反复设置；每个摄像头配置 640×480、1280×720、1920×1080 的 YUV_420_888 / 30fps，逐流 EGL 绘制最高约 29.4fps，不按 capture request 无限补帧。流关闭即停止，关闭屏释放其设备、摄像头、位图和输入面。图片接收成功只表示内容已替换，不证明应用已经收到帧。
 
-带摄像头的 list/status 屏对象有 `camera:"back"`、`cameraInfo:{cameraId,virtualDeviceId,streams}`、实际 `displayFlags`。status 另只读返回系统 DisplayInfo 的 `removeMode`；1 表示销毁内容，缺省/null 表示未能读取、不能计为验证通过。`streams` 包含 `streamId,width,height,frames,error`；空数组表示当前无流。`cameraId` 是框架注册标识，应用在设备上下文看到的编号应以 fixture 的 `CAMERA_DEVICE` 文本为准。普通屏省略摄像头及removeMode字段，表示不带摄像头。尺寸 128..2048、dpi 72..640、最多两块屏的总预算保持。
+带摄像头的 list/status 屏对象有 `camera:"back"`、`cameraInfo:{cameraId,virtualDeviceId,streams,availability,availabilityReason}`（后两项为新增可选诊断）、实际 `displayFlags`。status 另只读返回系统 DisplayInfo 的 `removeMode`；1 表示销毁内容，缺省/null 表示未能读取、不能计为验证通过。`streams` 包含 `streamId,width,height,frames,error`；空数组表示当前无流。`cameraId` 是框架注册标识，应用在设备上下文看到的编号应以 fixture 的 `CAMERA_DEVICE` 文本为准。普通屏省略摄像头及removeMode字段，表示不带摄像头。尺寸 128..2048、dpi 72..640、最多两块屏的总预算保持。
+
+`cameraInfo.availability` 为保守诊断：`available`表示注册成功且服务监视已建立、尚未观察到失败；`unknown`表示未能建立监视（旧helper缺字段也按未知处理）；`unavailable`表示观察到服务Binder死亡或真实流渲染失败，`availabilityReason`说明来源。旧`cameraId`仍保留作注册历史，不能据此认定它仍存在。Binder存活不等于每个相机仍注册，更不等于目标应用权限或读回通过；该字段不是完整CameraManager活性探测。失效状态保持到操作员关闭屏后重建，helper不自动重建或重试。
 
 ## MCP 与权限
 
@@ -32,9 +34,19 @@ aactl display stop --device SERIAL --json
 
 MCP 不提供 helper 启停、图片设置、主机路径或权限授予入口，工具总数仍为 20。`risk.go`、`bridge_action.go`、`file_transfer.go` 的风险门未改变。
 
-**目标应用在虚拟设备上需要单独的 CAMERA 授权。产品不会替应用授予权限，也不会自动点按系统权限框。** 负责人可在 fixture 打开相机页后，先用 `observe screenshot/hierarchy --display N` 查看该屏的系统权限框，再自己通过最新画面/节点决定并执行一次定向点击；每次点击后重新观察。若授权界面不能被可靠展示或定位，停止，由负责人用可见界面处理，不使用 pm grant、appops 或设置旁路。具体产品授权形态仍待负责人决定。
+**本机稳定使用需要目标应用在默认设备与虚拟设备两处都有CAMERA授权。产品不代授权，也不自动点系统权限框。** 负责人先在系统设置里给目标应用默认设备的相机权限，再在虚拟屏相机页的系统框中完成虚拟设备授权。可通过最新`observe screenshot/hierarchy --display N`由负责人自己判断并点按该框；若无法可靠展示或定位则停下人工处理，不使用pm grant/appops旁路。具体产品授权形态仍待负责人决定；其它ROM需独立验收。
+
+实测：仅虚拟授权时两次断流（连接约21秒、约3分钟），CameraService日志restricted，Uid mode CAMERA:ignore；负责人在系统设置补默认授权后，granted=true、Uid mode foreground，连续33分钟/主屏切13次应用没有restricted。**推断**：服务后续权限复查可能按默认设备判定，未证明系统内部机制。这是本机系统兼容性前提，不是本项目自动授予或绕过权限的理由。
 
 系统可以因应用的远程显示声明、用户限制或 VirtualDevice Activity 策略拒绝启动；应用需支持远程设备显示。fixture 相机 Activity 显式声明支持；遇到启动失败应保留错误和活动状态，不更改应用声明、不绕过系统策略、不转向显示 0 重试。
+
+显示定向且只提供包名时，CLI固定执行`cmd package resolve-activity --brief --components`加MAIN/LAUNCHER参数，只接受一个同包组件，再显式`am start -W --display N -n`。`--components`用于去掉`--brief`可能附带的元数据；跨包、多行、异常或截断输出均拒绝，不回退主屏。非显示定向启动保持原来的monkey/显式Activity路径。2026-11-15本轮在自建isolated摄像头屏65上，仅按包名启动已安装的旧fixture成功，层级读到同包`PAGE:MAIN`且截图成功，无权限框；这只验证启动修复，不是新增相机画面读回。
+
+## 系统虚拟摄像头服务失效
+
+**禁止在设备端截断`dumpsys media.camera`输出**，包括`| head`、提前关闭管道或其它只读前几行的组合。必须完整重定向到电脑文件，进程成功结束后才在电脑端过滤。仓库验收脚本直接把stdout写主机文件，没有stdout缓冲上限或设备端过滤，也不因读取前几行提前终止命令。
+
+集成方20:55:12截断后观察到`Virtual camera service died`、客户端因HAL状态变化被evicted、虚拟摄像头消失；20:55:43再次截断时真实相机0–4也移除后重加。完整回传再过滤未出现该问题。helper当时仍有旧cameraId，流frames103、`eglSwapBuffers failed EGL=12301`；现在会在观察到服务死亡或渲染失败后报告unavailable。不要为验证诊断主动制造崩溃。恢复由操作员关闭受影响虚拟屏，再新建屏并重新启动目标应用；不自动重建、重试或重启设备。
 
 ## 关联与安全边界
 
@@ -57,7 +69,7 @@ DisplayManager 的**请求**标志与 Display.getFlags 的**结果**标志不同
 | 去掉（临时实验） | isolated | 59 / 12 | 24200 / 0x5e88 | 2 | true | 1 |
 | 去掉（临时实验） | steal | 60 / 13 | 20104 / 0x4e88 | 3 | true | 1 |
 
-四个组合均可创建且无SECURE；没有反对保留方案的实测证据，因此按普通屏既有请求策略**保留OWN_DISPLAY_GROUP**。这不表示其显示组由VirtualDevice分配。临时实验没有产品开关，源码已恢复。removeMode=1证明系统当前报告销毁策略；没有启动任何应用，所以不声称已做应用销毁生命周期或“不会迁移主屏”的动态测试。
+四个组合均可创建且无SECURE；没有反对保留方案的实测证据，因此按普通屏既有请求策略**保留OWN_DISPLAY_GROUP**。这不表示其显示组由VirtualDevice分配。临时实验没有产品开关，源码已恢复。该对照轮次仅以removeMode=1确认系统策略，没有应用生命周期测试；随后集成方在isolated的fixture上验证了Activity销毁且没有迁移显示0，见下节。
 
 ## 共享缓存目录来源与保留
 
@@ -69,7 +81,7 @@ DisplayManager 的**请求**标志与 Display.getFlags 的**结果**标志不同
 
 凭据锁定保护、目标无效不回退主屏、不含 SECURE、安全窗口系统遮黑、每 2 秒按虚拟显示组保活保持。摄像头创建和设置图片也检查凭据锁。锁定或状态未知时停止，不唤醒、不解锁、不自动重发输入。
 
-## 本次设备证据与限制
+## 既有helper空屏证据
 
 真机指纹 `nubia/CN_PQ85A02/PQ85A02:16/BQ2A.251016.001-BP2A.250605.031.A3/b6416:user/release-keys`，API36、arm64-v8a、当前用户0；2026-11-15 唯一设备、凭据未锁定。以下均是**无应用的空屏**：
 
@@ -91,6 +103,19 @@ DisplayManager 的**请求**标志与 Display.getFlags 的**结果**标志不同
 
 完整逐步记录见[本规格进度](../.trae/specs/virtual-camera/progress.md)，负责人后续执行[真机端到端验收](../.trae/specs/virtual-camera/device-acceptance.md)。helper 专用自动脚本为 `scripts/verify-virtual-camera-device.mjs`，只执行本工具允许的操作；需要显式 adb.exe/aactl.exe 路径和仓库外新证据目录。
 
+## 集成方与负责人端到端证据（20:45–21:51 JST）
+
+2026-11-15，同一NX888J/API36/arm64指纹、用户0且全程未锁定。负责人自行安装本地debug fixture、未用-g，并亲自完成两处授权；集成方操作和采证，原始证据仓库外。对应SHA256：CLI `9ae875f4cb26694b202b22353b27cabd8dc1359ef47686ebfb9037ba95aab0fc`，helper `a7bbe34eabac1fb38c3eaea9ddd99b44f9c73bd6bf2f66f8d05f273639511fe9`，fixture `05ade33a16f9342d412dba6ea73c1ef4f27d7712aba548669fbb22489e9e9517`。
+
+- isolated显示63/64，720×1280/240dpi，flags24456/removeMode1/组1/awake=true，相机5→6。权限框位于虚拟屏，permissioncontroller文案含COMPANION_DEVICE_APP_STREAMING，顶层焦点仍0；负责人自己定向点按授权。
+- fixture只见id0、back、orientation0、visible0，display=N；未设图四象限全黑。横图640×480连续3次red/green/blue/white；竖图480×640连续3次white/blue/green/red；切回恢复。左右黑边各约21.8%（140/640），无镜像/倒置。
+- 640×480单流约29fps，最长33分钟57386帧error=null。该记录不是多轮flaky统计，也不代表其它档位/策略通过。
+- close后fixture Activity销毁，显示0未出现fixture。同一伴生关联重建新virtualDeviceId时无需再授权可开相机；这是本机实测，不承诺所有ROM/新关联都继承授权。
+- 关闭后Task #758仍留在系统最近任务是已知行为，与Activity销毁不同；本工具不自动清理最近任务。是否处理已登记N60.6，待负责人决定。
+- 最终工具进程、关联、文件、forward均无，相机回到5；共享dalvik-cache原样保留。
+
+本轮新fixture修复了有限重连、标题遮挡和预览拉伸：每个恢复周期最多3次退避（500/1000/2000ms），成功重开不重置预算；暂停取消旧回调，耗尽显示最终原因与次数，用户明确再启动可开启新预算。页面隐藏ActionBar并避开系统栏，TextureView按4:3完整容纳。**新fixture未由Agent安装，真机重连/文本可见性/预览几何仍待负责人重装后验证**；不能用上述旧fixture摘要替新构建背书。
+
 ## 错误与后续
 
 | code | CLI 退出码 | 处理 |
@@ -99,6 +124,6 @@ DisplayManager 的**请求**标志与 Display.getFlags 的**结果**标志不同
 | VIRTUAL_CAMERA_UNAVAILABLE | 6 | API<35、服务/特性缺失或框架创建失败；保留 message 的 API、异常与原因，不改用真实摄像头 |
 | CAMERA_IMAGE_INVALID | 2 | 检查 PNG/JPEG、8 MiB/4096 上限或内部临时路径/读取失败，不循环上传 |
 
-视频输入、MCP 图片主机路径准入、目标应用相机授权产品形态及跨设备/OEM矩阵登记在 N60.6；本次未实现。GPU 实际画面读回和有应用的焦点/IME/息屏组合必须按人工验收结果更新本规格，不能把注册或编译成功作为端到端交付。
+仍未验证：1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、任何第三方应用、多轮flaky、模拟器四项。负责人手机有锁屏密码，息屏会进入凭据锁，本工具不要求关闭凭据锁来验收。视频、图片MCP主机路径准入、双授权产品形态、最近任务是否处理及跨OEM矩阵在N60.6登记；不把已有单流实证外推为全部能力交付。
 
 框架依据：[AOSP VirtualDeviceManager](https://android.googlesource.com/platform/frameworks/base/+/main/core/java/android/companion/virtual/VirtualDeviceManager.java)、[显示标志](https://android.googlesource.com/platform/frameworks/base/+/HEAD/core/java/android/view/Display.java)、[伴生设备 shell 命令](https://android.googlesource.com/platform/frameworks/base/+/master/services/companion/java/com/android/server/companion/CompanionDeviceShellCommand.java)。实际 OEM 行为以本机证据为准。

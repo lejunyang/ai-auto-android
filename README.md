@@ -119,8 +119,7 @@ API33 两策略均无法隔离；0 明确主屏且不要求 helper。isolated �
 API35+ 支持的设备可由操作员使用 `display start --virtual-camera`，再用
 `display create ... --camera back` 和 CLI `camera set-image --display N --image PATH`
 指定静态 PNG/JPEG。MCP 创建屏支持可选 `camera:"back"`，启停、图片路径与相机权限
-仍由操作员/用户处理。NX888J/API36 已验 helper 注册、图片接收与清理，真实应用画面
-读回、GPU出流和摄像头屏的输入法/息屏组合尚待负责人验收，见[虚拟摄像头](docs/virtual-camera.md)。
+仍由操作员/用户处理。NX888J/API36 的isolated/fixture/640×480读回、切图和33分钟单流已由集成方与负责人验收；需用户默认设备+虚拟设备两处CAMERA授权。其它档位、steal读回、IME/息屏及新fixture设备验证仍待验，见[虚拟摄像头](docs/virtual-camera.md)。
 
 ## MCP 配置
 

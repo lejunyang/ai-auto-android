@@ -51,6 +51,11 @@ API33如实false；API34+ isolated保护主屏输入但息屏无层级/虚拟屏
 VirtualDevice 屏，返回实际 `displayFlags`、`focusIsolated` 与 `cameraInfo`，不得直接外推
 普通屏结论。摄像头需要操作员 `display start --virtual-camera`；图片设置仅 CLI，
 MCP 无主机图片路径或启用入口，详见[虚拟摄像头](virtual-camera.md)。
+
+摄像头状态可选增加cameraInfo.availability（available/unavailable/unknown）及
+availabilityReason；旧helper缺字段按未知处理。服务死亡/渲染失败为unavailable，保留
+旧cameraId作历史标识，不自动重建。available只是注册后未观察到监视失败，不证明权限
+或应用读回。协议保持v2，MCP输出schema同步；本机稳定使用需用户默认与虚拟两处授权。
 `action sleep` 为 CLI 的 device.sleep，KEYCODE_SLEEP 只使主屏息屏；MCP不开放sleep/wake。
 
 层级结果分两种 `format`：

@@ -358,9 +358,22 @@ aactl bridge snapshot --device SERIAL \
 | `VIRTUAL_CAMERA_UNAVAILABLE` | 保留 API/异常原因；API35+仍可能缺少服务或 GL_EXT_YUV_target，勿回退真实摄像头 |
 | `CAMERA_IMAGE_INVALID` | 本机 PNG/JPEG ≤8MiB、宽高各≤4096；检查读取失败，不重复上传未知文件 |
 
-摄像头虚拟屏空屏可能返回 DISPLAY_EMPTY/FRAME_NOT_READY，注册与imageSet:true不等于
-应用已读到帧。相机授权按虚拟设备区分，必须由用户完成；真实应用画面/焦点/IME/息屏
-仍待验，见[虚拟摄像头](virtual-camera.md)和[负责人验收说明](../.trae/specs/virtual-camera/device-acceptance.md)。
+摄像头虚拟屏空屏可能返回DISPLAY_EMPTY/FRAME_NOT_READY，注册与imageSet:true不等于读回。
+集成方已验NX888J/API36的isolated/fixture/640×480读回与33分钟单流；其它分辨率、steal读回、
+IME/息屏仍待验，见[虚拟摄像头](virtual-camera.md)和[验收说明](../.trae/specs/virtual-camera/device-acceptance.md)。
+
+该机稳定使用需要用户在**默认设备和虚拟设备两处**授权CAMERA。仅虚拟授权曾出现
+restricted断流且Uid mode CAMERA:ignore；负责人在系统设置补默认授权后foreground，
+33分钟/主屏切13次应用未断。后续权限复查按默认设备判定只是推断，未证明内部机制；
+产品不代授权。已有权限保持，勿用pm grant、appops或自动点授权框绕过。
+
+禁止设备端`dumpsys media.camera | head`或提前关管道，本机曾导致虚拟服务死亡，甚至
+真实0–4移除后重加。完整取回主机文件后再过滤。若旧cameraId仍在但stream error/EGL失败，
+或cameraInfo.availability为unavailable，先保存完整证据，再由操作员关闭受影响屏重建；
+不自动重试/重建、不重启设备。available只表示监视未观察失败，不保证注册/权限/读回。
+
+显示定向按包名启动现在先严格解析同包单个launcher再显式启动；解析异常停止，不回退主屏。
+close销毁Activity后，系统最近任务可能仍有该Task；本工具不自动清理，由负责人决定是否处理。
 
 ## 官方参考
 

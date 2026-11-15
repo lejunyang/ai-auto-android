@@ -128,6 +128,16 @@ REMOVE_MODE_DESTROY_CONTENT，null/缺省表示未验证。不得用请求中含
 位图EGL渲染、单流约29.4fps上限、流关闭停绘；不使用Paint/字体、不修改任何应用权限。
 完整策略及分层验收见[虚拟摄像头](../../docs/virtual-camera.md)。
 
+cameraInfo新增可选availability（available/unavailable/unknown）与availabilityReason。
+注册且服务Binder监视建立后只表示尚未观察到失败；未能监视为unknown，服务死亡或
+真实渲染失败为unavailable，保留到关闭屏。旧cameraId作为历史标识，不能证明仍注册。
+available不保证权限/读回，helper不自动重建或重试。恢复由操作员关闭受影响屏再创建。
+相机dump必须完整回传主机文件后过滤，禁止设备端head或提前关闭管道。
+
+集成方/负责人已验证旧验收产物的isolated/640×480读回、切图及33分钟57386帧；
+本机稳定需默认设备+虚拟设备两处CAMERA授权，由负责人完成。高分辨率、steal读回、
+IME/息屏/第三方/多轮统计/模拟器仍待验；新fixture有限重连和预览布局需负责人重装后验。
+
 `state` 是 Android `Display.getState()` 的整数常量（常见 OFF=1、ON=2、DOZE=3）。
 API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`，查询的是
 该屏所在电源组；API 33 缺少此按屏查询，返回 `null`，不拿主屏或全局状态代替。

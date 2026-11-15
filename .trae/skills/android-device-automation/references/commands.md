@@ -186,5 +186,4 @@ API33没有隔离标志，focusIsolated=false；中文输入与多显示Bridge�
 创建，android_display_create额外接受可选camera:"back"，需要操作员先以CLI
 `display start --virtual-camera`启用。只有CLI `camera set-image --display N --image PATH`
 接受本机PNG/JPEG（8MiB/4096上限）；MCP不开放图片路径或启停。应用在虚拟设备上
-的CAMERA必须用户单独授权，不自动点权限框、不给任何应用授予权限。NX888J只验了
-helper注册/图片接收/清理，GPU画面与带应用的焦点/IME/息屏组合仍待负责人验收。
+的CAMERA必须用户单独授权，不自动点权限框、不给任何应用授予权限。NX888J的isolated/fixture/640×480 GPU读回与33分钟单流已由集成方和负责人验收；需用户默认设备+虚拟设备两处CAMERA授权。高分辨率、steal读回、IME/息屏、多轮统计及新fixture设备效果仍待验。
