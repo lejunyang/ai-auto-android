@@ -136,10 +136,11 @@ type StopCleanup struct {
 	CameraImages      *CleanupStep `json:"cameraImages,omitempty"`
 }
 
-// StopResult 确认进程已经停止；仅清理失败时附加分类结果，成功响应保持原形态。
+// StopResult 确认进程已经停止；默认成功形态保持，仅显式保留时报告实际关联。
 type StopResult struct {
-	Stopped bool         `json:"stopped"`
-	Cleanup *StopCleanup `json:"cleanup,omitempty"`
+	Stopped               bool                   `json:"stopped"`
+	Cleanup               *StopCleanup           `json:"cleanup,omitempty"`
+	KeptCameraAssociation *KeptCameraAssociation `json:"keptCameraAssociation,omitempty"`
 }
 
 type captureHeader struct {
@@ -516,6 +517,10 @@ func (c *Client) start(ctx context.Context, serial, helper string, camera bool) 
 
 // Stop 等待辅助进程退出后移除固定临时文件；不会杀死身份未知的进程。
 func (c *Client) Stop(ctx context.Context, serial string) (StopResult, error) {
+	return c.stop(ctx, serial, false)
+}
+
+func (c *Client) stop(ctx context.Context, serial string, keepAssociation bool) (StopResult, error) {
 	user := -1
 	state, err := c.host.InspectDisplayd(ctx, serial)
 	if err != nil {
@@ -561,7 +566,20 @@ func (c *Client) Stop(ctx context.Context, serial string) (StopResult, error) {
 			report.HelperFiles = *step(filesErr)
 			var associationErr, imagesErr error
 			if host, ok := c.host.(CameraHost); ok && user != -2 {
-				associationErr = host.CleanupCameraAssociation(ctx, serial, user)
+				if keepAssociation {
+					// 查询失败也继续图片/文件清理；普通模式不进入此分支，不触碰伴生服务。
+					if reader, ok := c.host.(CameraAssociationReader); ok {
+						var found adb.CameraAssociation
+						found, associationErr = reader.FindCameraAssociation(ctx, serial, user)
+						if associationErr == nil && found.ID > 0 {
+							result.KeptCameraAssociation = &KeptCameraAssociation{UserID: found.UserID, ID: found.ID}
+						}
+					} else {
+						associationErr = apperr.New(apperr.CodeVirtualCameraUnavailable, "Camera association lookup is unavailable.", false, nil)
+					}
+				} else {
+					associationErr = host.CleanupCameraAssociation(ctx, serial, user)
+				}
 				report.CameraAssociation = step(associationErr)
 				imagesErr = host.CleanupCameraImages(ctx, serial)
 				report.CameraImages = step(imagesErr)
@@ -575,6 +593,9 @@ func (c *Client) Stop(ctx context.Context, serial string) (StopResult, error) {
 				}
 				failure := apperr.Wrap(code, "displayd stopped, but cleanup failed; inspect error.details.cleanup.", false, joined)
 				failure.Details = map[string]any{"stopped": true, "cleanup": report}
+				if result.KeptCameraAssociation != nil {
+					failure.Details["keptCameraAssociation"] = result.KeptCameraAssociation
+				}
 				return result, failure
 			}
 			return result, nil

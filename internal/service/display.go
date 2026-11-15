@@ -17,6 +17,7 @@ type DisplayRequest struct {
 	Command, Device, Helper, Focus string
 	Camera, Image                  string
 	VirtualCamera                  bool
+	KeepCameraAssociation          bool
 	Width, Height, DPI, DisplayID  int
 }
 
@@ -25,6 +26,11 @@ type CameraDisplayBackend interface {
 	StartWithCamera(context.Context, string, string) (vdisplay.Hello, error)
 	CreateWithCamera(context.Context, string, int, int, int, string, string) (vdisplay.Screen, error)
 	SetCameraImage(context.Context, string, int, string) (vdisplay.CameraImageResult, error)
+}
+
+// CameraAssociationStopBackend 只供操作员stop选择保留，MCP不注册helper启停入口。
+type CameraAssociationStopBackend interface {
+	StopKeepingCameraAssociation(context.Context, string) (vdisplay.StopResult, error)
 }
 
 // DisplayAutomation 与通用动作分离，由适配器显式决定允许的管理出口。
@@ -64,6 +70,9 @@ func (s *Service) ManageDisplay(ctx context.Context, r DisplayRequest) (any, err
 	if s.displays == nil {
 		return nil, unavailable("virtual display management")
 	}
+	if r.KeepCameraAssociation && r.Command != "stop" {
+		return nil, invalid("keep-camera-association is only valid for display stop.")
+	}
 	switch r.Command {
 	case "start":
 		if r.VirtualCamera {
@@ -77,6 +86,13 @@ func (s *Service) ManageDisplay(ctx context.Context, r DisplayRequest) (any, err
 	case "status":
 		return s.displays.Status(ctx, r.Device)
 	case "stop":
+		if r.KeepCameraAssociation {
+			keeper, ok := s.displays.(CameraAssociationStopBackend)
+			if !ok {
+				return nil, unavailable("camera association retention")
+			}
+			return keeper.StopKeepingCameraAssociation(ctx, r.Device)
+		}
 		return s.displays.Stop(ctx, r.Device)
 	case "create":
 		focus, err := vdisplay.NormalizeFocus(r.Focus)

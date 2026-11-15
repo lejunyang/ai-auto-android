@@ -27,6 +27,22 @@ type CameraHost interface {
 	CleanupCameraImages(context.Context, string) error
 }
 
+// CameraAssociationReader 独立提供操作员保留关联时的只读查询，不改变既有清理接口。
+type CameraAssociationReader interface {
+	FindCameraAssociation(context.Context, string, int) (adb.CameraAssociation, error)
+}
+
+// KeptCameraAssociation 仅报告实际读到的关联，不能用请求中的意图冒充已保留。
+type KeptCameraAssociation struct {
+	UserID int `json:"userId"`
+	ID     int `json:"id"`
+}
+
+// StopKeepingCameraAssociation 仅供操作员显式保留关联，普通模式运行helper忽略此请求。
+func (c *Client) StopKeepingCameraAssociation(ctx context.Context, serial string) (StopResult, error) {
+	return c.stop(ctx, serial, true)
+}
+
 // CameraInfo 如实报告设备归属和逐流绘制状态；无流时 Streams 为空数组。
 type CameraInfo struct {
 	CameraID           string         `json:"cameraId"`

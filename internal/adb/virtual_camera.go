@@ -91,6 +91,19 @@ func (c *Client) cameraAssociation(ctx context.Context, serial string, user int)
 	return parseCameraAssociation(string(r.Stdout))
 }
 
+// FindCameraAssociation 只读查询精确标记；user=-1读取当前用户，ID=0表示没有可保留的关联。
+func (c *Client) FindCameraAssociation(ctx context.Context, serial string, user int) (CameraAssociation, error) {
+	if user < 0 {
+		var err error
+		user, err = c.cameraUser(ctx, serial)
+		if err != nil {
+			return CameraAssociation{}, err
+		}
+	}
+	id, err := c.cameraAssociation(ctx, serial, user)
+	return CameraAssociation{UserID: user, ID: id}, err
+}
+
 // EnsureCameraAssociation 复用精确遗留标记；新建失败也按同一包名和地址清理，不涉及其它关联。
 func (c *Client) EnsureCameraAssociation(ctx context.Context, serial string) (association CameraAssociation, returnErr error) {
 	user, err := c.cameraUser(ctx, serial)

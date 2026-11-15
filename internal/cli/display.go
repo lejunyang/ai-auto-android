@@ -23,7 +23,7 @@ func parseDisplayOption(options map[string]string) (*int, error) {
 
 func (a *App) executeDisplay(ctx context.Context, automation service.Automation, args []string) (any, error) {
 	if len(args) == 0 {
-		return nil, usageError("Usage: aactl display start|status|stop|create|list|close --device SERIAL [options]")
+		return nil, usageError("Usage: aactl display start|status|stop|create|list|close --device SERIAL [options]; start [--virtual-camera], stop [--keep-camera-association]")
 	}
 	allowed := optionSet("device")
 	required := []string{"device"}
@@ -31,13 +31,9 @@ func (a *App) executeDisplay(ctx context.Context, automation service.Automation,
 	case "start":
 		allowed["helper"] = true
 		allowed["virtual-camera"] = true
-		args = append([]string(nil), args...)
-		for i, value := range args {
-			if value == "--virtual-camera" {
-				args[i] = "--virtual-camera=true"
-			}
-		}
-	case "status", "stop", "list":
+	case "stop":
+		allowed["keep-camera-association"] = true
+	case "status", "list":
 	case "create":
 		allowed["focus"] = true
 		allowed["camera"] = true
@@ -51,6 +47,13 @@ func (a *App) executeDisplay(ctx context.Context, automation service.Automation,
 	default:
 		return nil, usageError("Unknown display command.")
 	}
+	// 两个操作员布尔开关采用同一显式true规则，重复和非true值仍由解析器拒绝。
+	args = append([]string(nil), args...)
+	for i, value := range args {
+		if (value == "--virtual-camera" && args[0] == "start") || (value == "--keep-camera-association" && args[0] == "stop") {
+			args[i] = value + "=true"
+		}
+	}
 	options, err := parseNamedOptions(args[1:], optionSpec{allowed: allowed, required: required})
 	if err != nil {
 		return nil, err
@@ -61,6 +64,12 @@ func (a *App) executeDisplay(ctx context.Context, automation service.Automation,
 			return nil, usageError("Use --virtual-camera to explicitly enable camera support.")
 		}
 		r.VirtualCamera = true
+	}
+	if value, exists := options["keep-camera-association"]; exists {
+		if value != "true" {
+			return nil, usageError("Use --keep-camera-association only on display stop to retain the operator camera association.")
+		}
+		r.KeepCameraAssociation = true
 	}
 	if r.Command == "create" {
 		r.Camera = options["camera"]
