@@ -20,7 +20,7 @@ aactl display stop --device SERIAL --json
 
 图片按比例居中，余下区域黑色；不会拉伸或裁切。未设置图片时为黑色。支持运行中反复设置；每个摄像头配置 640×480、1280×720、1920×1080 的 YUV_420_888 / 30fps，逐流 EGL 绘制最高约 29.4fps，不按 capture request 无限补帧。流关闭即停止，关闭屏释放其设备、摄像头、位图和输入面。图片接收成功只表示内容已替换，不证明应用已经收到帧。
 
-带摄像头的 list/status 屏对象有 `camera:"back"`、`cameraInfo:{cameraId,virtualDeviceId,streams}`、实际 `displayFlags`。`streams` 包含 `streamId,width,height,frames,error`；空数组表示当前无流。`cameraId` 是框架注册标识，应用在设备上下文看到的编号应以 fixture 的 `CAMERA_DEVICE` 文本为准。普通屏省略这些字段，表示不带摄像头。尺寸 128..2048、dpi 72..640、最多两块屏的总预算保持。
+带摄像头的 list/status 屏对象有 `camera:"back"`、`cameraInfo:{cameraId,virtualDeviceId,streams}`、实际 `displayFlags`。status 另只读返回系统 DisplayInfo 的 `removeMode`；1 表示销毁内容，缺省/null 表示未能读取、不能计为验证通过。`streams` 包含 `streamId,width,height,frames,error`；空数组表示当前无流。`cameraId` 是框架注册标识，应用在设备上下文看到的编号应以 fixture 的 `CAMERA_DEVICE` 文本为准。普通屏省略摄像头及removeMode字段，表示不带摄像头。尺寸 128..2048、dpi 72..640、最多两块屏的总预算保持。
 
 ## MCP 与权限
 
@@ -42,6 +42,31 @@ MCP 不提供 helper 启停、图片设置、主机路径或权限授予入口�
 
 启动失败、停止时只按精确包名和地址移除工具关联；不使用 disassociate-all。正常 helper 通过 hello 返回启动用户，停止时按该用户清理；helper 崩溃后的 stop 使用当前用户，**崩溃后切换过 Android 用户时需回到启动用户清理**。不自动切换系统用户。进程身份、socket inode/fd、APK 摘要与临时 forward 核对沿用现有实现。
 
+helper 未运行时，stop 仍尝试普通文件清理，然后独立尝试相机关联和UUID图片清理；关联服务不可用或格式未知不能阻止其它清理。普通运行中的非摄像头 helper 停止不调用 companiondevice。全部成功时仍返回 `{"stopped":true}`；部分失败返回错误，`error.details.stopped=true` 表示进程已停止，`error.details.cleanup` 分列 `helperFiles`、`cameraAssociation`、`cameraImages` 的 `ok/error`。所有清理错误合并保留，不静默吞掉关联残留，也不把进程停止等同于全部清理成功。forward仍逐调用清理，不删除来源未知的forward。
+
+## 显示标志审查修正
+
+DisplayManager 的**请求**标志与 Display.getFlags 的**结果**标志不同：请求 `DESTROY_CONTENT_ON_REMOVAL=0x100`、`OWN_DISPLAY_GROUP=0x800`；结果 `OWN_DISPLAY_GROUP=0x100`。旧实现误删请求的0x100，原“已去掉OWN_DISPLAY_GROUP”的说法撤回，历史progress仅追加更正。修复后 CameraPolicy.displayFlags 纯函数强制保留销毁位、排除请求SECURE；两套具名常量分别维护，焦点也按结果命名空间读取。
+
+2026-11-15在同一NX888J/API36、唯一serial、未锁定条件下，使用只差请求OWN_DISPLAY_GROUP的两个本地构建，各创建两种focus空屏并读取真实状态：
+
+| 请求OWN_DISPLAY_GROUP | focus | 显示 / 设备 | 实际displayFlags | 显示组 | groupAwake | removeMode |
+| --- | --- | --- | --- | --- | --- | --- |
+| 保留（产品） | isolated | 57 / 10 | 24456 / 0x5f88 | 1 | true | 1 |
+| 保留（产品） | steal | 58 / 11 | 20360 / 0x4f88 | 1 | true | 1 |
+| 去掉（临时实验） | isolated | 59 / 12 | 24200 / 0x5e88 | 2 | true | 1 |
+| 去掉（临时实验） | steal | 60 / 13 | 20104 / 0x4e88 | 3 | true | 1 |
+
+四个组合均可创建且无SECURE；没有反对保留方案的实测证据，因此按普通屏既有请求策略**保留OWN_DISPLAY_GROUP**。这不表示其显示组由VirtualDevice分配。临时实验没有产品开关，源码已恢复。removeMode=1证明系统当前报告销毁策略；没有启动任何应用，所以不声称已做应用销毁生命周期或“不会迁移主屏”的动态测试。
+
+## 共享缓存目录来源与保留
+
+本机启动前已存在 `/data/local/tmp/dalvik-cache`（777、shell:shell，inode396399）与其空子目录 `arm64`（700，inode478273），两者mtime/ctime均1794735523，即2026-11-15 18:38:43 JST。普通helper启动/初始化/停止、摄像头helper启动、两种显示组各两策略创建/关闭/停止的对比均保持存在性、inode、权限和mtime不变。
+
+真机 `/system/bin/uiautomator` 包装脚本明确在非root时使用run_base=/data/local/tmp，`mkdir -p` 创建dalvik-cache，并将ANDROID_DATA改为run_base后执行app_process；ART会为该重定向缓存创建0700的架构子目录。helper直接启动时ANDROID_DATA=/data，源码没有创建这两条目录。旧mtime还恰在上一轮首次hierarchy（18:38:42–45）之间。证据指向系统UIAutomator层级命令（本工具与其它调用者共用），不是摄像头helper特有缓存；不能仅凭mtime唯一归属历史调用者。
+
+**现有共享目录不删除，交负责人决定是否清理。** stop只删除工具固定文件和精确UUID图片，不擅自rmdir这些启动前已存在的目录。验收脚本已将两条路径加入逐阶段及最终残留检查，并在`sharedRuntimeCache`公开原样保留；若从不存在变为存在或元数据变化，会保留并报告，不能声称清理通过。没有递归删除、通配符或“空目录即归工具”的规则。框架创建机制见[AOSP ART GetDalvikCache](https://android.googlesource.com/platform/art/+/ed0dcade7b/libartbase/base/file_utils.cc)。
+
 凭据锁定保护、目标无效不回退主屏、不含 SECURE、安全窗口系统遮黑、每 2 秒按虚拟显示组保活保持。摄像头创建和设置图片也检查凭据锁。锁定或状态未知时停止，不唤醒、不解锁、不自动重发输入。
 
 ## 本次设备证据与限制
@@ -50,12 +75,13 @@ MCP 不提供 helper 启停、图片设置、主机路径或权限授予入口�
 
 | 项目 | isolated | steal |
 | --- | --- | --- |
-| 显示 / 虚拟设备 | 55 / 8 | 56 / 9 |
-| 注册相机 | v8_1008 | v9_1009 |
+| 显示 / 虚拟设备（修复后复跑） | 61 / 14 | 62 / 15 |
+| 注册相机 | v14_1014 | v15_1015 |
 | 实际 Display.getFlags | 24456（0x5f88） | 20360（0x4f88） |
 | focusIsolated / SECURE | true / 无 | false / 无 |
 | 顶层焦点 | 仍为 0 | 仍为 0（空屏无窗口，不能外推应用启动后行为） |
 | 显示组 / state / groupAwake | 1 / 2 / true | 1 / 2 / true |
+| 系统removeMode（修复后读取） | 1，销毁内容 | 1，销毁内容 |
 | 主屏亮屏时层级 / 截图 | DISPLAY_EMPTY / FRAME_NOT_READY | DISPLAY_EMPTY / FRAME_NOT_READY |
 | 两次图片接收 | 横图、竖图均 imageSet:true | 横图、竖图均 imageSet:true |
 | 实际流 / 应用预览 | 无流，未验 | 无流，未验 |

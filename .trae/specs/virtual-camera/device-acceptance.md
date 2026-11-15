@@ -16,7 +16,9 @@
 node scripts/verify-virtual-camera-device.mjs --device 324462538298 --adb PATH_TO_ADB_EXE --aactl PATH_TO_AACTL_EXE --helper PATH_TO_DISPLAYD_APK --evidence NEW_DIRECTORY_OUTSIDE_REPO
 ```
 
-脚本逐步输出目标、argv、预期与结果，建立基线；依次验证 isolated/steal 的注册、显示归属、实际标志、空屏观察、两次图片接收、关闭和最终恢复。脚本不会安装/启动应用、申请/授予权限、输入或切换主屏。`report.ok` 仅代表这些 helper 判据通过；空屏 FRAME_NOT_READY 明确记录，不是读回通过。执行完须确认 `cleaned:true`，然后才开始下表。
+脚本逐步输出目标、argv、预期与结果，建立基线；先记录普通helper启动/初始化/停止的缓存状态，再验证isolated/steal的注册、显示归属、实际标志、removeMode=1、空屏观察、两次图片接收、关闭和最终恢复。脚本不会安装/启动应用、申请/授予权限、输入或切换主屏。`report.ok`仅代表这些helper判据通过；空屏FRAME_NOT_READY明确记录，不是读回通过。执行完须确认`cleaned:true`，然后才开始下表。
+
+清理清单同时记录`/data/local/tmp/dalvik-cache`与`arm64`的存在性、inode、权限、mtime/ctime和子项。启动前已存在的共享目录保持原样；本机系统uiautomator包装脚本会重定向ANDROID_DATA并使用它，不归helper删除。最终`sharedRuntimeCache`必须与基线一致；变化则保留并报告负责人，不擅自递归删或rmdir。stop部分失败在`error.details.cleanup`公开每类结果，需分别检查helperFiles、cameraAssociation、cameraImages。
 
 ## 有应用的分步验收
 

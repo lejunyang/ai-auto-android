@@ -110,6 +110,20 @@ base64，也没有二进制体后的换行。失败头不带二进制体，取�
   `cameraInfo:{cameraId,virtualDeviceId,streams:[{streamId,width,height,frames,error}]}`；
   普通屏省略这些字段。摄像头屏的focusIsolated根据实际Display标志计算，不按API直接推断。
 
+摄像头status增加可选`removeMode`，来自同一DisplayInfo的只读字段，1表示系统报告
+REMOVE_MODE_DESTROY_CONTENT，null/缺省表示未验证。不得用请求中含销毁位代替实际读数。
+请求采用DisplayManager命名空间（DESTROY_CONTENT_ON_REMOVAL=0x100、OWN_DISPLAY_GROUP=0x800）；
+结果采用Display命名空间（OWN_DISPLAY_GROUP=0x100、OWN_FOCUS=0x800、禁止抢顶层焦点=0x1000）。
+旧实现误删请求销毁位已修复；CameraPolicy纯函数保留销毁位并排除SECURE。
+真机保留/去掉请求OWN_DISPLAY_GROUP均能创建且removeMode=1，因此产品保留该位，与普通屏一致。
+保留方案实际flags24456/20360、组1；去掉的临时实验24200/20104、组2/3；全部groupAwake=true。
+不再宣称摄像头屏必由VirtualDevice分配显示组，完整对照与验收边界见虚拟摄像头文档。
+
+主机stop独立尝试普通文件、相机关联和图片清理；部分失败通过错误details.cleanup分类公开，
+不因伴生服务失败而跳过普通文件。`/data/local/tmp/dalvik-cache[/arm64]`是系统uiautomator
+包装脚本可创建的共享缓存，本轮启动前已存在且各阶段stat未变，不归helper删除；验收脚本
+记录其基线与最终状态，交负责人决定，不能把它漏写为“所有临时目录均已删除”。
+
 图片预算8MiB、解码宽高各4096，PNG/JPEG；读取后立即删除，失败也清理。三档YUV/30fps、
 位图EGL渲染、单流约29.4fps上限、流关闭停绘；不使用Paint/字体、不修改任何应用权限。
 完整策略及分层验收见[虚拟摄像头](../../docs/virtual-camera.md)。
