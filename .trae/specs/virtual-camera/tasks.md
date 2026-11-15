@@ -18,7 +18,7 @@ fixture 在真机的安装确认、CAMERA 单独授权、主动打开测试页�
 
 ## 进度
 
-- [ ] VC1 规格提交
+- [x] VC1 规格提交（bdefd6c）
 - [ ] VC2 helper
 - [ ] VC3 Go/CLI/MCP
 - [ ] VC4 fixture

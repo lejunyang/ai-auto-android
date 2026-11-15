@@ -18,23 +18,30 @@ import java.util.concurrent.TimeUnit;
 /** 功能用途：提供仅 shell/root 可连接的本地辅助进程入口，限定并发并统一退出时的资源释放。 */
 public final class Main {
     private static final String SOCKET_NAME = "aactl-displayd-v1";
-    private final AndroidBackend backend = new AndroidBackend();
+    private final AndroidBackend backend;
     private final Set<LocalSocket> clients = ConcurrentHashMap.newKeySet();
     private final Semaphore slots = new Semaphore(4);
     private final java.util.concurrent.ExecutorService workers = Executors.newFixedThreadPool(4);
     private final ScheduledExecutorService timer = Executors.newScheduledThreadPool(2);
     private LocalServerSocket listener;
 
-    private Main() {}
+    private Main(int association, int user) { backend = new AndroidBackend(association, user); }
 
-    /** 入口不接受配置参数，避免启动侧改变套接字、身份、标志或反射调用目标。 */
+    /** 仅接受操作员固定启动入口传入的关联编号；不开放套接字、标志或反射目标配置。 */
     public static void main(String[] args) throws Exception {
-        if (args.length != 0 || !Policy.acceptsUid(Process.myUid()))
-            throw new IllegalArgumentException("displayd requires shell/root uid and no arguments");
+        int association = 0;
+        int user = -1;
+        if (!Policy.acceptsUid(Process.myUid())) throw new IllegalArgumentException("displayd requires shell/root uid");
+        if (args.length != 0) {
+            if (args.length != 3 || !args[0].equals("--virtual-camera-association") || !args[1].matches("[1-9][0-9]{0,8}") || !args[2].matches("[0-9]{1,9}"))
+                throw new IllegalArgumentException("invalid operator startup arguments");
+            association = Integer.parseInt(args[1]);
+            user = Integer.parseInt(args[2]);
+        }
         try { Os.setsid(); }
         catch (ErrnoException error) { if (error.errno != OsConstants.EPERM) throw error; }
         Looper.prepareMainLooper();
-        Main daemon = new Main();
+        Main daemon = new Main(association, user);
         Runtime.getRuntime().addShutdownHook(new Thread(daemon::close, "displayd-cleanup"));
         try {
             // LocalServerSocket(String) 固定绑定 ABSTRACT 命名空间，不建立 TCP 监听。

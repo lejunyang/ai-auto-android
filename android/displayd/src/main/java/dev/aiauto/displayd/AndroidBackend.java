@@ -38,8 +38,32 @@ final class AndroidBackend implements AutoCloseable {
     private String keepAwakeError;
     private long lastActivityUptimeMs;
     private boolean closed;
+    private final int cameraAssociation;
+    private final int cameraUser;
+    private Context cameraContext;
 
-    AndroidBackend() { frames.start(); }
+    AndroidBackend(int cameraAssociation, int cameraUser) { this.cameraAssociation = cameraAssociation; this.cameraUser = cameraUser; frames.start(); }
+
+    // 本 APK 不安装，运行于 shell app_process；包归属修复只用于此受限路径，失败返回不可用，不改隐藏 API 策略。
+    @android.annotation.SuppressLint({"BlockedPrivateApi", "SoonBlockedPrivateApi"})
+    private Context cameraContext() throws Exception {
+        if (cameraContext != null) return cameraContext;
+        initialize();
+        // 只有摄像头路径需要真实 shell 包上下文；普通 DisplayManager 初始化保持原契约。
+        Context base = context.createPackageContext("com.android.shell", Context.CONTEXT_IGNORE_SECURITY);
+        Class<?> impl = Class.forName("android.app.ContextImpl");
+        var op = impl.getDeclaredField("mOpPackageName"); op.setAccessible(true); op.set(base, "com.android.shell");
+        var attribution = impl.getDeclaredField("mAttributionSource"); attribution.setAccessible(true);
+        attribution.set(base, new AttributionSource.Builder(2000).setPackageName("com.android.shell").build());
+        cameraContext = new ShellContext(base);
+        android.app.Application application = new android.app.Application();
+        Method attach = ContextWrapper.class.getDeclaredMethod("attachBaseContext", Context.class);
+        attach.setAccessible(true); attach.invoke(application, cameraContext);
+        Class<?> at = Class.forName("android.app.ActivityThread");
+        Object thread = at.getMethod("currentActivityThread").invoke(null);
+        var initial = at.getDeclaredField("mInitialApplication"); initial.setAccessible(true); initial.set(thread, application);
+        return cameraContext;
+    }
 
     // 只允许固定的内部反射，不接受调用方提供类名、方法名或参数；包名校验需与 shell uid 对齐。
     private void initialize() throws Exception {
@@ -94,11 +118,12 @@ final class AndroidBackend implements AutoCloseable {
         Map<String, Object> result;
         switch (request.method()) {
             case "hello" -> result = Protocol.fields("protocolVersion", 2, "apiLevel", Build.VERSION.SDK_INT,
-                    "supported", Build.VERSION.SDK_INT >= 33,
+                    "supported", Build.VERSION.SDK_INT >= 33, "virtualCameraUser", cameraUser,
                     "capabilities", Protocol.fields("virtualDisplay", Build.VERSION.SDK_INT >= 33,
                             "binaryPng", true, "credentialLockGuard", true,
                             "groupAwakeQuery", Build.VERSION.SDK_INT >= 34,
-                            "focusIsolation", Build.VERSION.SDK_INT >= 34),
+                            "focusIsolation", Build.VERSION.SDK_INT >= 34,
+                            "virtualCamera", cameraAssociation > 0),
                     "limits", Protocol.fields("maxMessageBytes", Policy.MAX_MESSAGE_BYTES,
                             "maxFrameBytes", Policy.MAX_FRAME_BYTES, "maxDisplays", Policy.MAX_DISPLAYS,
                             "minDimension", 128, "maxDimension", 2048, "minDpi", 72, "maxDpi", 640));
@@ -109,8 +134,16 @@ final class AndroidBackend implements AutoCloseable {
                 initialize();
                 Screen screen = new Screen(request.width(), request.height(), request.dpi(), request.focus());
                 try {
-                    screen.display = displays.createVirtualDisplay("aactl-displayd", screen.width, screen.height,
-                            screen.dpi, screen.reader.getSurface(), flags);
+                    if (request.camera().isEmpty()) {
+                        screen.display = displays.createVirtualDisplay("aactl-displayd", screen.width, screen.height,
+                                screen.dpi, screen.reader.getSurface(), flags);
+                    } else {
+                        CameraPolicy.requireAvailable(cameraAssociation > 0, Build.VERSION.SDK_INT);
+                        Policy.captureAllowed(credentialLocked());
+                        screen.camera = new VirtualCameraBackend();
+                        screen.display = screen.camera.create(cameraContext(), cameraAssociation, screen.width, screen.height,
+                                screen.dpi, screen.reader.getSurface(), flags);
+                    }
                     if (screen.display == null) throw new IllegalStateException("null virtual display");
                     int id = screen.display.getDisplay().getDisplayId();
                     screens.put(id, screen);
@@ -119,6 +152,20 @@ final class AndroidBackend implements AutoCloseable {
                 } catch (Exception error) { screen.close(); throw error; }
             }
             case "display.list" -> result = Protocol.fields("displays", describe(false));
+            case "camera.setImage" -> {
+                CameraPolicy.path(request.path());
+                try {
+                    CameraPolicy.requireAvailable(cameraAssociation > 0, Build.VERSION.SDK_INT);
+                    Policy.captureAllowed(credentialLocked());
+                    Screen screen = owned(request.displayId());
+                    if (screen.camera == null) throw new Protocol.Failure("VIRTUAL_CAMERA_NOT_ENABLED", "Display has no camera; create a new display with --camera back");
+                    screen.camera.setImage(request.path());
+                    result = Protocol.fields("displayId", request.displayId(), "imageSet", true);
+                } finally {
+                    try { android.system.Os.remove(request.path()); }
+                    catch (Exception ignored) { /* 即使所有权或锁定检查失败也清理本次图片。 */ }
+                }
+            }
             case "display.close" -> {
                 Screen screen = owned(request.displayId());
                 screens.remove(request.displayId()); screen.close();
@@ -194,6 +241,7 @@ final class AndroidBackend implements AutoCloseable {
         final String focus;
         final ImageReader reader;
         VirtualDisplay display;
+        VirtualCameraBackend camera;
         private Image latest;
         private boolean released;
         Screen(int width, int height, int dpi, String focus) {
@@ -215,6 +263,14 @@ final class AndroidBackend implements AutoCloseable {
             Map<String, Object> description = Protocol.fields("displayId", id, "width", width,
                     "height", height, "dpi", dpi, "focus", focus,
                     "focusIsolated", Policy.focusIsolated(Build.VERSION.SDK_INT, focus));
+            if (camera != null) {
+                int actualFlags = current.getFlags();
+                description.put("camera", "back");
+                description.put("cameraInfo", camera.describe());
+                description.put("displayFlags", actualFlags);
+                // 读取系统附加的实际标志，不把 VirtualDevice 的结果套用普通屏推断。
+                description.put("focusIsolated", (actualFlags & (1 << 12)) != 0 && (actualFlags & (1 << 11)) != 0);
+            }
             if (status) {
                 Class<?> infoClass = Class.forName("android.view.DisplayInfo");
                 Object info = infoClass.getConstructor().newInstance();
@@ -263,7 +319,8 @@ final class AndroidBackend implements AutoCloseable {
             if (released) return;
             released = true;
             try {
-                if (display != null) display.release();
+                try { if (display != null) display.release(); }
+                finally { if (camera != null) camera.close(); }
             } finally {
                 try { if (latest != null) { latest.close(); latest = null; } }
                 finally { reader.close(); }

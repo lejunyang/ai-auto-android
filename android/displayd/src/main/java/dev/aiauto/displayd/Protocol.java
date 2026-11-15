@@ -13,7 +13,7 @@ import java.util.Set;
 
 /** 功能用途：定义有界线协议的纯逻辑入口，避免单测依赖 Android 的 JSON 桩。 */
 final class Protocol {
-    record Request(int id, String method, int width, int height, int dpi, int displayId, String focus) {}
+    record Request(int id, String method, int width, int height, int dpi, int displayId, String focus, String camera, String path) {}
 
     static final class Failure extends Exception {
         final String code;
@@ -43,15 +43,19 @@ final class Protocol {
         Set<String> expected;
         switch (method) {
             case "hello", "display.list", "status", "shutdown" -> expected = Set.of("id", "method");
-            case "display.create" -> expected = fields.containsKey("focus")
-                    ? Set.of("id", "method", "width", "height", "dpi", "focus")
-                    : Set.of("id", "method", "width", "height", "dpi");
+            case "display.create" -> {
+                expected = new java.util.HashSet<>(Set.of("id", "method", "width", "height", "dpi"));
+                if (fields.containsKey("focus")) expected.add("focus");
+                if (fields.containsKey("camera")) expected.add("camera");
+            }
+            case "camera.setImage" -> expected = Set.of("id", "method", "displayId", "path");
             case "display.close", "display.capture" -> expected = Set.of("id", "method", "displayId");
             default -> throw new Failure("UNKNOWN_METHOD", "method is not supported");
         }
         if (!fields.keySet().equals(expected)) throw invalid();
         int width = 0, height = 0, dpi = 0, displayId = -1;
         String focus = "isolated";
+        String camera = "", path = "";
         if (method.equals("display.create")) {
             width = integer(fields, "width"); height = integer(fields, "height"); dpi = integer(fields, "dpi");
             Policy.dimensions(width, height, dpi);
@@ -59,9 +63,18 @@ final class Protocol {
                 if (!(fields.get("focus") instanceof String)) throw invalid();
                 focus = Policy.focus((String) fields.get("focus"));
             }
+            if (fields.containsKey("camera")) {
+                if (!(fields.get("camera") instanceof String)) throw invalid();
+                camera = (String) fields.get("camera");
+                if (!"back".equals(camera)) throw new Failure("INVALID_ARGUMENT", "camera must be back");
+            }
+        }
+        if (method.equals("camera.setImage")) {
+            if (!(fields.get("path") instanceof String)) throw invalid();
+            path = (String) fields.get("path"); CameraPolicy.path(path);
         }
         if (fields.containsKey("displayId")) displayId = integer(fields, "displayId");
-        return new Request(id, method, width, height, dpi, displayId, focus);
+        return new Request(id, method, width, height, dpi, displayId, focus, camera, path);
     }
 
     private static int integer(Map<String, Object> fields, String key) throws Failure {
