@@ -22,7 +22,9 @@ node scripts/verify-virtual-camera-device.mjs --device 324462538298 --adb PATH_T
 
 清理清单同时记录`/data/local/tmp/dalvik-cache`与`arm64`的存在性、inode、权限、mtime/ctime和子项。启动前已存在的共享目录保持原样；本机系统uiautomator包装脚本会重定向ANDROID_DATA并使用它，不归helper删除。最终`sharedRuntimeCache`必须与基线一致；变化则保留并报告负责人，不擅自递归删或rmdir。stop部分失败在`error.details.cleanup`公开每类结果，需分别检查helperFiles、cameraAssociation、cameraImages。
 
-**helper重启后须由负责人重新完成虚拟设备CAMERA授权。** stop会删除伴生关联，下一次start --virtual-camera创建新关联（本机编号7→8→9）；该授权依附关联对应的持久设备标识，不跨新关联继承。同一helper运行、同一关联内close/create屏则无需重授。默认设备已有授权保持，产品不代点、不自动授予。上述独立helper检查也会stop，结束后进入下表须重新检查授权；是否跨重启保留shell关联以保留授权交N60.6决策，本轮不改行为。
+**默认stop后新关联须由负责人重新授予虚拟CAMERA。** 默认stop删除关联，start新建（本机7→8→9）；同一helper/关联内close/create不需重授。现在可显式`aactl display stop --device SERIAL --keep-camera-association`保留，再start复用；只读核对`adb -s SERIAL shell cmd companiondevice list USER_ID`中com.android.shell+00:00:00:00:00:10及编号。无匹配省略keptCameraAssociation，查询失败分类可见且其它清理继续；普通模式运行helper忽略开关、不查关联。
+
+保留期间设备常驻一条shell的COMPANION_DEVICE_APP_STREAMING伴生关联及负责人此前授予目标应用的虚拟设备CAMERA授权。归还/转手前必须不带开关`aactl display stop --device SERIAL`移除（无helper亦可；普通helper运行时先停、再默认stop）。默认独立helper脚本仍会清关联。产品不代授权/点框、不disassociate-all；启动失败只移除本次新建关联，既有/崩溃遗留保留，错误说明结果。**真机保留关联后helper重启是否免重授尚未验证，本轮无真机；不能用同关联重建屏或模拟器结果替代。**
 
 ## 有应用的分步验收
 
@@ -56,3 +58,14 @@ node scripts/verify-virtual-camera-device.mjs --device 324462538298 --adb PATH_T
 新版fixture已由负责人安装，集成方读回横/竖图正确，状态文本bounds为[0,0][720,29]与[0,29][720,82]且截图可见；预览[0,411][720,951]为720×540（4:3），retries=0/3。正常关闭/重开相机两轮availability始终available、reason=null，每次重开均正确读回；按包名在屏67启动读到PAGE:MAIN。
 
 仍待验：断开/错误后最多3次500/1000/2000ms自动重连、最终原因/次数、成功回调不重置预算与暂停取消；restricted强制断流下availability是否误报。当前只有自动重连纯逻辑单测覆盖，真机未制造强制断流；不要截断dump、撤销权限或绕过授权来触发。高分辨率、steal带应用读回、IME、凭据锁息屏、第三方应用、多轮统计仍待验。模拟器四项已执行，MCP为2/3通过、1次超时，[失败及未证归因](progress.md#mcp-cold-start-failure-20261115)保留，冷启动稳定规则和多轮统计待补。
+
+## 保留关联的负责人真机待验（本轮不执行）
+
+| 目标 | 动作 | 预期与判据 / 人工原因 |
+| --- | --- | --- |
+| 已授权基线 | 负责人完成两处CAMERA，记录用户/工具关联编号并读回横图 | 记录实际关联与读回；敏感权限仅负责人处理，不预置或撤销 |
+| 保留停止 | stop --keep-camera-association后完整只读list并检查helper/文件/图片/forward | 返回实际保留编号且与基线相同，其它工具资源清理；无关联不能报已保留 |
+| 复用重启与授权 | start --virtual-camera，重建摄像头屏，负责人打开相机页 | 编号不变、无新权限框且实际颜色读回才算免重授通过；若弹框则如实失败，由负责人决定授权，Agent不代点 |
+| 显式移除 | 不带开关stop；若普通模式helper在运行，先停后再默认stop | 工具关联消失、其它关联不变、工具文件/forward无、摄像头回基线；归还/转手前必须做 |
+
+上述授权持久性仍待负责人/集成方执行，本轮仅模拟器验证编号生命周期，不证明CAMERA授权跨helper重启。

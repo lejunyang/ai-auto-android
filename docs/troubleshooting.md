@@ -367,10 +367,15 @@ restricted断流且Uid mode CAMERA:ignore；负责人在系统设置补默认授
 33分钟/主屏切13次应用未断。后续权限复查按默认设备判定只是推断，未证明内部机制；
 产品不代授权。已有权限保持，勿用pm grant、appops或自动点授权框绕过。
 
-虚拟设备CAMERA授权不跨helper重启：stop删除关联，start --virtual-camera新建关联
-（本机实测编号7→8→9），关联对应的持久设备标识变化后系统会再弹权限框，须负责人
-重新授权；默认设备已有权限保持。同一次helper运行、同一关联内close/create屏不需重授。
-是否为保留授权而跨重启常驻shell关联是N60.6产品决策，当前清理行为不变。
+默认stop/start新建关联时（本机7→8→9）虚拟CAMERA须负责人重授；同关联close/create无需重授。
+操作员可用`aactl display stop --device SERIAL --keep-camera-association`保留关联，下次start复用。
+匹配到才返回keptCameraAssociation的userId/id，无关联省略，查询失败分类可见且不阻断文件/图片清理。
+普通模式运行helper忽略开关、不查伴生关联；归还/转手前用不带开关的`display stop --device SERIAL`
+移除（无helper也可；若普通helper在运行，先停它，再执行默认stop）。只读核对：
+`adb -s SERIAL shell cmd companiondevice list USER_ID`，仅com.android.shell+00:00:00:00:00:10。
+保留期间常驻shell的COMPANION_DEVICE_APP_STREAMING关联及用户此前授予目标应用的虚拟CAMERA授权；
+不disassociate-all、不代授权/点框。真机保留关联后helper重启是否免重授仍待验，不把既有同关联重建屏当证据。
+启动失败只删本次新建关联，既有/崩溃遗留改为保留；错误详情会说明，可用默认stop显式移除。
 
 禁止设备端`dumpsys media.camera | head`或提前关管道，本机曾导致虚拟服务死亡，甚至
 真实0–4移除后重加。完整取回主机文件后再过滤。若旧cameraId仍在但stream error/EGL失败，

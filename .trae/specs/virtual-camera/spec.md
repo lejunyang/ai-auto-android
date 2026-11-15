@@ -6,7 +6,7 @@
 
 在操作员显式启用后，创建由一个 VirtualDevice 拥有的虚拟屏和一个后置虚拟摄像头；屏内应用只看到该设备的摄像头。普通虚拟屏继续走现有 DisplayManager 路径，尺寸、数量、凭据锁、身份核对、无安全显示标志、无主屏回退及退出清理契约保持。
 
-- `aactl display start --device SERIAL --virtual-camera [--helper PATH]`：CLI 独有；固定 shell 包、标记 MAC `00:00:00:00:00:10`、profile `android.app.role.COMPANION_DEVICE_APP_STREAMING`，仅操作当前前台用户的精确关联。读取关联编号传入 helper；遗留关联复用，启动失败与 stop 精确清理，禁止 disassociate-all。
+- `aactl display start --device SERIAL --virtual-camera [--helper PATH]`：CLI 独有；固定 shell 包、标记 MAC `00:00:00:00:00:10`、profile `android.app.role.COMPANION_DEVICE_APP_STREAMING`，仅操作当前前台用户的精确关联。读取关联编号传入 helper；遗留关联复用；默认stop精确清理，可选保留见文末。启动失败只删本次新建，既有/崩溃遗留保留并说明，禁止disassociate-all。
 - `aactl display create --device SERIAL --width W --height H --dpi D [--focus isolated|steal] [--camera back]`：默认无摄像头。MCP `android_display_create` 增加可选枚举 `camera: back`，沿用现有显示管理风险门；不提供 helper 启停或图片设置工具。
 - `aactl camera set-image --device SERIAL --display N --image PATH`：仅 CLI；本地 PNG/JPEG ≤ 8 MiB，解码宽高各 ≤ 4096；固定前缀加 UUID 的临时路径，helper 校验后读取并立即删除，失败同样清理；按比例居中留黑边，运行中可切换。
 - 后置摄像头提供 640×480、1280×720、1920×1080 的 YUV_420_888、30 fps；未设图输出纯色。只在流存在时绘制，有帧率上限，流关闭停止，关闭屏时释放摄像头与虚拟设备。

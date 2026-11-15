@@ -146,3 +146,57 @@
 - 已复读AGENTS并核对Git：起点1af876e、virtual-display-screen-off与远端一致、worktree干净；main worktree仍f861a61，不动。负责人已决定增加默认关闭的stop可选保留开关，本轮先补规格再实现，所有提交仅本地、不push。
 - 规则选定：普通模式运行helper忽略开关，不触发companiondevice或返回保留字段；helper未运行/摄像头模式才只读查询精确关联，无关联省略keptCameraAssociation。默认stop的argv与JSON保持，但摄像头启动失败保留既有关联是明确的失败语义变化，绝不写成所有默认行为不变。
 - 本轮依VC18–VC21顺序实施，不派发并行Agent；只操作指定read-only模拟器一次摄像头脚本，不连接真机、不跑另外三份脚本；真机授权保留保持待验。
+
+<a id="keep-camera-association-20261116"></a>
+
+## 可选保留关联交付与模拟器验收（2026-11-16）
+
+- 负责人已决定默认关闭的CLI stop --keep-camera-association；b79a5ac先提交规格，3485a73实现只读FindCameraAssociation、可选保留结果、独立清理及CLI/service窄路由。无匹配时省略keptCameraAssociation，查询失败在原分类cleanup中公开，不阻断helper文件/UUID图片清理；有编号而其它清理失败时错误details仍公开编号。普通模式运行helper忽略开关，不调用companiondevice、不报告保留字段；helper未运行时带开关只读查询当前用户并保留。默认stop的argv、成功JSON及失败分类保持，默认stop也是移除保留关联的唯一命令，普通运行helper先停后再默认stop。
+- deac12e增加CameraAssociation.Created，成功新建与复用区分；启动后续失败先以保留方式停可核验helper、清文件/图片，再仅删除本次新建关联。调用前存在（含崩溃遗留）的关联原样保留，这是相对此前失败即删的明确变化，不能写成“所有默认失败行为不变”。错误公开cameraAssociation.action=kept/removed/removeFailed、原启动原因与清理失败。
+- a6a2c34收紧失败诊断：helperCleanup不带中间stop暂存的kept字段，避免最终已删除却又显示保留；最终关联处理只看cameraAssociation.action。原错误和清理错误仍在原因链，按既有errors.As选择分类，裸错误维持INTERNAL_ERROR，不新增错误码。对应断言先失败，修正后定向及全量通过。
+- Java只读审查Main.close→AndroidBackend.close/Screen.close→VirtualCameraBackend.close：只释放显示、帧、相机、VirtualDevice和Binder监视，不调用disassociate/removeAssociation，不假设关联即将删除。因此本轮没有修改任何Java。协议版本、MCP schema/工具数/入口、三份风险门均无改动，不增加配置文件、环境变量或设备端持久状态。
+- 新增11项Go测试均通过：
+  - TestFindCameraAssociationReadsOnlyExactMarker
+  - TestStopKeepAssociationReportsActualIDAndCleansFiles
+  - TestStopKeepAssociationAbsentOrQueryFailureStillCleans
+  - TestStopKeepAssociationMergesIndependentCleanupErrors
+  - TestStopOrdinaryHelperIgnoresKeepAssociationFlag
+  - TestCameraFailedStartCleansOnlyNewAssociation
+  - TestCameraFailedStartReportsRemovalAndIndependentCleanupFailures
+  - TestCameraStartFailurePreservesRawErrorClassification
+  - TestCLIStopKeepAssociationRealAdapterContract
+  - TestCLIKeepAssociationFlagOnlyAcceptedByStop
+  - TestServiceKeepAssociationUsesStopOnlyBackend
+- 既有TestCameraAssociationExactCreateReuseAndCleanup强化Created与遗留复用断言；TestCameraStartFailureCleanupAndRunningHelperProtection明确本次新建且只删一次，未放宽既有测试。原Stop独立失败清理、普通helper保护和CLI API33/34链路继续通过。固定argv集成测试确认保留仅list 0，默认仍list 0→disassociate 0 com.android.shell 00:00:00:00:00:10→list 0；CLI仅stop接受裸开关/=true，重复、false/其它值及其它子命令均拒绝。
+- 所有验证先在Git Bash export PATH=/e/osdk-data/data/installs/go/1.26.5/bin:$PATH，再直接运行make comments/test/verify/build/android-verify，最终全部exit0。第一轮全量后复核诊断新增断言/修正，故再次跑最终五项；最终测试覆盖全部生产变更。注释629个手写文件/16个检查器自测，协议56项、skills三份与镜像、Go全量与三平台vet通过。Android632项（631通过、1项既有app跳过）、0失败：app564、displayd48、fixture14、web-fixture6；本轮无Java变更。
+- 模拟器脚本3e32dc2已扩展保留/同号复用/显式移除，并在finally前清理钩子无条件核对精确关联基线、工具文件，停止在保留阶段也会默认stop清关联；失败先留现场，不盲重试stop。不运行其它三份模拟器脚本。原始报告/日志全部在仓库外C:/Users/LJY/AppData/Local/Temp/aactl-camera-keep-20261116/scripts/emulator/build/virtual-camera/keep-association-1/report.json，不提交二进制、截图、原始证据。
+- 启动前ADB为空且无既有emulator/qemu进程；仅启动emulator -avd osdk-test-35 -read-only -no-snapshot -no-boot-anim -no-audio（PID71100）。boot_completed首次观察为UTC2026-11-15T16:39:48.187Z，另显式等待45秒；正式脚本开始UTC16:44:30.056Z、结束16:44:50.591Z，即JST2026-11-16 01:44:30–01:44:50。从首次完成观察到脚本开始实际281869ms（含主机调度/记录开销），满足至少45秒，不把等待视为已证flaky根因修复。
+- 唯一serial emulator-5554/transport34，AVD osdk-test-35/API35/x86_64，320×640/160dpi、en-US、导航模式2，指纹google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。最终CLI SHA256=0f768e65018aa8dc62b2b7b0abe55a64eb9f755f53561d483e416dd96cdc0a07；helper=a3fefb4871560611cdb10d1af216b3a9b7f1c8b949e890bba6eea56807df17f3；fixture=1dc42ad123f249f33fbcf5ab8f53ce08a278db01de7b7abbb7bbaaf433085adb。只在该disposable emulator安装本地test-only fixture，不连接/操作真机，不修改任何应用权限。
+
+| 模拟器步骤 | 实测输出 / 判据 |
+| --- | --- |
+| start --virtual-camera | userId=0，工具关联id=1；重复start能力开启且关联行不变 |
+| 请求摄像头屏 | VIRTUAL_CAMERA_UNAVAILABLE，API35/RemoteException诊断；无遗留屏，不另推断本轮底层原因 |
+| 普通虚拟屏 | 创建/关闭通过，未带camera字段 |
+| stop --keep-camera-association | stopped=true，keptCameraAssociation={userId:0,id:1}；完整list仍1，helper=0、临时文件=0 |
+| 再次start --virtual-camera | virtualCamera=true，完整list仍id=1 |
+| 默认stop | 工具关联消失，其它关联行与基线相同；remainingToolAssociations=0 |
+| 普通helper未启用摄像头 | 请求camera返回VIRTUAL_CAMERA_NOT_ENABLED |
+| finally及宿主复核 | report.ok=true、cameraAssociations=0；cleanup的helper/displays/forwards/temporaryFiles均0；emulatorKillRequested=true；随后ADB为空、emulator/qemu进程均无 |
+
+- 脚手架现象：附加只读启动记录在Node REPL跨调用引用了块内变量bootFingerprintKeep而报未定义；未改变设备状态。正式脚本自身仍逐步执行唯一设备/指纹守卫，未重复正式脚本或放宽判据；改从已落盘boot-observation.json与最终report读取，核对真实等待时长281869ms。该错误不计为产品失败，也不把事后时间核对伪称事前记录。
+- 文档同步：已搜索所有--virtual-camera文档位置，更新README、虚拟屏/摄像头/架构/协议说明、安全分发、排障、helper README、模拟器说明、skills参考及镜像和本规格人工步骤。progress旧行不改；N60.6仅主行及“跨helper重启保留关联”一行更新，其它遗留行保持。保留的常驻shell COMPANION_DEVICE_APP_STREAMING关联与既有虚拟CAMERA授权、精确只读核对、归还/转手前默认stop、无helper亦可、普通模式忽略、禁止disassociate-all/代授权/点框均明确写出。
+- 真机“保留关联后helper重启无需重新授权”仍未验证，本轮没有真机；仅有既有同关联重建屏免重授的旁证。强制断流availability、自动重连、高分辨率、steal带应用读回、IME/息屏/第三方及多轮统计等旧未验项没有新增通过结论，既有MCP 2/3和失败记录保留。
+- 结束后cd android && ./gradlew --stop，exit0；--status显示No Gradle daemons are running（9.3.1），进程正常退出。后续仅文档提交与只读Git检查，不再启动Gradle。所有提交仅当前分支本地，不push、不动main。
+
+
+本轮提交文件清单（收口文档与此记录同一提交，其hash见git log）：
+
+| 提交 | 文件 |
+| --- | --- |
+| b79a5ac | `.trae/specs/virtual-camera/checklist.md`、`.trae/specs/virtual-camera/progress.md`、`.trae/specs/virtual-camera/spec.md`、`.trae/specs/virtual-camera/tasks.md` |
+| 3485a73 | `internal/adb/association_keep_test.go`、`internal/adb/virtual_camera.go`、`internal/cli/association_keep_test.go`、`internal/cli/display.go`、`internal/service/association_keep_test.go`、`internal/service/display.go`、`internal/vdisplay/association_keep_test.go`、`internal/vdisplay/camera.go`、`internal/vdisplay/client.go` |
+| deac12e | `internal/adb/virtual_camera.go`、`internal/adb/virtual_camera_test.go`、`internal/vdisplay/association_start_test.go`、`internal/vdisplay/camera.go`、`internal/vdisplay/camera_test.go`、`internal/vdisplay/client.go` |
+| 3e32dc2 | `scripts/emulator/verify-virtual-camera.mjs` |
+| a6a2c34 | `internal/vdisplay/association_start_test.go`、`internal/vdisplay/camera.go` |
+| 收口docs(camera) | `.trae/skills/android-device-automation/references/commands.md`、`.trae/specs/virtual-camera/checklist.md`、`.trae/specs/virtual-camera/device-acceptance.md`、`.trae/specs/virtual-camera/progress.md`、`.trae/specs/virtual-camera/spec.md`、`.trae/specs/virtual-camera/tasks.md`、`README.md`、`android/displayd/README.md`、`docs/architecture.md`、`docs/next-phase-tasks.md`、`docs/protocol.md`、`docs/security-distribution.md`、`docs/troubleshooting.md`、`docs/virtual-camera.md`、`docs/virtual-display.md`、`scripts/emulator/README.md`、`skills/android-device-automation/references/commands.md` |

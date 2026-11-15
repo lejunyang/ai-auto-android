@@ -5,6 +5,8 @@ helper 的部署、启动与停止仍只由操作员通过 CLI 完成；App Brid
 虚拟屏不绕过凭据锁，不捕获安全窗口；目标失效不会回退主屏。
 
 可选 `--camera back` 的 VirtualDevice 屏需要操作员先 `display start --virtual-camera`。
+仅CLI可用`display stop --device SERIAL --keep-camera-association`保留关联供重启复用；
+默认stop仍移除，普通运行helper忽略开关；用途、常驻授权代价和真机待验见下方摄像头文档。
 本文既有焦点/IME/息屏验收结论仅适用于普通 DisplayManager 屏；摄像头屏的参数、
 实际设备证据、人工授权和待验组合见[虚拟摄像头](virtual-camera.md)。
 

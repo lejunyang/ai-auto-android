@@ -238,7 +238,11 @@ make release VERSION=0.1.0
 ## Secret 与日志清单
 
 虚拟摄像头必须由操作员显式 `display start --virtual-camera` 启用。伴生关联只使用
-固定 shell 包与保留标记MAC，停止/失败精确清理，禁止影响其它关联。图片只通过 CLI
+固定shell包与标记MAC；默认停止精确移除，显式CLI stop --keep-camera-association可保留，
+不影响其它关联。启动失败只移除本次新建关联，既有/崩溃遗留原样保留，需默认stop显式移除。
+保留期间常驻shell的COMPANION_DEVICE_APP_STREAMING关联及用户此前授予目标应用的
+虚拟CAMERA授权，归还/转手前执行不带开关stop（无helper也可）；绝不disassociate-all。
+保留后helper重启免重授真机尚未验证，MCP没有此入口。图片只通过CLI
 提供主机普通PNG/JPEG，8MiB/4096上限、随机UUID临时路径、拒绝符号链接和失败清理；
 不增加模型主机文件入口。helper不授予应用CAMERA，也不自动点权限框；虚拟设备上
 的相机授权由用户单独完成。fixture相机页只在测试应用中，生产App/Bridge不增加入口。

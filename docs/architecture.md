@@ -111,7 +111,9 @@ steal可息屏读层级，但会打断主屏输入法；API33 focusIsolated=fals
 
 详细命令、窗口列表形态、恢复与验收入口见[虚拟显示操作](virtual-display.md)。
 
-静态图片摄像头是独立的操作员启用路径：Go 建立固定 shell 伴生关联并读回编号，
+静态图片摄像头是独立的操作员启用路径：Go建立或复用精确shell伴生关联并读回编号，
+仅CLI的stop可选保留关联，默认仍移除；启动失败根据Created只回收本次新建的关联，
+既有/崩溃遗留保留并公开结果。Java退出只释放会话资源，不解除关联。
 helper 为每块 camera:back 屏创建一个 VirtualDevice 和后置 VirtualCamera，逐流 EGL
 将有界图片等比绘入输入面。普通屏仍使用原 DisplayManager；摄像头屏返回实际显示标志，
 不复用普通屏的焦点/IME/息屏验收结论。协议仍 v2，以 virtualCamera 能力位扩展；MCP

@@ -45,10 +45,10 @@
 
 ## 可选保留关联验收
 
-- [ ] stop带开关只读精确查询，返回实际userId/id，无关联省略；helper文件/图片清理独立，失败公开合并。
-- [ ] 普通模式运行helper带/不带开关均不调用companiondevice；未运行helper保留与默认移除行为有测试，默认argv/JSON保持。
-- [ ] start失败保留既有关联、删除新建关联，错误说明结果；Java不擅自解除关联。
-- [ ] CLI仅stop接受布尔开关，重复/false/其它子命令拒绝；MCP入口/schema/协议/错误码不变。
-- [ ] 模拟器保留→同号复用→默认移除完整一次，最终无工具关联、无helper/文件/forward，模拟器退出且ADB为空。
-- [ ] 文档、N60.6对应决策、五项make、停止Gradle与干净worktree。
+- [x] stop带开关只读精确查询，返回实际userId/id，无关联省略；helper文件/图片清理独立，失败公开合并（Go/CLI链路测试通过）。
+- [x] 普通模式运行helper带/不带开关均不调用companiondevice；未运行helper保留与默认移除行为有测试，默认argv/JSON保持。
+- [x] start失败保留既有关联、删除新建关联，错误说明最终结果与独立清理失败；Java退出无解除关联代码，无需修改。
+- [x] CLI仅stop接受布尔开关，重复/false/其它子命令拒绝；MCP入口/schema/协议/错误码不变，三份风险门未动。
+- [x] 模拟器保留→同号复用→默认移除完整一次：编号1→1→1→无，ok=true；最终工具关联/helper/显示/文件/forward均0，模拟器进程退出且ADB为空。
+- [x] 文档、N60.6对应决策、五项make、停止Gradle完成；本地提交范围及最终工作区核对见progress，不push、不动main。
 - [ ] 真机保留关联后helper重启无需重新授权CAMERA（不得用模拟器或同关联重建屏代替）。

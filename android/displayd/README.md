@@ -141,9 +141,17 @@ IME/息屏/第三方/多轮统计仍待验。集成方22:35–23:06 JST已复验
 availability始终available、reason=null，restricted强制断流是否误报仍待验。模拟器四项
 已执行：三项各1/1通过，MCP为2/3通过、1次启动超时，失败与未证归因见规格progress。
 
-虚拟设备CAMERA授权不跨helper重启：stop移除关联，start新建关联（本机7→8→9）
-后系统会重新弹框，须负责人再授权；同一helper/关联内关闭重建屏无需重授。是否为
-保留授权而常驻shell关联由负责人决定，当前精确清理行为不变。
+默认stop移除关联，start新建（本机7→8→9）会再弹虚拟CAMERA权限框；同一关联
+关闭重建屏无需重授。操作员现可用aactl display stop --device SERIAL --keep-camera-association
+保留关联供下次start复用，实际匹配才返回keptCameraAssociation的userId/id，无匹配省略，
+查询失败公开且不阻断文件/图片清理。普通运行helper忽略开关，不触发companiondevice。
+只读检查：adb -s SERIAL shell cmd companiondevice list USER_ID，精确匹配
+com.android.shell + 00:00:00:00:00:10；不带开关stop即移除，无helper也可。若普通helper
+运行，先停止它再默认stop清关联。保留期间常驻shell的COMPANION_DEVICE_APP_STREAMING
+关联及用户此前授予目标应用的虚拟CAMERA授权；归还/转手前须移除。不disassociate-all，
+不代授权/代点弹窗。保留后helper重启免重授的真机效果尚未验证，本轮无真机。
+启动失败只移除本次新建关联，既有/崩溃遗留原样保留并在错误说明。Main/AndroidBackend/
+VirtualCameraBackend退出只释放屏、流、摄像头与VirtualDevice，不解除关联，不需要改Java。
 
 `state` 是 Android `Display.getState()` 的整数常量（常见 OFF=1、ON=2、DOZE=3）。
 API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`，查询的是

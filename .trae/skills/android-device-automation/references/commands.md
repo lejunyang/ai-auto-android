@@ -186,4 +186,10 @@ API33没有隔离标志，focusIsolated=false；中文输入与多显示Bridge�
 创建，android_display_create额外接受可选camera:"back"，需要操作员先以CLI
 `display start --virtual-camera`启用。只有CLI `camera set-image --display N --image PATH`
 接受本机PNG/JPEG（8MiB/4096上限）；MCP不开放图片路径或启停。应用在虚拟设备上
-的CAMERA必须用户单独授权，不自动点权限框、不给任何应用授予权限。NX888J的isolated/fixture/640×480 GPU读回与33分钟单流已由集成方和负责人验收；需用户默认设备+虚拟设备两处CAMERA授权。高分辨率、steal读回、IME/息屏、多轮统计及新fixture设备效果仍待验。
+的CAMERA必须用户单独授权，不自动点权限框、不给任何应用授予权限。NX888J的isolated/fixture/640×480 GPU读回与33分钟单流已由集成方和负责人验收；需用户默认设备+虚拟设备两处CAMERA授权。高分辨率、steal读回、IME/息屏、多轮统计及自动重连真机效果仍待验。
+操作员CLI可用display stop --device SERIAL --keep-camera-association保留精确关联，
+无匹配省略keptCameraAssociation；普通运行helper忽略开关，不查伴生关联。MCP无入口。
+保留期间常驻shell的COMPANION_DEVICE_APP_STREAMING关联及既有虚拟CAMERA授权；
+只读查adb -s SERIAL shell cmd companiondevice list USER_ID中的com.android.shell+00:00:00:00:00:10。
+归还前用不带开关display stop --device SERIAL移除（无helper亦可）；保留后重启免重授真机待验。
+启动失败只移除本次新建关联，既有/崩溃遗留保留；不disassociate-all、不代授权或点弹窗。

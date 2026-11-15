@@ -12,6 +12,10 @@ aactl display list --device SERIAL --json
 aactl display status --device SERIAL --json
 aactl display close --device SERIAL --display N --json
 aactl display stop --device SERIAL --json
+# 可选：停止helper并保留工具关联，供下次start复用
+aactl display stop --device SERIAL --keep-camera-association --json
+# 只读核对指定用户，精确查com.android.shell + 00:00:00:00:00:10
+adb -s SERIAL shell cmd companiondevice list USER_ID
 ```
 
 `N` 必须取自本次 create 响应，不能是显示 0。`--camera` 目前只有 `back`；省略时仍创建普通屏。启用需要 stop 后以 `--virtual-camera` 重新 start；已有普通 helper 不会被隐式升级。未启用或旧 helper 没有能力位时返回 `VIRTUAL_CAMERA_NOT_ENABLED`，协议仍为 v2。
@@ -36,7 +40,7 @@ MCP 不提供 helper 启停、图片设置、主机路径或权限授予入口�
 
 **本机稳定使用需要目标应用在默认设备与虚拟设备两处都有CAMERA授权。产品不代授权，也不自动点系统权限框。** 负责人先在系统设置里给目标应用默认设备的相机权限，再在虚拟屏相机页的系统框中完成虚拟设备授权。可通过最新`observe screenshot/hierarchy --display N`由负责人自己判断并点按该框；若无法可靠展示或定位则停下人工处理，不使用pm grant/appops旁路。具体产品授权形态仍待负责人决定；其它ROM需独立验收。
 
-**虚拟设备授权不跨helper重启。** 本机复验中，display stop删除伴生关联，下一次start --virtual-camera新建关联，编号7→8→9；虚拟设备CAMERA授权挂在关联对应的持久设备标识上，新关联会重新出现系统权限框，须负责人再次授权，产品不代点。同一次helper运行、同一关联内关闭并重建摄像头屏不需重新授权，既有证据不变。是否跨重启保留关联以保留授权，代价是设备常驻一条shell伴生关联，已登记N60.6由负责人决定；当前stop清理行为不变。
+**默认stop删除关联，虚拟设备授权不跨新关联继承。** 本机此前默认stop/start使编号7→8→9，需负责人重新授权；同一helper运行、同一关联内关闭重建屏不需重授。负责人已决定增加可选`display stop --device SERIAL --keep-camera-association`，用现有关联供下一次`start --virtual-camera`复用，默认stop仍移除关联。**保留关联后helper重启无需重新授权CAMERA的真机效果尚未验证**；依据只有同关联重建屏的既有证据，本轮不接触真机。
 
 实测：仅虚拟授权时两次断流（连接约21秒、约3分钟），CameraService日志restricted，Uid mode CAMERA:ignore；负责人在系统设置补默认授权后，granted=true、Uid mode foreground，连续33分钟/主屏切13次应用没有restricted。**推断**：服务后续权限复查可能按默认设备判定，未证明系统内部机制。这是本机系统兼容性前提，不是本项目自动授予或绕过权限的理由。
 
@@ -54,9 +58,17 @@ MCP 不提供 helper 启停、图片设置、主机路径或权限授予入口�
 
 只有操作员 `display start --virtual-camera` 会为当前前台用户建立固定 `com.android.shell` + `00:00:00:00:00:10`、profile `android.app.role.COMPANION_DEVICE_APP_STREAMING` 的伴生关联；通过系统 list 读回编号。相同标记遗留可复用，重复或不可解析的匹配拒绝处理。标记地址为本工具保留，不应手工用于其它用途。
 
-启动失败、停止时只按精确包名和地址移除工具关联；不使用 disassociate-all。正常 helper 通过 hello 返回启动用户，停止时按该用户清理；helper 崩溃后的 stop 使用当前用户，**崩溃后切换过 Android 用户时需回到启动用户清理**。不自动切换系统用户。进程身份、socket inode/fd、APK 摘要与临时 forward 核对沿用现有实现。
+默认停止时只按精确包名和地址移除工具关联；不使用 disassociate-all。正常 helper 通过 hello 返回启动用户，停止时按该用户清理；helper 崩溃后的 stop 使用当前用户，**崩溃后切换过 Android 用户时需回到启动用户清理**。不自动切换系统用户。进程身份、socket inode/fd、APK 摘要与临时 forward 核对沿用现有实现。
 
-helper 未运行时，stop 仍尝试普通文件清理，然后独立尝试相机关联和UUID图片清理；关联服务不可用或格式未知不能阻止其它清理。普通运行中的非摄像头 helper 停止不调用 companiondevice。全部成功时仍返回 `{"stopped":true}`；部分失败返回错误，`error.details.stopped=true` 表示进程已停止，`error.details.cleanup` 分列 `helperFiles`、`cameraAssociation`、`cameraImages` 的 `ok/error`。所有清理错误合并保留，不静默吞掉关联残留，也不把进程停止等同于全部清理成功。forward仍逐调用清理，不删除来源未知的forward。
+`--keep-camera-association`仅CLI的stop接受，支持裸开关或`=true`，拒绝`=false`、重复或其它子命令携带。摄像头模式或helper未运行时只做一次只读list：精确匹配到关联才返回`keptCameraAssociation:{"userId":0,"id":9}`；无匹配省略字段，查询失败在原有`error.details.cleanup.cameraAssociation`公开。文件/UUID图片清理仍独立尝试并合并失败；若其它清理失败而已查询到保留编号，编号同时出现在error.details。普通模式运行helper时忽略开关，不执行任何companiondevice命令，也不返回保留字段；其它普通清理保持原样。
+
+保留期间设备常驻一条`com.android.shell`的`COMPANION_DEVICE_APP_STREAMING`伴生关联，以及负责人此前授予目标应用的虚拟设备CAMERA授权。**归还/转手前执行`aactl display stop --device SERIAL`（不带开关，helper未运行也可）移除保留关联**；若普通模式helper正在运行，先停止它，再在helper未运行时执行一次默认stop。只读检查用`adb -s SERIAL shell cmd companiondevice list USER_ID`，只认`com.android.shell`+`00:00:00:00:00:10`那一条，Max ID不是关联。崩溃后切换过用户需回到启动用户，不动其它关联；绝不disassociate-all、不代授权或代点权限框。
+
+2026-11-16本轮在API35指定模拟器完整跑一次：关联编号1，带开关stop后仍1且helper/临时文件为0，重启仍复用1，默认stop后无关联；最终所有工具资源归零、模拟器退出且ADB为空。该结果仅证明编号生命周期，不证明真机CAMERA授权跨helper重启。
+
+启动失败语义有一处明确变化：EnsureCameraAssociation仍复用精确既有关联，Created只标记本次新建。后续失败先保留关联停止可核验helper、清文件/图片，只移除本次新建的关联；调用前存在的关联（包括崩溃遗留）改为原样保留，原先会删除。错误详情cameraAssociation.action为kept/removed/removeFailed并保留原启动错误/清理错误。默认stop的命令序列、JSON和删除行为不变，不能把启动失败变化含糊为“全部默认行为不变”。
+
+helper 未运行时，stop 仍尝试普通文件清理，然后独立尝试相机关联和UUID图片清理；关联服务不可用或格式未知不能阻止其它清理。普通运行中的非摄像头 helper 停止不调用 companiondevice。默认stop全部成功时仍返回 `{"stopped":true}`；部分失败返回错误，`error.details.stopped=true` 表示进程已停止，`error.details.cleanup` 分列 `helperFiles`、`cameraAssociation`、`cameraImages` 的 `ok/error`。所有清理错误合并保留，不静默吞掉关联残留，也不把进程停止等同于全部清理成功。forward仍逐调用清理，不删除来源未知的forward。
 
 ## 显示标志审查修正
 
@@ -149,6 +161,6 @@ MCP失败轮在boot_completed后约34秒开跑（仅8秒缓冲），android_disp
 | VIRTUAL_CAMERA_UNAVAILABLE | 6 | API<35、服务/特性缺失或框架创建失败；保留 message 的 API、异常与原因，不改用真实摄像头 |
 | CAMERA_IMAGE_INVALID | 2 | 检查 PNG/JPEG、8 MiB/4096 上限或内部临时路径/读取失败，不循环上传 |
 
-仍未验证：restricted强制断流下availability是否误报、新fixture断流后自动重连、1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、任何第三方应用及多轮统计。模拟器四项已执行，MCP保留2/3结果，不代表flaky问题关闭。负责人手机有锁屏密码，息屏会进入凭据锁，本工具不要求关闭凭据锁来验收。视频、图片MCP主机路径准入、双授权产品形态/跨重启保留关联决策、冷启动稳定规则与MCP多轮统计、最近任务是否处理及跨OEM矩阵在N60.6登记；不把已有单流实证外推为全部能力交付。
+仍未验证：restricted强制断流下availability是否误报、新fixture断流后自动重连、1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、任何第三方应用及多轮统计。模拟器四项已执行，MCP保留2/3结果，不代表flaky问题关闭。负责人手机有锁屏密码，息屏会进入凭据锁，本工具不要求关闭凭据锁来验收。视频、图片MCP主机路径准入、双授权产品形态/保留关联后真机授权复验、冷启动稳定规则与MCP多轮统计、最近任务是否处理及跨OEM矩阵在N60.6登记；不把已有单流实证外推为全部能力交付。
 
 框架依据：[AOSP VirtualDeviceManager](https://android.googlesource.com/platform/frameworks/base/+/main/core/java/android/companion/virtual/VirtualDeviceManager.java)、[显示标志](https://android.googlesource.com/platform/frameworks/base/+/HEAD/core/java/android/view/Display.java)、[伴生设备 shell 命令](https://android.googlesource.com/platform/frameworks/base/+/master/services/companion/java/com/android/server/companion/CompanionDeviceShellCommand.java)。实际 OEM 行为以本机证据为准。
