@@ -18,6 +18,8 @@ const cameraPackage = "com.android.shell"
 const cameraMAC = "00:00:00:00:00:10"
 const cameraProfile = "android.app.role.COMPANION_DEVICE_APP_STREAMING"
 
+var companionMaxIDLine = regexp.MustCompile(`^Max ID: [0-9]+$`)
+
 // CameraAssociation 是当前前台用户的工具专用伴生关联；编号只从系统 list 读回。
 type CameraAssociation struct{ UserID, ID int }
 
@@ -30,7 +32,7 @@ func parseCameraAssociation(output string) (int, error) {
 	found := 0
 	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" || line == "Association ID | Package Name | Mac Address" || regexp.MustCompile(`^Max ID: [0-9]+$`).MatchString(line) {
+		if line == "" || line == "Association ID | Package Name | Mac Address" || companionMaxIDLine.MatchString(line) {
 			continue
 		}
 		var pkg, mac, raw string
