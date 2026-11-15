@@ -10,6 +10,8 @@ import { createHash } from 'node:crypto';
 
 const serial = '324462538298';
 const fingerprint = 'nubia/CN_PQ85A02/PQ85A02:16/BQ2A.251016.001-BP2A.250605.031.A3/b6416:user/release-keys';
+const displayFlags = { SECURE: 0x0002 };
+const removeModeDestroyContent = 1;
 const opt = {};
 for (let i = 2; i < process.argv.length; i += 2) {
   const key = process.argv[i]?.slice(2);
@@ -24,7 +26,7 @@ const root = path.resolve(opt.evidence), repo = path.resolve(import.meta.dirname
 ensure(!root.toLowerCase().startsWith(repo.toLowerCase() + path.sep) && root.toLowerCase() !== repo.toLowerCase(), '真机证据不得写入仓库');
 fs.mkdirSync(root, { recursive: true });
 const report = { serial, fingerprint, startedAt: new Date().toISOString(), steps: [] };
-let identity, baseline, helperStarted = false;
+let identity, baseline, cacheBaseline, helperStarted = false;
 function run(program, args) {
   const r = spawnSync(program, args, { encoding: 'utf8', timeout: 45000, maxBuffer: 2 * 1024 * 1024, windowsHide: true, env: { ...process.env, AACTL_ADB_PATH: opt.adb, MSYS_NO_PATHCONV: '1' } });
   ensure(!r.error, `进程异常：${r.error?.message}`);
@@ -65,6 +67,22 @@ function cameraEvidence(label) {
   ensure(counts.length >= 2 && providers.length === 1, '无法解析相机数量或虚拟 provider');
   event(label, { counts, providers }); return { counts, providers };
 }
+function cacheEvidence(label) {
+  const entries = [];
+  for (const directory of ['/data/local/tmp/dalvik-cache', '/data/local/tmp/dalvik-cache/arm64']) {
+    guard();
+    // 固定格式不用shell管道元字符，adb shell会再次解释argv。
+    const result = run(opt.adb, ['-s', serial, 'shell', 'stat', '-c', '%n,%F,%a,%u,%g,%Y,%Z,%i', directory]);
+    if (result.status !== 0) {
+      ensure(/No such file or directory/.test(result.stderr + result.stdout), '缓存目录stat失败，不能当作不存在');
+      entries.push({ path: directory, exists: false });
+    } else {
+      ensure(result.stdout.split(',').length === 8 && result.stdout.includes(',directory,'), '缓存路径不是预期普通目录');
+      entries.push({ path: directory, exists: true, stat: result.stdout, entries: shell('ls', '-A', directory).split(/\r?\n/).filter(Boolean) });
+    }
+  }
+  event(label, { cacheDirectories: entries }); return entries;
+}
 function focusEvidence(label) {
   const window = shell('dumpsys', 'window');
   const top = /mTopFocusedDisplayId=(\d+)/.exec(window)?.[1];
@@ -93,16 +111,32 @@ try {
   const associations = shell('cmd', 'companiondevice', 'list', '0'); event('关联基线', { associations });
   ensure(!/com\.android\.shell\s*\|\s*00:00:00:00:00:10/.test(associations), '已有工具标记关联，先人工核实来源');
   baseline = cameraEvidence('相机基线'); focusEvidence('焦点基线');
+  cacheBaseline = cacheEvidence('缓存基线');
+  const wrapper = shell('cat', '/system/bin/uiautomator');
+  event('系统层级命令缓存来源', { lines: wrapper.split(/\r?\n/).filter(l => /run_base=|tmp_cache=|mkdir -p|export ANDROID_DATA|exec app_process/.test(l)) });
+  // 普通模式只启动/查询状态，不创建或操作任何应用，用于区分helper初始化与后续层级命令。
+  helperStarted = true;
+  cli(['display', 'start', '--helper', opt.helper]);
+  cacheEvidence('普通helper启动后'); cli(['display', 'status']); cacheEvidence('普通helper初始化后');
+  cli(['display', 'stop']); helperStarted = false;
+  ensure(JSON.stringify(cacheEvidence('普通helper停止后')) === JSON.stringify(cacheBaseline), '普通helper阶段改变共享缓存，保留证据并停止');
   helperStarted = true;
   const hello = cli(['display', 'start', '--virtual-camera', '--helper', opt.helper]).data;
+  cacheEvidence('摄像头helper启动后');
   ensure(hello.protocolVersion === 2 && hello.capabilities.virtualCamera === true, '能力握手不符');
   for (const focus of ['isolated', 'steal']) {
     const screen = cli(['display', 'create', '--width', '720', '--height', '1280', '--dpi', '240', '--focus', focus, '--camera', 'back']).data;
-    ensure(screen.displayId > 0 && screen.camera === 'back' && screen.cameraInfo.virtualDeviceId > 0 && (screen.displayFlags & 2) === 0, '归属/安全显示标志不符');
+    ensure(screen.displayId > 0 && screen.camera === 'back' && screen.cameraInfo.virtualDeviceId > 0 && (screen.displayFlags & displayFlags.SECURE) === 0, '归属/安全显示标志不符');
+    ensure(JSON.stringify(cacheEvidence(`${focus}-创建后`)) === JSON.stringify(cacheBaseline), '摄像头创建阶段改变共享缓存，保留证据并停止');
     const registered = cameraEvidence(`${focus}-注册`);
     ensure(registered.counts[0][1] === baseline.counts[0][1] + 1 && /1 devices:/.test(registered.providers[0]), '未获得新增一个虚拟摄像头的证据');
-    cli(['display', 'list']); cli(['display', 'status']); focusEvidence(`${focus}-空屏焦点`);
+    cli(['display', 'list']);
+    const createdStatus = cli(['display', 'status']).data.displays.find(d => d.displayId === screen.displayId);
+    ensure(createdStatus?.removeMode === removeModeDestroyContent, '系统removeMode未证实销毁内容，不计通过');
+    event(`${focus}-移除策略`, { displayId: screen.displayId, displayFlags: createdStatus.displayFlags, displayGroupId: createdStatus.displayGroupId, groupAwake: createdStatus.groupAwake, removeMode: createdStatus.removeMode });
+    focusEvidence(`${focus}-空屏焦点`);
     cli(['observe', 'hierarchy', '--display', String(screen.displayId)], ['DISPLAY_EMPTY', 'WINDOWS_UNAVAILABLE']);
+    cacheEvidence(`${focus}-系统层级命令后`);
     cli(['observe', 'screenshot', '--display', String(screen.displayId), '--output', path.join(root, `${focus}-empty.png`)], undefined, true);
     for (const portrait of [false, true]) {
       const file = path.join(root, portrait ? 'portrait.png' : 'quadrants.png'); pattern(file, portrait);
@@ -111,6 +145,7 @@ try {
     const status = cli(['display', 'status']).data;
     ensure(status.displays.length === 1 && status.displays[0].cameraInfo.streams.length === 0, '无应用时出现非预期流');
     cli(['display', 'close', '--display', String(screen.displayId)]);
+    cacheEvidence(`${focus}-关闭后`);
     ensure(JSON.stringify(cameraEvidence(`${focus}-关闭`)) === JSON.stringify(baseline), '关闭后相机数量未恢复');
   }
   report.ok = true;
@@ -126,6 +161,11 @@ finally {
     ensure(files.length === 0, '工具临时文件遗留');
     const forwards = raw('forward', '--list'); ensure(!forwards.split(/\r?\n/).some(l => l.startsWith(serial + ' ') && l.endsWith('localabstract:aactl-displayd-v1')), '工具 forward 遗留');
     if (baseline) ensure(JSON.stringify(cameraEvidence('最终清理')) === JSON.stringify(baseline), '相机最终数量不符');
+    if (cacheBaseline) {
+      const currentCache = cacheEvidence('共享缓存最终检查');
+      report.sharedRuntimeCache = { baseline: cacheBaseline, current: currentCache, policy: '启动前已存在的共享目录原样保留；不是helper所有物，禁止删除' };
+      ensure(JSON.stringify(currentCache) === JSON.stringify(cacheBaseline), '共享缓存改变，保留给负责人决定，不能声称清理通过');
+    }
     report.cleaned = true; event('清理通过', { associations, files });
   } catch (e) { report.cleaned = false; report.cleanupError = e.message; report.ok = false; }
   report.finishedAt = new Date().toISOString(); save();
