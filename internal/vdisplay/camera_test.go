@@ -166,6 +166,29 @@ func TestCameraStatusRemoveModePreservesUnknown(t *testing.T) {
 		}
 	}
 }
+
+func TestCameraAvailabilityWirePreservesFailureAndLegacyUnknown(t *testing.T) {
+	for _, availability := range []string{"", "available", "unknown", "unavailable", "unexpected"} {
+		c, _ := cameraWire(t, true, func(map[string]any) string {
+			screen := cameraScreenJSON
+			if availability != "" {
+				screen = strings.Replace(screen, `"cameraId":"0"`, `"cameraId":"0","availability":"`+availability+`","availabilityReason":"VIRTUAL_CAMERA_SERVICE_DIED"`, 1)
+			}
+			return cameraOK(screen)
+		})
+		screen, err := c.CreateWithCamera(context.Background(), "SERIAL", 640, 480, 240, "isolated", "back")
+		if availability == "unexpected" {
+			requireCode(t, err, apperr.CodeProtocol)
+			continue
+		}
+		if err != nil || screen.CameraInfo.Availability != availability {
+			t.Fatal(screen, err)
+		}
+		if availability == "unavailable" && (screen.CameraInfo.AvailabilityReason == nil || *screen.CameraInfo.AvailabilityReason != "VIRTUAL_CAMERA_SERVICE_DIED") {
+			t.Fatal(screen)
+		}
+	}
+}
 func TestCameraImageSnapshotAndCleanup(t *testing.T) {
 	for _, failure := range []string{"", "push", "helper", "cleanup"} {
 		t.Run(failure, func(t *testing.T) {

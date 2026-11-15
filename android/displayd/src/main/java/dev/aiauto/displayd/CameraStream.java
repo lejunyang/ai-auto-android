@@ -21,14 +21,16 @@ final class CameraStream implements AutoCloseable {
     private final Surface surface;
     private final int width, height;
     private final ImageSource source;
+    private final Consumer<String> failure;
     private volatile boolean stopped;
     private volatile String error;
     private volatile long frames;
     private final Thread thread;
     private Bitmap uploaded;
     private int imageWidth, imageHeight;
-    CameraStream(Surface surface, int width, int height, ImageSource source) {
+    CameraStream(Surface surface, int width, int height, ImageSource source, Consumer<String> failure) {
         this.surface = surface; this.width = width; this.height = height; this.source = source;
+        this.failure = failure;
         thread = new Thread(this::render, "displayd-camera-stream"); thread.setDaemon(true);
     }
     void start() { thread.start(); }
@@ -88,7 +90,12 @@ final class CameraStream implements AutoCloseable {
                 if (remaining > 0) Thread.sleep(remaining / 1_000_000L, (int) (remaining % 1_000_000L));
             }
         } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
-        catch (Exception e) { error = e.getMessage(); System.err.println("camera stream stopped: " + error); }
+        catch (Exception e) {
+            error = e.getMessage();
+            // 正常关闭中的表面失效不污染相机状态；真实渲染失败保留到关闭屏，不能随流移除丢失。
+            if (!stopped) failure.accept(error);
+            System.err.println("camera stream stopped: " + error);
+        }
         finally {
             if (display != EGL14.EGL_NO_DISPLAY) {
                 EGL14.eglMakeCurrent(display, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT);

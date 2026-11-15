@@ -29,9 +29,11 @@ type CameraHost interface {
 
 // CameraInfo 如实报告设备归属和逐流绘制状态；无流时 Streams 为空数组。
 type CameraInfo struct {
-	CameraID        string         `json:"cameraId"`
-	VirtualDeviceID int            `json:"virtualDeviceId"`
-	Streams         []CameraStream `json:"streams"`
+	CameraID           string         `json:"cameraId"`
+	VirtualDeviceID    int            `json:"virtualDeviceId"`
+	Streams            []CameraStream `json:"streams"`
+	Availability       string         `json:"availability,omitempty"`
+	AvailabilityReason *string        `json:"availabilityReason,omitempty"`
 }
 
 // CameraStream 是实际流的渲染诊断，不将注册成功等同于画面读回成功。

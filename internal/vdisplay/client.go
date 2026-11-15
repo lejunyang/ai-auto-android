@@ -82,6 +82,13 @@ func NormalizeFocus(focus string) (string, error) {
 
 func validScreenFocus(screen Screen, api int) bool {
 	if screen.Camera != "" {
+		if screen.CameraInfo != nil {
+			switch screen.CameraInfo.Availability {
+			case "", "available", "unavailable", "unknown":
+			default:
+				return false
+			}
+		}
 		return screen.Camera == "back" && api >= 35 && screen.CameraInfo != nil && screen.CameraInfo.VirtualDeviceID > 0 && screen.CameraInfo.CameraID != "" && screen.DisplayFlags != nil && (*screen.DisplayFlags&androidDisplayFlagSecure) == 0 && screen.FocusIsolated == ((*screen.DisplayFlags&androidDisplayFlagOwnFocus) != 0 && (*screen.DisplayFlags&androidDisplayFlagStealTopFocusDisabled) != 0) && (screen.Focus == "isolated" || screen.Focus == "steal")
 	}
 	return (screen.Focus == "isolated" || screen.Focus == "steal") && screen.FocusIsolated == (api >= 34 && screen.Focus == "isolated")

@@ -95,7 +95,7 @@ func displayManagementSchema(command string) json.RawMessage {
 	required := `"device"`
 	if command == "create" {
 		properties += `,"focus":{"type":"string","enum":["isolated","steal"],"default":"isolated"}`
-		properties += `,"camera":{"type":"string","enum":["back"],"description":"Requires operator CLI start --virtual-camera and user CAMERA authorization on the virtual device. Focus/IME/screen-off behavior needs device-specific acceptance."}`
+		properties += `,"camera":{"type":"string","enum":["back"],"description":"Requires operator CLI start --virtual-camera and user CAMERA grants on both default and virtual devices for stable streaming (see docs/virtual-camera.md). Focus/IME/screen-off behavior needs device-specific acceptance."}`
 		properties += `,"width":{"type":"integer","minimum":128,"maximum":2048},"height":{"type":"integer","minimum":128,"maximum":2048},"dpi":{"type":"integer","minimum":72,"maximum":640}`
 		required += `,"width","height","dpi"`
 	}
@@ -107,7 +107,7 @@ func displayManagementSchema(command string) json.RawMessage {
 }
 func displayManagementOutputSchema(command string) json.RawMessage {
 	screenProperties := `"displayId":{"type":"integer","minimum":1},"width":{"type":"integer","minimum":128,"maximum":2048},"height":{"type":"integer","minimum":128,"maximum":2048},"dpi":{"type":"integer","minimum":72,"maximum":640},"focus":{"type":"string","enum":["isolated","steal"]},"focusIsolated":{"type":"boolean"}`
-	screenProperties += `,"camera":{"const":"back"},"displayFlags":{"type":"integer","minimum":0},"cameraInfo":{"type":"object","required":["cameraId","virtualDeviceId","streams"],"properties":{"cameraId":{"type":"string"},"virtualDeviceId":{"type":"integer","minimum":1},"streams":{"type":"array","items":{"type":"object","required":["streamId","width","height","frames","error"],"properties":{"streamId":{"type":"integer"},"width":{"type":"integer"},"height":{"type":"integer"},"frames":{"type":"integer","minimum":0},"error":{"type":["string","null"]}},"additionalProperties":false}}},"additionalProperties":false}`
+	screenProperties += `,"camera":{"const":"back"},"displayFlags":{"type":"integer","minimum":0},"cameraInfo":{"type":"object","required":["cameraId","virtualDeviceId","streams"],"properties":{"cameraId":{"type":"string"},"availability":{"type":"string","enum":["available","unavailable","unknown"]},"availabilityReason":{"type":["string","null"]},"virtualDeviceId":{"type":"integer","minimum":1},"streams":{"type":"array","items":{"type":"object","required":["streamId","width","height","frames","error"],"properties":{"streamId":{"type":"integer"},"width":{"type":"integer"},"height":{"type":"integer"},"frames":{"type":"integer","minimum":0},"error":{"type":["string","null"]}},"additionalProperties":false}}},"additionalProperties":false}`
 	screen := `{"type":"object","required":["displayId","width","height","dpi","focus","focusIsolated"],"properties":{` + screenProperties + `},"additionalProperties":false}`
 	switch command {
 	case "create":

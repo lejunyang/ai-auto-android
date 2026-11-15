@@ -17,10 +17,11 @@ import (
 
 type displayAutomationFake struct {
 	fakeAutomation
-	observed service.ObserveRequest
-	executed service.ActionRequest
-	managed  []service.DisplayRequest
-	failure  error
+	observed     service.ObserveRequest
+	executed     service.ActionRequest
+	managed      []service.DisplayRequest
+	failure      error
+	availability string
 }
 
 func (f *displayAutomationFake) Observe(_ context.Context, r service.ObserveRequest) (service.ObserveResult, error) {
@@ -50,6 +51,7 @@ func (f *displayAutomationFake) ManageDisplay(_ context.Context, r service.Displ
 			screen.Camera = r.Camera
 			screen.DisplayFlags = &flags
 			screen.CameraInfo = &vdisplay.CameraInfo{CameraID: "0", VirtualDeviceID: 8, Streams: []vdisplay.CameraStream{}}
+			screen.CameraInfo.Availability = f.availability
 		}
 		return screen, f.failure
 	case "close":
@@ -237,6 +239,20 @@ func TestMCPCameraEnumAndOperatorBoundary(t *testing.T) {
 	}
 	if len(f.managed) != 1 {
 		t.Fatal("operator action leaked through MCP", f.managed)
+	}
+}
+
+func TestMCPCameraAvailabilityOutputDoesNotAddRecoveryTool(t *testing.T) {
+	f := &displayAutomationFake{availability: "unavailable"}
+	s := connectClient(t, f)
+	r := callDisplayTool(t, s, ToolDisplayCreate, map[string]any{"device": "SERIAL", "width": 640, "height": 480, "dpi": 240, "camera": "back"}, true)
+	info := structuredObject(t, r)["cameraInfo"].(map[string]any)
+	if info["availability"] != "unavailable" {
+		t.Fatal(info)
+	}
+	callDisplayTool(t, s, "android_camera_restart", map[string]any{"device": "SERIAL"}, false)
+	if len(f.managed) != 1 {
+		t.Fatal("unexpected automatic recovery", f.managed)
 	}
 }
 

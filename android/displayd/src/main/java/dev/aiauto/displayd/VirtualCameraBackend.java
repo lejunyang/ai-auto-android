@@ -26,6 +26,9 @@ final class VirtualCameraBackend implements AutoCloseable {
     private boolean closed;
     private String cameraId;
     private int deviceId;
+    private final CameraAvailability availability = new CameraAvailability();
+    private IBinder cameraService;
+    private final IBinder.DeathRecipient cameraDeath = () -> availability.serviceDied();
 
     VirtualDisplay create(Context context, int association, int width, int height, int dpi, Surface surface, int flags) throws Protocol.Failure {
         CameraPolicy.requireAvailable(association > 0, Build.VERSION.SDK_INT);
@@ -72,6 +75,17 @@ final class VirtualCameraBackend implements AutoCloseable {
             camera = device.getClass().getMethod("createVirtualCamera", configClass)
                     .invoke(device, configBuilder.getMethod("build").invoke(config));
             cameraId = String.valueOf(camera.getClass().getMethod("getId").invoke(camera));
+            // 监视失败仅报告unknown，不影响已创建的相机；不拉起服务、不自动重建。
+            boolean monitored = false;
+            try {
+                cameraService = (IBinder) serviceManager.getMethod("checkService", String.class).invoke(null, "virtual_camera");
+                if (cameraService != null) {
+                    cameraService.linkToDeath(cameraDeath, 0);
+                    monitored = true;
+                    if (!cameraService.isBinderAlive()) availability.serviceDied();
+                }
+            } catch (Exception error) { System.err.println("camera service monitor unavailable: " + error.getClass().getSimpleName()); }
+            availability.registered(monitored);
             VirtualDisplayConfig displayConfig = new VirtualDisplayConfig.Builder("aactl-displayd", width, height, dpi)
                     .setSurface(surface).setFlags(CameraPolicy.displayFlags(flags)).build();
             VirtualDisplay display = (VirtualDisplay) device.getClass()
@@ -97,7 +111,7 @@ final class VirtualCameraBackend implements AutoCloseable {
         if (closed || !CameraPolicy.acceptsStream(width, height) || streams.size() >= 3) {
             surface.release(); System.err.println("camera stream rejected: closed or outside advertised budget"); return;
         }
-        CameraStream stream = new CameraStream(surface, width, height, this::image);
+        CameraStream stream = new CameraStream(surface, width, height, this::image, availability::renderFailed);
         streams.put(id, stream); stream.start();
     }
     private synchronized void closeStream(int id) {
@@ -140,9 +154,12 @@ final class VirtualCameraBackend implements AutoCloseable {
     }
 
     synchronized Map<String, Object> describe() {
+        if (cameraService != null && !cameraService.isBinderAlive()) availability.serviceDied();
         var statuses = new java.util.ArrayList<Object>();
         for (var entry : streams.entrySet()) statuses.add(entry.getValue().describe(entry.getKey()));
-        return Protocol.fields("cameraId", cameraId, "virtualDeviceId", deviceId, "streams", statuses);
+        Map<String, Object> result = Protocol.fields("cameraId", cameraId, "virtualDeviceId", deviceId, "streams", statuses);
+        result.putAll(availability.describe());
+        return result;
     }
     @Override public void close() {
         Object oldCamera, oldDevice;
@@ -156,6 +173,10 @@ final class VirtualCameraBackend implements AutoCloseable {
         }
         // Binder close 可能同步回调，不能持有本对象锁等待框架。
         release(oldCamera); release(oldDevice);
+        if (cameraService != null) {
+            try { cameraService.unlinkToDeath(cameraDeath, 0); }
+            catch (java.util.NoSuchElementException ignored) { /* 服务死亡后可能已自动移除监视。 */ }
+        }
     }
     private static void release(Object resource) {
         if (resource == null) return;
