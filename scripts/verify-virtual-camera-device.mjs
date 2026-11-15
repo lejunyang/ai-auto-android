@@ -77,7 +77,9 @@ function chunk(type, data) { const tag = Buffer.from(type), size = Buffer.alloc(
 // 本地确定性验收图不含文字、个人信息或下载素材；负责人后续可复用相同四象限判据。
 function pattern(file, portrait) {
   const w = portrait ? 480 : 640, h = portrait ? 640 : 480, pixels = Buffer.alloc((w * 3 + 1) * h);
-  const colors = [[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 255]];
+  const colors = portrait
+    ? [[255, 255, 255], [0, 0, 255], [0, 255, 0], [255, 0, 0]]
+    : [[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 255]];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const color = colors[(y < h / 2 ? 0 : 2) + (x < w / 2 ? 0 : 1)];
     const i = y * (w * 3 + 1) + 1 + x * 3; pixels.set(color, i);
