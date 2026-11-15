@@ -116,6 +116,12 @@ API33 两策略均无法隔离；0 明确主屏且不要求 helper。isolated �
 升级前先用旧 CLI 停止 v1 helper，再更新 CLI/helper 并启动。完整参数、选择建议与证据见
 [虚拟显示操作](docs/virtual-display.md)。
 
+API35+ 支持的设备可由操作员使用 `display start --virtual-camera`，再用
+`display create ... --camera back` 和 CLI `camera set-image --display N --image PATH`
+指定静态 PNG/JPEG。MCP 创建屏支持可选 `camera:"back"`，启停、图片路径与相机权限
+仍由操作员/用户处理。NX888J/API36 已验 helper 注册、图片接收与清理，真实应用画面
+读回、GPU出流和摄像头屏的输入法/息屏组合尚待负责人验收，见[虚拟摄像头](docs/virtual-camera.md)。
+
 ## MCP 配置
 
 `aactl mcp serve` 通过 stdio 暴露 20 个类型化工具，其中视觉候选工具只读且不会执行

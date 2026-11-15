@@ -4,6 +4,10 @@
 helper 的部署、启动与停止仍只由操作员通过 CLI 完成；App Bridge 和 App AI 没有多显示出口。
 虚拟屏不绕过凭据锁，不捕获安全窗口；目标失效不会回退主屏。
 
+可选 `--camera back` 的 VirtualDevice 屏需要操作员先 `display start --virtual-camera`。
+本文既有焦点/IME/息屏验收结论仅适用于普通 DisplayManager 屏；摄像头屏的参数、
+实际设备证据、人工授权和待验组合见[虚拟摄像头](virtual-camera.md)。
+
 ## 构建、启动与升级
 
 helper APK 只作为 app_process 的 CLASSPATH，**不安装 APK**。完整包和精简包都提供

@@ -181,3 +181,10 @@ BACK直接交给应用，在根页会退出并读到DISPLAY_EMPTY，重新启动
 层级返回WINDOWS_UNAVAILABLE，可唤醒或用steal重建；取帧与按键注入仍可用。
 steal适合息屏挂机，会打断主屏输入法，其BACK可先收IME，不能套用isolated断言。
 API33没有隔离标志，focusIsolated=false；中文输入与多显示Bridge仍待独立实现。
+
+以上焦点/IME/息屏结论只适用于普通 DisplayManager 屏。摄像头屏由 VirtualDevice
+创建，android_display_create额外接受可选camera:"back"，需要操作员先以CLI
+`display start --virtual-camera`启用。只有CLI `camera set-image --display N --image PATH`
+接受本机PNG/JPEG（8MiB/4096上限）；MCP不开放图片路径或启停。应用在虚拟设备上
+的CAMERA必须用户单独授权，不自动点权限框、不给任何应用授予权限。NX888J只验了
+helper注册/图片接收/清理，GPU画面与带应用的焦点/IME/息屏组合仍待负责人验收。

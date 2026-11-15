@@ -18,7 +18,8 @@ adb -s emulator-5554 forward tcp:0 localabstract:aactl-displayd-v1
 固定套接字名为 `aactl-displayd-v1`。`LocalServerSocket(String)` 仅监听
 `localabstract`；不监听 TCP。电脑端 TCP 仅是调用方主动建立的 adb forward。
 每个连接的第一步是 `getPeerCredentials()`，只接受 uid `0` 与 `2000`，其他对端
-直接断开，不解析请求。进程自身也仅允许 shell/root 启动，且不接受命令行参数。
+直接断开，不解析请求。进程自身也仅允许 shell/root 启动；默认无参数。
+摄像头模式仅接受操作员固定入口的 `--virtual-camera-association ID USER_ID`，不开放其它配置。
 
 `nohup`、重定向标准输入输出和进程入口的 `setsid()` 使辅助进程脱离启动它的
 `adb shell`；后续连接共享同一组虚拟屏。同名进程重复启动会绑定失败，不接管旧进程。
@@ -98,6 +99,21 @@ base64，也没有二进制体后的换行。失败头不带二进制体，取�
 `minDpi`、`maxDpi`，值与预算表一致。API <33 可调用 `hello` 并得到
 `supported:false`；`display.create` 返回 `UNSUPPORTED_API`。
 
+摄像头扩展保留协议 v2。`capabilities.virtualCamera` 表示本次启动是否显式启用入口，
+不表示 GPU 或系统服务已经通过实际出流验收；`virtualCameraUser` 返回启动用户用于精确停止清理。
+旧helper缺少能力位时，新客户端给VIRTUAL_CAMERA_NOT_ENABLED，不发送未知摄像头字段。
+
+- `display.create` 可选 `camera:"back"`；普通请求字段和 DisplayManager 路径保持。
+- `camera.setImage` 请求必须有 `id,method,displayId,path`，path仅接受
+  `/data/local/tmp/aactl-camera-UUID.img` 的随机v4 UUID模式，响应 `displayId,imageSet:true`。
+- 摄像头屏的create/list/status对象增加 `camera:"back"`、`displayFlags` 和
+  `cameraInfo:{cameraId,virtualDeviceId,streams:[{streamId,width,height,frames,error}]}`；
+  普通屏省略这些字段。摄像头屏的focusIsolated根据实际Display标志计算，不按API直接推断。
+
+图片预算8MiB、解码宽高各4096，PNG/JPEG；读取后立即删除，失败也清理。三档YUV/30fps、
+位图EGL渲染、单流约29.4fps上限、流关闭停绘；不使用Paint/字体、不修改任何应用权限。
+完整策略及分层验收见[虚拟摄像头](../../docs/virtual-camera.md)。
+
 `state` 是 Android `Display.getState()` 的整数常量（常见 OFF=1、ON=2、DOZE=3）。
 API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`，查询的是
 该屏所在电源组；API 33 缺少此按屏查询，返回 `null`，不拿主屏或全局状态代替。
@@ -123,8 +139,14 @@ API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`�
 | `CAPTURE_FAILED` | PNG 编码器返回失败 |
 | `FRAMEWORK_ERROR` | 固定框架接口或隐藏 API 调用失败，详情仅在设备日志 |
 | `SHUTTING_DOWN` | 并发请求遇到已停止的后端 |
+| `VIRTUAL_CAMERA_NOT_ENABLED` | 未以摄像头模式启动，或目标普通屏没有摄像头；提示操作员重新启动/创建 |
+| `VIRTUAL_CAMERA_UNAVAILABLE` | API<35、系统服务/特性缺失或创建失败；message保留API、异常类型和定位原因 |
+| `CAMERA_IMAGE_INVALID` | 图片不是PNG/JPEG、超过8MiB/4096、路径不是固定UUID模式或读取失败 |
 
 策略由代码映射为固定标志，仍拒绝原始 `flags`：
+
+以下标志和IME/息屏行为仅适用于普通 DisplayManager 屏；VirtualDevice 屏见
+[摄像头扩展](../../docs/virtual-camera.md)，按实际标志及设备验收报告结果。
 
 | focus | API 33 | API 34+ | 代价 |
 | --- | --- | --- | --- |

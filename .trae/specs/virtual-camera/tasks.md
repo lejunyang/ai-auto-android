@@ -19,9 +19,9 @@ fixture 在真机的安装确认、CAMERA 单独授权、主动打开测试页�
 ## 进度
 
 - [x] VC1 规格提交（bdefd6c）
-- [ ] VC2 helper
-- [ ] VC3 Go/CLI/MCP
-- [ ] VC4 fixture
+- [x] VC2 helper（代码与42项JVM单测；GPU出流待人工端到端验收）
+- [x] VC3 Go/CLI/MCP（定向/全量Go测试通过）
+- [x] VC4 fixture（代码、10项单测、lint/build；未在真机安装）
 - [ ] VC5 模拟器
-- [ ] VC6 真机 helper（不包含端到端人工验收）
-- [ ] VC7 文档、汇合与全量验证
+- [x] VC6 真机 helper（空屏注册、图片接收、实际标志与清理通过；不包含端到端人工验收）
+- [ ] VC7 文档、汇合与全量验证（文档和五项make已通过，等待VC5设备证据汇合）

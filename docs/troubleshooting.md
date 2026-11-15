@@ -354,6 +354,13 @@ aactl bridge snapshot --device SERIAL \
 | `PERMISSION_DENIED` | 修正披露、目标包或人工授权 |
 | `SELECTOR_AMBIGUOUS` | 停止并人工接管 |
 | `DEADLINE_EXCEEDED` | 先观察和核对结果，再判断是否重试 |
+| `VIRTUAL_CAMERA_NOT_ENABLED` | 操作员 stop 后以 --virtual-camera 重启；旧 helper 需更新，普通屏须用 --camera back 新建 |
+| `VIRTUAL_CAMERA_UNAVAILABLE` | 保留 API/异常原因；API35+仍可能缺少服务或 GL_EXT_YUV_target，勿回退真实摄像头 |
+| `CAMERA_IMAGE_INVALID` | 本机 PNG/JPEG ≤8MiB、宽高各≤4096；检查读取失败，不重复上传未知文件 |
+
+摄像头虚拟屏空屏可能返回 DISPLAY_EMPTY/FRAME_NOT_READY，注册与imageSet:true不等于
+应用已读到帧。相机授权按虚拟设备区分，必须由用户完成；真实应用画面/焦点/IME/息屏
+仍待验，见[虚拟摄像头](virtual-camera.md)和[负责人验收说明](../.trae/specs/virtual-camera/device-acceptance.md)。
 
 ## 官方参考
 

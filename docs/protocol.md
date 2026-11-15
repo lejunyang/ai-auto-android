@@ -47,6 +47,10 @@ displayId（CLI为--display）；0明确主屏且不查helper，正整数先核�
 create 的 focus 枚举 isolated/steal，默认 isolated；list/status返回focus、focusIsolated。
 API33如实false；API34+ isolated保护主屏输入但息屏无层级/虚拟屏无IME，steal可息屏读层级
 但会打断主屏输入。动作面及参数详见[虚拟显示操作](virtual-display.md)。
+这些焦点/IME/息屏结论仅适用于普通 DisplayManager 屏。可选 `camera:"back"` 创建
+VirtualDevice 屏，返回实际 `displayFlags`、`focusIsolated` 与 `cameraInfo`，不得直接外推
+普通屏结论。摄像头需要操作员 `display start --virtual-camera`；图片设置仅 CLI，
+MCP 无主机图片路径或启用入口，详见[虚拟摄像头](virtual-camera.md)。
 `action sleep` 为 CLI 的 device.sleep，KEYCODE_SLEEP 只使主屏息屏；MCP不开放sleep/wake。
 
 层级结果分两种 `format`：
@@ -272,6 +276,7 @@ Schema 合法不等于当前后端可执行。Bridge 对未实现但合法的动
 | 资源限制 | `DEADLINE_EXCEEDED`、`MESSAGE_TOO_LARGE`、`RATE_LIMITED` |
 | 动作/选择器 | `ACTION_NOT_ALLOWED`、`ACTION_FAILED`、`SELECTOR_NOT_FOUND`、`SELECTOR_AMBIGUOUS` |
 | 虚拟显示 | DISPLAYD_NOT_RUNNING、DISPLAYD_IDENTITY_MISMATCH、DISPLAY_NOT_FOUND、DISPLAY_EMPTY、WINDOWS_UNAVAILABLE、DEVICE_LOCKED、DISPLAY_ASLEEP |
+| 虚拟摄像头 | `VIRTUAL_CAMERA_NOT_ENABLED`（未启用/旧helper，CLI退出6）、`VIRTUAL_CAMERA_UNAVAILABLE`（API/服务/创建失败，退出6）、`CAMERA_IMAGE_INVALID`（图片预算/格式/路径，退出2） |
 | 录制/内部 | `SCRIPT_NOT_FOUND`、`INTERNAL_ERROR` |
 
 回放报告中的 `SECRET_REQUIRED`、`CONDITION_TIMEOUT`、

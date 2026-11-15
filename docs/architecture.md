@@ -111,6 +111,12 @@ steal可息屏读层级，但会打断主屏输入法；API33 focusIsolated=fals
 
 详细命令、窗口列表形态、恢复与验收入口见[虚拟显示操作](virtual-display.md)。
 
+静态图片摄像头是独立的操作员启用路径：Go 建立固定 shell 伴生关联并读回编号，
+helper 为每块 camera:back 屏创建一个 VirtualDevice 和后置 VirtualCamera，逐流 EGL
+将有界图片等比绘入输入面。普通屏仍使用原 DisplayManager；摄像头屏返回实际显示标志，
+不复用普通屏的焦点/IME/息屏验收结论。协议仍 v2，以 virtualCamera 能力位扩展；MCP
+只增加显示创建的 camera 枚举，图片路径/启停/相机授权不开放给模型，见[摄像头契约](virtual-camera.md)。
+
 ### App Bridge 后端
 
 Bridge 后端要求设备安装并运行 Android App，用户已接受 App 内醒目披露、配置

@@ -1372,11 +1372,20 @@ N60.1、N60.2已完成，其余子项只登记、未实施；实施前各建独�
 | N60.3 API33/34矩阵 | 固定profile/指纹；分别测focus映射、API33 focusIsolated=false/groupAwake=null、两策略焦点/IME、息屏层级、65秒保活、锁定/重建；不得用API35外推 | 新scripts/emulator/display-api-matrix/与独立规格；每API连续运行、原始失败证据、清理；发现产品缺陷单独拆修复 | test(emulator): verify displayd on API 33 and 34 |
 | N60.4 真机/OEM与硬件键盘矩阵 | 依赖N60.3；固定型号/ROM/API/ABI、调试方式、fixture SHA、键盘型号/连接方式，逐步测主屏/虚拟屏焦点、IME、物理按键去向、锁定和任务迁移；显示id与实际屏交叉核对 | 独立设备验收脚本/报告；每台显式serial及用户授权，物理键盘步骤由用户参与，记录前后两屏原始证据；不把ADB键注入冒充硬件输入 | test(device): record display and hardware keyboard compatibility |
 | N60.5 无显示编号层级的语义与缺文件错误 | 主屏0已交付；旧默认仍读活动窗口、缺文件仍可能误报无效XML。先决定兼容命名/提示，再测试双屏交替焦点；为旧exec-out缺文件精确识别本次UUID诊断，保持坏XML拒绝 | internal/adb、service/cli/mcpserver必要映射及独立规格；原argv兼容测试、显示0/活动窗口双证据、stdout退出0与stderr退出1、相似诊断反例，不能静默改成主屏 | fix(observe): clarify legacy hierarchy ownership and missing output |
-| N60.6 摄像头能力决策 | 当前未实现；先审查授权、来源和安全边界，再决定立项，不随显示功能实施 | 仅独立决策规格；未获明确决策不增加捕获或注入 | docs(spec): define camera automation boundaries |
+| N60.6 虚拟摄像头：实现与分层验收 | 独立[virtual-camera规格](../.trae/specs/virtual-camera/spec.md)：CLI显式启用、VirtualDevice后置摄像头、静态PNG/JPEG、能力位兼容、MCP仅camera:back；已验NX888J/API36注册/图片接收/清理，画面/GPU/有应用焦点IME息屏仍待负责人按[分步说明](../.trae/specs/virtual-camera/device-acceptance.md)验收。后续依赖：负责人决定目标应用授权产品形态；先定义主机路径准入再加图片MCP；视频需独立输入预算/生命周期设计；三档实际读回与OEM矩阵另验 | 单一集成者维护本规格状态；Go/显示helper、fixture、验收脚本分目录顺序汇合，视频/MCP/授权形态另开规格后才实现。证据见本规格progress；人工安装/CAMERA授权/输入/息屏不能由Agent自动确认。失败保留限额脱敏证据并停止helper、精确清理标记关联/临时图片/forward，数量恢复；未验项目不计交付，不回写MVP | bdefd6c规格、5d4906f helper、460efe2 CLI/MCP、8cf040a fixture；后续验收/文档提交见本规格progress。后续提交分别按feat(camera)/feat(mcp)/docs(camera)单责拆分 |
 | N60.7 虚拟屏ui.scroll | 依赖N60.1；先RED验证现拒绝displayId，再从已验归属目标屏读取尺寸，以原方向/幅度上限合成滚动；接CLI/MCP同名目标，保留白名单标准 | internal/adb/service/cli/mcpserver及新emulator滚动脚本；不同尺寸双屏精确滚动位置、无效目标不回退、显示0独立、未指定目标兼容、连续冷启动 | feat(display): scroll using the target display dimensions |
 | N60.8 等待/断言/滚动直到、视觉与Bridge多显示 | 依赖N60.5/7；逐工具先定义窗口/选择器/帧与动作归属，绑定display及observation，判据从同屏求值；未接入者继续明确拒绝，不能删除目标重试 | 各新规格明确internal/adb/service/mcpserver、视觉与Bridge协议/Android端所有权；共享协议单一集成者。证据须跨屏同名节点歧义、漂移/失效/无回退及真实stdio；不放宽既有三道门 | feat(display): bind predicates and observations to a display；Bridge/视觉另分提交 |
 | N60.9 fixture API35 edge-to-edge布局 | 独立夹具修复，不改生产App/Bridge；确认主屏320×640输入框[12,31][308,79]被标题栏至y80遮挡，按WindowInsets处理布局并验证所有目标可见可点 | android/device-fixture与新scripts/emulator/fixture-layout/；固定API/分辨率/密度，原始bounds/截图、输入focused与精确文本、对既有手势/滚动回归；修复前后的失败测试 | fix(fixture): keep editable controls below system bars |
 | N60.10 isolated无IME与中文输入 | 依赖N60.8相关归属设计，先落安全/能力决策；当前只受限ASCII，Bridge Unicode工具不接受displayId。评估显示绑定的语义输入或IME策略，不伪称键盘显示、不借剪贴板绕过 | 独立规格决定API/授权与internal/service/mcpserver、Android语义路由范围后才实现；中文/组合文本精确落点、主屏不变、无IME/失败拒绝、API33/34与OEM矩阵 | docs(spec): decide isolated display text input；批准后再feat实现 |
+
+#### N60.6 后续项（均未作为端到端交付）
+
+| 目标 | 具体步骤与依赖 | 波次与目录所有权 | 验收证据 / 提交 / 回滚清理 |
+| --- | --- | --- | --- |
+| 真实应用画面与三档请求 | 先由负责人安装fixture并逐设备授权；完成黑色占位、四象限、运行中切换、留边、流关闭；再扩展fixture实际请求720p/1080p，记录每档颜色与帧数 | A，android/device-fixture和本规格device-acceptance说明；共享状态由集成者维护；禁止修改生产App/Bridge | 三档实际ImageReader读回、方向/预览、连续3轮及失败率；test(camera)独立提交；关闭fixture/屏/helper，精确清理关联与临时文件 |
+| 授权产品形态 | 负责人决定用户如何在虚拟屏看见并完成系统CAMERA授权；先规格定义状态/提示/撤销和远程Activity限制，再实现 | A决策先行；docs/独立规格单一owner，批准后按实际入口划定目录；不增加自动grant或点授权框 | 可见的用户授权流程与拒绝/撤销测试；docs(camera)后再feat；失败回到拒绝态，保留用户决定 |
+| 摄像头屏焦点/IME/息屏与OEM矩阵 | 依赖人工测试客户端；两策略逐步验证顶层焦点、IME客户端、主屏输入、息屏层级/帧/定向输入，不沿用普通屏结论 | B依赖A；scripts/设备验收及独立规格；用户负责主屏动作，集成者维护证据 | 每个ROM/指纹的逐步前后状态与精确落点；test(device)独立提交；不支持组合拒绝或文档标注，停止helper恢复基线 |
+| 图片MCP与视频输入 | 图片先定义主机路径准入、大小/来源授权和清理契约；视频先定义时长/字节/解码/帧率预算与流生命周期，两者各立规格 | C，依赖各自安全决策；internal/mcpserver与internal/vdisplay或android/displayd分别独占目录波次，协议由单一集成任务修改 | 不扩张现有三道风险门，恶意路径/解码/取消/关闭测试与设备读回；feat(mcp)/feat(camera)分开提交；撤销入口并精确清理资源，不改变用户权限 |
 
 #### N60.2 后续项（登记，均未实施）
 
@@ -1394,7 +1403,7 @@ N60.1、N60.2已完成，其余子项只登记、未实施；实施前各建独�
 并行波次与目录所有权：原波次A中N60.2（release目录）已完成；其余仍可分别做N60.3（新增display-api-matrix
 专属目录）、N60.9（device-fixture及新增fixture-layout目录），共享构建/导航由单一集成者修改。
 N60.5与N60.7都涉及adb/service/CLI，交同一owner串行；N60.8在两者完成后串行推进，
-N60.10在其相关归属决策后再做。N60.4依赖N60.3，N60.6只做决策文档。共享协议、状态
+N60.10在其相关归属决策后再做。N60.4依赖N60.3，N60.6按独立virtual-camera规格实施与分层验收。共享协议、状态
 和矩阵汇总只由集成任务收口；各子项按表单独提交，不混改已完成MVP/其它规格历史。
 
 人工步骤：真机RSA、无障碍/MediaProjection/安装/敏感权限和硬件连接由用户完成，

@@ -19,6 +19,11 @@ aactl observe screenshot --device SERIAL --output screen.png --json
 
 图像本身不会嵌入 CLI JSON 响应。
 
+虚拟摄像头屏在display list/status中带camera:"back"、实际displayFlags和cameraInfo，
+streams中的frames/error用于区分注册成功与实际绘制；空屏可能FRAME_NOT_READY。
+普通屏省略摄像头字段。图片接收imageSet:true不证明应用读回成功，需由测试fixture的
+CAMERA四象限文本验收；相机授权由用户按虚拟设备完成，不由模型自动处理。
+
 使用 MCP 时，调用 `android_observe`：
 
 ```json
