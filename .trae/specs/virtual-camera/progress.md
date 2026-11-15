@@ -140,3 +140,9 @@
 - 仅修改本规格tasks/checklist/progress/device-acceptance、docs/virtual-camera、docs/troubleshooting、docs/next-phase-tasks的N60.6以及android/displayd/README；progress历史不改。仅重新运行make comments；其余四项由集成方在9f68242上独立跑过，本轮纯文档不复跑。
 
 - 本轮文档验证：已在Git Bash设置指定Go PATH后直接运行make comments，exit0，覆盖624个手写文件、16个注释检查器自测通过。未运行其它构建/设备命令；未修改允许范围外的文件。提交前审查progress历史字节前缀完整、失败链接可定位、N60.6以外路线图保持不变；只做一个本地docs(camera)提交，不push。
+
+## 可选保留关联开工（2026-11-16）
+
+- 已复读AGENTS并核对Git：起点1af876e、virtual-display-screen-off与远端一致、worktree干净；main worktree仍f861a61，不动。负责人已决定增加默认关闭的stop可选保留开关，本轮先补规格再实现，所有提交仅本地、不push。
+- 规则选定：普通模式运行helper忽略开关，不触发companiondevice或返回保留字段；helper未运行/摄像头模式才只读查询精确关联，无关联省略keptCameraAssociation。默认stop的argv与JSON保持，但摄像头启动失败保留既有关联是明确的失败语义变化，绝不写成所有默认行为不变。
+- 本轮依VC18–VC21顺序实施，不派发并行Agent；只操作指定read-only模拟器一次摄像头脚本，不连接真机、不跑另外三份脚本；真机授权保留保持待验。

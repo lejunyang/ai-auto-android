@@ -69,3 +69,18 @@ VC8–VC11审查修复按下表顺序实施，当轮不执行VC5。集成方后�
 - [ ] restricted强制断流下availability是否误报（两处授权在时无法复现）。
 - [ ] 冷启动稳定等待规则与MCP多轮flaky统计（现仅3个样本，不确定因果，不放宽判据）。
 - [ ] 1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、第三方应用及其它多轮统计。
+
+## 可选保留关联（VC18–VC21，顺序实施）
+
+| 编号 / 波次 | 目标与步骤 | 依赖 / 目录所有权 | 验收 / 提交 / 回滚清理 |
+| --- | --- | --- | --- |
+| VC18 / 18 | 先写失败测试；只读关联查询、Stop保留可选结果与独立清理、service和CLI stop专用布尔参数；普通模式忽略 | 本轮规格；internal/adb、vdisplay、service、cli，仅显示相关文件；共享契约单一owner | 定向Go单测、默认stop命令/JSON兼容；feat(camera)；无全局清理，测试只fake |
+| VC19 / 19 | Created标明关联归属；启动失败保留既有，仅删除新建；错误明确归属与清理结果，审查Java退出 | VC18；internal/adb、vdisplay及测试；Java只读审查，无必要不改 | 新建/复用及失败清理、取消/分类错误测试；fix(display)；只清本次可证明归属资源 |
+| VC20 / 20 | 扩展摄像头模拟器脚本：保留编号→无helper/文件→重启同号→默认stop移除；指定AVD唯一serial冷启45秒后运行一次 | VC18/19；scripts/emulator/verify-virtual-camera.mjs，证据仓库外；不跑其它3脚本，不操作真机 | 每步编号/结果和最终清理归零、emulator退出、adb为空；test(camera)；发现其它设备即停报告 |
+| VC21 / 21 | 同步命令参考/授权代价/精确清理、N60.6仅相关决策；五项make、范围审查、本地提交、Gradle退出 | VC18–20；任务允许docs/skills参考镜像/规格，progress只追加；禁止三份风险门/MCP入口/二进制 | 五项make及测试数量，docs(camera)；不push、不动main，清理仅本工具；真机授权保留由负责人另验 |
+
+- [ ] VC18 stop可选保留、结果与CLI/service兼容测试。
+- [ ] VC19 启动失败关联归属清理与Java退出审查。
+- [ ] VC20 指定模拟器一次完整回归与清理。
+- [ ] VC21 文档、五项make、本地提交与Gradle退出。
+- [ ] 保留关联后helper重启的真机CAMERA授权仍有效（本轮无真机，不操作敏感权限）。

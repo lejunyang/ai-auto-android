@@ -46,3 +46,13 @@
 本轮仅修A–E：显示定向按包名启动先固定argv解析单个同包launcher组件，异常不启动且不回退；双设备CAMERA授权前提与权限复查推断分开写；完整回收media.camera输出后仅在主机过滤，服务/渲染失效只报告不自动重建；fixture仅测试模块修复有限重连、标题遮挡、4:3预览；最近任务残留仅登记，不改变清理行为。新增可用性诊断须保守标注依据/未知，不能把Binder存活或旧cameraId当成应用读回成功。
 
 本轮允许在工具新建虚拟屏启动已安装dev.aiauto.fixture并观察PAGE:MAIN；不安装新fixture、不动两处权限，权限框出现立即停止，不点按。新fixture真机验收留负责人重装后执行。模拟器四项仍待验，规格状态单一集成者顺序维护。
+
+## 可选保留伴生关联（负责人2026-11-16决策）
+
+- 仅操作员CLI增加display stop --device S --keep-camera-association；布尔写法与--virtual-camera相同，只允许stop，拒绝=false等非法值。不增加配置、环境变量、设备持久状态或MCP入口，不改协议版本/错误码/schema。
+- 带开关stop不执行disassociate，仍独立尝试helper文件与工具UUID图片清理，合并公开失败。只读精确查询当前/启动用户的com.android.shell+00:00:00:00:00:10关联；存在时返回keptCameraAssociation:{userId,id}，无关联时省略，查询失败可见但不阻断其它清理。
+- 普通模式helper运行时带开关按忽略处理，与不带开关一样不触发companiondevice，不返回保留字段；helper未运行时带开关查询当前用户、保留既有关联并完成幂等清理。不带开关的stop命令序列、成功JSON和错误分类保持；无helper时也可用不带开关stop移除保留关联。
+- start --virtual-camera复用精确既有关联；EnsureCameraAssociation返回Created区分调用前存在/本次新建。启动失败仅删除本次新建关联；既有关联保留，错误说明保留/删除/清理失败。失败仍停止可核验helper并清文件/图片。崩溃遗留关联启动失败由原先删除改为保留，不能宣称所有默认失败行为不变。
+- 审查Java退出路径是否解除关联；没有则不改Java。保留期间设备常驻shell的COMPANION_DEVICE_APP_STREAMING关联及负责人此前授予目标应用的虚拟设备CAMERA授权；归还/转手前用不带开关stop清理，绝不disassociate-all或代授权。
+- 场景：运行/未运行helper、无关联/查询失败、普通模式忽略、默认stop兼容、新建/复用后启动失败均需Go测试；模拟器一次冷启动扩展脚本验证保留编号不变、重启复用、默认stop移除及最终无关联。不用模拟器证明相机授权持久性。
+- 真机“保留关联后helper重启无需重授CAMERA”仅有同关联重建屏的既有旁证，仍未验证。本轮不连接真机；只允许emulator-5554，指定read-only/no-snapshot启动，boot_completed后等45秒，只跑摄像头脚本一次。

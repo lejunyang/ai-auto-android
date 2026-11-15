@@ -42,3 +42,13 @@
 - [x] 文档和 N60.6 如实更新；视频、MCP 图片准入、相机授权产品形态有后续登记。
 - [x] make comments、make test、make verify、make build、make android-verify 通过；无越界 diff、二进制或证据入库。
 - [x] 集成方最终清理记录：真机无helper/工具关联/临时文件/forward，相机恢复5、fixture无Activity，dalvik-cache原样保留；模拟器各轮清理核对全0、最终已关闭。Agent本轮不接触设备，文档提交后工作区状态另行核对。
+
+## 可选保留关联验收
+
+- [ ] stop带开关只读精确查询，返回实际userId/id，无关联省略；helper文件/图片清理独立，失败公开合并。
+- [ ] 普通模式运行helper带/不带开关均不调用companiondevice；未运行helper保留与默认移除行为有测试，默认argv/JSON保持。
+- [ ] start失败保留既有关联、删除新建关联，错误说明结果；Java不擅自解除关联。
+- [ ] CLI仅stop接受布尔开关，重复/false/其它子命令拒绝；MCP入口/schema/协议/错误码不变。
+- [ ] 模拟器保留→同号复用→默认移除完整一次，最终无工具关联、无helper/文件/forward，模拟器退出且ADB为空。
+- [ ] 文档、N60.6对应决策、五项make、停止Gradle与干净worktree。
+- [ ] 真机保留关联后helper重启无需重新授权CAMERA（不得用模拟器或同关联重建屏代替）。
