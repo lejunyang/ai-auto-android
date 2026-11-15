@@ -258,6 +258,9 @@ func (c *Client) call(ctx context.Context, serial, method string, fields map[str
 			return nil, protocolError("Unexpected helper protocol limits.")
 		}
 	}
+	if hello.Capabilities["virtualCamera"] && (hello.VirtualCameraUser < 0 || hello.VirtualCameraUser > 2147483647) {
+		return nil, protocolError("Invalid virtual camera startup user")
+	}
 	if method == "hello" {
 		*out.(*Hello) = hello
 		return nil, nil
@@ -497,7 +500,7 @@ func (c *Client) Stop(ctx context.Context, serial string) (StopResult, error) {
 		return StopResult{}, err
 	}
 	if state.PID > 0 {
-		if _, ok := c.host.(CameraHost); ok && state.APILevel >= 35 {
+		if _, ok := c.host.(CameraHost); ok {
 			var hello Hello
 			if _, err = c.call(ctx, serial, "hello", nil, &hello); err != nil {
 				return StopResult{}, err
@@ -522,7 +525,7 @@ func (c *Client) Stop(ctx context.Context, serial string) (StopResult, error) {
 			return StopResult{}, err
 		}
 		if state.PID == 0 && !state.Bound {
-			if host, ok := c.host.(CameraHost); ok && user != -2 && state.APILevel >= 35 {
+			if host, ok := c.host.(CameraHost); ok && user != -2 {
 				if err = host.CleanupCameraAssociation(ctx, serial, user); err != nil {
 					return StopResult{}, err
 				}

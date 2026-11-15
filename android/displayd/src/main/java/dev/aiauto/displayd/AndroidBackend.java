@@ -141,8 +141,17 @@ final class AndroidBackend implements AutoCloseable {
                         CameraPolicy.requireAvailable(cameraAssociation > 0, Build.VERSION.SDK_INT);
                         Policy.captureAllowed(credentialLocked());
                         screen.camera = new VirtualCameraBackend();
-                        screen.display = screen.camera.create(cameraContext(), cameraAssociation, screen.width, screen.height,
-                                screen.dpi, screen.reader.getSurface(), flags);
+                        try {
+                            screen.display = screen.camera.create(cameraContext(), cameraAssociation, screen.width, screen.height,
+                                    screen.dpi, screen.reader.getSurface(), flags);
+                        } catch (Protocol.Failure error) { throw error; }
+                        catch (Exception error) {
+                            while (error.getCause() instanceof Exception) error = (Exception) error.getCause();
+                            String reason = String.valueOf(error.getMessage()).replaceAll("[\\r\\n]", " ");
+                            throw new Protocol.Failure("VIRTUAL_CAMERA_UNAVAILABLE", "API " + Build.VERSION.SDK_INT
+                                    + ": shell context initialization failed: " + error.getClass().getSimpleName()
+                                    + ": " + reason.substring(0, Math.min(500, reason.length())));
+                        }
                     }
                     if (screen.display == null) throw new IllegalStateException("null virtual display");
                     int id = screen.display.getDisplay().getDisplayId();

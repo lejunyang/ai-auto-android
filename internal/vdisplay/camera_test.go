@@ -11,6 +11,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
 	"net"
 	"os"
@@ -26,6 +27,7 @@ type cameraHostFake struct {
 	startupErr, pushErr, removeErr          error
 	local, remote                           string
 	bytes                                   []byte
+	cleanupUsers                            []int
 }
 
 func (h *cameraHostFake) CleanupCameraImages(context.Context, string) error { return nil }
@@ -36,6 +38,7 @@ func (h *cameraHostFake) EnsureCameraAssociation(context.Context, string) (adb.C
 }
 func (h *cameraHostFake) CleanupCameraAssociation(_ context.Context, _ string, user int) error {
 	h.cleaned++
+	h.cleanupUsers = append(h.cleanupUsers, user)
 	return nil
 }
 func (h *cameraHostFake) StartDisplaydCamera(context.Context, string, adb.CameraAssociation) error {
@@ -207,6 +210,38 @@ func TestCameraImageInvalidBeforeDevice(t *testing.T) {
 		})
 	}
 }
+
+func TestCameraJPEGAndExactFileBudget(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "image.jpeg")
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = jpeg.Encode(file, image.NewRGBA(image.Rect(0, 0, 32, 24)), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err = file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := cameraImage(path)
+	if err != nil || len(data) == 0 {
+		t.Fatal(err)
+	}
+	file, err = os.OpenFile(path, os.O_RDWR, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = file.Truncate(maxCameraImage); err != nil {
+		t.Fatal(err)
+	}
+	if err = file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err = cameraImage(path)
+	if err != nil || len(data) != maxCameraImage {
+		t.Fatal("exact 8MiB rejected", len(data), err)
+	}
+}
 func TestCameraStartFailureCleanupAndRunningHelperProtection(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "helper.apk")
 	_ = os.WriteFile(path, []byte("test helper"), 0600)
@@ -223,5 +258,32 @@ func TestCameraStartFailureCleanupAndRunningHelperProtection(t *testing.T) {
 	requireCode(t, err, apperr.CodeVirtualCameraNotEnabled)
 	if h.ensured != 0 || h.cleaned != 0 {
 		t.Fatal("existing helper association was mutated")
+	}
+}
+
+func TestCameraLifecycleCleansStartupUserAfterShutdown(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "helper.apk")
+	if err := os.WriteFile(path, []byte("test helper"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var h *cameraHostFake
+	var c *Client
+	c, h = cameraWire(t, true, func(r map[string]any) string {
+		if r["method"] != "shutdown" {
+			t.Error("unexpected method", r)
+		}
+		h.state.PID = 0
+		h.state.Bound = false
+		return cameraOK(`{"stopped":true}`)
+	})
+	h.state.PID = 0
+	h.state.Bound = false
+	hello, err := c.StartWithCamera(context.Background(), "SERIAL", path)
+	if err != nil || !hello.Capabilities["virtualCamera"] || h.ensured != 1 {
+		t.Fatal(hello, err, h)
+	}
+	result, err := c.Stop(context.Background(), "SERIAL")
+	if err != nil || !result.Stopped || h.cleaned != 1 || len(h.cleanupUsers) != 1 || h.cleanupUsers[0] != 10 {
+		t.Fatal(result, err, h)
 	}
 }

@@ -190,7 +190,7 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 	case "mcp":
 		return nil, usageError("Usage: aactl mcp serve")
 	default:
-		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, display, check, file, recording, bridge, mcp.")
+		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, display, camera, check, file, recording, bridge, mcp.")
 	}
 }
 

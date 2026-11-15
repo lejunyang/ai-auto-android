@@ -63,7 +63,7 @@ func registerDisplayTools(server *mcp.Server, automation service.Automation) {
 	for _, entry := range []struct{ name, command, description string }{
 		{ToolDisplayList, "list", "List only helper-owned virtual displays. Requires the operator to run aactl display start first."},
 		{ToolDisplayStatus, "status", "Read credential lock, virtual display group and keepalive status. Requires an operator-started helper."},
-		{ToolDisplayCreate, "create", "Create a bounded virtual display (128..2048 pixels, 72..640 dpi; at most two). focus defaults to isolated (preserves primary input, no hierarchy while primary sleeps); steal supports screen-off hierarchy but interrupts primary input. Raw flags and helper configuration are fixed; an operator must start the helper through CLI first."},
+		{ToolDisplayCreate, "create", "Create a bounded virtual display (128..2048 pixels, 72..640 dpi; at most two). focus defaults to isolated. For ordinary DisplayManager displays, isolated preserves primary input but has no hierarchy while primary sleeps; steal supports screen-off hierarchy but interrupts primary input. Optional camera:back requires operator CLI start --virtual-camera and user CAMERA authorization on the virtual device; its focus/IME/screen-off behavior requires device-specific acceptance. Raw flags and helper configuration are fixed; helper start/stop and camera images remain operator-only."},
 		{ToolDisplayClose, "close", "Close one helper-owned virtual display. This destroys application content on that display; it is not moved to the primary display. The primary display cannot be closed."},
 	} {
 		annotations := readOnlyAnnotations()

@@ -15,6 +15,7 @@ import (
 type cameraADBExecutor struct {
 	calls                                                [][]string
 	associated, failAssociate, truncate, missingReadback bool
+	files                                                string
 }
 
 func (f *cameraADBExecutor) Run(_ context.Context, _ string, args []string, _ process.Options) (process.Result, error) {
@@ -25,6 +26,8 @@ func (f *cameraADBExecutor) Run(_ context.Context, _ string, args []string, _ pr
 		result.Stdout = []byte("List of devices attached\nFIRST\tdevice transport_id:1\n")
 	case strings.Join(args[3:], " ") == "am get-current-user":
 		result.Stdout = []byte("10\n")
+	case strings.Join(args[3:], " ") == "ls -1 /data/local/tmp":
+		result.Stdout = []byte(f.files)
 	case len(args) > 5 && args[4] == "companiondevice":
 		switch args[5] {
 		case "list":
@@ -134,4 +137,34 @@ func TestCameraPathsRejectInjectionBeforeADB(t *testing.T) {
 	if c.StartDisplaydCamera(context.Background(), "FIRST", CameraAssociation{ID: -1}) == nil || len(f.calls) != 0 {
 		t.Fatal("invalid association reached adb")
 	}
+}
+
+func TestCameraStartupAndTransferUseFixedArgv(t *testing.T) {
+	f := &cameraADBExecutor{}
+	c := NewClient("adb", f)
+	if err := c.StartDisplaydCamera(context.Background(), "FIRST", CameraAssociation{ID: 71, UserID: 10}); err != nil {
+		t.Fatal(err)
+	}
+	assertArgs(t, f.calls[1], "-s", "FIRST", "shell", "CLASSPATH="+displaydAPK+" nohup app_process / --nice-name=aactl-displayd dev.aiauto.displayd.Main --virtual-camera-association 71 10 </dev/null >"+displaydLog+" 2>&1 &")
+	remote := "/data/local/tmp/aactl-camera-12345678-1234-4234-8234-123456789abc.img"
+	if err := c.PushCameraImage(context.Background(), "FIRST", "C:/space path/image.png", remote); err != nil {
+		t.Fatal(err)
+	}
+	assertArgs(t, f.calls[3], "-s", "FIRST", "push", "C:/space path/image.png", remote)
+	if err := c.RemoveCameraImage(context.Background(), "FIRST", remote); err != nil {
+		t.Fatal(err)
+	}
+	assertArgs(t, f.calls[5], "-s", "FIRST", "shell", "rm", "-f", remote)
+}
+
+func TestCameraOrphanImageCleanupMatchesWholeFilename(t *testing.T) {
+	name := "aactl-camera-12345678-1234-4234-8234-123456789abc.img"
+	f := &cameraADBExecutor{files: strings.Join([]string{name, "other.img", name + ".bak", "aactl-camera-*.img"}, "\n")}
+	if err := NewClient("adb", f).CleanupCameraImages(context.Background(), "FIRST"); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.calls) != 4 {
+		t.Fatal("cleanup touched unrelated file", f.calls)
+	}
+	assertArgs(t, f.calls[3], "-s", "FIRST", "shell", "rm", "-f", "/data/local/tmp/"+name)
 }

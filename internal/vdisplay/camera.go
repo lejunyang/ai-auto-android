@@ -163,7 +163,7 @@ func (c *Client) SetCameraImage(ctx context.Context, serial string, id int, path
 	if err != nil {
 		return result, err
 	}
-	defer os.Remove(file.Name())
+	defer func() { returnErr = errors.Join(returnErr, os.Remove(file.Name())) }()
 	_, writeErr := file.Write(data)
 	closeErr := file.Close()
 	if err = errors.Join(writeErr, closeErr); err != nil {
