@@ -66,3 +66,20 @@
 - 最终清理：helper无进程，工具关联无行（Max ID6是历史计数）、APK/log/UUID图片无、工具forward无，总摄像头5/normal2/public2/virtual0；两条共享缓存与基线逐字一致并明确保留。没有安装/卸载应用、权限/设置变化、主屏输入/电源操作或第三方应用启动。
 - 按要求先在Git Bash export PATH=/e/osdk-data/data/installs/go/1.26.5/bin:$PATH，再直接运行make comments/test/verify/build/android-verify，全部exit0。Go354顶层通过、含子测试727个pass、5项既有条件跳过、0失败；Android624项（623通过、1项既有跳过）、0失败，displayd44、fixture10、app564、web-fixture6；协议56项、三平台vet、skills镜像、619手写文件注释覆盖及16个检查器自测通过。
 - 按要求cd android && ./gradlew --stop，exit0、1 Daemon stopped；随后--status返回No Gradle daemons are running（当前9.3.1）。本轮不启动模拟器，VC5四项及最终模拟器汇合保持待验。应用读回/GPU/有应用焦点IME息屏/实际应用销毁生命周期仍未验证，不新增交付结论。
+
+## 集成方与负责人提供的端到端验收（2026-11-15 20:45–21:51 JST）
+
+- 本节由本轮用户输入提供，执行者为集成方与负责人，不是本Agent；原始证据在仓库外，不入库。serial324462538298，NX888J/API36/arm64，用户0、全程未锁定，指纹nubia/CN_PQ85A02/PQ85A02:16/BQ2A.251016.001-BP2A.250605.031.A3/b6416:user/release-keys。
+- 产物SHA256：aactl.exe=9ae875f4cb26694b202b22353b27cabd8dc1359ef47686ebfb9037ba95aab0fc；displayd-debug.apk=a7bbe34eabac1fb38c3eaea9ddd99b44f9c73bd6bf2f66f8d05f273639511fe9；device-fixture-debug.apk=05ade33a16f9342d412dba6ea73c1ef4f27d7712aba548669fbb22489e9e9517。本地debug构建，负责人自行adb install，未用-g。
+- 已证实1：start --virtual-camera成功；isolated摄像头屏720×1280/240dpi，显示63/64，flags24456、removeMode1、组1、awake=true，相机5→6。
+- 已证实2：启动fixture/.CameraActivity后权限框在虚拟屏，包com.android.permissioncontroller，文案含android.app.role.COMPANION_DEVICE_APP_STREAMING；mTopFocusedDisplayId保持0。负责人自己用action tap --display63完成授权。
+- 已证实3：CAMERA_DEVICE:id=0,facing=back,orientation=0,visible=0,display=N；虚拟上下文只见一个后置摄像头。
+- 已证实4–6：未设图四象限均black；quadrants.png(640×480)连续3次CAMERA:TL=red,TR=green,BL=blue,BR=white；运行中portrait.png(480×640)3次CAMERA:TL=white,TR=blue,BL=green,BR=red；左右黑边各约21.8%（理论140/640），无镜像倒置；切回横图恢复原顺序。
+- 已证实7：640×480单流约29fps，最长连续33分钟57386帧、error=null。不是多轮flaky统计或三档实际出流结论。
+- 已证实8–9：close销毁fixture Activity，显示0没有出现fixture；同一伴生关联关闭后新virtualDeviceId重建，fixture无需重新授权可开相机（仅本机实测，不承诺其它ROM/关联）。
+- 已证实10：最终无helper、工具关联/文件/forward，相机恢复5；dalvik-cache原样保留。
+- 权限事实B：仅虚拟设备CAMERA授权、默认设备未授权时，20:51:26（连接后21秒）及20:59:46（约3分钟）被CameraService restricted断流；日志isUidTrusted0/isUidActive1/isUidVisible1/privacy0/procState2，Uid mode CAMERA:ignore。负责人在系统设置授予默认设备CAMERA后granted=true、Uid mode foreground，33分钟未断、主屏切13次应用、无restricted。推断：后续权限复查可能按默认设备判定；本输入未证明系统内部机制，不能写成已证实原因。产品不代授权。
+- 系统失效事实C：设备端提前截断dumpsys media.camera后20:55:12 Virtual camera service died、客户端因HAL状态变化被evicted、虚拟摄像头消失；20:55:43再次截断时物理0–4也移除后重加。完整回传主机再过滤无该问题。当时helper流frames103、error=eglSwapBuffers failed EGL=12301，旧cameraId仍在；close该屏再建恢复。不自动制造崩溃，不自动恢复。
+- 其它发现：按包名隐式am start在摄像头屏两次resolve失败(-91)，同包显式组件成功；fixture断流状态复位、标题遮挡、预览比例需修。close后Task #758仍在最近任务是已知行为，不自动清理，交负责人决定。
+- 未验证保持待验：1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏（负责人手机有凭据锁且不关闭）、任何第三方应用、多轮flaky、模拟器四项。新fixture不由Agent安装，修复后真机待负责人重装。
+- 本轮起点复核：45ef319，worktree干净，仍只在virtual-display-screen-off本地提交；不push、不动main、不改三份风险门。不改变既有两处权限；本轮仅获准在自建虚拟屏启动已安装fixture，权限框出现即停。

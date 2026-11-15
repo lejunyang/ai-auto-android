@@ -39,3 +39,19 @@ fixture 在真机的安装确认、CAMERA 单独授权、主动打开测试页�
 - [ ] VC5 模拟器
 - [x] VC6 真机 helper（空屏注册、图片接收、实际标志与清理通过；不包含端到端人工验收）
 - [ ] VC7 文档、汇合与全量验证（文档和五项make已通过，等待VC5设备证据汇合）
+
+## 端到端验收续修（A–E，顺序实施）
+
+| 编号 / 波次 | 目标与步骤 | 依赖 / 允许修改与所有权 | 验收 / 提交 / 回滚清理 |
+| --- | --- | --- | --- |
+| VC12 / 12 | 写入集成方/负责人十项端到端证据及全部未验项，冻结执行者/摘要和推断强度 | 本次输入；仅本规格状态单一owner | docs(spec)先提交；progress只追加，不改既有记录 |
+| VC13 / 13 A | 定向按包名启动固定resolve-activity argv；严格单行同包组件校验后显式am；普通路径不变 | VC12；internal/adb及定向测试，禁止风险门改动 | 解析错误/跨包/多行/截断/命令失败均不发am，普通argv回归；fix(adb)；无主屏回退 |
+| VC14 / 14 C | 审查所有脚本media.camera调用；完整落主机文件后过滤；helper保守服务死亡/渲染失败诊断，Go/MCP同步 | VC12；android/displayd、internal/vdisplay、MCP显示schema、scripts验证脚本；协议单一owner | JVM状态机、Go线协议/MCP schema及脚本审查；feat(camera)；不诱发真实崩溃、不重建/重试 |
+| VC15 / 15 D | fixture状态复位与最多3次退避重连、最终错误/次数；去标题遮挡、固定4:3预览；提纯逻辑测试 | VC12；仅android/device-fixture，不动生产App/Bridge | 预算/代次/退避/几何纯单测及Android lint/build；fix(fixture)；取消旧回调和待执行重试；真机重装待负责人 |
+| VC16 / 16 汇合 B/E | 双授权人工前提、系统权限复查仅作推断；完整dump警示/关闭重建、最近任务行为/N60.6登记；真机A与helper脚本、五项make、提交和停daemon | VC13–VC15；docs、规格、仅N60.6，脚本固定fixture包且显式N | PAGE:MAIN、ok/cleaned、无工具资源/相机5；docs(camera)；权限框/离线/锁定即停；不安装、不改权限、不清最近任务，模拟器不启动 |
+
+- [x] VC12 采纳集成方与负责人既有端到端证据（仅已给定范围；原始证据仓库外）
+- [ ] VC13 A 显示定向launcher解析与真机PAGE:MAIN
+- [ ] VC14 C 可用性诊断与完整dump
+- [ ] VC15 D 新fixture修复（真机仍待负责人重装后验收）
+- [ ] VC16 B/E 文档、验证、提交与清理
