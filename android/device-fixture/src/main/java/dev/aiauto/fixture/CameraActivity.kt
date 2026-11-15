@@ -35,6 +35,7 @@ class CameraActivity : Activity(), TextureView.SurfaceTextureListener {
     private var reader: ImageReader? = null
     private var previewSurface: Surface? = null
     @Volatile private var active = false
+    @Volatile private var generation = 0
     private var opening = false
     private var sampledAt = 0L
 
@@ -52,7 +53,7 @@ class CameraActivity : Activity(), TextureView.SurfaceTextureListener {
     }
 
     override fun onResume() {
-        super.onResume(); active = true
+        super.onResume(); generation++; active = true
         worker = HandlerThread("fixture-camera").also { it.start() }
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             state.text = "CAMERA:ERROR:PERMISSION_REQUIRED"
@@ -76,6 +77,7 @@ class CameraActivity : Activity(), TextureView.SurfaceTextureListener {
         if (!active || opening || camera != null || !preview.isAvailable || checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return
         val handler = worker?.looper?.let(::Handler) ?: return
         opening = true
+        val token = generation
         try {
             val manager = getSystemService(CameraManager::class.java)
             val ids = manager.cameraIdList
@@ -86,47 +88,51 @@ class CameraActivity : Activity(), TextureView.SurfaceTextureListener {
             state.text = "CAMERA:OPENING"
             manager.openCamera(id, object : CameraDevice.StateCallback() {
                 override fun onOpened(opened: CameraDevice) {
-                    if (!active) { opened.close(); return }
-                    camera = opened
-                    configure(opened, handler)
+                    runOnUiThread {
+                        if (!active || token != generation) { opened.close(); return@runOnUiThread }
+                        camera = opened
+                        configure(opened, handler, token)
+                    }
                 }
-                override fun onDisconnected(opened: CameraDevice) { opened.close(); fail("DISCONNECTED") }
-                override fun onError(opened: CameraDevice, error: Int) { opened.close(); fail("OPEN_$error") }
+                override fun onDisconnected(opened: CameraDevice) { opened.close(); if (token == generation) fail("DISCONNECTED") }
+                override fun onError(opened: CameraDevice, error: Int) { opened.close(); if (token == generation) fail("OPEN_$error") }
             }, handler)
         } catch (e: Exception) { opening = false; fail("OPEN_${e.javaClass.simpleName}:${e.message}") }
     }
 
     @Suppress("DEPRECATION")
-    private fun configure(opened: CameraDevice, handler: Handler) {
+    private fun configure(opened: CameraDevice, handler: Handler, token: Int) {
         try {
             val texture = preview.surfaceTexture ?: error("preview unavailable")
             texture.setDefaultBufferSize(640, 480)
             val surface = Surface(texture).also { previewSurface = it }
             val sampler = ImageReader.newInstance(640, 480, ImageFormat.YUV_420_888, 3).also { reader = it }
             sampler.setOnImageAvailableListener({ source ->
-                source.acquireLatestImage()?.use { image ->
-                    if (active && SystemClock.elapsedRealtime() - sampledAt >= 500) {
+                try { source.acquireLatestImage()?.use { image ->
+                    if (active && token == generation && SystemClock.elapsedRealtime() - sampledAt >= 500) {
                         sampledAt = SystemClock.elapsedRealtime()
                         try {
                             val text = sample(image)
-                            runOnUiThread { if (active) state.text = text }
+                            runOnUiThread { if (active && token == generation) state.text = text }
                         } catch (e: Exception) { fail("SAMPLE_${e.javaClass.simpleName}") }
                     }
-                }
+                } } catch (e: IllegalStateException) { if (active && token == generation) fail("READER_CLOSED") }
             }, handler)
             opened.createCaptureSession(listOf(surface, sampler.surface), object : CameraCaptureSession.StateCallback() {
                 override fun onConfigured(configured: CameraCaptureSession) {
-                    if (!active) { configured.close(); return }
-                    session = configured
-                    try {
+                    runOnUiThread {
+                      if (!active || token != generation) { configured.close(); return@runOnUiThread }
+                      session = configured
+                      try {
                         val request = opened.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                             addTarget(surface); addTarget(sampler.surface)
                             set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, android.util.Range(30, 30))
                         }
                         configured.setRepeatingRequest(request.build(), null, handler)
-                    } catch (e: Exception) { fail("REQUEST_${e.javaClass.simpleName}:${e.message}") }
+                      } catch (e: Exception) { fail("REQUEST_${e.javaClass.simpleName}:${e.message}") }
+                    }
                 }
-                override fun onConfigureFailed(configured: CameraCaptureSession) { fail("CONFIGURE_FAILED") }
+                override fun onConfigureFailed(configured: CameraCaptureSession) { configured.close(); if (token == generation) fail("CONFIGURE_FAILED") }
             }, handler)
         } catch (e: Exception) { fail("CONFIGURE_${e.javaClass.simpleName}:${e.message}") }
     }
@@ -145,7 +151,8 @@ class CameraActivity : Activity(), TextureView.SurfaceTextureListener {
     }
 
     override fun onPause() {
-        active = false; opening = false
+        // 代次使旧权限/相机回调不能在下次恢复时覆盖新会话；资源只在 UI 生命周期线程替换。
+        active = false; generation++; opening = false
         session?.close(); session = null; camera?.close(); camera = null
         reader?.close(); reader = null; previewSurface?.release(); previewSurface = null
         worker?.quitSafely(); worker = null
