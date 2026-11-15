@@ -1,5 +1,5 @@
 /**
- * 脚本用途：在负责人真机只验证 helper 的摄像头注册、图片接收、显示标志和清理，不安装、授权或启动任何应用。
+ * 脚本用途：验证真机helper与清理；可选只在自建isolated屏按包名启动已安装fixture，权限框出现即停，不安装或授权。
  * 安全约束：每步核对唯一 serial、固定指纹、当前用户未锁定；异常保留证据后仅在守卫仍通过时清理，不重试动作。
  */
 import { spawnSync } from 'node:child_process';
@@ -12,14 +12,17 @@ const serial = '324462538298';
 const fingerprint = 'nubia/CN_PQ85A02/PQ85A02:16/BQ2A.251016.001-BP2A.250605.031.A3/b6416:user/release-keys';
 const displayFlags = { SECURE: 0x0002 };
 const removeModeDestroyContent = 1;
+const fixturePackage = 'dev.aiauto.fixture';
+const installedFixtureSHA256 = '05ade33a16f9342d412dba6ea73c1ef4f27d7712aba548669fbb22489e9e9517';
 const opt = {};
 for (let i = 2; i < process.argv.length; i += 2) {
   const key = process.argv[i]?.slice(2);
-  if (!['device', 'adb', 'aactl', 'helper', 'evidence'].includes(key) || !process.argv[i + 1] || key in opt) throw Error('参数无效或重复');
+  if (!['device', 'adb', 'aactl', 'helper', 'evidence', 'launch-fixture'].includes(key) || !process.argv[i + 1] || key in opt) throw Error('参数无效或重复');
   opt[key] = process.argv[i + 1];
 }
 const ensure = (value, message) => { if (!value) throw Error(message); };
 ensure(opt.device === serial, '仅允许明确的负责人真机 serial');
+ensure(opt['launch-fixture'] === undefined || opt['launch-fixture'] === 'true', 'launch-fixture只接受显式true');
 for (const key of ['adb', 'aactl', 'helper']) ensure(opt[key] && fs.statSync(opt[key]).isFile(), `必须传入真实可执行文件/产物路径：${key}`);
 ensure(opt.evidence && !fs.existsSync(opt.evidence), '证据目录必须为新的仓库外目录');
 const root = path.resolve(opt.evidence), repo = path.resolve(import.meta.dirname, '..');
@@ -59,7 +62,18 @@ function cli(args, expected, emptyCapture = false) {
   return value;
 }
 function cameraEvidence(label) {
-  const dump = shell('dumpsys', 'media.camera');
+  guard();
+  // 相机服务曾因设备端截断崩溃：直接完整写主机文件，不设stdout缓冲上限/管道过滤或提前终止。
+  const rawPath = path.join(root, `${label}-camera-full.txt`), errorPath = path.join(root, `${label}-camera-stderr.txt`);
+  const output = fs.openSync(rawPath, 'wx', 0o600), errors = fs.openSync(errorPath, 'wx', 0o600);
+  try {
+    event('完整取回相机dump', { target: serial, rawPath, filtering: '仅在主机且进程完成后过滤' });
+    const result = spawnSync(opt.adb, ['-s', serial, 'shell', 'dumpsys', 'media.camera'], {
+      stdio: ['ignore', output, errors], windowsHide: true, env: { ...process.env, MSYS_NO_PATHCONV: '1' },
+    });
+    ensure(!result.error && result.status === 0 && !result.signal, '相机dump未完整成功返回，保留原始文件并停止');
+  } finally { fs.closeSync(output); fs.closeSync(errors); }
+  const dump = fs.readFileSync(rawPath, 'utf8');
   const lines = dump.split(/\r?\n/).filter(l => /^Number of |^== Camera device |^== Camera Provider HAL.*\/virtual\//.test(l) || /deviceId|Device Id|Device ID|Virtual device|virtualDevice/i.test(l));
   fs.writeFileSync(path.join(root, `${label}-camera.txt`), lines.join('\n'));
   const counts = [...dump.matchAll(/^Number of ([^:\r\n]+): (\d+)/gm)].map(m => [m[1], Number(m[2])]);
@@ -110,6 +124,14 @@ try {
   ensure(!shell('ps', '-A', '-o', 'NAME').split(/\r?\n/).includes('aactl-displayd'), '已有 helper，拒绝接管');
   const associations = shell('cmd', 'companiondevice', 'list', '0'); event('关联基线', { associations });
   ensure(!/com\.android\.shell\s*\|\s*00:00:00:00:00:10/.test(associations), '已有工具标记关联，先人工核实来源');
+  if (opt['launch-fixture'] === 'true') {
+    const apk = shell('pm', 'path', fixturePackage).replace(/^package:/, '');
+    ensure(/^\/data\/app\/[A-Za-z0-9_./~=+-]+\.apk$/.test(apk), 'fixture安装路径不唯一或格式异常');
+    const sha256 = shell('sha256sum', apk).split(/\s+/)[0];
+    ensure(sha256 === installedFixtureSHA256, '已安装fixture摘要不同，停止，不安装或替换');
+    const packageInfo = shell('dumpsys', 'package', fixturePackage);
+    event('已安装fixture身份', { package: fixturePackage, sha256, versionCode: /versionCode=(\d+)/.exec(packageInfo)?.[1], source: '负责人已安装的本地debug构建；本脚本不安装' });
+  }
   baseline = cameraEvidence('相机基线'); focusEvidence('焦点基线');
   cacheBaseline = cacheEvidence('缓存基线');
   const wrapper = shell('cat', '/system/bin/uiautomator');
@@ -137,7 +159,15 @@ try {
     focusEvidence(`${focus}-空屏焦点`);
     cli(['observe', 'hierarchy', '--display', String(screen.displayId)], ['DISPLAY_EMPTY', 'WINDOWS_UNAVAILABLE']);
     cacheEvidence(`${focus}-系统层级命令后`);
-    cli(['observe', 'screenshot', '--display', String(screen.displayId), '--output', path.join(root, `${focus}-empty.png`)], undefined, true);
+    const launchFixture = opt['launch-fixture'] === 'true' && focus === 'isolated';
+    if (launchFixture) {
+      cli(['action', 'launch', '--display', String(screen.displayId), '--package', fixturePackage]);
+      const observation = cli(['observe', 'hierarchy', '--display', String(screen.displayId)]).data;
+      ensure(!observation.xml.includes('com.android.permissioncontroller'), '出现权限框，停止并报告，绝不点击');
+      ensure(observation.xml.includes('text="PAGE:MAIN"') && observation.xml.includes(`package="${fixturePackage}"`), '按包名启动后没有同屏PAGE:MAIN');
+      event('按包名定向启动通过', { package: fixturePackage, displayId: screen.displayId, marker: 'PAGE:MAIN' });
+    }
+    cli(['observe', 'screenshot', '--display', String(screen.displayId), '--output', path.join(root, `${focus}-${launchFixture ? 'fixture' : 'empty'}.png`)], undefined, !launchFixture);
     for (const portrait of [false, true]) {
       const file = path.join(root, portrait ? 'portrait.png' : 'quadrants.png'); pattern(file, portrait);
       cli(['camera', 'set-image', '--display', String(screen.displayId), '--image', file]);
