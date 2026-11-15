@@ -4,6 +4,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"github.com/lejunyang/ai-auto-android/internal/adb"
 	"github.com/lejunyang/ai-auto-android/internal/apperr"
 	"github.com/lejunyang/ai-auto-android/internal/process"
@@ -11,6 +12,65 @@ import (
 	"strings"
 	"testing"
 )
+
+// 真实CLI/service/vdisplay/adb链路验证API33/34的伴生服务失败不阻止普通文件清理。
+type stopCleanupExecutor struct {
+	api, list                   string
+	unavailable                 bool
+	filesCleaned, imagesChecked bool
+}
+
+func (f *stopCleanupExecutor) Run(_ context.Context, _ string, args []string, _ process.Options) (process.Result, error) {
+	r := process.Result{}
+	line := strings.Join(args, " ")
+	switch {
+	case args[0] == "devices":
+		r.Stdout = []byte("List of devices attached\nSERIAL\tdevice transport_id:1\n")
+	case strings.HasSuffix(line, "getprop ro.build.version.sdk"):
+		r.Stdout = []byte(f.api)
+	case strings.HasSuffix(line, "am get-current-user"):
+		r.Stdout = []byte("0")
+	case strings.Contains(line, "cmd companiondevice list"):
+		if f.unavailable {
+			r.ExitCode = 1
+			r.Stderr = []byte("companion service unavailable")
+			return r, errors.New("companion service unavailable")
+		}
+		r.Stdout = []byte(f.list)
+	case strings.Contains(line, "rm -f /data/local/tmp/aactl-displayd.apk /data/local/tmp/aactl-displayd.log"):
+		f.filesCleaned = true
+	case strings.HasSuffix(line, "ls -1 /data/local/tmp"):
+		f.imagesChecked = true
+	}
+	return r, nil
+}
+func TestCLIStopAbsentHelperReportsCameraCleanupAndStillRemovesFiles(t *testing.T) {
+	for _, api := range []string{"33", "34"} {
+		for _, kind := range []string{"unavailable", "unknown-format", "no-association"} {
+			t.Run(api+"/"+kind, func(t *testing.T) {
+				f := &stopCleanupExecutor{api: api, unavailable: kind == "unavailable"}
+				if kind == "unknown-format" {
+					f.list = "unknown vendor companion output"
+				}
+				app, out := testApp(f, "")
+				exit := app.Run(context.Background(), []string{"display", "stop", "--device", "SERIAL", "--json"})
+				if !f.filesCleaned || !f.imagesChecked {
+					t.Fatal("ordinary cleanup was skipped", out.String())
+				}
+				if kind == "no-association" {
+					if exit != 0 || !strings.Contains(out.String(), `"data":{"stopped":true}`) {
+						t.Fatal(out.String())
+					}
+					return
+				}
+				e := decodeEnvelope(t, out.Bytes())
+				if exit == 0 || e.OK || e.Error == nil || e.Error.Code != apperr.CodeVirtualCameraUnavailable || !strings.Contains(out.String(), `"helperFiles":{"ok":true}`) || !strings.Contains(out.String(), `"cameraAssociation":{"ok":false`) || !strings.Contains(out.String(), `"cameraImages":{"ok":true}`) {
+					t.Fatal(out.String())
+				}
+			})
+		}
+	}
+}
 
 func TestDisplayActionArgumentsReachSharedService(t *testing.T) {
 	for _, args := range [][]string{

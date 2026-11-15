@@ -116,9 +116,23 @@ type CloseResult struct {
 	Closed    bool `json:"closed"`
 }
 
-// StopResult 确认进程及其固定临时文件已经释放。
+// CleanupStep 如实报告已尝试的单类清理；失败原因不会被其它清理结果覆盖。
+type CleanupStep struct {
+	OK    bool   `json:"ok"`
+	Error string `json:"error,omitempty"`
+}
+
+// StopCleanup 区分普通helper文件与摄像头清理；nil表示该类没有被要求执行。
+type StopCleanup struct {
+	HelperFiles       CleanupStep  `json:"helperFiles"`
+	CameraAssociation *CleanupStep `json:"cameraAssociation,omitempty"`
+	CameraImages      *CleanupStep `json:"cameraImages,omitempty"`
+}
+
+// StopResult 确认进程已经停止；仅清理失败时附加分类结果，成功响应保持原形态。
 type StopResult struct {
-	Stopped bool `json:"stopped"`
+	Stopped bool         `json:"stopped"`
+	Cleanup *StopCleanup `json:"cleanup,omitempty"`
 }
 
 type captureHeader struct {
@@ -526,18 +540,37 @@ func (c *Client) Stop(ctx context.Context, serial string) (StopResult, error) {
 			return StopResult{}, err
 		}
 		if state.PID == 0 && !state.Bound {
+			result := StopResult{Stopped: true}
+			report := &StopCleanup{}
+			step := func(err error) *CleanupStep {
+				r := &CleanupStep{OK: err == nil}
+				if err != nil {
+					r.Error = err.Error()
+				}
+				return r
+			}
+			// 先做普通清理；关联服务不可用也必须继续尝试图片清理，错误最后统一汇合。
+			filesErr := c.host.RemoveDisplaydFiles(ctx, serial)
+			report.HelperFiles = *step(filesErr)
+			var associationErr, imagesErr error
 			if host, ok := c.host.(CameraHost); ok && user != -2 {
-				if err = host.CleanupCameraAssociation(ctx, serial, user); err != nil {
-					return StopResult{}, err
-				}
-				if err = host.CleanupCameraImages(ctx, serial); err != nil {
-					return StopResult{}, err
-				}
+				associationErr = host.CleanupCameraAssociation(ctx, serial, user)
+				report.CameraAssociation = step(associationErr)
+				imagesErr = host.CleanupCameraImages(ctx, serial)
+				report.CameraImages = step(imagesErr)
 			}
-			if err = c.host.RemoveDisplaydFiles(ctx, serial); err != nil {
-				return StopResult{}, err
+			if joined := errors.Join(filesErr, associationErr, imagesErr); joined != nil {
+				result.Cleanup = report
+				code := apperr.CodeActionFailed
+				var app *apperr.Error
+				if errors.As(joined, &app) {
+					code = app.Code
+				}
+				failure := apperr.Wrap(code, "displayd stopped, but cleanup failed; inspect error.details.cleanup.", false, joined)
+				failure.Details = map[string]any{"stopped": true, "cleanup": report}
+				return result, failure
 			}
-			return StopResult{Stopped: true}, nil
+			return result, nil
 		}
 		select {
 		case <-ctx.Done():
