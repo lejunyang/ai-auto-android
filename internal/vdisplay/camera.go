@@ -45,6 +45,8 @@ func (c *Client) StopKeepingCameraAssociation(ctx context.Context, serial string
 
 // cameraStartFailure 保留原错误码/原因链，同时明确新建或既有关联的处理结果，不隐瞒清理失败。
 func cameraStartFailure(cause error, stopped StopResult, stopErr error, association adb.CameraAssociation, associationErr error) error {
+	// 停止过程暂存的kept字段不是最终状态；最终保留/删除只由cameraAssociation.action说明。
+	stopped.KeptCameraAssociation = nil
 	action, message := "kept", "pre-existing camera association left unchanged; use display stop without --keep-camera-association to remove it"
 	if association.Created {
 		action, message = "removed", "new camera association removed"
@@ -52,12 +54,13 @@ func cameraStartFailure(cause error, stopped StopResult, stopErr error, associat
 			action, message = "removeFailed", "new camera association removal failed; inspect details"
 		}
 	}
-	code, retryable := apperr.CodeActionFailed, false
+	joined := errors.Join(cause, stopErr, associationErr)
+	code, retryable := apperr.CodeInternal, false
 	var original *apperr.Error
-	if errors.As(cause, &original) {
+	if errors.As(joined, &original) {
 		code, retryable = original.Code, original.Retryable
 	}
-	failure := apperr.Wrap(code, "Camera helper start failed; "+message+".", retryable, errors.Join(cause, stopErr, associationErr))
+	failure := apperr.Wrap(code, "Camera helper start failed; "+message+".", retryable, joined)
 	failure.Details = map[string]any{
 		"startError": cause.Error(), "helperCleanup": stopped,
 		"cameraAssociation": map[string]any{"userId": association.UserID, "id": association.ID, "created": association.Created, "action": action},

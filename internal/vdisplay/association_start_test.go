@@ -83,6 +83,10 @@ func TestCameraFailedStartCleansOnlyNewAssociation(t *testing.T) {
 				if !ok || detail["action"] != action || detail["id"] != 71 || detail["userId"] != 10 || detail["created"] != created || !strings.Contains(app.Details["startError"].(string), "transient start timeout") {
 					t.Fatal(app)
 				}
+				// 最终错误不能把中间stop暂存的新建关联仍报告成已保留。
+				if app.Details["helperCleanup"].(StopResult).KeptCameraAssociation != nil {
+					t.Fatal("helper cleanup must not contradict final association action", app.Details)
+				}
 			})
 		}
 	}
@@ -99,8 +103,18 @@ func TestCameraFailedStartReportsRemovalAndIndependentCleanupFailures(t *testing
 		t.Fatal(err)
 	}
 	_, err := c.StartWithCamera(context.Background(), "SERIAL", path)
+	requireCode(t, err, apperr.CodeActionFailed)
 	var app *apperr.Error
 	if !errors.Is(err, fileErr) || !errors.Is(err, imageErr) || !errors.Is(err, associationErr) || !errors.As(err, &app) || app.Details["cameraAssociation"].(map[string]any)["action"] != "removeFailed" || h.cleaned != 1 || h.imagesCleaned != 1 {
 		t.Fatal(err, h)
+	}
+}
+
+func TestCameraStartFailurePreservesRawErrorClassification(t *testing.T) {
+	cause := errors.New("startup failed")
+	err := cameraStartFailure(cause, StopResult{Stopped: true}, nil, adb.CameraAssociation{UserID: 10, ID: 71}, nil)
+	requireCode(t, err, apperr.CodeInternal)
+	if !errors.Is(err, cause) {
+		t.Fatal("original cause lost", err)
 	}
 }
