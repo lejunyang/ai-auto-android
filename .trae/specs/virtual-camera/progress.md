@@ -98,3 +98,45 @@
 - 每次创建相机5→6、虚拟provider0→1，每次close及最终stop恢复5/normal2/public2/virtual0，完整dump的provider标识保持virtual/0-4。最终helper无进程、工具关联无行（Max ID8仅历史计数）、APK/log/UUID图片无、工具forward无。两条共享dalvik-cache基线与结束的存在性/inode/权限/mtime/ctime/子项完全一致，原样保留；未rmdir/递归删除。没有显示0输入/电源操作、负责人其它应用、权限/设置变更、设备重启或root。
 - 本机曾出现命令/进程启动延迟，先查看已有会话并等待完成，没有重复派发设备动作、放宽判据或盲重试。先前测试正例曾使用不被既有组件校验接受的嵌套类名，改正测试为普通全限定名，产品校验未放宽。
 - 结束后执行cd android && ./gradlew --stop，exit0；随后--status为No Gradle daemons are running（9.3.1），无本轮daemon残留。后续仅文档/规格提交与静态审查，不再启动Gradle。未启动模拟器，四项继续待验；新fixture设备效果、高分辨率实际出流、steal带应用读回、IME、凭据锁息屏、第三方应用、多轮flaky统计均未新增通过结论。
+
+<a id="integrator-recheck-20261115"></a>
+
+## 集成方复验与模拟器回归记录（2026-11-15 22:35–23:06 JST）
+
+本节事实由集成方提供，执行者为集成方，负责人自行完成新版fixture安装与必要相机授权；原始证据及失败产物均在仓库外，不入库。本轮Agent仅记录文档/规格，不复跑设备、不连接手机、不启动模拟器，也不改任何代码、测试、脚本或构建。起点9f68242、worktree干净、未push；只在virtual-display-screen-off本地提交，main不动。
+
+### A 真机复验
+
+- serial324462538298，HEAD 9f68242构建；CLI SHA256为00eb44d3521fcdcab5e1a3854f4dc1ecbea919598bd4ae65d200c2865114f68f；helper为此前a7bbe34e…之后重新构建的a3fefb4871560611cdb10d1af216b3a9b7f1c8b949e890bba6eea56807df17f3（以本次模拟器环境记录中的完整摘要为准）。不混用旧制品的33分钟结论与新制品身份。
+- A1：摄像头屏67上“打开相机页→切到主页（相机正常关闭）→重开相机页”做两轮，availability始终available、availabilityReason=null，每次重开均读回CAMERA:TL=red,TR=green,BL=blue,BR=white；helper日志无渲染错误。已验证正常关闭/重开无误报，未验证restricted强制断流时是否误报，两处授权都在时无法复现。
+- A2：aactl action launch --display 67 --package dev.aiauto.fixture成功并读到PAGE:MAIN。
+- A3：新事实是虚拟设备CAMERA授权不跨helper重启。display stop删除伴生关联，下一次display start --virtual-camera新建关联，实测编号7→8→9；虚拟授权挂在关联对应的持久设备标识上，新关联时系统权限框重新出现，负责人必须再授权。同一次helper运行、同一关联内关闭重建摄像头屏不需重授，此前证据不变。是否跨重启保留关联以保留授权，代价是设备常驻一条shell伴生关联，已登记N60.6由负责人决定；本轮不改stop清理行为，不代授权。
+- A4：新版fixture SHA256为1dc42ad123f249f33fbcf5ab8f53ce08a278db01de7b7abbb7bbaaf433085adb，负责人自行adb install -r，两处授权保留、安装后未再弹框。横图读回CAMERA:TL=red,TR=green,BL=blue,BR=white；切竖图读回CAMERA:TL=white,TR=blue,BL=green,BR=red。状态文本bounds为[0,0][720,29]及[0,29][720,82]且截图可见，无标题栏；TextureView为[0,411][720,951]，即720×540（4:3）；元数据retries=0/3。未制造强制断流，自动重连仍只有单测覆盖，不计真机通过。
+- A5：真机最终无helper、无工具关联、无工具临时文件、无forward，相机5个，fixture无Activity残留；/data/local/tmp/dalvik-cache原样保留。此为集成方清理记录，本轮Agent未接触设备。
+
+### B 模拟器四项回归
+
+环境osdk-test-35，-read-only -no-snapshot，每项前冷启动；指纹google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys，API35，320×640、160dpi、en-US、导航模式2、x86_64。制品摘要同本节A；手机现已断开，模拟器最终关闭，本轮不启动。
+
+| 项目 | 次数 | 结果 / 范围 |
+| --- | --- | --- |
+| verify-virtual-display.mjs | 1 | 通过 |
+| measure-virtual-display-focus.mjs --mode mitigated --scenario acceptance | 1 | 通过；含普通虚拟屏按包名启动com.google.android.deskclock，覆盖新的launcher解析路径 |
+| verify-virtual-camera.mjs | 1 | 通过；摄像头不可用的明确错误、关联清理、普通虚拟屏继续可用 |
+| verify-virtual-display-mcp.mjs | 3 | **2通过、1失败**；两次通过均64次工具调用、isolated和steal两策略通过；三轮清理核对全0 |
+
+<a id="mcp-cold-start-failure-20261115"></a>
+
+### MCP 冷启动失败记录与未证归因
+
+- 失败轮在boot_completed后约34秒开跑（仅留8秒缓冲）；android_display_list返回DISPLAYD_NOT_RUNNING之后，startHelper()报DEADLINE_EXCEEDED: ADB command exceeded its deadline.。失败证据已留在仓库外，清理核对全0；该轮保留为失败，不由后续通过覆盖。
+- 另两轮在boot_completed后等待45秒再开跑，两轮均64次工具调用、isolated与steal通过、清理核对全0。归因未证实：等待时间与结果的相关性仅3个样本，不能写成等待不足是确定根因。N60.6登记冷启动稳定等待规则与MCP多轮flaky统计；不放宽任何判据。
+- 集成方第一次连续运行四项时，后三项因前一项按设计已关闭模拟器而以“设备不在线”停止。这是执行流程疏漏，不计入产品结果，也不并入上述完整轮次；每份脚本结束会关闭模拟器，连续运行须逐项重启，已写入docs/virtual-camera.md验收一节。
+
+### 状态边界与本轮文档范围
+
+- 已勾选模拟器四项“已执行”（明确MCP 2/3并链接失败记录）、新版fixture读回/文本可见/4:3预览，以及正常关闭重开两轮availability无误报；不是全部稳定性验收通过。VC5、原等待VC5的VC7已汇合，失败与待办继续公开。
+- 保持未勾选：restricted强制断流下availability是否误报、自动重连真机、1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、第三方应用、冷启动稳定等待规则与MCP/其它多轮统计。两轮正常关闭和三轮MCP不替代多轮flaky结论。
+- 仅修改本规格tasks/checklist/progress/device-acceptance、docs/virtual-camera、docs/troubleshooting、docs/next-phase-tasks的N60.6以及android/displayd/README；progress历史不改。仅重新运行make comments；其余四项由集成方在9f68242上独立跑过，本轮纯文档不复跑。
+
+- 本轮文档验证：已在Git Bash设置指定Go PATH后直接运行make comments，exit0，覆盖624个手写文件、16个注释检查器自测通过。未运行其它构建/设备命令；未修改允许范围外的文件。提交前审查progress历史字节前缀完整、失败链接可定位、N60.6以外路线图保持不变；只做一个本地docs(camera)提交，不push。

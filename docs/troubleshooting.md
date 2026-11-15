@@ -367,13 +367,25 @@ restricted断流且Uid mode CAMERA:ignore；负责人在系统设置补默认授
 33分钟/主屏切13次应用未断。后续权限复查按默认设备判定只是推断，未证明内部机制；
 产品不代授权。已有权限保持，勿用pm grant、appops或自动点授权框绕过。
 
+虚拟设备CAMERA授权不跨helper重启：stop删除关联，start --virtual-camera新建关联
+（本机实测编号7→8→9），关联对应的持久设备标识变化后系统会再弹权限框，须负责人
+重新授权；默认设备已有权限保持。同一次helper运行、同一关联内close/create屏不需重授。
+是否为保留授权而跨重启常驻shell关联是N60.6产品决策，当前清理行为不变。
+
 禁止设备端`dumpsys media.camera | head`或提前关管道，本机曾导致虚拟服务死亡，甚至
 真实0–4移除后重加。完整取回主机文件后再过滤。若旧cameraId仍在但stream error/EGL失败，
 或cameraInfo.availability为unavailable，先保存完整证据，再由操作员关闭受影响屏重建；
 不自动重试/重建、不重启设备。available只表示监视未观察失败，不保证注册/权限/读回。
+集成方在屏67正常关闭/重开两轮均available、reason=null且读回正确；restricted强制断流
+是否误报仍未验。新版fixture的横/竖图、文本可见和4:3预览已验，自动重连真机仍未验。
 
 显示定向按包名启动现在先严格解析同包单个launcher再显式启动；解析异常停止，不回退主屏。
 close销毁Activity后，系统最近任务可能仍有该Task；本工具不自动清理，由负责人决定是否处理。
+
+模拟器四项已有集成方冷启动记录，其中MCP为2/3通过、1次startHelper超时；两次通过
+各64次工具调用，三轮清理均全0。boot_completed后约34秒开跑的失败与等待45秒的通过
+只有3个样本，等待时间归因未证实，不放宽判据；稳定等待规则/多轮统计待补。每份脚本
+结束会关闭模拟器，连续运行须逐项重启，详见[验收与失败记录](virtual-camera.md#integrator-recheck-20261115)。
 
 ## 官方参考
 

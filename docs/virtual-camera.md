@@ -36,6 +36,8 @@ MCP 不提供 helper 启停、图片设置、主机路径或权限授予入口�
 
 **本机稳定使用需要目标应用在默认设备与虚拟设备两处都有CAMERA授权。产品不代授权，也不自动点系统权限框。** 负责人先在系统设置里给目标应用默认设备的相机权限，再在虚拟屏相机页的系统框中完成虚拟设备授权。可通过最新`observe screenshot/hierarchy --display N`由负责人自己判断并点按该框；若无法可靠展示或定位则停下人工处理，不使用pm grant/appops旁路。具体产品授权形态仍待负责人决定；其它ROM需独立验收。
 
+**虚拟设备授权不跨helper重启。** 本机复验中，display stop删除伴生关联，下一次start --virtual-camera新建关联，编号7→8→9；虚拟设备CAMERA授权挂在关联对应的持久设备标识上，新关联会重新出现系统权限框，须负责人再次授权，产品不代点。同一次helper运行、同一关联内关闭并重建摄像头屏不需重新授权，既有证据不变。是否跨重启保留关联以保留授权，代价是设备常驻一条shell伴生关联，已登记N60.6由负责人决定；当前stop清理行为不变。
+
 实测：仅虚拟授权时两次断流（连接约21秒、约3分钟），CameraService日志restricted，Uid mode CAMERA:ignore；负责人在系统设置补默认授权后，granted=true、Uid mode foreground，连续33分钟/主屏切13次应用没有restricted。**推断**：服务后续权限复查可能按默认设备判定，未证明系统内部机制。这是本机系统兼容性前提，不是本项目自动授予或绕过权限的理由。
 
 系统可以因应用的远程显示声明、用户限制或 VirtualDevice Activity 策略拒绝启动；应用需支持远程设备显示。fixture 相机 Activity 显式声明支持；遇到启动失败应保留错误和活动状态，不更改应用声明、不绕过系统策略、不转向显示 0 重试。
@@ -114,7 +116,30 @@ DisplayManager 的**请求**标志与 Display.getFlags 的**结果**标志不同
 - 关闭后Task #758仍留在系统最近任务是已知行为，与Activity销毁不同；本工具不自动清理最近任务。是否处理已登记N60.6，待负责人决定。
 - 最终工具进程、关联、文件、forward均无，相机回到5；共享dalvik-cache原样保留。
 
-本轮新fixture修复了有限重连、标题遮挡和预览拉伸：每个恢复周期最多3次退避（500/1000/2000ms），成功重开不重置预算；暂停取消旧回调，耗尽显示最终原因与次数，用户明确再启动可开启新预算。页面隐藏ActionBar并避开系统栏，TextureView按4:3完整容纳。**新fixture未由Agent安装，真机重连/文本可见性/预览几何仍待负责人重装后验证**；不能用上述旧fixture摘要替新构建背书。
+新版fixture每个恢复周期最多3次退避（500/1000/2000ms），成功重开不重置预算；暂停取消旧回调，耗尽显示最终原因与次数，用户明确再启动可开启新预算。页面隐藏ActionBar并避开系统栏，TextureView按4:3完整容纳。负责人已安装新版，集成方验证读回、文本可见和预览几何，见下节；**断流后自动重连仍只有单测覆盖，未完成真机验证**。
+
+<a id="integrator-recheck-20261115"></a>
+
+## 集成方复验与模拟器回归（22:35–23:06 JST）
+
+2026-11-15由集成方执行，负责人完成新版fixture安装及必要授权，原始证据在仓库外。HEAD为9f68242，CLI SHA256为00eb44d3521fcdcab5e1a3854f4dc1ecbea919598bd4ae65d200c2865114f68f，helper为a3fefb4871560611cdb10d1af216b3a9b7f1c8b949e890bba6eea56807df17f3；不同于上节旧验收产物，不能混用摘要。
+
+- 真机屏67上“相机页→主页正常关闭相机→重开相机页”两轮，availability始终available、availabilityReason=null，每次重开都读回red/green/blue/white，helper日志无渲染错误。restricted强制断流是否误报仍未验证，两处授权均在时无法复现。按包名launch同屏成功，读到PAGE:MAIN。
+- 新fixture SHA256为1dc42ad123f249f33fbcf5ab8f53ce08a278db01de7b7abbb7bbaaf433085adb，由负责人adb install -r，两处授权保留且安装后未再弹框。横图读回red/green/blue/white，竖图white/blue/green/red；状态节点bounds为[0,0][720,29]和[0,29][720,82]，截图可见且无标题栏；TextureView为[0,411][720,951]，720×540（4:3），元数据retries=0/3。未制造强制断流，不能据此认定自动重连通过。
+- 真机最终无helper、工具关联/临时文件/forward，摄像头5个、fixture无Activity残留；dalvik-cache原样保留。
+
+模拟器osdk-test-35采用-read-only -no-snapshot，每项前冷启动；API35、x86_64、320×640/160dpi、en-US、导航模式2，指纹google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys。
+
+| 脚本 | 次数与结果 | 验收范围 |
+| --- | --- | --- |
+| verify-virtual-display.mjs | 1/1通过 | 普通steal虚拟屏回归 |
+| measure-virtual-display-focus.mjs --mode mitigated --scenario acceptance | 1/1通过 | 普通isolated焦点；含按包名启动com.google.android.deskclock，覆盖新launcher解析路径 |
+| verify-virtual-camera.mjs | 1/1通过 | 摄像头不可用的明确错误、关联清理、普通屏继续可用 |
+| verify-virtual-display-mcp.mjs | **2/3通过、1次失败** | 两次通过各64次工具调用，isolated/steal均通过；三轮清理核对全0 |
+
+MCP失败轮在boot_completed后约34秒开跑（仅8秒缓冲），android_display_list返回DISPLAYD_NOT_RUNNING后，startHelper()报DEADLINE_EXCEEDED: ADB command exceeded its deadline.；原始失败证据已保留。另两轮在boot_completed后等待45秒再开跑并通过。**归因未证实**：只有3个样本，不能认定等待时间是根因；冷启动稳定等待规则与多轮flaky统计已登记N60.6，不放宽任何判据。见[完整失败记录](../.trae/specs/virtual-camera/progress.md#mcp-cold-start-failure-20261115)。
+
+**每份脚本结束会关闭模拟器，连续运行须逐项重启。** 集成方首次连续运行时，后三项因前项已按设计关闭模拟器而以“设备不在线”停止，属于执行流程疏漏，不计入产品结果或上述轮次。各项重新冷启动后的结果才列入表。本轮Agent仅登记提供的证据，不接触手机或启动模拟器。
 
 ## 错误与后续
 
@@ -124,6 +149,6 @@ DisplayManager 的**请求**标志与 Display.getFlags 的**结果**标志不同
 | VIRTUAL_CAMERA_UNAVAILABLE | 6 | API<35、服务/特性缺失或框架创建失败；保留 message 的 API、异常与原因，不改用真实摄像头 |
 | CAMERA_IMAGE_INVALID | 2 | 检查 PNG/JPEG、8 MiB/4096 上限或内部临时路径/读取失败，不循环上传 |
 
-仍未验证：1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、任何第三方应用、多轮flaky、模拟器四项。负责人手机有锁屏密码，息屏会进入凭据锁，本工具不要求关闭凭据锁来验收。视频、图片MCP主机路径准入、双授权产品形态、最近任务是否处理及跨OEM矩阵在N60.6登记；不把已有单流实证外推为全部能力交付。
+仍未验证：restricted强制断流下availability是否误报、新fixture断流后自动重连、1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、任何第三方应用及多轮统计。模拟器四项已执行，MCP保留2/3结果，不代表flaky问题关闭。负责人手机有锁屏密码，息屏会进入凭据锁，本工具不要求关闭凭据锁来验收。视频、图片MCP主机路径准入、双授权产品形态/跨重启保留关联决策、冷启动稳定规则与MCP多轮统计、最近任务是否处理及跨OEM矩阵在N60.6登记；不把已有单流实证外推为全部能力交付。
 
 框架依据：[AOSP VirtualDeviceManager](https://android.googlesource.com/platform/frameworks/base/+/main/core/java/android/companion/virtual/VirtualDeviceManager.java)、[显示标志](https://android.googlesource.com/platform/frameworks/base/+/HEAD/core/java/android/view/Display.java)、[伴生设备 shell 命令](https://android.googlesource.com/platform/frameworks/base/+/master/services/companion/java/com/android/server/companion/CompanionDeviceShellCommand.java)。实际 OEM 行为以本机证据为准。

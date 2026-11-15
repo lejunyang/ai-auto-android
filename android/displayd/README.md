@@ -136,7 +136,14 @@ available不保证权限/读回，helper不自动重建或重试。恢复由操�
 
 集成方/负责人已验证旧验收产物的isolated/640×480读回、切图及33分钟57386帧；
 本机稳定需默认设备+虚拟设备两处CAMERA授权，由负责人完成。高分辨率、steal读回、
-IME/息屏/第三方/多轮统计/模拟器仍待验；新fixture有限重连和预览布局需负责人重装后验。
+IME/息屏/第三方/多轮统计仍待验。集成方22:35–23:06 JST已复验新版fixture的横/竖图、
+状态文本可见与720×540（4:3）预览；自动重连真机未验，正常关闭/重开相机两轮
+availability始终available、reason=null，restricted强制断流是否误报仍待验。模拟器四项
+已执行：三项各1/1通过，MCP为2/3通过、1次启动超时，失败与未证归因见规格progress。
+
+虚拟设备CAMERA授权不跨helper重启：stop移除关联，start新建关联（本机7→8→9）
+后系统会重新弹框，须负责人再授权；同一helper/关联内关闭重建屏无需重授。是否为
+保留授权而常驻shell关联由负责人决定，当前精确清理行为不变。
 
 `state` 是 Android `Display.getState()` 的整数常量（常见 OFF=1、ON=2、DOZE=3）。
 API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`，查询的是

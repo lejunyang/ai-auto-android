@@ -18,7 +18,7 @@ fixture 在真机的安装确认、CAMERA 单独授权、主动打开测试页�
 
 ## 进度
 
-本轮审查修复按下表顺序实施，不并行修改共享协议/规格；VC5 本轮不执行。
+VC8–VC11审查修复按下表顺序实施，当轮不执行VC5。集成方后续回归结果见VC17；本轮Agent仅记录文档，不操作设备。
 
 | 编号 / 波次 | 目标与步骤 | 依赖 / 修改所有权 | 验收 / 提交 / 清理 |
 | --- | --- | --- | --- |
@@ -30,15 +30,15 @@ fixture 在真机的安装确认、CAMERA 单独授权、主动打开测试页�
 - [x] VC8 标志与removeMode修复/取证（410769a；两方案四组合及最终脚本均removeMode=1）
 - [x] VC9 独立清理与正则修复（551b1fe、f818f8e；API33/34真实CLI链路与普通运行helper回归通过）
 - [x] VC10 缓存来源与约束清理（系统uiautomator包装脚本证据；普通/摄像头各阶段stat未变，原有目录保留给负责人）
-- [x] VC11 验证、文档与本地提交（五项make、最终脚本ok/cleaned、Gradle停止；模拟器仍待验）
+- [x] VC11 验证、文档与本地提交（五项make、最终脚本ok/cleaned、Gradle停止；当轮模拟器待验，现见VC17）
 
 - [x] VC1 规格提交（bdefd6c）
 - [x] VC2 helper（当前48项JVM单测；旧验收产物的isolated/640×480 GPU出流已由集成方与负责人验证，其它档位/策略仍待验）
 - [x] VC3 Go/CLI/MCP（定向/全量Go测试通过）
-- [x] VC4 fixture（当前14项单测、lint/build；旧fixture已由负责人安装并完成上述读回，新重连/布局构建未安装、待负责人复验）
-- [ ] VC5 模拟器
+- [x] VC4 fixture（14项单测、lint/build；负责人已安装新版1dc42ad…，集成方验证横/竖图读回、文本可见和4:3预览；自动重连真机仍待验）
+- [x] VC5 模拟器四项回归已执行（集成方2026-11-15，每项前冷启动；三项各1/1通过，MCP为2/3通过，[一次超时失败及未证归因](progress.md#mcp-cold-start-failure-20261115)保留，多轮flaky仍待验）
 - [x] VC6 真机 helper（空屏注册、图片接收、实际标志与清理通过；不包含端到端人工验收）
-- [ ] VC7 文档、汇合与全量验证（文档和五项make已通过，等待VC5设备证据汇合）
+- [x] VC7 文档、汇合与全量验证（既有五项make及9f68242上的集成方独立复跑通过；VC5结果已汇合，含MCP 2/3与失败记录，不代表稳定性全部通过）
 
 ## 端到端验收续修（A–E，顺序实施）
 
@@ -53,6 +53,19 @@ fixture 在真机的安装确认、CAMERA 单独授权、主动打开测试页�
 - [x] VC12 采纳集成方与负责人既有端到端证据（仅已给定范围；原始证据仓库外）
 - [x] VC13 A 显示定向launcher解析与真机PAGE:MAIN（c9572a7、9e21f2e；显示65，仅包名启动并读到同包PAGE:MAIN，无权限框）
 - [x] VC14 C 可用性诊断与完整dump（c580cda、9e21f2e；4项JVM状态测试、Go/MCP兼容测试，全部脚本审查；未主动制造服务崩溃）
-- [x] VC15 D 新fixture代码修复（6a4c1bf；4项新增纯逻辑测试及lint/build通过，真机仍待负责人重装后验收）
-- [ ] VC15 新fixture真机重连/文本可见性/4:3几何复验（Agent未安装）
+- [x] VC15 D 新fixture代码修复（6a4c1bf；4项新增纯逻辑测试及lint/build通过）
+- [x] VC15 新fixture真机横/竖图读回、文本可见性与4:3几何复验（负责人安装1dc42ad…，集成方复验；[仓库外证据摘要](progress.md#integrator-recheck-20261115)）
+- [ ] VC15 新fixture断流后自动重连真机验收（当前仅单测覆盖，未制造强制断流）
 - [x] VC16 B/E 文档、验证与清理（两处授权/推断/最近任务已记录；五项make通过，脚本ok/cleaned，相机5、Gradle无daemon；本轮提交见progress）
+
+## 集成方复验记录（VC17，仅文档）
+
+| 编号 / 波次 | 目标与步骤 | 依赖 / 允许修改与所有权 | 验收 / 提交 / 回滚 |
+| --- | --- | --- | --- |
+| VC17 / 17 | 记录22:35–23:06 JST集成方真机复验与模拟器逐轮结果；分开已验/未验，登记授权持久性决策、强制断流诊断与冷启动稳定规则/统计 | 9f68242及用户提供的仓库外证据；单一owner，仅本规格tasks/checklist/progress/device-acceptance、docs的virtual-camera/troubleshooting/next-phase-tasks和displayd README；progress仅追加 | make comments及文档范围审查；一个docs(camera)提交，不push；不操作设备、不启动模拟器，不改代码/测试/脚本/构建；失败只修正文档，不用新设备操作补结论 |
+
+- [x] VC17 采纳集成方与负责人复验证据，模拟器四项已执行且MCP 2/3如实记录；权限不跨helper重启及N60.6后续已登记（[完整记录](progress.md#integrator-recheck-20261115)）。
+- [x] 正常关闭/重开两轮availability无误报（available、reason=null，每次重开正确读回）；不外推为所有断流路径通过。
+- [ ] restricted强制断流下availability是否误报（两处授权在时无法复现）。
+- [ ] 冷启动稳定等待规则与MCP多轮flaky统计（现仅3个样本，不确定因果，不放宽判据）。
+- [ ] 1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、第三方应用及其它多轮统计。
