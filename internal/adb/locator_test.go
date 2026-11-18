@@ -134,9 +134,19 @@ func TestLocatorMapsInvalidExplicitADBPathToADBNotFound(t *testing.T) {
 	}
 }
 
+// realTempDir 返回解析后的临时目录：macOS 的 /var 与 Windows 8.3 短名会被定位器按真实路径展开，期望值须同源比较。
+func realTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 // TestLocatorBundleOrder 验证完整定位链及来源，防止随包 ADB 被 PATH 或 SDK 抢先。
 func TestLocatorBundleOrder(t *testing.T) {
-	dir := t.TempDir()
+	dir := realTempDir(t)
 	write := func(name string) string {
 		p := filepath.Join(dir, name)
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
@@ -230,7 +240,7 @@ func TestLocatorRejectsBrokenBundleInsteadOfPATH(t *testing.T) {
 }
 
 func TestLocatorResolvesExecutableSymlinkAndIgnoresCWD(t *testing.T) {
-	dir := t.TempDir()
+	dir := realTempDir(t)
 	actual := filepath.Join(dir, "actual")
 	links := filepath.Join(dir, "links")
 	for _, p := range []string{actual, links} {
