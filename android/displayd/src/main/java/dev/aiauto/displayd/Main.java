@@ -67,14 +67,13 @@ public final class Main {
                 workers.execute(() -> serve(client));
             }
         } catch (IOException error) {
-            close();
-            System.exit(0);
+            if (closeSafely()) System.exit(0);
         }
     }
 
     private void serve(LocalSocket client) {
         Integer id = null;
-        boolean shutdown = false;
+        ShutdownCompletion completion = new ShutdownCompletion();
         // 绝对期限包含读、等待框架及写帧，避免慢连接永久占用工作线程。
         var deadline = timer.schedule(() -> closeClient(client), 10, TimeUnit.SECONDS);
         try (client) {
@@ -83,8 +82,8 @@ public final class Main {
             byte[] png = null;
             try {
                 Protocol.Request request = Protocol.read(client.getInputStream());
-                id = request.id(); shutdown = request.method().equals("shutdown");
-                AndroidBackend.Reply reply = backend.execute(request);
+                id = request.id();
+                AndroidBackend.Reply reply = completion.run(request.method().equals("shutdown"), () -> backend.execute(request));
                 header = Protocol.line(Protocol.fields("id", id, "ok", true, "result", reply.result()));
                 png = reply.png();
             } catch (Protocol.Failure error) {
@@ -102,7 +101,7 @@ public final class Main {
             System.err.println("displayd connection closed: " + error.getClass().getSimpleName());
         } finally {
             deadline.cancel(false); clients.remove(client); slots.release();
-            if (shutdown) { close(); System.exit(0); }
+            completion.finish(() -> { if (closeSafely()) System.exit(0); });
         }
     }
 
@@ -111,10 +110,20 @@ public final class Main {
     }
 
     private void close() {
+        closeSafely();
+    }
+
+    private boolean closeSafely() {
         // close 可由退出钩子和协议线程同时调用；backend 内部保证释放幂等。
-        backend.close();
+        try { backend.close(); }
+        catch (Exception busy) {
+            // 外部kill/崩溃不可由shutdown hook取消；正常协议失败必须保留进程/监听与所有权。
+            System.err.println("displayd remains running; release failed, do not kill helper: " + busy.getMessage());
+            return false;
+        }
         if (listener != null) try { listener.close(); } catch (IOException ignored) { /* 套接字已释放。 */ }
         for (LocalSocket client : clients) closeClient(client);
         workers.shutdownNow(); timer.shutdownNow();
+        return true;
     }
 }

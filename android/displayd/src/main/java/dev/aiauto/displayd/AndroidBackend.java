@@ -29,6 +29,8 @@ import java.util.Map;
 final class AndroidBackend implements AutoCloseable {
     record Reply(Map<String, Object> result, byte[] png) {}
     private final Map<Integer, Screen> screens = new LinkedHashMap<>();
+    // 创建失败的意外活动流也必须保留引用，防止GC/Binder死亡隐式注销；通过shutdown重试。
+    private final List<Screen> pendingCreations = new ArrayList<>();
     private final HandlerThread frames = new HandlerThread("displayd-frames");
     private Context context;
     private DisplayManager displays;
@@ -113,7 +115,10 @@ final class AndroidBackend implements AutoCloseable {
         }
     }
 
-    synchronized Reply execute(Protocol.Request request) throws Exception {
+    Reply execute(Protocol.Request request) throws Exception {
+        // 在排队进入全局锁前开始计时，多个关闭请求不得各自再追加完整六秒等待。
+        long releaseDeadline = CameraRelease.deadline();
+        synchronized (this) {
         if (closed) throw new Protocol.Failure("SHUTTING_DOWN", "helper is stopping");
         Map<String, Object> result;
         switch (request.method()) {
@@ -130,7 +135,7 @@ final class AndroidBackend implements AutoCloseable {
             case "display.create" -> {
                 int flags = Policy.flags(Build.VERSION.SDK_INT, request.focus());
                 Policy.dimensions(request.width(), request.height(), request.dpi());
-                Policy.capacity(screens.size());
+                Policy.capacity(screens.size() + pendingCreations.size());
                 initialize();
                 Screen screen = new Screen(request.width(), request.height(), request.dpi(), request.focus());
                 try {
@@ -143,7 +148,7 @@ final class AndroidBackend implements AutoCloseable {
                         screen.camera = new VirtualCameraBackend();
                         try {
                             screen.display = screen.camera.create(cameraContext(), cameraAssociation, screen.width, screen.height,
-                                    screen.dpi, screen.reader.getSurface(), flags);
+                                    screen.dpi, screen.reader.getSurface(), flags, releaseDeadline);
                         } catch (Protocol.Failure error) { throw error; }
                         catch (Exception error) {
                             while (error.getCause() instanceof Exception) error = (Exception) error.getCause();
@@ -155,10 +160,19 @@ final class AndroidBackend implements AutoCloseable {
                     }
                     if (screen.display == null) throw new IllegalStateException("null virtual display");
                     int id = screen.display.getDisplay().getDisplayId();
+                    if (screen.camera != null) screen.actualFlags = screen.display.getDisplay().getFlags();
                     screens.put(id, screen);
                     keepAwake();
                     result = screen.describe(id, false);
-                } catch (Exception error) { screen.close(); throw error; }
+                } catch (Exception error) {
+                    try { screen.close(releaseDeadline); }
+                    catch (Exception cleanup) {
+                        if (screen.camera != null && !screens.containsValue(screen)) pendingCreations.add(screen);
+                        cleanup.addSuppressed(error); throw cleanup;
+                    }
+                    screens.values().remove(screen);
+                    throw error;
+                }
             }
             case "display.list" -> result = Protocol.fields("displays", describe(false));
             case "camera.setImage" -> {
@@ -167,6 +181,7 @@ final class AndroidBackend implements AutoCloseable {
                     CameraPolicy.requireAvailable(cameraAssociation > 0, Build.VERSION.SDK_INT);
                     Policy.captureAllowed(credentialLocked());
                     Screen screen = owned(request.displayId());
+                    if (screen.releasePending) throw CameraRelease.busy();
                     if (screen.camera == null) throw new Protocol.Failure("VIRTUAL_CAMERA_NOT_ENABLED", "Display has no camera; create a new display with --camera back");
                     screen.camera.setImage(request.path());
                     result = Protocol.fields("displayId", request.displayId(), "imageSet", true);
@@ -177,11 +192,14 @@ final class AndroidBackend implements AutoCloseable {
             }
             case "display.close" -> {
                 Screen screen = owned(request.displayId());
-                screens.remove(request.displayId()); screen.close();
+                // BUSY时保留原编号和容量；显示已移除，只有相机资源仍待回调排空。
+                if (screen.camera == null) screens.remove(request.displayId());
+                screen.close(releaseDeadline); screens.remove(request.displayId());
                 result = Protocol.fields("displayId", request.displayId(), "closed", true);
             }
             case "display.capture" -> {
                 Screen screen = owned(request.displayId());
+                if (screen.releasePending) throw CameraRelease.busy();
                 captureAllowed(request.displayId());
                 byte[] png = screen.capture();
                 // 编码期间设备可能锁定或显示组休眠，再检查一次；错误响应从不携带帧体。
@@ -191,11 +209,13 @@ final class AndroidBackend implements AutoCloseable {
             }
             case "status" -> result = Protocol.fields("credentialLocked", credentialLocked(),
                     "displays", describe(true), "keepAwakeIntervalMs", 2000,
+                    "pendingCameraReleases", pendingCreations.size(),
                     "lastActivityUptimeMs", lastActivityUptimeMs, "keepAwakeError", keepAwakeError);
-            case "shutdown" -> { close(); result = Protocol.fields("stopped", true); }
+            case "shutdown" -> { close(releaseDeadline); result = Protocol.fields("stopped", true); }
             default -> throw new Protocol.Failure("UNKNOWN_METHOD", "method is not supported");
         }
         return new Reply(result, null);
+        }
     }
 
     private Screen owned(int id) throws Protocol.Failure {
@@ -225,6 +245,7 @@ final class AndroidBackend implements AutoCloseable {
         try {
             if (!Policy.shouldKeepAwake(credentialLocked(), screens.size())) return;
             for (int id : screens.keySet()) {
+                if (screens.get(id).releasePending) continue;
                 if (credentialLocked()) return;
                 userActivity.invoke(power, id, SystemClock.uptimeMillis(), 0, 0);
                 lastActivityUptimeMs = SystemClock.uptimeMillis();
@@ -235,14 +256,26 @@ final class AndroidBackend implements AutoCloseable {
         }
     }
 
-    @Override public synchronized void close() {
+    @Override public void close() throws Exception { close(CameraRelease.deadline()); }
+
+    private synchronized void close(long deadline) throws Exception {
         if (closed) return;
-        closed = true;
-        for (Screen screen : screens.values()) {
-            try { screen.close(); }
-            catch (RuntimeException error) { System.err.println("displayd release failed: " + error); }
+        List<CameraRelease.CloseAction> releases = new ArrayList<>();
+        for (var entry : new ArrayList<>(screens.entrySet())) {
+            releases.add(until -> {
+                Screen screen = entry.getValue();
+                if (screen.camera == null) {
+                    // 普通屏保留原shutdown的逐屏尽力释放行为；摄像头失败则严格保留所有权。
+                    try { screen.close(until); }
+                    catch (RuntimeException error) { System.err.println("displayd release failed: " + error); }
+                } else screen.close(until);
+                screens.remove(entry.getKey());
+            });
         }
-        screens.clear(); frames.quitSafely();
+        for (Screen screen : new ArrayList<>(pendingCreations)) {
+            releases.add(until -> { screen.close(until); pendingCreations.remove(screen); });
+        }
+        CameraRelease.closeAll(releases, deadline, () -> { closed = true; frames.quitSafely(); });
     }
 
     private final class Screen implements AutoCloseable {
@@ -253,6 +286,8 @@ final class AndroidBackend implements AutoCloseable {
         VirtualCameraBackend camera;
         private Image latest;
         private boolean released;
+        private boolean displayReleased, releasePending;
+        private int actualFlags;
         Screen(int width, int height, int dpi, String focus) {
             this.width = width; this.height = height; this.dpi = dpi;
             this.focus = focus;
@@ -273,15 +308,23 @@ final class AndroidBackend implements AutoCloseable {
                     "height", height, "dpi", dpi, "focus", focus,
                     "focusIsolated", Policy.focusIsolated(Build.VERSION.SDK_INT, focus));
             if (camera != null) {
-                int actualFlags = current.getFlags();
                 description.put("camera", "back");
-                description.put("cameraInfo", camera.describe());
+                Map<String, Object> cameraInfo = camera.describe();
+                cameraInfo.put("releasePending", releasePending);
+                description.put("cameraInfo", cameraInfo);
                 description.put("displayFlags", actualFlags);
                 // 读取系统附加的实际标志，不把 VirtualDevice 的结果套用普通屏推断。
                 description.put("focusIsolated", (actualFlags & FrameworkDisplayFlags.DisplayResult.STEAL_TOP_FOCUS_DISABLED) != 0
                         && (actualFlags & FrameworkDisplayFlags.DisplayResult.OWN_FOCUS) != 0);
             }
             if (status) {
+                if (releasePending) {
+                    // 显示已销毁，不再反射失效DisplayInfo或用旧显示编号发电源查询。
+                    description.put("state", Display.STATE_UNKNOWN);
+                    description.put("displayGroupId", -1);
+                    description.put("groupAwake", null);
+                    return description;
+                }
                 Class<?> infoClass = Class.forName("android.view.DisplayInfo");
                 Object info = infoClass.getConstructor().newInstance();
                 boolean valid = (Boolean) Display.class.getMethod("getDisplayInfo", infoClass).invoke(current, info);
@@ -330,13 +373,27 @@ final class AndroidBackend implements AutoCloseable {
                 if (padded != null) padded.recycle();
             }
         }
-        @Override public synchronized void close() {
+        @Override public void close() throws Exception { close(CameraRelease.deadline()); }
+        void close(long deadline) throws Exception {
             if (released) return;
-            released = true;
-            try {
-                try { if (display != null) display.release(); }
-                finally { if (camera != null) camera.close(); }
-            } finally {
+            if (camera == null) {
+                // 普通DisplayManager屏继续使用既有立即释放路径，不引入相机排空状态。
+                synchronized (this) {
+                    released = true;
+                    try { if (display != null) display.release(); }
+                    finally {
+                        try { if (latest != null) { latest.close(); latest = null; } }
+                        finally { reader.close(); }
+                    }
+                }
+                return;
+            }
+            releasePending = true;
+            if (!displayReleased && display != null) { display.release(); displayReleased = true; }
+            // display释放销毁Activity时仍继续出帧；只有HAL确认全部流关闭后才注销camera/device。
+            if (camera != null) camera.close(deadline);
+            synchronized (this) {
+                released = true;
                 try { if (latest != null) { latest.close(); latest = null; } }
                 finally { reader.close(); }
             }

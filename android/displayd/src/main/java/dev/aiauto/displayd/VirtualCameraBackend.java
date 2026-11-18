@@ -29,8 +29,11 @@ final class VirtualCameraBackend implements AutoCloseable {
     private final CameraAvailability availability = new CameraAvailability();
     private IBinder cameraService;
     private final IBinder.DeathRecipient cameraDeath = () -> availability.serviceDied();
+    private final CameraRelease release = new CameraRelease(this, System::nanoTime,
+            (monitor, nanos) -> java.util.concurrent.TimeUnit.NANOSECONDS.timedWait(monitor, nanos), streams::isEmpty,
+            this::stopDrainedStreams, this::releaseCamera, this::releaseDevice);
 
-    VirtualDisplay create(Context context, int association, int width, int height, int dpi, Surface surface, int flags) throws Protocol.Failure {
+    VirtualDisplay create(Context context, int association, int width, int height, int dpi, Surface surface, int flags, long releaseDeadline) throws Protocol.Failure {
         CameraPolicy.requireAvailable(association > 0, Build.VERSION.SDK_INT);
         try {
             Class<?> serviceManager = Class.forName("android.os.ServiceManager");
@@ -98,7 +101,9 @@ final class VirtualCameraBackend implements AutoCloseable {
             }
             return display;
         } catch (Throwable error) {
-            close();
+            try { close(releaseDeadline); }
+            catch (Protocol.Failure busy) { throw busy; }
+            catch (Exception cleanup) { error.addSuppressed(cleanup); }
             while (error.getCause() != null) error = error.getCause();
             String reason = String.valueOf(error.getMessage()).replaceAll("[\\r\\n]", " ");
             throw new Protocol.Failure("VIRTUAL_CAMERA_UNAVAILABLE", "API " + Build.VERSION.SDK_INT + ": "
@@ -108,7 +113,7 @@ final class VirtualCameraBackend implements AutoCloseable {
 
     private synchronized void configure(int id, Surface surface, int width, int height) {
         closeStream(id);
-        if (closed || !CameraPolicy.acceptsStream(width, height) || streams.size() >= 3) {
+        if (closed || !release.acceptsStreams() || !CameraPolicy.acceptsStream(width, height) || streams.size() >= 3) {
             surface.release(); System.err.println("camera stream rejected: closed or outside advertised budget"); return;
         }
         CameraStream stream = new CameraStream(surface, width, height, this::image, availability::renderFailed);
@@ -117,6 +122,7 @@ final class VirtualCameraBackend implements AutoCloseable {
     private synchronized void closeStream(int id) {
         CameraStream stream = streams.remove(id);
         if (stream != null) stream.close();
+        notifyAll();
     }
     // 图片由渲染线程在锁内上传到纹理，替换后才能安全回收旧位图。
     synchronized void withImage(java.util.function.Consumer<Bitmap> consumer) { consumer.accept(image); }
@@ -157,30 +163,37 @@ final class VirtualCameraBackend implements AutoCloseable {
         if (cameraService != null && !cameraService.isBinderAlive()) availability.serviceDied();
         var statuses = new java.util.ArrayList<Object>();
         for (var entry : streams.entrySet()) statuses.add(entry.getValue().describe(entry.getKey()));
-        Map<String, Object> result = Protocol.fields("cameraId", cameraId, "virtualDeviceId", deviceId, "streams", statuses);
+        Map<String, Object> result = Protocol.fields("cameraId", cameraId, "virtualDeviceId", deviceId, "streams", statuses,
+                "releasePending", release.pending());
         result.putAll(availability.describe());
         return result;
     }
-    @Override public void close() {
-        Object oldCamera, oldDevice;
-        synchronized (this) {
-            if (closed) return;
-            closed = true;
-            for (CameraStream stream : streams.values()) stream.close();
-            streams.clear();
-            if (image != null) { image.recycle(); image = null; }
-            oldCamera = camera; oldDevice = device; camera = null; device = null;
-        }
-        // Binder close 可能同步回调，不能持有本对象锁等待框架。
-        release(oldCamera); release(oldDevice);
+    @Override public void close() throws Exception { close(CameraRelease.deadline()); }
+
+    void close(long deadline) throws Exception {
+        release.close(deadline);
+        synchronized (this) { if (image != null) { image.recycle(); image = null; } }
         if (cameraService != null) {
             try { cameraService.unlinkToDeath(cameraDeath, 0); }
             catch (java.util.NoSuchElementException ignored) { /* 服务死亡后可能已自动移除监视。 */ }
         }
     }
-    private static void release(Object resource) {
+    private synchronized void stopDrainedStreams() {
+        closed = true;
+        // 空流门已封口；回调已对移除的线程发停止信号，不等待可能阻塞的原生Binder/EGL线程join。
+        for (CameraStream stream : streams.values()) stream.close();
+    }
+    private void releaseCamera() throws Exception {
+        releaseResource(camera);
+        synchronized (this) { camera = null; }
+    }
+    private void releaseDevice() throws Exception {
+        releaseResource(device);
+        synchronized (this) { device = null; }
+    }
+    private static void releaseResource(Object resource) throws Exception {
         if (resource == null) return;
-        try { resource.getClass().getMethod("close").invoke(resource); }
-        catch (Exception e) { System.err.println("camera release failed: " + e.getClass().getSimpleName()); }
+        // Binder调用不得持有流表monitor，失败时不丢所有权，留给后续close/shutdown重试。
+        resource.getClass().getMethod("close").invoke(resource);
     }
 }
