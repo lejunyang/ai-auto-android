@@ -122,10 +122,10 @@ API35+ 支持的设备可由操作员使用 `display start --virtual-camera`，�
 仍由操作员/用户处理。NX888J/API36 的isolated/fixture/640×480读回、切图和33分钟单流已由集成方与负责人验收；需用户默认设备+虚拟设备两处CAMERA授权。其它档位、steal读回、IME/息屏及自动重连真机效果仍待验，见[虚拟摄像头](docs/virtual-camera.md)。
 操作员可用`display stop --device SERIAL --keep-camera-association`保留关联供重启复用；
 设备将常驻shell伴生关联及既有虚拟CAMERA授权，归还前以不带开关stop移除（无helper也可）。
-保留后helper重启免重授的真机效果待验；MCP不开放此开关。
+b6956单机已验证关联10及虚拟CAMERA授权跨手机/helper重启保留，无新权限框且实际读回；不保证其它ROM或新关联继承，MCP不开放此开关。
 摄像头屏关闭先移除显示、最多等6秒流关闭再注销；VIRTUAL_CAMERA_BUSY时保留helper/关联，
 请操作员让应用释放相机再重试。出流时禁止kill helper；A16系统卡死可能只能由负责人重启恢复。
-当前已改拆除顺序，b6956真机关闭不卡死仍待集成方复验。
+2026-11-19集成方以70f8ae3构建在b6956单机验证：close、带开关stop、默认stop三种出流拆除路径各1次未卡死；BUSY实际触发/人工恢复、两屏shutdown及创建残留仍待验，不能外推所有时序安全。
 
 ## MCP 配置
 

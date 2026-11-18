@@ -280,3 +280,38 @@
 
 - 本轮记录仅追加；最终文档格式、允许范围与提交后工作区状态见收尾报告，不以静态验证冒充设备恢复。
 - 本轮本地构建CLI SHA256=ea429de225b89d909fcd3caf65ff4623eab9be42b5214454ecdb0f64f47740f3，helper SHA256=49307540443b2df252f53f35a308207f2c493c008569ebc414a406abcf4f18fe；均未部署到设备，摘要仅供后续集成核对。文档补充同版CLI/helper升级要求：旧helper活动流未释放时不得stop/kill升级。
+
+
+<a id="b6956-recheck-20261119"></a>
+
+## 2026-11-19 b6956真机复验结果（集成方执行，本轮Agent仅文档登记）
+
+执行窗口为2026-11-19 01:0x–02:11 CST（开始分钟未精确提供，不擅自补齐）；serial为324462538298。全部现场结论来自集成方复验与负责人提供的记录，原始证据在仓库外，不提交证据、二进制或AOSP源码。本轮Agent不接触任何设备，不运行ADB枚举、不启动模拟器，不改生产代码/测试/脚本/构建配置；沿用既有全部安全边界，仅同步获准文档与规格状态。
+
+### 环境、制品与重启基线
+
+- 负责人已自行重启手机。NX888J、API36、arm64，指纹nubia/CN_PQ85A02/PQ85A02:16/BQ2A.251016.001-BP2A.250605.031.A3/b6956:user/release-keys，用户0且未锁定。
+- 制品为70f8ae3本地构建：aactl SHA-256 ea429de225b89d909fcd3caf65ff4623eab9be42b5214454ecdb0f64f47740f3；helper SHA-256 49307540443b2df252f53f35a308207f2c493c008569ebc414a406abcf4f18fe。fixture未变，为1dc42ad123f249f33fbcf5ab8f53ce08a278db01de7b7abbb7bbaaf433085adb。
+- 集成方独立复跑make comments、make test、make verify、make build、make android-verify，五项全部通过。该结果与下方本轮Agent文档检查的执行者分开记录。
+- 重启后相机基线5个、无virtual_camera进程，此前卡死服务已随负责人重启恢复；无helper/forward/工具临时文件。关联10跨手机重启保留，fixture默认设备CAMERA仍为foreground。
+
+### 逐步现场结果（集成方）
+
+1. 保留关联免重授（跨手机重启与helper重启）：display start --virtual-camera复用关联10，未新建；create --camera back得到屏2、cameraId=v1_1000、displayFlags=24456。设四色图后，am start -W --display 2 -n dev.aiauto.fixture/.CameraActivity直接返回Activity: dev.aiauto.fixture/.CameraActivity，没有出现GrantPermissionsActivity；连续三次读回CAMERA:TL=red,TR=green,BL=blue,BR=white，retries=0/3。授权来源为2026-11-18在关联10上，由集成方经负责人对话明确授权代点“使用期间允许”；不是产品或本轮Agent自动授权。
+2. 出流中close：status为1路640×480、788帧时，display close --display 2在756ms成功返回（CLI计时864ms）。日志顺序为01:10:23.653 Logical display removed: 2 → .661 Camera v1_1000: start to disconnect（应用发起）→ .691 disconnectImpl: E → .697 onDeviceStatusChanged ... newStatus=0 → .698 disconnectImpl: X与Disconnected client ... PID 21423。无ANR，fixture Activity已销毁，display list为空，相机回到5，timeout 8 cmd virtual_camera help退出0、服务可响应。这是该路径1次未卡死，不证明所有时序均安全。
+3. 出流中保留关联shutdown：新建屏3、v2_1001，设竖图，fixture直接打开相机、无权限框，两次读回CAMERA:TL=white,TR=blue,BL=green,BR=red。出流326帧时执行display stop --keep-camera-association，2183ms成功，返回{"stopped":true,"keptCameraAssociation":{"userId":0,"id":10}}。helper退出，关联10仍在，无forward/工具临时文件，相机5，fixture无Activity，cmd virtual_camera help退出0，无ANR；即单屏出流中的shutdown按新顺序完成1次。
+4. 再次重启helper：start --virtual-camera仍复用关联10；屏4上fixture无权限框直接读回TL=red,TR=green,BL=blue,BR=white。出流324帧时默认display stop在2282ms成功，返回{"stopped":true}；该路径1次未卡死。
+5. 最终清理：无helper、无工具关联（Max ID:10，列表为空；Max ID不是仍存关联）、无虚拟屏、无forward、无工具临时文件；仅/data/local/tmp/dalvik-cache原样保留（系统uiautomator产生）。相机5个、fixture无Activity，virtual_camera可响应，全程无ANR。fixture仍安装并保留默认设备CAMERA授权，这是负责人状态，本轮不动。
+
+### 结论强度与仍未验证
+
+- 本次三种出流拆除路径（close、带开关stop、默认stop）各1次未卡死。不能据此宣称A16死锁在所有时序下均已修复，也不能把源码链条与现场环形等待的对应推断改写成已证OEM内部机制。保留11-18事故、读源码和推断的历史记录，不回写历史progress。
+- 新事实：该b6956单机上的关联10与此前授予的虚拟设备CAMERA授权跨手机重启保留；helper复用10、带开关stop后再次start复用10均无新权限框且实际读回。因此勾选所有同义的“保留关联后helper重启免重授”状态项；不外推其它ROM、新关联或所有应用。保留期间常驻shell伴生关联/既有授权的代价、默认stop精确移除、不disassociate-all/不代授权的边界不变。
+- VIRTUAL_CAMERA_BUSY实际触发及人工force-stop后同编号重试仍未验证：本次应用都在6秒内释放，没有触发BUSY。两块摄像头屏同时shutdown、创建失败残留也未验证，保持未勾选。
+- 既有1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、第三方应用、restricted强制断流下availability、fixture自动重连、多轮统计、冷启动等待规则与MCP flaky均保持未验；此前MCP 2/3及失败未证归因不变。
+- 出流时不可kill helper或让其崩溃的警告不变；11-18事故已见系统卡死后kill无效、help超时与残留失效虚拟相机。发生系统卡死须停止操作，由负责人重启恢复，产品不自动force-stop/重建/重试/重启。
+- 本轮同步tasks/checklist重复条目、device-acceptance、virtual-camera、troubleshooting、安全分发、displayd README、根README、automation命令参考与镜像；N60.6主行及安全拆除/保留关联两行更新，其它路线图项不动。observation命令参考及镜像没有相关“待验”表述，保留原样。
+- 本轮文档验证和提交后工作区核对随后追加；只在virtual-display-screen-off本地提交，不push、不动main。
+
+本轮Agent文档验证：先export PATH="/e/osdk-data/data/installs/go/1.26.5/bin:$PATH"，直接运行make comments和make verify，均exit0。注释覆盖636个手写文件、16项检查器自测；verify的fake-adb定向测试、协议56项（14 schema/14有效fixture/38无效fixture/4兼容检查）、3份skills与镜像/CLI命令示例及仓库工具链元数据检查通过。没有运行其余三项make、Gradle或设备脚本；集成方独立五项make的结果已在环境段单独记录。
+本轮范围审查通过：仅12个获准Markdown文件；progress的原HEAD历史前缀完整保留，仅追加；N60.6以外路线图未改；automation命令参考与镜像同步，observation原样且镜像一致；无生产代码/测试/脚本/构建/三份风险门/二进制或原始证据入库。git diff --check通过；随后仅本地提交docs(camera): record b6956 teardown and kept-association acceptance，不push、不动main，提交后工作区核对见最终报告。

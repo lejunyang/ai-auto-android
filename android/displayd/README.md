@@ -153,7 +153,7 @@ availability始终available、reason=null，restricted强制断流是否误报�
 com.android.shell + 00:00:00:00:00:10；不带开关stop即移除，无helper也可。若普通helper
 运行，先停止它再默认stop清关联。保留期间常驻shell的COMPANION_DEVICE_APP_STREAMING
 关联及用户此前授予目标应用的虚拟CAMERA授权；归还/转手前须移除。不disassociate-all，
-不代授权/代点弹窗。保留后helper重启免重授的真机效果尚未验证，本轮无真机。
+不代授权/代点弹窗。2026-11-19集成方已在b6956单机验证关联10及虚拟CAMERA授权跨手机/helper重启保留，无新权限框且读回；不保证其它ROM或新关联继承。
 启动失败只移除本次新建关联，既有/崩溃遗留原样保留并在错误说明。Main/AndroidBackend/
 VirtualCameraBackend不解除关联；本轮Java新增空流门，先排空再释放，不能在出流时退出。
 
@@ -249,7 +249,7 @@ BACK/空屏/重启、息屏取帧/输入及唤醒后层级恢复均通过。对�
 helper启停仍只有CLI，20个MCP工具与三道既有风险门边界保持。
 API33/34、真机/OEM仍留待后续任务，不把标志能力字段当成这些平台的实测结论。
 
-### 摄像头待释放状态（真机待验）
+### 摄像头待释放状态（BUSY实际触发仍待验）
 
 cameraInfo.releasePending=true的屏保留原编号与容量，只供诊断/重试close或shutdown，
 不再输入/启动/取帧/设置图片。status跳过失效DisplayInfo与电源查询，state=0、
@@ -262,8 +262,13 @@ BUSY时显示可能已移除，但camera/device与出帧仍在；产品不自行
 b6956真机2026-11-18出流关闭后发生ANR/跨进程Binder阻塞；集成方留证kill已核验helper后，
 cmd virtual_camera help仍超时退出124，cameraserver残留失效v1_1000、相机总数6。
 真实0–4当时closed且无client，后续普通屏fixture首次失败原因未取得，不能判断真实相机好坏。
-当前结论只能是已改拆除顺序，真机关闭不卡死/人工force-stop后的BUSY恢复/保留关联免重授
-待负责人重启后由集成方复验；本轮不操作任何设备，不以JVM单测代替真机结论。
+负责人已自行重启，2026-11-19集成方以70f8ae3构建在b6956单机复验：close（756ms，CLI计时864ms）、
+带开关stop（2183ms）、默认stop（2282ms）三种出流拆除路径各1次未卡死，无ANR，
+相机回到5且virtual_camera可响应。关联10及虚拟CAMERA授权跨手机/helper重启保留，
+无新权限框且读回；最后默认stop已移除关联10。本轮Agent只登记文档，不接触设备。
+BUSY实际触发/人工force-stop后同编号恢复、两屏同时shutdown、创建失败残留仍待验，
+本次应用均在6秒内释放；不能将单次成功外推为A16所有时序安全。
+完整事实见[规格记录](../../.trae/specs/virtual-camera/progress.md#b6956-recheck-20261119)。
 
 升级需同时部署本轮CLI与helper，只有更新CLI不能改变旧helper的拆除顺序。
 旧helper仍出流时不要直接stop/kill来升级；先由操作员让应用正常释放相机并确认流为空，

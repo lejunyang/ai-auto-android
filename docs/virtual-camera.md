@@ -40,7 +40,7 @@ MCP 不提供 helper 启停、图片设置、主机路径或权限授予入口�
 
 **本机稳定使用需要目标应用在默认设备与虚拟设备两处都有CAMERA授权。产品不代授权，也不自动点系统权限框。** 负责人先在系统设置里给目标应用默认设备的相机权限，再在虚拟屏相机页的系统框中完成虚拟设备授权。可通过最新`observe screenshot/hierarchy --display N`由负责人自己判断并点按该框；若无法可靠展示或定位则停下人工处理，不使用pm grant/appops旁路。具体产品授权形态仍待负责人决定；其它ROM需独立验收。
 
-**默认stop删除关联，虚拟设备授权不跨新关联继承。** 本机此前默认stop/start使编号7→8→9，需负责人重新授权；同一helper运行、同一关联内关闭重建屏不需重授。负责人已决定增加可选`display stop --device SERIAL --keep-camera-association`，用现有关联供下一次`start --virtual-camera`复用，默认stop仍移除关联。**保留关联后helper重启无需重新授权CAMERA的真机效果尚未验证**；依据只有同关联重建屏的既有证据，本轮不接触真机。
+**默认stop删除关联，虚拟设备授权不跨新关联继承。** 本机此前默认stop/start使编号7→8→9，需负责人重新授权；同一helper运行、同一关联内关闭重建屏不需重授。负责人已决定增加可选`display stop --device SERIAL --keep-camera-association`，用现有关联供下一次`start --virtual-camera`复用，默认stop仍移除关联。**已在b6956单台真机验证关联10及虚拟设备CAMERA授权跨手机重启、helper重启保留**：2026-11-19集成方复用关联10，无权限框且实际读回；带开关stop后再次start仍复用10并读回。仅此单机复验，不保证其它ROM或新关联继承，见下方b6956验收。
 
 实测：仅虚拟授权时两次断流（连接约21秒、约3分钟），CameraService日志restricted，Uid mode CAMERA:ignore；负责人在系统设置补默认授权后，granted=true、Uid mode foreground，连续33分钟/主屏切13次应用没有restricted。**推断**：服务后续权限复查可能按默认设备判定，未证明系统内部机制。这是本机系统兼容性前提，不是本项目自动授予或绕过权限的理由。
 
@@ -54,7 +54,7 @@ MCP 不提供 helper 启停、图片设置、主机路径或权限授予入口�
 
 集成方20:55:12截断后观察到`Virtual camera service died`、客户端因HAL状态变化被evicted、虚拟摄像头消失；20:55:43再次截断时真实相机0–4也移除后重加。完整回传再过滤未出现该问题。helper当时仍有旧cameraId，流frames103、`eglSwapBuffers failed EGL=12301`；现在会在观察到服务死亡或渲染失败后报告unavailable。不要为验证诊断主动制造崩溃。仅在系统服务仍响应且已安全释放时，由操作员关闭受影响屏后重建；遇BUSY先让应用释放相机。若virtual_camera已卡死、help超时或cameraserver残留失效相机，不继续关闭/重建尝试，由负责人重启手机恢复；产品不自动重建、重试或重启设备。
 
-## 安全拆除与系统死锁（已改顺序，真机待验）
+## 安全拆除与系统死锁（b6956三种出流拆除路径各1次未卡死）
 
 **helper正在出流时绝不可kill或让其崩溃。** A16设备上外部终止会触发Binder死亡注销，可能卡死系统virtual_camera；Java shutdown hook不能取消外部终止，也不能修复已死锁的系统服务。产品没有force-stop应用、杀helper或自动重试/重建路径。
 
@@ -69,7 +69,7 @@ MCP 不提供 helper 启停、图片设置、主机路径或权限授予入口�
 
 shutdown逐屏执行同一流程，允许成功屏先释放；任一BUSY则保留未完成记录、监听和进程，Main不执行System.exit，Go stop不删helper文件、图片或关联（带/不带保留开关均如此）。创建失败回滚遇BUSY也不得删除本次新建关联。Go wire及helper连接预算均10秒；每个请求在进入AndroidBackend全局锁前记录排空deadline，两屏与排队的关闭请求不各自叠加完整6秒。为保留既有串行框架边界，本轮未重构全局锁；其它只读请求可能等待该局部排空预算。已有系统Binder死锁、框架release调用阻塞、主机调度或更短调用方deadline仍可能造成超时，不能把局部6秒等待上限当成系统调用可被中断的保证。
 
-2026-11-18 23:05–23:30 CST，集成方在更新到b6956（构建2026-11-16）的NX888J上确认三次640×480四色读回、525帧/available、主屏焦点0；应用出流中close屏2后，显示移除与NOT_PRESENT紧邻，fixture ANR，cameraserver/出帧/worker卡Binder。close和stop均响应头超时。集成方留证并终止已核验helper后服务仍不恢复，timeout 8 cmd virtual_camera help退出124、失效v1_1000残留使相机数为6；真实0–4当时closed且无client。随后普通屏fixture相机重试耗尽、首次失败原因未取得，不能判断真实相机已坏或正常。最终无helper/显示/forward/工具文件，关联10保留；**负责人尚需重启，真机关闭不卡死与保留关联免重授仍待集成方复验**。完整事实、授权执行者与制品摘要见[progress](../.trae/specs/virtual-camera/progress.md)。
+2026-11-18 23:05–23:30 CST，集成方在更新到b6956（构建2026-11-16）的NX888J上确认三次640×480四色读回、525帧/available、主屏焦点0；应用出流中close屏2后，显示移除与NOT_PRESENT紧邻，fixture ANR，cameraserver/出帧/worker卡Binder。close和stop均响应头超时。集成方留证并终止已核验helper后服务仍不恢复，timeout 8 cmd virtual_camera help退出124、失效v1_1000残留使相机数为6；真实0–4当时closed且无client。随后普通屏fixture相机重试耗尽、首次失败原因未取得，不能判断真实相机已坏或正常。最终无helper/显示/forward/工具文件，关联10保留；该事故后负责人已自行重启，2026-11-19集成方使用70f8ae3构建复验，三种出流拆除路径各1次未卡死，关联10及授权跨手机/helper重启保留，见下方记录；单次成功不能证明A16全部时序不再死锁。完整事实、授权执行者与制品摘要见[progress](../.trae/specs/virtual-camera/progress.md)。
 
 读源码：本轮核对仓库外16_main.cc（标记android-16.0.0_r1）无startThreadPool，a17_main.cc有；16版Controller/Service/Provider同步注销并发送NOT_PRESENT，VirtualDevice.close及CameraDescriptor.binderDied也走注销；q2_Camera3Device补充样本显示disconnectImpl持mInterfaceLock并可能join请求线程。**推断**：活动会话注销时HAL/cameraserver/应用和帧队列形成环形等待，与现场线程栈相符；不能仅凭上游快照断言OEM二进制的全部内部机制。A17源码改动不等于已回补此A16设备。本轮在线地址打开失败，核对依据是提供的本地源码快照，不提交源码副本。
 
@@ -83,7 +83,7 @@ shutdown逐屏执行同一流程，允许成功屏先释放；任一BUSY则保�
 
 保留期间设备常驻一条`com.android.shell`的`COMPANION_DEVICE_APP_STREAMING`伴生关联，以及负责人此前授予目标应用的虚拟设备CAMERA授权。**归还/转手前执行`aactl display stop --device SERIAL`（不带开关，helper未运行也可）移除保留关联**；若普通模式helper正在运行，先停止它，再在helper未运行时执行一次默认stop。只读检查用`adb -s SERIAL shell cmd companiondevice list USER_ID`，只认`com.android.shell`+`00:00:00:00:00:10`那一条，Max ID不是关联。崩溃后切换过用户需回到启动用户，不动其它关联；绝不disassociate-all、不代授权或代点权限框。
 
-2026-11-16本轮在API35指定模拟器完整跑一次：关联编号1，带开关stop后仍1且helper/临时文件为0，重启仍复用1，默认stop后无关联；最终所有工具资源归零、模拟器退出且ADB为空。该结果仅证明编号生命周期，不证明真机CAMERA授权跨helper重启。
+2026-11-16本轮在API35指定模拟器完整跑一次：关联编号1，带开关stop后仍1且helper/临时文件为0，重启仍复用1，默认stop后无关联；最终所有工具资源归零、模拟器退出且ADB为空。该模拟器结果仅证明编号生命周期，不证明真机CAMERA授权跨helper重启；独立的b6956真机授权持久性证据见下方2026-11-19复验。
 
 启动失败语义有一处明确变化：EnsureCameraAssociation仍复用精确既有关联，Created只标记本次新建。后续失败先保留关联停止可核验helper，确认安全停止后才清文件/图片和本次新建关联；BUSY或未确认停止则连本次新建关联也保留，防止间接触发活动设备注销；调用前存在的关联（包括崩溃遗留）改为原样保留，原先会删除。错误详情cameraAssociation.action为kept/removed/removeFailed并保留原启动错误/清理错误。默认stop的命令序列、JSON和删除行为不变，不能把启动失败变化含糊为“全部默认行为不变”。
 
@@ -172,6 +172,22 @@ MCP失败轮在boot_completed后约34秒开跑（仅8秒缓冲），android_disp
 
 **每份脚本结束会关闭模拟器，连续运行须逐项重启。** 集成方首次连续运行时，后三项因前项已按设计关闭模拟器而以“设备不在线”停止，属于执行流程疏漏，不计入产品结果或上述轮次。各项重新冷启动后的结果才列入表。本轮Agent仅登记提供的证据，不接触手机或启动模拟器。
 
+<a id="b6956-recheck-20261119"></a>
+
+## b6956真机复验（2026-11-19 01:0x–02:11 CST）
+
+负责人已自行重启手机，集成方在同一NX888J/API36/arm64、用户0且未锁定条件下使用70f8ae3构建复验，原始证据仓库外。本轮Agent仅登记文档，未访问设备。指纹为nubia/CN_PQ85A02/PQ85A02:16/BQ2A.251016.001-BP2A.250605.031.A3/b6956:user/release-keys；CLI SHA256为ea429de225b89d909fcd3caf65ff4623eab9be42b5214454ecdb0f64f47740f3，helper为49307540443b2df252f53f35a308207f2c493c008569ebc414a406abcf4f18fe，fixture仍为1dc42ad1…；集成方独立复跑五项make全部通过。
+
+重启后相机5个、无virtual_camera进程、无helper/forward/工具临时文件；关联10跨手机重启保留，fixture默认设备CAMERA仍为foreground。start复用10，屏2（v1_1000、flags24456）直接打开CameraActivity，没有出现GrantPermissionsActivity，三次横图读回red/green/blue/white且retries=0/3。授权来源为2026-11-18负责人在对话中明确授权集成方代点“使用期间允许”；本轮不新增授权。
+
+| 出流拆除路径 | 拆除前 / 结果 | 拆除后判据 |
+| --- | --- | --- |
+| close屏2 | 1路640×480、788帧；756ms成功（CLI计时864ms） | 先移除显示，再应用发起disconnect，随后NOT_PRESENT与disconnect完成；Activity销毁、display list为空、相机5、help退出0、无ANR |
+| stop --keep-camera-association | 屏3/v2_1001、竖图white/blue/green/red读回2次、326帧；2183ms成功，返回stopped:true及keptCameraAssociation:{userId:0,id:10} | helper退出，关联10仍在，无forward/工具临时文件，fixture无Activity，相机5、help退出0、无ANR |
+| 默认stop | 再次start复用10，屏4无权限框且横图读回、324帧；2282ms成功，返回stopped:true | helper退出，关联10移除，相机5，virtual_camera可响应，全程无ANR |
+
+最终无helper/工具关联/虚拟屏/forward/工具临时文件；伴生列表为空，Max ID:10不是仍有一条关联。仅共享dalvik-cache原样保留（系统uiautomator产生），fixture仍安装、默认设备CAMERA授权保留且无Activity。**本次三种出流拆除路径各1次未卡死，不证明A16所有时序下都不再发生死锁；出流时禁止kill helper的警告不变。** BUSY未实际触发，人工force-stop后同编号恢复、两屏同时shutdown、创建失败残留继续待验。完整日志时间线及清理摘要见[progress](../.trae/specs/virtual-camera/progress.md#b6956-recheck-20261119)。
+
 ## 错误与后续
 
 | code | CLI 退出码 | 处理 |
@@ -181,7 +197,7 @@ MCP失败轮在boot_completed后约34秒开跑（仅8秒缓冲），android_disp
 | VIRTUAL_CAMERA_BUSY | 4 | retryable=true；保持helper与关联，先由操作员让应用释放相机，再重试close/stop，禁止kill helper |
 | CAMERA_IMAGE_INVALID | 2 | 检查 PNG/JPEG、8 MiB/4096 上限或内部临时路径/读取失败，不循环上传 |
 
-仍未验证：b6956真机关闭不卡死、人工force-stop后BUSY恢复、保留关联免重授、restricted强制断流下availability是否误报、新fixture断流后自动重连、1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、任何第三方应用及多轮统计。模拟器四项已执行，MCP保留2/3结果，不代表flaky问题关闭。负责人手机有锁屏密码，息屏会进入凭据锁，本工具不要求关闭凭据锁来验收。视频、图片MCP主机路径准入、双授权产品形态/保留关联后真机授权复验、冷启动稳定规则与MCP多轮统计、最近任务是否处理及跨OEM矩阵在N60.6登记；不把已有单流实证外推为全部能力交付。
+仍未验证：VIRTUAL_CAMERA_BUSY实际触发与人工force-stop后同编号重试恢复（本次均在6秒内释放，未触发BUSY）、两块摄像头屏同时shutdown、创建失败残留、restricted强制断流下availability是否误报、新fixture断流后自动重连、1280×720/1920×1080实际出流、steal带应用读回、IME、主屏息屏、任何第三方应用及多轮统计。模拟器四项已执行，MCP保留2/3结果，不代表flaky问题关闭。负责人手机有锁屏密码，息屏会进入凭据锁，本工具不要求关闭凭据锁来验收。视频、图片MCP主机路径准入、双授权产品形态、BUSY恢复/两屏shutdown/创建残留复验、冷启动稳定规则与MCP多轮统计、最近任务是否处理及跨OEM矩阵在N60.6登记；不把已有单流实证外推为全部能力交付。
 
 框架依据：[AOSP VirtualDeviceManager](https://android.googlesource.com/platform/frameworks/base/+/main/core/java/android/companion/virtual/VirtualDeviceManager.java)、[显示标志](https://android.googlesource.com/platform/frameworks/base/+/HEAD/core/java/android/view/Display.java)、[伴生设备 shell 命令](https://android.googlesource.com/platform/frameworks/base/+/master/services/companion/java/com/android/server/companion/CompanionDeviceShellCommand.java)。实际 OEM 行为以本机证据为准。
 

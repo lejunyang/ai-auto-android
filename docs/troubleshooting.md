@@ -375,7 +375,7 @@ restricted断流且Uid mode CAMERA:ignore；负责人在系统设置补默认授
 移除（无helper也可；若普通helper在运行，先停它，再执行默认stop）。只读核对：
 `adb -s SERIAL shell cmd companiondevice list USER_ID`，仅com.android.shell+00:00:00:00:00:10。
 保留期间常驻shell的COMPANION_DEVICE_APP_STREAMING关联及用户此前授予目标应用的虚拟CAMERA授权；
-不disassociate-all、不代授权/点框。真机保留关联后helper重启是否免重授仍待验，不把既有同关联重建屏当证据。
+不disassociate-all、不代授权/点框。2026-11-19集成方已在b6956单机验证：关联10及虚拟CAMERA授权跨手机重启保留，helper复用10及带开关stop后的再次start均无权限框且实际读回；不保证其它ROM/新关联继承。
 启动失败只删本次新建关联，既有/崩溃遗留改为保留；错误详情会说明，可用默认stop显式移除。
 
 禁止设备端`dumpsys media.camera | head`或提前关管道，本机曾导致虚拟服务死亡，甚至
@@ -403,7 +403,7 @@ close销毁Activity后，系统最近任务可能仍有该Task；本工具不自
 
 ## 摄像头屏关闭BUSY与系统卡死
 
-已改拆除顺序，真机待验：先display.release销毁Activity，保持出帧并等待所有onStreamClosed，
+已改拆除顺序：先display.release销毁Activity，保持出帧并等待所有onStreamClosed，
 共享6秒等待预算内流空才VirtualCamera.close→VirtualDevice.close；超时保留资源/进程并报BUSY。
 list/status的cameraInfo.releasePending=true表示待释放，原编号只供诊断和重试close，仍占容量；
 不再向该编号输入/启动/取帧。status中的state=0、组=-1、groupAwake=null表示无当前显示组，
@@ -416,4 +416,5 @@ pendingCameraReleases表示创建失败但仍保留引用的残留数，用stop/
 cameraserver残留v1_1000、总相机6；只能交负责人重启手机。真实0–4当时closed且无client，
 普通屏fixture重试耗尽而首次失败原因未知，不能断言真实相机已坏或正常。
 
-真机关闭不卡死、人工force-stop后BUSY恢复、保留关联后helper重启免重授均待负责人重启后由集成方验收。
+2026-11-19负责人自行重启后，集成方在b6956单机以70f8ae3构建复验：出流close成功756ms（CLI计时864ms），带开关stop成功2183ms，默认stop成功2282ms，三种路径各1次未卡死、无ANR，相机均恢复5且virtual_camera可响应；关联10及虚拟CAMERA授权跨手机/helper重启保留，无新权限框且读回。最终默认stop已移除关联10（列表为空，Max ID:10不是残留关联）。
+BUSY实际触发及人工force-stop后同编号恢复、两屏同时shutdown和创建失败残留仍未验证：本次应用均在6秒内释放。单次成功不证明A16所有时序安全；出流不可kill的警告不变。完整证据摘要见[本规格记录](../.trae/specs/virtual-camera/progress.md#b6956-recheck-20261119)。

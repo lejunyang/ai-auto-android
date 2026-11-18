@@ -191,11 +191,12 @@ API33没有隔离标志，focusIsolated=false；中文输入与多显示Bridge�
 无匹配省略keptCameraAssociation；普通运行helper忽略开关，不查伴生关联。MCP无入口。
 保留期间常驻shell的COMPANION_DEVICE_APP_STREAMING关联及既有虚拟CAMERA授权；
 只读查adb -s SERIAL shell cmd companiondevice list USER_ID中的com.android.shell+00:00:00:00:00:10。
-归还前用不带开关display stop --device SERIAL移除（无helper亦可）；保留后重启免重授真机待验。
+归还前用不带开关display stop --device SERIAL移除（无helper亦可）；b6956单机已验关联10及虚拟CAMERA授权跨手机/helper重启保留，无新权限框且实际读回，不保证其它ROM或新关联继承。
 启动失败只移除本次新建关联，既有/崩溃遗留保留；不disassociate-all、不代授权或点弹窗。
 
 摄像头屏close/stop若返回VIRTUAL_CAMERA_BUSY（retryable=true，CLI退出4），
 须让操作员先使目标应用释放相机，再显式重试关闭；不要自动重试、force-stop或kill helper。
 helper正在出流时外部kill/崩溃可能卡死A16系统virtual_camera，help超时/残留失效相机
 应停止操作并交负责人重启。releasePending屏已进入释放，不可再启动/输入/取帧；
-本轮已改6秒排空后注销的顺序，真机关闭及保留关联免重授仍待验。
+2026-11-19集成方在b6956单机验证三种出流拆除路径（close/带开关stop/默认stop）各1次未卡死；
+BUSY实际触发与人工force-stop后同编号恢复、两屏shutdown和创建失败残留仍待验，不能外推全部时序安全。

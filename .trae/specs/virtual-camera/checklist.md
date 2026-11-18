@@ -51,14 +51,24 @@
 - [x] CLI仅stop接受布尔开关，重复/false/其它子命令拒绝；MCP入口/schema/协议/错误码不变，三份风险门未动。
 - [x] 模拟器保留→同号复用→默认移除完整一次：编号1→1→1→无，ok=true；最终工具关联/helper/显示/文件/forward均0，模拟器进程退出且ADB为空。
 - [x] 文档、N60.6对应决策、五项make、停止Gradle完成；本地提交范围及最终工作区核对见progress，不push、不动main。
-- [ ] 真机保留关联后helper重启无需重新授权CAMERA（不得用模拟器或同关联重建屏代替）。
+- [x] 真机保留关联后helper重启无需重新授权CAMERA（集成方2026-11-19、b6956单机关联10；跨手机重启保留，带开关stop后再次start复用，无权限框且实际读回；[b6956复验记录](progress.md#b6956-recheck-20261119)）。
 ## 安全拆除续修验收
 
-- [x] display.release后保持出帧，流回调清空才camera→device注销；6秒超时BUSY不注销，重复close纯逻辑测试通过，真机待验。
+- [x] display.release后保持出帧，流回调清空才camera→device注销；6秒超时BUSY不注销，重复close纯逻辑测试通过；单屏三种出流拆除各1次结果见下方，BUSY仍待验。
 - [x] wait释放流表monitor，回调可执行；两屏shutdown共享6秒等待预算，BUSY不退出（纯逻辑时钟/假资源及Main退出门测试）。
 - [x] 待释放屏原编号可诊断/重试、占容量、不作为输入/取帧目标；创建残留保留引用并公开计数，Go/MCP状态验证通过。
 - [x] BUSY在Go/CLI/MCP测试中透传retryable=true/退出4；stop及启动失败回滚遇BUSY均不删仍在用资源，10秒wire对6秒Java常量留余量的断言通过。
 - [x] 五项make、文档/仅N60.6、无二进制及Gradle停止完成；最终提交范围/工作区审查见本轮报告。本轮没有设备操作，不宣称已修复卡死。
-- [ ] b6956真机关闭不死锁复验（负责人重启后集成方执行，本轮无设备）。
-- [ ] 人工force-stop释放相机后的BUSY恢复路径。
-- [ ] 保留关联后重启免重授相机权限。
+- [x] b6956真机关闭不死锁复验（集成方执行，close/带开关stop/默认stop三种出流拆除路径各1次未卡死，无ANR、服务可响应；[b6956复验记录](progress.md#b6956-recheck-20261119)；不证明所有时序安全）。
+- [ ] VIRTUAL_CAMERA_BUSY实际触发及人工force-stop后同编号重试恢复（本次应用均在6秒内释放，未触发BUSY）。
+- [x] 保留关联后重启免重授相机权限（关联10跨手机及helper重启保留，b6956单机无新权限框且实际读回；[b6956复验记录](progress.md#b6956-recheck-20261119)）。
+
+
+## b6956集成方复验登记（2026-11-19，仅文档）
+
+- [x] 三种出流拆除路径各1次未卡死：close为756ms（CLI计时864ms）、带开关stop为2183ms、默认stop为2282ms；无ANR、服务可响应、相机回到5。执行者为集成方，原始证据仓库外；单次成功不证明A16所有时序安全，详见[记录](progress.md#b6956-recheck-20261119)。
+- [x] 关联10及虚拟CAMERA授权跨手机/helper重启保留，复用10、无新权限框且实际读回；最终默认stop移除关联10（Max ID:10、列表为空），fixture仍安装并保留默认设备授权，dalvik-cache原样保留。
+- [ ] 两块摄像头屏同时shutdown（本次仅单屏）。
+- [ ] 创建失败残留（本次创建均成功）。
+- [ ] BUSY实际触发与人工force-stop后同编号重试（本次均在6秒内释放）；既有强制断流availability、fixture自动重连、高分辨率、steal读回、IME、息屏、第三方应用、多轮统计及冷启动MCP flaky均未新增通过结论。
+- [x] 本轮Agent按指定PATH执行make comments、make verify均通过；仅12个获准文档/规格文件，progress仅追加，skills镜像一致，其它路线图/代码/脚本/构建不动；不操作任何设备或启动模拟器。

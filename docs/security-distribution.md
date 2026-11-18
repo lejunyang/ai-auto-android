@@ -242,10 +242,13 @@ make release VERSION=0.1.0
 不影响其它关联。启动失败只移除本次新建关联，既有/崩溃遗留原样保留，需默认stop显式移除。
 保留期间常驻shell的COMPANION_DEVICE_APP_STREAMING关联及用户此前授予目标应用的
 虚拟CAMERA授权，归还/转手前执行不带开关stop（无helper也可）；绝不disassociate-all。
-保留后helper重启免重授真机尚未验证，MCP没有此入口。
+2026-11-19集成方在b6956单台真机验证关联10及虚拟CAMERA授权跨手机/helper重启保留，
+无新权限框且实际读回；不保证其它ROM或新关联继承，MCP没有此入口。
 BUSY表示尚有活动相机流，helper/文件/图片/关联全部保留，启动失败回滚也不得删除新建关联
 来间接注销活动设备；必须先让应用释放相机，由操作员决定是否手动force-stop，产品不执行。
-出流时禁止kill helper，崩溃/外部终止可能使A16系统virtual_camera卡死，需负责人重启恢复。图片只通过CLI
+出流时禁止kill helper，崩溃/外部终止可能使A16系统virtual_camera卡死，需负责人重启恢复。
+该机70f8ae3构建的close/带开关stop/默认stop三种出流拆除路径各1次未卡死，不代表全部时序安全；
+BUSY实际触发/人工释放后恢复、两屏同时shutdown及创建失败残留仍待验。图片只通过CLI
 提供主机普通PNG/JPEG，8MiB/4096上限、随机UUID临时路径、拒绝符号链接和失败清理；
 不增加模型主机文件入口。helper不授予应用CAMERA，也不自动点权限框；虚拟设备上
 的相机授权由用户单独完成。fixture相机页只在测试应用中，生产App/Bridge不增加入口。

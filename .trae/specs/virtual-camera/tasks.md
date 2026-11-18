@@ -64,7 +64,7 @@ VC8–VC11审查修复按下表顺序实施，当轮不执行VC5。集成方后�
 | --- | --- | --- | --- |
 | VC17 / 17 | 记录22:35–23:06 JST集成方真机复验与模拟器逐轮结果；分开已验/未验，登记授权持久性决策、强制断流诊断与冷启动稳定规则/统计 | 9f68242及用户提供的仓库外证据；单一owner，仅本规格tasks/checklist/progress/device-acceptance、docs的virtual-camera/troubleshooting/next-phase-tasks和displayd README；progress仅追加 | make comments及文档范围审查；一个docs(camera)提交，不push；不操作设备、不启动模拟器，不改代码/测试/脚本/构建；失败只修正文档，不用新设备操作补结论 |
 
-- [x] VC17 采纳集成方与负责人复验证据，模拟器四项已执行且MCP 2/3如实记录；权限不跨helper重启及N60.6后续已登记（[完整记录](progress.md#integrator-recheck-20261115)）。
+- [x] VC17 采纳集成方与负责人复验证据，模拟器四项已执行且MCP 2/3如实记录；默认stop换关联后权限不继承及N60.6后续已登记；保留关联的后续实测见VC26（[完整记录](progress.md#integrator-recheck-20261115)）。
 - [x] 正常关闭/重开两轮availability无误报（available、reason=null，每次重开正确读回）；不外推为所有断流路径通过。
 - [ ] restricted强制断流下availability是否误报（两处授权在时无法复现）。
 - [ ] 冷启动稳定等待规则与MCP多轮flaky统计（现仅3个样本，不确定因果，不放宽判据）。
@@ -83,7 +83,7 @@ VC8–VC11审查修复按下表顺序实施，当轮不执行VC5。集成方后�
 - [x] VC19 启动失败关联归属清理与Java退出审查（deac12e、a6a2c34；既有保留/新建删除、绑定前后失败、错误分类及最终结果一致；Java无需改）。
 - [x] VC20 指定模拟器一次完整回归与清理（3e32dc2；关联编号1保留后重启仍1，默认stop移除；ok=true，helper/显示/forward/文件/关联均0，进程退出/ADB为空）。
 - [x] VC21 文档、五项make、本地提交与Gradle退出（最终制品五项均exit0，命令参考/skills镜像同步；本轮提交/文件见progress，未push，Gradle无daemon）。
-- [ ] 保留关联后helper重启的真机CAMERA授权仍有效（本轮无真机，不操作敏感权限）。
+- [x] 保留关联后helper重启的真机CAMERA授权仍有效（集成方2026-11-19在b6956单机复验：关联10跨手机重启保留，带开关stop后再次start复用10，无权限框且实际读回；[b6956复验记录](progress.md#b6956-recheck-20261119)，不外推其它ROM）。
 ## 安全拆除（VC22–VC25，顺序实施，无设备操作）
 
 | 编号 | 目标与步骤 | 依赖/目录所有权 | 验收/提交/失败处理 |
@@ -94,9 +94,22 @@ VC8–VC11审查修复按下表顺序实施，当轮不执行VC5。集成方后�
 | VC25 | 文档、仅N60.6、五项make、Git审查与Gradle停止 | VC23/24；允许文档/skills参考镜像与规格单一owner | docs(camera)；不push、不动main、不提交二进制/原始证据；设备复验保持未勾选 |
 
 - [x] VC22 事实/源码核对与规格追加。
-- [x] VC23 安全拆除Java实现与纯逻辑测试（5d82a66；displayd59项含新增11项，超时/解锁/顺序/重试/shutdown门通过；真机未验）。
+- [x] VC23 安全拆除Java实现与纯逻辑测试（5d82a66；displayd59项含新增11项，超时/解锁/顺序/重试/shutdown门通过；实现当轮真机未验，后续结果见VC26）。
 - [x] VC24 Go/CLI/MCP忙碌状态与停止保护（09845be；新增7项Go测试，BUSY不清理及启动回滚保护、状态/schema、预算通过）。
 - [x] VC25 文档、五项make、本地提交与Gradle退出（全部exit0，源码事实/推断分记，进度只追加，实际C盘daemon已停止；本轮零设备命令）。
-- [ ] 负责人重启b6956真机后由集成方验证关闭不卡死。
-- [ ] 操作员人工force-stop后BUSY恢复（产品不执行force-stop）。
-- [ ] 保留关联后helper重启免重授CAMERA。
+- [x] 负责人重启b6956真机后由集成方验证关闭不卡死（close、带开关stop、默认stop三种出流拆除路径各1次未卡死，无ANR，服务可响应；[b6956复验记录](progress.md#b6956-recheck-20261119)；单次成功不证明所有时序安全）。
+- [ ] VIRTUAL_CAMERA_BUSY实际触发及操作员人工force-stop后同编号恢复（本次均在6秒内释放，未触发BUSY；产品不执行force-stop）。
+- [x] 保留关联后helper重启免重授CAMERA（b6956单机关联10跨手机及helper重启仍有效，无权限框且读回；[b6956复验记录](progress.md#b6956-recheck-20261119)）。
+
+
+## b6956集成方复验登记（VC26，仅文档）
+
+| 编号 / 波次 | 目标与步骤 | 依赖 / 允许修改与所有权 | 验收 / 提交 / 回滚 |
+| --- | --- | --- | --- |
+| VC26 / 单一汇合 | 逐项记录集成方2026-11-19 b6956现场；同步三种出流拆除与跨手机/helper重启免重授，保留未验状态；同步N60.6及skills镜像，检查append-only和范围 | 70f8ae3与负责人提供的仓库外证据；仅授权文档/本规格状态文件，单一owner，无并行波次；不改spec/代码/测试/脚本/构建，不访问设备或启动模拟器 | 指定PATH后make comments、make verify及范围审查；一个docs(camera)本地提交，不push、不动main；失败只修本轮文档，不用设备操作补证据 |
+
+- [x] VC26 采纳集成方证据：b6956单台真机三种出流拆除路径（close/带开关stop/默认stop）各1次未卡死；关联10及虚拟CAMERA授权跨手机/helper重启保留，无权限框且实际读回；[完整记录](progress.md#b6956-recheck-20261119)。
+- [ ] 两块摄像头屏同时shutdown（本次仅单屏出流拆除）。
+- [ ] 创建失败残留的真机回收路径（本次创建均成功）。
+- [ ] VIRTUAL_CAMERA_BUSY实际触发及人工force-stop后同编号重试（本次均在6秒内释放）；既有高分辨率/steal读回/IME/息屏/第三方/强制断流availability/fixture自动重连/多轮统计和冷启动MCP flaky保持未验。
+- [x] VC26 文档验证：指定Go PATH后make comments与make verify均exit0，12个获准文件范围、progress仅追加、N60.6以外不变及skills镜像一致性审查通过；只做本地docs(camera)提交。
