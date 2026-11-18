@@ -84,3 +84,19 @@ VC8–VC11审查修复按下表顺序实施，当轮不执行VC5。集成方后�
 - [x] VC20 指定模拟器一次完整回归与清理（3e32dc2；关联编号1保留后重启仍1，默认stop移除；ok=true，helper/显示/forward/文件/关联均0，进程退出/ADB为空）。
 - [x] VC21 文档、五项make、本地提交与Gradle退出（最终制品五项均exit0，命令参考/skills镜像同步；本轮提交/文件见progress，未push，Gradle无daemon）。
 - [ ] 保留关联后helper重启的真机CAMERA授权仍有效（本轮无真机，不操作敏感权限）。
+## 安全拆除（VC22–VC25，顺序实施，无设备操作）
+
+| 编号 | 目标与步骤 | 依赖/目录所有权 | 验收/提交/失败处理 |
+| --- | --- | --- | --- |
+| VC22 | 核对本地AOSP、追加现场事实/推断与规格 | 4105965；本规格单一owner，不复制AOSP/证据 | docs(spec)先提交；progress只追加，不执行adb |
+| VC23 | 先失败测试，纯排空时钟/假资源、待释放所有权、共享6秒预算、Main安全退出门 | VC22；android/displayd | JVM顺序/超时/重复/回调解锁/shutdown BUSY测试；fix(displayd)；资源不可丢引用、不kill、不force-stop |
+| VC24 | BUSY常量/透传/retryable/退出码、停止不清理、pending状态Go/MCP schema、预算断言 | VC23；internal/apperr/vdisplay/cli/mcpserver显示相关文件，三份风险门不动 | Go/CLI/MCP单测；feat(display)；无新入口/协议升版 |
+| VC25 | 文档、仅N60.6、五项make、Git审查与Gradle停止 | VC23/24；允许文档/skills参考镜像与规格单一owner | docs(camera)；不push、不动main、不提交二进制/原始证据；设备复验保持未勾选 |
+
+- [x] VC22 事实/源码核对与规格追加。
+- [ ] VC23 安全拆除Java实现与纯逻辑测试。
+- [ ] VC24 Go/CLI/MCP忙碌状态与停止保护。
+- [ ] VC25 文档、五项make、本地提交与Gradle退出。
+- [ ] 负责人重启b6956真机后由集成方验证关闭不卡死。
+- [ ] 操作员人工force-stop后BUSY恢复（产品不执行force-stop）。
+- [ ] 保留关联后helper重启免重授CAMERA。

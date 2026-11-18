@@ -200,3 +200,19 @@
 | 3e32dc2 | `scripts/emulator/verify-virtual-camera.mjs` |
 | a6a2c34 | `internal/vdisplay/association_start_test.go`、`internal/vdisplay/camera.go` |
 | 收口docs(camera) | `.trae/skills/android-device-automation/references/commands.md`、`.trae/specs/virtual-camera/checklist.md`、`.trae/specs/virtual-camera/device-acceptance.md`、`.trae/specs/virtual-camera/progress.md`、`.trae/specs/virtual-camera/spec.md`、`.trae/specs/virtual-camera/tasks.md`、`README.md`、`android/displayd/README.md`、`docs/architecture.md`、`docs/next-phase-tasks.md`、`docs/protocol.md`、`docs/security-distribution.md`、`docs/troubleshooting.md`、`docs/virtual-camera.md`、`docs/virtual-display.md`、`scripts/emulator/README.md`、`skills/android-device-automation/references/commands.md` |
+
+## b6956真机死锁事实与安全拆除开工（2026-11-19）
+
+本节现场由集成方提供，执行于2026-11-18 23:05–23:30 CST（JST次日00:05–00:30），原始证据仓库外，不是本Agent执行。本轮不执行任何设备命令，包括不枚举ADB、不启动模拟器。
+
+- serial324462538298系统已更新：nubia/CN_PQ85A02/PQ85A02:16/BQ2A.251016.001-BP2A.250605.031.A3/b6956:user/release-keys，构建2026-11-16，旧b6416不能代替本轮身份。fixture仍1dc42ad1…，默认CAMERA granted/foreground。aactl为37c8916构建0f768e65018aa8dc62b2b7b0abe55a64eb9f755f53561d483e416dd96cdc0a07；helper a3fefb4871560611cdb10d1af216b3a9b7f1c8b949e890bba6eea56807df17f3。
+- start --virtual-camera新建关联10；create得到屏2、cameraId v1_1000、flags24456。系统权限框在屏2；负责人在对话中明确授权集成方代点，集成方点“使用期间允许”。这不是产品自动授权，也不扩大本Agent权限。随后三次CAMERA:TL=red,TR=green,BL=blue,BR=white；CAMERA_DEVICE:id=0,facing=back,...,display=2,retries=0/3；status为640×480/525帧/available，主屏top focus仍0。
+- 出流中close屏2：23:08:08.889逻辑显示移除，.891 CameraService onDeviceStatusChanged v1_1000 newStatus=0、evicted due to device status change from HAL。fixture主线程卡ICameraDeviceUser.cancelRequest，23:08:13被ANR杀掉；转储cameraserver线程卡HAL repeatingRequestEnd、processCaptureRequest及disconnectImpl锁。CLI close和随后stop --keep-camera-association各10秒后PROTOCOL_ERROR响应头超时；helper一个worker与出帧线程卡Binder，其余请求排队AndroidBackend锁。
+- 集成方留证后对已核验cmdline=aactl-displayd、属主shell的helper执行kill；system_server记录Virtual camera binder died，但virtual_camera未恢复：timeout 8 cmd virtual_camera help退出124，cameraserver残留失效v1_1000、总数6；真实0–4为closed且无client。此为现场历史，不新增任何kill路径。
+- 后续普通虚拟屏3打开fixture：CAMERA:ERROR:OPEN_IllegalStateException:Failed to register a camera service listener:RETRIES=3/3:EXHAUSTED；重试日志addListenerHelper already subscribed。首次失败原因未取得，不能断言真实相机已坏，也不能断言正常。
+- 清理：普通helper默认stop成功，不触碰伴生服务；无helper、显示、forward、工具临时文件；关联10按计划保留。免重授仍未验证；系统相机服务恢复须负责人重启手机。
+
+读源码核对（仅仓库外快照，16_标记android-16.0.0_r1，a17_标记android17-release；没有提交源码副本）：16_main.cc只有setThreadPoolMaxThreadCount(6)和joinThreadPool，无startThreadPool；a17_main.cc有startThreadPool。16_VirtualCameraController.unregisterCamera同步调用服务，CameraDescriptor.binderDied及VirtualDeviceImpl.close也走注销。16_VirtualCameraService/Provider的removeCamera没有先关闭会话而同步通知NOT_PRESENT；q2_Camera3Device.cpp的disconnectImpl持mInterfaceLock且可能join请求线程。这些是读源码结果，不能仅据此认定OEM二进制与上游完全相同。推断：A16该启动路径仅主Binder线程处理，活动会话注销时HAL/cameraserver/应用及帧队列构成跨进程环形等待；helper出流中外部kill/崩溃同样触发Binder死亡注销。此与现场栈相符但不是对OEM内部机制的独立证明；A17源码修正不能视为已回补此A16设备。在线源码打开失败，本轮依据提供的可读快照核对，不声称重新下载验证。
+
+- 我们的旧触发路径经仓库核对：Screen.close先display.release再camera.close，VirtualCameraBackend.close立刻停流并注销，不等待应用onStreamClosed；Main在收到shutdown请求后即使backend失败也会在finally退出。Go只接受固定错误集，wire10秒。按VC22–VC25改为6秒排空门与BUSY，不能声称已修复卡死。
+- Git起点4105965与远端一致，worktree干净，test(adb) CI修复为集成方提交，不改写；main worktree仍f861a61。仅当前分支本地提交，不push、不动main/三份风险门。

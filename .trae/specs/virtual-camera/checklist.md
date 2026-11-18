@@ -52,3 +52,13 @@
 - [x] 模拟器保留→同号复用→默认移除完整一次：编号1→1→1→无，ok=true；最终工具关联/helper/显示/文件/forward均0，模拟器进程退出且ADB为空。
 - [x] 文档、N60.6对应决策、五项make、停止Gradle完成；本地提交范围及最终工作区核对见progress，不push、不动main。
 - [ ] 真机保留关联后helper重启无需重新授权CAMERA（不得用模拟器或同关联重建屏代替）。
+## 安全拆除续修验收
+
+- [ ] display.release后保持出帧，流回调清空才camera→device注销；6秒超时BUSY不注销，重复close可完成。
+- [ ] wait释放流表monitor，回调可执行；两屏shutdown共享6秒等待预算，BUSY不退出。
+- [ ] 待释放屏原编号可诊断/重试、占容量、不作为输入/取帧目标；创建残留保留引用并公开计数。
+- [ ] BUSY端到端透传retryable=true/退出4，stop遇BUSY不删文件/图片/关联，10秒wire预算断言。
+- [ ] 五项make、文档/仅N60.6、无越界diff/二进制、Gradle停止与干净worktree。
+- [ ] b6956真机关闭不死锁复验（负责人重启后集成方执行，本轮无设备）。
+- [ ] 人工force-stop释放相机后的BUSY恢复路径。
+- [ ] 保留关联后重启免重授相机权限。

@@ -56,3 +56,12 @@
 - 审查Java退出路径是否解除关联；没有则不改Java。保留期间设备常驻shell的COMPANION_DEVICE_APP_STREAMING关联及负责人此前授予目标应用的虚拟设备CAMERA授权；归还/转手前用不带开关stop清理，绝不disassociate-all或代授权。
 - 场景：运行/未运行helper、无关联/查询失败、普通模式忽略、默认stop兼容、新建/复用后启动失败均需Go测试；模拟器一次冷启动扩展脚本验证保留编号不变、重启复用、默认stop移除及最终无关联。不用模拟器证明相机授权持久性。
 - 真机“保留关联后helper重启无需重授CAMERA”仅有同关联重建屏的既有旁证，仍未验证。本轮不连接真机；只允许emulator-5554，指定read-only/no-snapshot启动，boot_completed后等45秒，只跑摄像头脚本一次。
+## 摄像头安全拆除（2026-11-19续）
+
+- 目标是活动流存在时不主动注销摄像头、关闭VirtualDevice或完成helper退出。屏先display.release（销毁内容位保留），出帧照常；等待onStreamClosed清空流表后才停止残余线程（不无限join）、VirtualCamera.close、VirtualDevice.close。创建失败也走同一空流检查，意外未释放资源保留所有权。
+- 纯逻辑CameraRelease使用同一流表monitor、可注入单调时钟/等待器/假资源，具名等待上限6000ms；wait期间释放monitor，回调remove后notifyAll。每个请求在进入AndroidBackend锁前记录deadline，shutdown所有屏共享6秒等待预算，避免两屏累计12秒；其它请求仍受既有全局串行锁，读请求可能等待最多该局部排空预算，框架Binder已卡死不在本地计时可保证范围。
+- 超时抛VIRTUAL_CAMERA_BUSY，Go/CLI/MCP retryable=true，CLI退出4。保留原屏记录/编号，cameraInfo.releasePending=true；显示已移除，仅可读诊断及重试close/shutdown，禁止将其当可用输入/取帧目标。仍占两屏容量。status对已移除显示不再读DisplayInfo/电源状态，state=0、groupAwake=null、displayGroupId=-1表示无当前显示组；保留创建时实际flags。
+- 创建失败若意外有流而无法排空，保留内部资源记录，status.pendingCameraReleases公开计数，shutdown可重试释放，不丢失引用触发Binder死亡。
+- shutdown对全部屏及创建残留应用同一流程；任一BUSY则进程不退出、helper文件/关联/图片不清理，成功屏可释放，未完成记录保留。Main仅在backend安全完成shutdown后才允许退出，即使写响应失败也不得把BUSY请求当成功。
+- 保持协议v2和MCP工具数；只新增BUSY错误和可选状态字段。Go单次wire保持具名10秒，覆盖6秒等待及余量；明确透传BUSY而不改成PROTOCOL_ERROR。产品不force-stop应用、不kill helper、不自动重试/重建，外部kill/崩溃无法由本地关闭策略阻止。
+- 文档说明A16出流时kill/崩溃风险、卡死症状与负责人重启恢复；不以本轮单测宣称已修复真机卡死。本轮不执行任何设备命令，不启动模拟器；真机关闭、force-stop后BUSY恢复、保留关联免重授均由负责人重启后集成方另验。
