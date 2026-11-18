@@ -118,3 +118,22 @@ func TestCameraStartFailurePreservesRawErrorClassification(t *testing.T) {
 		t.Fatal("original cause lost", err)
 	}
 }
+
+// 启动回滚若遇到出流BUSY，同样不能用删除新建关联的方式隐式关闭仍活动的虚拟设备。
+func TestCameraFailedStartBusyShutdownRetainsNewAssociation(t *testing.T) {
+	c, base := cameraWire(t, true, func(map[string]any) string { return busyCameraWire })
+	base.state.PID = 0
+	base.state.Bound = false
+	h := &failedAssociationStartHost{stopCleanupHost: &stopCleanupHost{cameraHostFake: base}, created: true, bound: true, startErr: errors.New("start response failed")}
+	c.host = h
+	path := filepath.Join(t.TempDir(), "helper.apk")
+	if err := os.WriteFile(path, []byte("test helper"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := c.StartWithCamera(context.Background(), "SERIAL", path)
+	requireCode(t, err, apperr.CodeVirtualCameraBusy)
+	var app *apperr.Error
+	if !errors.As(err, &app) || !app.Retryable || app.Details["cameraAssociation"].(map[string]any)["action"] != "kept" || h.cleaned != 0 || h.filesRemoved != 0 || h.imagesCleaned != 0 || h.state.PID != 42 {
+		t.Fatal(err, h)
+	}
+}

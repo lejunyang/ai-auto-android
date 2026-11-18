@@ -49,9 +49,12 @@ func cameraStartFailure(cause error, stopped StopResult, stopErr error, associat
 	stopped.KeptCameraAssociation = nil
 	action, message := "kept", "pre-existing camera association left unchanged; use display stop without --keep-camera-association to remove it"
 	if association.Created {
-		action, message = "removed", "new camera association removed"
-		if associationErr != nil {
+		if !stopped.Stopped {
+			message = "new camera association left unchanged because helper has not safely stopped; release the application camera then retry stop. Do not kill the helper"
+		} else if associationErr != nil {
 			action, message = "removeFailed", "new camera association removal failed; inspect details"
+		} else {
+			action, message = "removed", "new camera association removed"
 		}
 	}
 	joined := errors.Join(cause, stopErr, associationErr)
@@ -59,6 +62,10 @@ func cameraStartFailure(cause error, stopped StopResult, stopErr error, associat
 	var original *apperr.Error
 	if errors.As(joined, &original) {
 		code, retryable = original.Code, original.Retryable
+	}
+	var stopFailure *apperr.Error
+	if errors.As(stopErr, &stopFailure) && stopFailure.Code == apperr.CodeVirtualCameraBusy {
+		code, retryable = stopFailure.Code, true
 	}
 	failure := apperr.Wrap(code, "Camera helper start failed; "+message+".", retryable, joined)
 	failure.Details = map[string]any{
@@ -81,6 +88,7 @@ type CameraInfo struct {
 	Streams            []CameraStream `json:"streams"`
 	Availability       string         `json:"availability,omitempty"`
 	AvailabilityReason *string        `json:"availabilityReason,omitempty"`
+	ReleasePending     bool           `json:"releasePending,omitempty"`
 }
 
 // CameraStream 是实际流的渲染诊断，不将注册成功等同于画面读回成功。

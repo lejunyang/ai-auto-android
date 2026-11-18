@@ -46,6 +46,9 @@ func New(host Host) *Client {
 const maxMessage = 16384
 const maxFrame = 16777216
 
+// requestTimeout 必须覆盖CameraRelease的共享6秒排空预算与传输余量，不能用响应超时掩盖BUSY。
+const requestTimeout = 10 * time.Second
+
 // Hello 固定协议版本、能力和预算，客户端不会采信更大的远端上限。
 type Hello struct {
 	ProtocolVersion   int             `json:"protocolVersion"`
@@ -110,11 +113,12 @@ type ScreenStatus struct {
 
 // Status 透传锁定、保活与显示组状态，不把 API 33 的未知值当作唤醒。
 type Status struct {
-	CredentialLocked     bool           `json:"credentialLocked"`
-	Displays             []ScreenStatus `json:"displays"`
-	KeepAwakeIntervalMS  int            `json:"keepAwakeIntervalMs"`
-	LastActivityUptimeMS int64          `json:"lastActivityUptimeMs"`
-	KeepAwakeError       *string        `json:"keepAwakeError"`
+	CredentialLocked      bool           `json:"credentialLocked"`
+	Displays              []ScreenStatus `json:"displays"`
+	KeepAwakeIntervalMS   int            `json:"keepAwakeIntervalMs"`
+	LastActivityUptimeMS  int64          `json:"lastActivityUptimeMs"`
+	KeepAwakeError        *string        `json:"keepAwakeError"`
+	PendingCameraReleases int            `json:"pendingCameraReleases,omitempty"`
 }
 
 // CloseResult 确认被销毁的显示目标。
@@ -168,7 +172,7 @@ func (c *Client) wire(ctx context.Context, port int, method string, fields map[s
 		return nil, apperr.Wrap(apperr.CodeDisplaydNotRunning, "Cannot connect to verified displayd.", true, err)
 	}
 	defer conn.Close()
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(requestTimeout)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
 		deadline = d
 	}
@@ -211,10 +215,11 @@ func (c *Client) wire(ctx context.Context, port int, method string, fields map[s
 		allowed[apperr.CodeVirtualCameraNotEnabled] = true
 		allowed[apperr.CodeVirtualCameraUnavailable] = true
 		allowed[apperr.CodeCameraImageInvalid] = true
+		allowed[apperr.CodeVirtualCameraBusy] = true
 		if !allowed[response.Error.Code] {
 			return nil, protocolError("Unknown displayd error code.")
 		}
-		return nil, apperr.New(response.Error.Code, response.Error.Message, response.Error.Code == "FRAME_NOT_READY", nil)
+		return nil, apperr.New(response.Error.Code, response.Error.Message, response.Error.Code == "FRAME_NOT_READY" || response.Error.Code == apperr.CodeVirtualCameraBusy, nil)
 	}
 	if response.Error != nil || len(response.Result) == 0 || bytes.Equal(response.Result, []byte("null")) || json.Unmarshal(response.Result, out) != nil {
 		return nil, protocolError("Invalid displayd result.")
@@ -368,6 +373,9 @@ func (c *Client) RequireDisplay(ctx context.Context, serial string, id int) erro
 	}
 	for _, screen := range list.Displays {
 		if screen.DisplayID == id {
+			if screen.CameraInfo != nil && screen.CameraInfo.ReleasePending {
+				return apperr.New(apperr.CodeVirtualCameraBusy, "Display is pending camera release; release the application's camera then retry close/stop. Do not kill the helper.", true, nil)
+			}
 			return nil
 		}
 	}
@@ -408,7 +416,7 @@ func (c *Client) Close(ctx context.Context, serial string, id int) (CloseResult,
 func (c *Client) Status(ctx context.Context, serial string) (Status, error) {
 	var r Status
 	_, err := c.call(ctx, serial, "status", nil, &r)
-	if err == nil && (r.Displays == nil || len(r.Displays) > 2 || r.KeepAwakeIntervalMS != 2000 || r.LastActivityUptimeMS < 0) {
+	if err == nil && (r.Displays == nil || r.PendingCameraReleases < 0 || len(r.Displays)+r.PendingCameraReleases > 2 || r.KeepAwakeIntervalMS != 2000 || r.LastActivityUptimeMS < 0) {
 		err = protocolError("Invalid helper status.")
 	}
 	return r, err
@@ -484,7 +492,7 @@ func (c *Client) start(ctx context.Context, serial, helper string, camera bool) 
 					// 先保留关联停止helper，随后只回收本次新建的关联；按启动用户清理，不随前台切换。
 					stopped, stopErr := c.stop(cleanup, serial, true, association.UserID)
 					var associationErr error
-					if association.Created {
+					if association.Created && stopped.Stopped {
 						associationErr = host.CleanupCameraAssociation(cleanup, serial, association.UserID)
 					}
 					returnErr = cameraStartFailure(returnErr, stopped, stopErr, association, associationErr)

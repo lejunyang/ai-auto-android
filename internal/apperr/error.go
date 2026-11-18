@@ -46,6 +46,7 @@ const (
 	CodeDisplayAsleep            = "DISPLAY_ASLEEP"
 	CodeVirtualCameraNotEnabled  = "VIRTUAL_CAMERA_NOT_ENABLED"
 	CodeVirtualCameraUnavailable = "VIRTUAL_CAMERA_UNAVAILABLE"
+	CodeVirtualCameraBusy        = "VIRTUAL_CAMERA_BUSY"
 	CodeCameraImageInvalid       = "CAMERA_IMAGE_INVALID"
 )
 
@@ -127,7 +128,7 @@ func ExitCode(err error) int {
 		return ExitTimeout
 	case CodeCapabilityMissing, CodeVersionMismatch, CodeActionNotAllowed, CodeVirtualCameraNotEnabled, CodeVirtualCameraUnavailable:
 		return ExitUnsupported
-	case CodeActionFailed, CodeSelectorNotFound, CodeSelectorAmbiguous, CodeScriptNotFound:
+	case CodeActionFailed, CodeSelectorNotFound, CodeSelectorAmbiguous, CodeScriptNotFound, CodeVirtualCameraBusy:
 		return ExitDevice
 	default:
 		return ExitInternal
