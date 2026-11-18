@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"image/png"
@@ -91,6 +92,8 @@ type Screenshot struct {
 
 // Hierarchy 保存已验证 UIAutomator XML 及其大小和摘要。
 type Hierarchy struct {
+	// Format 非空时标记带显示编号的窗口列表，与普通活动窗口树区分。
+	Format string `json:"format,omitempty"`
 	XML    string `json:"xml"`
 	Bytes  int    `json:"sizeBytes"`
 	SHA256 string `json:"sha256"`
@@ -104,6 +107,9 @@ type ActionResult struct {
 
 // Screenshot 从明确在线设备读取并完整校验 PNG 截图。
 func (c *Client) Screenshot(ctx context.Context, serial string) (Screenshot, error) {
+	if c.displayID != nil && *c.displayID > 0 {
+		return Screenshot{}, apperr.New(apperr.CodeCapabilityMissing, "Virtual display screenshots require displayd capture.", false, nil)
+	}
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return Screenshot{}, err
 	}
@@ -131,6 +137,14 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return Hierarchy{}, err
 	}
+	if c.displayID != nil {
+		// AOSP Android11/API30 首次解析 --windows；帮助文本未列出它，不能用 help 判能力。
+		sdk, err := c.run(ctx, []string{"-s", serial, "shell", "getprop", "ro.build.version.sdk"}, process.Options{})
+		api, parseErr := strconv.Atoi(strings.TrimSpace(string(sdk.Stdout)))
+		if err != nil || sdk.OutputTruncated || parseErr != nil || api < 30 {
+			return Hierarchy{}, apperr.New(apperr.CodeCapabilityMissing, "Display-window hierarchy requires a readable Android API level of 30+; refusing active-window fallback.", false, nil)
+		}
+	}
 	requestID, err := output.RequestID()
 	if err != nil {
 		return Hierarchy{}, apperr.Wrap(apperr.CodeInternal, "Could not allocate a UI hierarchy path.", false, err)
@@ -142,9 +156,12 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 			"-s", serial, "shell", "rm", "-f", hierarchyRemotePath,
 		}, process.Options{Timeout: 5 * time.Second})
 	}()
-	_, err = c.run(ctx, []string{
-		"-s", serial, "shell", "uiautomator", "dump", hierarchyRemotePath,
-	}, process.Options{Timeout: 20 * time.Second})
+	dumpArgs := []string{"-s", serial, "shell", "uiautomator", "dump"}
+	if c.displayID != nil {
+		dumpArgs = append(dumpArgs, "--windows")
+	}
+	dumpArgs = append(dumpArgs, hierarchyRemotePath)
+	_, err = c.run(ctx, dumpArgs, process.Options{Timeout: 20 * time.Second})
 	if err != nil {
 		return Hierarchy{}, err
 	}
@@ -153,9 +170,15 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 		"-s", serial, "exec-out", "cat", hierarchyRemotePath,
 	}, process.Options{Timeout: 10 * time.Second, MaxOutput: maxHierarchyOutput})
 	if err != nil {
+		// 保留分离stderr的形态；仅匹配本次UUID路径，超时/离线/权限失败及超限不改判。
+		missing := strings.TrimSpace(string(result.Stderr)) == "cat: "+hierarchyRemotePath+": No such file or directory"
+		var appError *apperr.Error
+		if c.displayID != nil && !result.OutputTruncated && len(result.Stdout) <= maxHierarchyOutput && result.ExitCode == 1 && missing && errors.As(err, &appError) && appError.Code == apperr.CodeDeviceUnreachable {
+			return Hierarchy{}, windowsUnavailable(*c.displayID)
+		}
 		return Hierarchy{}, err
 	}
-	if result.OutputTruncated || !validHierarchyXML(result.Stdout) {
+	if result.OutputTruncated || len(result.Stdout) > maxHierarchyOutput {
 		return Hierarchy{}, apperr.New(
 			apperr.CodeActionFailed,
 			"ADB returned an invalid or truncated UI hierarchy.",
@@ -163,8 +186,25 @@ func (c *Client) Hierarchy(ctx context.Context, serial string) (hierarchy Hierar
 			map[string]any{"device": serial},
 		)
 	}
+	// exec-out使用旧exec服务：cat的stderr并入stdout且退出0，不能按shell的退出码判断缺文件。
+	// 仅精确识别本次UUID路径的完整ENOENT诊断；其它文本继续严格XML校验，未指定显示时不改变行为。
+	if c.displayID != nil && result.ExitCode == 0 && strings.TrimSpace(string(result.Stderr)) == "" &&
+		strings.TrimSpace(string(result.Stdout)) == "cat: "+hierarchyRemotePath+": No such file or directory" {
+		return Hierarchy{}, windowsUnavailable(*c.displayID)
+	}
+	format := ""
+	if c.displayID != nil {
+		result.Stdout, err = selectDisplayWindows(result.Stdout, *c.displayID)
+		if err != nil {
+			return Hierarchy{}, err
+		}
+		format = "uiautomator-windows-xml"
+	} else if !validHierarchyXML(result.Stdout) {
+		return Hierarchy{}, apperr.New(apperr.CodeActionFailed, "ADB returned an invalid or truncated UI hierarchy.", true, map[string]any{"device": serial})
+	}
 	sum := sha256.Sum256(result.Stdout)
 	return Hierarchy{
+		Format: format,
 		XML:    string(result.Stdout),
 		Bytes:  len(result.Stdout),
 		SHA256: hex.EncodeToString(sum[:]),
@@ -266,10 +306,49 @@ func (c *Client) Launch(ctx context.Context, serial, packageName, activity strin
 	} else {
 		args = []string{"-s", serial, "shell", "am", "start", "-W", "-n", component}
 	}
+	if c.displayID != nil {
+		args = []string{"-s", serial, "shell", "am", "start", "-W", "--display", strconv.Itoa(*c.displayID)}
+		if activity == "" {
+			var err error
+			component, err = c.resolveDisplayLauncher(ctx, serial, packageName)
+			if err != nil {
+				return ActionResult{}, err
+			}
+		}
+		args = append(args, "-n", component)
+	}
 	if err := c.runAction(ctx, serial, args, process.Options{Timeout: 20 * time.Second}); err != nil {
 		return ActionResult{}, err
 	}
 	return ActionResult{Device: serial, Action: "app.launch"}, nil
+}
+
+// resolveDisplayLauncher 避免虚拟设备上下文中的隐式Intent解析失败；固定--components去掉--brief可能附带的元数据。
+// 不从多行中挑选、拼接或回退，只有单个同包组件才可成为后续显式启动参数。
+func (c *Client) resolveDisplayLauncher(ctx context.Context, serial, packageName string) (string, error) {
+	r, err := c.run(ctx, []string{"-s", serial, "shell", "cmd", "package", "resolve-activity", "--brief", "--components", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", packageName}, process.Options{Timeout: 10 * time.Second, MaxOutput: 1024})
+	failed := func() error {
+		return apperr.New(apperr.CodeActionFailed, "Cannot resolve a single same-package launcher component for the requested display; no activity was started and no primary-display fallback was attempted.", false, map[string]any{"package": packageName, "displayId": *c.displayID})
+	}
+	if err != nil {
+		if r.ExitCode > 0 {
+			return "", failed()
+		}
+		return "", err
+	}
+	if r.OutputTruncated || len(r.Stdout) > 1024 || len(r.Stderr) != 0 {
+		return "", failed()
+	}
+	component := strings.TrimSuffix(string(r.Stdout), "\n")
+	component = strings.TrimSuffix(component, "\r")
+	if strings.ContainsAny(component, "\r\n\t ") || strings.Count(component, "/") != 1 {
+		return "", failed()
+	}
+	validated, err := validateActivity(packageName, component)
+	if err != nil || validated != component {
+		return "", failed()
+	}
+	return component, nil
 }
 
 // Stop 对已校验包执行 force-stop，不接受任意 Shell 片段。
@@ -297,7 +376,11 @@ func (c *Client) inputAction(
 	if err := c.requireOnlineDevice(ctx, serial); err != nil {
 		return ActionResult{}, err
 	}
-	args := append([]string{"-s", serial, "shell", "input"}, inputArgs...)
+	args := []string{"-s", serial, "shell", "input"}
+	if c.displayID != nil {
+		args = append(args, "-d", strconv.Itoa(*c.displayID))
+	}
+	args = append(args, inputArgs...)
 	if err := c.runAction(ctx, serial, args, process.Options{}); err != nil {
 		return ActionResult{}, err
 	}
@@ -326,6 +409,9 @@ func (c *Client) runAction(
 }
 
 func (c *Client) requireOnlineDevice(ctx context.Context, serial string) error {
+	if c.displayID != nil && (*c.displayID < 0 || *c.displayID > 2147483647) {
+		return apperr.New(apperr.CodeDisplayNotFound, "Target must be 0 (primary) or a positive helper-owned virtual display ID.", false, nil)
+	}
 	if err := ValidateSerial(serial); err != nil {
 		return err
 	}

@@ -1,18 +1,22 @@
 # 录制与回放
 
 当前录制是“从 AccessibilityEvent 推断语义动作”，不是触摸屏事件的透明复制。
-脚本适合普通原生表单和稳定控件，不适合游戏、自绘 Canvas、高度动态列表或需要
-原始轨迹的手势。
+自动录制适合普通原生表单和稳定控件；游戏、自绘 Canvas、高度动态列表可能缺少
+语义事件。编辑器可补显式视觉步骤，但回放还需当前运行的新鲜授权与后置验证，
+不能把保存坐标视为长期授权。
 
 ## 使用前提
 
 - Android 11 / API 30 及以上；
 - 用户已在 App 内接受无障碍醒目披露；
 - 已配置一个或多个目标包，并在系统设置中手动启用无障碍服务；
-- 录制开始时再次填写目标包；其他包的事件会被忽略；
+- 录制开始时再次选择目标应用；其他包的事件会被忽略；
 - 回放时目标应用必须位于允许列表且保持前台。
 
-脚本只能在 Android App 中创建、编辑名称、删除和选择。电脑端可以列出脱敏摘要，
+Android App 可创建、复制、编辑步骤/名称/说明、重排/启停、Undo/Redo、dry-run、
+保存和删除脚本；能力见 [N41 接线规格](../.trae/specs/n41-authorized-editor-production/spec.md)。
+截图点选要求调用方显式注入短生命周期 observation，普通入口默认不显示截图 surface。
+电脑端可以列出脱敏摘要，
 再由人工按 UUID 回放，但不能读取步骤、变量或 secret：
 
 ```bash
@@ -44,24 +48,25 @@ Back、Home、Recents 由 App 的 Accessibility 执行器成功提交后，会�
 
 ## 脚本模型
 
-脚本使用 schema `1.0`，核心结构为：
+脚本使用 schema `1.1`，核心结构为：
 
 ```text
 AutomationScript
-  id, schemaVersion, name, targetPackages, createdAt
+  id, schemaVersion, revision, name, description, targetPackages, createdAt, updatedAt, provenance
   requirements, environment?, variables[], steps[]
 
 RecordedStep
-  id, recordedAtMs, action, waitAfter?, retry, failurePolicy
+  id, recordedAtMs, provenance, enabled, action, visualTarget?, notes?, waitBefore?, waitAfter?, retry, failurePolicy
 ```
 
 默认要求 `minApiLevel: 30`、`accessibility.snapshot` 和
 `accessibility.action`。每个脚本最多 32 个目标包、10,000 个步骤；名称最多
 128 字符。
 
-脚本以 JSON 存在 App 私有目录 `filesDir/recordings`，使用临时文件加替换写入。
+脚本以 JSON 存在 App 私有目录 `filesDir/recordings`，使用文件锁、revision 乐观锁、
+临时文件、备份与原子替换，冲突不会覆盖较新版本。
 App 禁用 Android 备份和设备迁移数据提取。读取时支持从内部旧格式 `0.9` 或无
-版本格式迁移到 `1.0`；其他未知版本明确失败。
+版本格式，以及 `1.0` 迁移到 `1.1`；未知版本明确失败。
 
 ## 事件归并
 
@@ -104,10 +109,13 @@ App 禁用 Android 备份和设备迁移数据提取。读取时支持从内部�
   -> 屏幕归一化坐标
 ```
 
-歧义选择器不会进入坐标回退。更严格的是，当前回放引擎会在执行语义动作前先做
+歧义选择器不会进入坐标回退。当前回放引擎会在执行语义动作前先做
 一次选择器预检；低于阈值或歧义会立即以 `SELECTOR_LOW_CONFIDENCE` 或
 `SELECTOR_AMBIGUOUS` 失败。因此录制脚本当前不会在语义预检失败后自动使用保存
-的坐标。报告中的 `route` 是实际成功执行的路由，不应预期每种回退都可达。
+的坐标。显式 visual/coordinate/manual 来源的 tap、long-click、swipe 另走 N45
+视觉路径，并由 [fresh rebind](../.trae/specs/n47-recording-visual-rebind/spec.md)
+绑定本轮 run/script/revision/step、目标、屏幕和新观察；缺端口或授权时失败关闭，
+不会回落到旧像素。报告中的 `route` 是实际成功执行的路由。
 
 ## Secret
 
@@ -141,8 +149,9 @@ App 回放详情页要求用户为每个引用临时输入值；值只存在当�
 - Bridge Android 实现拒绝 `recording.replay` 的 `variables` 参数；
 - Bridge 回放使用的 `SecretResolver` 固定返回 `null`。
 
-所以含 `secretRef` 的脚本只能从 App 详情页回放；通过 CLI/MCP 回放会以单步
-`SECRET_REQUIRED` 失败。不要把密码、验证码或 token 改成字面量写入脚本，也
+所以含 `secretRef` 的脚本只能从 App 详情页回放；CLI 回放会以单步 `SECRET_REQUIRED`
+失败，MCP 回放工具则在执行前统一返回 `CONFIRMATION_REQUIRED`。不要把密码、验证码
+或 token 改成字面量写入脚本，也
 不要通过直接 ADB 文本命令绕过。
 
 ## 回放报告
@@ -177,7 +186,8 @@ steps[]:
 - UI 树最多复制 64 层、4,000 个节点；Bridge 输出还会按请求深度 1..100
   截断展示，底层快照的 64 层上限不会因此提高。
 - `FLAG_SECURE`、系统保护页面和不可访问窗口可能为空或缺少内容；不得绕过。
-- 脚本只检查 schema 版本和局部约束，没有导入任意外部脚本的 UI。
+- Store/编辑器领域层已有严格导入、脱敏导出与预览；当前 Compose 页面没有外部文件
+  导入导出入口。不能把领域 API 当成用户已可操作的 UI。
 - 电脑端 `recording list` 只返回脱敏摘要，不能读取或编辑脚本步骤、变量和 secret。
 
 ## 隐私操作

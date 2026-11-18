@@ -13,7 +13,7 @@ aactl devices list --json
 
 `version` 不需要 ADB。`doctor` 检查：
 
-- ADB 可执行文件及版本；
+- 实际 ADB 路径 `adbPath`、来源 `adbSource`（explicit / bundled / path / sdk）及版本；
 - `adb server-status` 是否可读取；
 - 本机 loopback `127.0.0.1:5037` 是否有 ADB server；
 - `adb mdns check` 是否通过。
@@ -30,12 +30,17 @@ aactl devices list --json
 `aactl` 按以下顺序查找：
 
 1. `AACTL_ADB_PATH`；
-2. `PATH` 中的 `adb` / `adb.exe`；
-3. `ANDROID_HOME/platform-tools`；
-4. `ANDROID_SDK_ROOT/platform-tools`；
-5. 默认 SDK 目录：
+2. 解析 CLI 可执行文件符号链接后，其同目录的 `platform-tools/adb[.exe]`；
+3. `PATH` 中的 `adb` / `adb.exe`；
+4. `ANDROID_HOME/platform-tools`；
+5. `ANDROID_SDK_ROOT/platform-tools`；
+6. 默认 SDK 目录：
    - macOS：`~/Library/Android/sdk/platform-tools/adb`
    - Windows：`%USERPROFILE%\AppData\Local\Android\Sdk\platform-tools\adb.exe`
+   - Linux：`~/Android/Sdk/platform-tools/adb`
+
+工作目录不参与随包查找，切换目录不会使 CLI 使用那里放置的 ADB。
+精简包没有 `platform-tools/`，未安装 ADB 时可换用完整包，或按下面的方式配置。
 
 macOS 当前终端临时指定：
 
@@ -51,8 +56,30 @@ $env:AACTL_ADB_PATH = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 aactl doctor --json
 ```
 
-路径必须指向文件；macOS 上还必须有可执行权限。不要从非官方镜像下载单独的
+路径必须指向常规文件；macOS/Linux 上还必须有可执行权限。不要从非官方镜像下载单独的
 ADB 二进制。
+
+## 随包 ADB 损坏
+
+完整包的候选文件存在但为目录、断开的符号链接或没有执行权限时，CLI 返回含
+`bundled ADB` 的 `ADB_NOT_FOUND`，不会继续使用 PATH 中另一版本的 ADB。
+重新核对归档的 SHA256SUMS，再整体解压；Windows 同时检查 `AdbWinApi.dll` 与
+`AdbWinUsbApi.dll` 是否被移动/删除，缺 DLL 的启动错误也需重新解压恢复。
+需要临时覆盖时，显式设置 `AACTL_ADB_PATH` 指向已核实的官方 ADB，再查看 doctor
+是否显示 `adbSource=explicit` 与预期路径。macOS 公证/隔离属性尚未验收，遇到系统拦截
+应按操作系统提供的正常审查流程处理，不把更改系统安全设置作为自动修复。
+
+## ADB 版本冲突
+
+电脑已有另一版本 ADB 服务时，Android Studio、其它工具和随包 ADB 交替使用，会
+互相重启共享的 ADB 服务、打断连接，可能出现 server/client version mismatch 或设备
+短暂离线。先查看各工具的 ADB 路径/版本以及 `aactl doctor --json` 的 `adbPath`、
+`adbSource`，再选一种固定方式：
+
+- 设置 `AACTL_ADB_PATH`，让 aactl 与其它工具使用同一个官方 ADB。
+- 改用精简包，并让 PATH/SDK 指向现有工具共用的官方 ADB。
+
+doctor 不会主动执行 kill-server；不要在未知设备状态下反复切换版本或重试动作。
 
 ## USB
 
@@ -208,7 +235,7 @@ aactl devices connect HOST:PORT --json
 
 1. 已接受无障碍披露并配置目标包；
 2. 已在 Android 系统设置中手动启用本 App 的无障碍服务；
-3. App 的“桌面桥”页面已开启并显示未过期的一次性码；
+3. “我的 → 连接电脑”中的桌面桥已开启并显示未过期的一次性码；
 4. App 进程仍存活；当前 Bridge 不是独立的持久前台服务。
 
 然后：
@@ -290,6 +317,8 @@ aactl bridge snapshot --device SERIAL \
 
 直接文本只接受最多 10,000 字节的非敏感 ASCII 字母、数字、空格和
 `@._+-,:/`。中文、换行、密码和验证码不能通过直接文本命令输入。
+非敏感 Unicode 文本可用 CLI `bridge set-text` 或 MCP `android_bridge_set_text`，
+先建立 Bridge 并指定语义定位字段；不要放宽直连字符白名单。
 
 ## 录制
 
@@ -325,6 +354,45 @@ aactl bridge snapshot --device SERIAL \
 | `PERMISSION_DENIED` | 修正披露、目标包或人工授权 |
 | `SELECTOR_AMBIGUOUS` | 停止并人工接管 |
 | `DEADLINE_EXCEEDED` | 先观察和核对结果，再判断是否重试 |
+| `VIRTUAL_CAMERA_NOT_ENABLED` | 操作员 stop 后以 --virtual-camera 重启；旧 helper 需更新，普通屏须用 --camera back 新建 |
+| `VIRTUAL_CAMERA_UNAVAILABLE` | 保留 API/异常原因；API35+仍可能缺少服务或 GL_EXT_YUV_target，勿回退真实摄像头 |
+| `VIRTUAL_CAMERA_BUSY` | retryable=true、CLI退出4；先由操作员让目标应用释放相机，再显式重试close/stop；不要kill helper，不删除关联 |
+| `CAMERA_IMAGE_INVALID` | 本机 PNG/JPEG ≤8MiB、宽高各≤4096；检查读取失败，不重复上传未知文件 |
+
+摄像头虚拟屏空屏可能返回DISPLAY_EMPTY/FRAME_NOT_READY，注册与imageSet:true不等于读回。
+集成方已验NX888J/API36的isolated/fixture/640×480读回与33分钟单流；其它分辨率、steal读回、
+IME/息屏仍待验，见[虚拟摄像头](virtual-camera.md)和[验收说明](../.trae/specs/virtual-camera/device-acceptance.md)。
+
+该机稳定使用需要用户在**默认设备和虚拟设备两处**授权CAMERA。仅虚拟授权曾出现
+restricted断流且Uid mode CAMERA:ignore；负责人在系统设置补默认授权后foreground，
+33分钟/主屏切13次应用未断。后续权限复查按默认设备判定只是推断，未证明内部机制；
+产品不代授权。已有权限保持，勿用pm grant、appops或自动点授权框绕过。
+
+默认stop/start新建关联时（本机7→8→9）虚拟CAMERA须负责人重授；同关联close/create无需重授。
+操作员可用`aactl display stop --device SERIAL --keep-camera-association`保留关联，下次start复用。
+匹配到才返回keptCameraAssociation的userId/id，无关联省略，查询失败分类可见且不阻断文件/图片清理。
+普通模式运行helper忽略开关、不查伴生关联；归还/转手前用不带开关的`display stop --device SERIAL`
+移除（无helper也可；若普通helper在运行，先停它，再执行默认stop）。只读核对：
+`adb -s SERIAL shell cmd companiondevice list USER_ID`，仅com.android.shell+00:00:00:00:00:10。
+保留期间常驻shell的COMPANION_DEVICE_APP_STREAMING关联及用户此前授予目标应用的虚拟CAMERA授权；
+不disassociate-all、不代授权/点框。2026-11-19集成方已在b6956单机验证：关联10及虚拟CAMERA授权跨手机重启保留，helper复用10及带开关stop后的再次start均无权限框且实际读回；不保证其它ROM/新关联继承。
+启动失败只删本次新建关联，既有/崩溃遗留改为保留；错误详情会说明，可用默认stop显式移除。
+
+禁止设备端`dumpsys media.camera | head`或提前关管道，本机曾导致虚拟服务死亡，甚至
+真实0–4移除后重加。完整取回主机文件后再过滤。若旧cameraId仍在但stream error/EGL失败，
+或cameraInfo.availability为unavailable，先保存完整证据；系统仍响应且安全释放后才重建。
+遇BUSY先让应用释放相机；virtual_camera help超时或cameraserver残留失效虚拟相机时停止重建尝试，
+由负责人重启手机恢复，产品不自动重试/重建/重启。available只表示监视未观察失败，不保证注册/权限/读回。
+集成方在屏67正常关闭/重开两轮均available、reason=null且读回正确；restricted强制断流
+是否误报仍未验。新版fixture的横/竖图、文本可见和4:3预览已验，自动重连真机仍未验。
+
+显示定向按包名启动现在先严格解析同包单个launcher再显式启动；解析异常停止，不回退主屏。
+close销毁Activity后，系统最近任务可能仍有该Task；本工具不自动清理，由负责人决定是否处理。
+
+模拟器四项已有集成方冷启动记录，其中MCP为2/3通过、1次startHelper超时；两次通过
+各64次工具调用，三轮清理均全0。boot_completed后约34秒开跑的失败与等待45秒的通过
+只有3个样本，等待时间归因未证实，不放宽判据；稳定等待规则/多轮统计待补。每份脚本
+结束会关闭模拟器，连续运行须逐项重启，详见[验收与失败记录](virtual-camera.md#integrator-recheck-20261115)。
 
 ## 官方参考
 
@@ -332,3 +400,21 @@ aactl bridge snapshot --device SERIAL \
 - [在硬件设备上运行应用](https://developer.android.com/studio/run/device)
 - [安装 OEM USB 驱动程序](https://developer.android.com/studio/run/oem-usb)
 - [SDK Platform-Tools 版本说明](https://developer.android.com/tools/releases/platform-tools)
+
+## 摄像头屏关闭BUSY与系统卡死
+
+已改拆除顺序：先display.release销毁Activity，保持出帧并等待所有onStreamClosed，
+共享6秒等待预算内流空才VirtualCamera.close→VirtualDevice.close；超时保留资源/进程并报BUSY。
+list/status的cameraInfo.releasePending=true表示待释放，原编号只供诊断和重试close，仍占容量；
+不再向该编号输入/启动/取帧。status中的state=0、组=-1、groupAwake=null表示无当前显示组，
+pendingCameraReleases表示创建失败但仍保留引用的残留数，用stop/shutdown重试。Go stop收到BUSY
+不清文件/图片/关联，启动回滚也不以删除新建关联来关闭仍活动设备。产品不force-stop应用。
+
+**出流期间禁止kill helper，崩溃也可能在A16触发Binder死亡注销并卡住系统virtual_camera。**
+负责人若授权操作员，可人工让应用退出相机或`am force-stop <pkg>`后再重试；Agent不代做，
+不可将kill helper当恢复方式。2026-11-18 b6956现场在kill已核验helper后仍help超时124，
+cameraserver残留v1_1000、总相机6；只能交负责人重启手机。真实0–4当时closed且无client，
+普通屏fixture重试耗尽而首次失败原因未知，不能断言真实相机已坏或正常。
+
+2026-11-19负责人自行重启后，集成方在b6956单机以70f8ae3构建复验：出流close成功756ms（CLI计时864ms），带开关stop成功2183ms，默认stop成功2282ms，三种路径各1次未卡死、无ANR，相机均恢复5且virtual_camera可响应；关联10及虚拟CAMERA授权跨手机/helper重启保留，无新权限框且读回。最终默认stop已移除关联10（列表为空，Max ID:10不是残留关联）。
+BUSY实际触发及人工force-stop后同编号恢复、两屏同时shutdown和创建失败残留仍未验证：本次应用均在6秒内释放。单次成功不证明A16所有时序安全；出流不可kill的警告不变。完整证据摘要见[本规格记录](../.trae/specs/virtual-camera/progress.md#b6956-recheck-20261119)。

@@ -34,6 +34,20 @@ const (
 	CodeScriptNotFound    = "SCRIPT_NOT_FOUND"
 	CodeProtocol          = "PROTOCOL_ERROR"
 	CodeInternal          = "INTERNAL_ERROR"
+	// 虚拟屏错误保持独立，调用方不得据此转向主屏重试。
+	CodeDisplayNotFound          = "DISPLAY_NOT_FOUND"
+	CodeDisplayEmpty             = "DISPLAY_EMPTY"
+	CodeWindowsUnavailable       = "WINDOWS_UNAVAILABLE"
+	CodeDisplaydNotRunning       = "DISPLAYD_NOT_RUNNING"
+	CodeDisplaydIdentity         = "DISPLAYD_IDENTITY_MISMATCH"
+	CodeDisplaydHelperMissing    = "DISPLAYD_HELPER_MISSING"
+	CodeUnsupportedAPI           = "UNSUPPORTED_API"
+	CodeDeviceLocked             = "DEVICE_LOCKED"
+	CodeDisplayAsleep            = "DISPLAY_ASLEEP"
+	CodeVirtualCameraNotEnabled  = "VIRTUAL_CAMERA_NOT_ENABLED"
+	CodeVirtualCameraUnavailable = "VIRTUAL_CAMERA_UNAVAILABLE"
+	CodeVirtualCameraBusy        = "VIRTUAL_CAMERA_BUSY"
+	CodeCameraImageInvalid       = "CAMERA_IMAGE_INVALID"
 )
 
 // ExitSuccess 等常量定义 aactl 对脚本和 Agent 稳定公开的进程退出码。
@@ -104,7 +118,7 @@ func ExitCode(err error) int {
 		return ExitInternal
 	}
 	switch appError.Code {
-	case CodeInvalidArgument, CodeMessageTooLarge, CodeRequestReplayed:
+	case CodeInvalidArgument, CodeMessageTooLarge, CodeRequestReplayed, CodeCameraImageInvalid:
 		return ExitArgument
 	case CodeADBUnauthorized, CodeAuthRequired, CodeAuthInvalid, CodeAuthExpired, CodePermissionDenied:
 		return ExitAuth
@@ -112,9 +126,9 @@ func ExitCode(err error) int {
 		return ExitDevice
 	case CodeDeadlineExceeded:
 		return ExitTimeout
-	case CodeCapabilityMissing, CodeVersionMismatch, CodeActionNotAllowed:
+	case CodeCapabilityMissing, CodeVersionMismatch, CodeActionNotAllowed, CodeVirtualCameraNotEnabled, CodeVirtualCameraUnavailable:
 		return ExitUnsupported
-	case CodeActionFailed, CodeSelectorNotFound, CodeSelectorAmbiguous, CodeScriptNotFound:
+	case CodeActionFailed, CodeSelectorNotFound, CodeSelectorAmbiguous, CodeScriptNotFound, CodeVirtualCameraBusy:
 		return ExitDevice
 	default:
 		return ExitInternal

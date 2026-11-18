@@ -1,5 +1,16 @@
 # 观察能力扩展：三侧对齐、录屏、扫码与证书拦截
 
+> **现状更正（2026-11-14，基线 `984ee31`）**
+>
+> 本文为历史实测/评审记录，以下正文保留当时结论；本次仅核查仓库与后续证据，未操作设备。
+>
+> - 文中的“工具数 8”是当轮计数；本轮基线 `ToolNames` 已为 16。等待/断言与长按/滚动均有 MCP 出口，见 `internal/mcpserver/server.go`、`risk.go`。
+> - Unicode 输入已由 `bridge set-text` / `android_bridge_set_text` 交付；“写 secure settings 后是否绑定”和桥侧 foreground 未实测由[后续判据记录](interface-predicates-and-bridge.md)闭合，测试预置代码也已存在。
+> - 本记录中的 watch flaky 已由后续工作调整并保留 `TestWatchDevicesReportsInitialAndChangedMDNSEvents`；原失败是当时结果，不表示当前仍失败。
+> - videofile/webcam 的后续取证见[通道盘点](camera-channels-and-text-input.md)、[webcam 实测](mcp-text-input-and-webcam.md)及[摄像头结论](camera-virtual-stacks.md)；不得再将 OBS 安装视为待确认的可行解。
+>
+> 逐条核查依据见[审计进度](../.trae/specs/docs-stale-audit/progress.md)。
+
 本文记录为模拟器 UI 自动化新增的观察能力、三侧对齐结果，以及扫码与证书拦截两项的
 实测结论。前置事实见 `emulator-ui-automation.md`，本文不重复其内容。
 

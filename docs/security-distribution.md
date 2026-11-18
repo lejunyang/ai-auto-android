@@ -1,7 +1,53 @@
 # 安全与分发
 
 本文是工程安全基线，不是法律意见，也不构成 Google Play 审核保证。政策结论按
-2026-07-18 可访问的官方文档整理；发布前必须重新核对最新全文。
+2026-07-18 可访问的官方文档整理；随包供应链节另记本次核对日期。发布前必须重新核对最新全文。
+
+## 随包二进制供应链与许可
+
+默认完整包附带官方 Platform-Tools 的 **ADB 运行子集**，精简包不带 ADB；两者都有
+同次源码构建的 CLI 与 `aactl-displayd.apk`。App debug APK 独立发布，所有八归档和
+App APK 均列入 SHA256SUMS，不再额外发布裸 CLI。
+
+Platform-Tools 固定在 [osdk.toml](../osdk.toml) 的 `37.0.1`，供应链记录见
+[固定清单](../scripts/platform-tools.lock.json)。清单于 2026-11-14 从 Google
+[repository2-3.xml](https://dl.google.com/android/repository/repository2-3.xml) 的稳定
+`platform-tools` 包获取系统、版本、归档名、字节数和 SHA-1；先核对实际下载的大小与
+官方 SHA-1，再计算并固定 SHA-256。完整取值和下载核对过程见
+[发布规格进展](../.trae/specs/release-bundles/progress.md)。这些摘要提供固定和一致性校验，
+不等同于独立的发布签名或第三方审计。
+
+发布器只允许 `https://dl.google.com/android/repository/` 的 HTTPS 下载，并拒绝离开该
+官方目录的重定向。每次使用缓存也重新核对大小、SHA-1、SHA-256；三个系统均通过才
+提取。解包前逐条验证归档路径和类型，拒绝绝对路径、`..`、符号链接、非常规条目和重复
+路径，只读取固定白名单：ADB、Windows 的 `AdbWinApi.dll` / `AdbWinUsbApi.dll`，以及
+原样附带的 `platform-tools/NOTICE.txt`。macOS 两架构共用官方通用 ADB。其它工具、
+压缩包、缓存均不进发布包或 Git；本项目不承诺包含完整 Android SDK。
+
+完整包下载或使用缓存之前，发布者必须先阅读
+[Android SDK 许可条款](https://developer.android.com/studio/terms)，再显式设置：
+
+```bash
+AACTL_ACCEPT_ANDROID_SDK_LICENSE=android-sdk-license make release VERSION=0.1.0
+```
+
+CI 显式设置同一变量，与安装工具链的 `accept-license=android-sdk-license` 一致；
+`--yes`、缓存已存在或运行测试都不能替代此同意。只生成精简包可设置 `BUNDLES=slim`，
+不获取/读取官方归档；Go 与 Gradle 强制离线，工具链和依赖须预先准备。
+输出在专属 staging 完成后整体发布，失败清理 staging 与未验证下载；已有输出目录
+不会被覆盖。归档固定顺序、权限和 `SOURCE_DATE_EPOCH`（默认提交时间），ZIP 的 DOS
+时间精度为两秒；这不等于承诺 Go/Android 上游构建的所有输入均逐字节可复现。
+
+**再分发官方二进制受 Android SDK 许可条款约束。** 负责人已知悉该风险并决定提供
+完整包；发布者仍应自行评估适用条款与再分发风险，附带 NOTICE 或设置环境变量不构成
+对再分发权利的法律认定。本文不是法律意见，也不替负责人作法律判断。
+仓库当前没有 LICENSE，本任务未选择许可证或添加自拟许可文本；项目自身许可证待
+负责人决定，已登记到路线图 N60.2 后续项。
+
+完整包优先使用随包 ADB；机器上不同版本的 ADB 交替使用可能互相重启共享服务并打断
+连接。用 `AACTL_ADB_PATH` 指向同一官方 ADB，或改用精简包；参见
+[排障说明](troubleshooting.md#adb-版本冲突)。本轮只在 Windows 实际运行包，macOS/Linux
+只有结构与摘要检查，尚无对应系统上的运行、公证或隔离属性结论。
 
 ## 安全模型
 
@@ -22,7 +68,7 @@
 | Provider 输出 | 严格 JSON、动作白名单、未知字段拒绝、一次只执行一个动作 |
 | 风险动作 | 支付、安装、授权、系统设置等阻断；发送、提交、删除等要求当次确认 |
 | API Key | Android Keystore 中不可导出的 AES-256/GCM 密钥加密后写入 SharedPreferences |
-| UI 数据 | 密码和敏感节点清除文本/内容描述；Provider 只接收有界语义摘要 |
+| UI 数据 | 密码和敏感节点清除文本/内容描述；Provider 默认接收有界语义摘要，显式截图授权后还可接收最小 PNG 和 observation 元数据（N44/N45） |
 | 本地数据 | App 关闭备份和设备迁移提取；截图文件按当前用户读写权限创建 |
 
 App 清单设置 `android:usesCleartextTraffic="false"`，无障碍元数据明确为
@@ -37,9 +83,10 @@ App 清单设置 `android:usesCleartextTraffic="false"`，无障碍元数据明�
   包名、选择器和界面文本仍可能敏感。
 - App 回放 secret 在当前详情页和本次调用内存中存在；电脑端不支持传入 secret。
 - UIAutomator XML 没有 App 端敏感节点脱敏；截图可能包含通知、键盘建议和浮层。
-- Provider 是用户配置的外部数据处理方。语义摘要会发送到其 Base URL，使用者
+- Provider 是用户配置的外部数据处理方。语义摘要及显式授权的最小截图会发送到其 Base URL，使用者
   必须评估其隐私政策、数据驻留、日志和保留策略。
-- AI 会话 audit 只是在内存状态中保留最近 100 条阶段消息，不是持久化合规审计。
+- AI 会话 audit 在内存状态中保留最近 100 条阶段消息；N56 另有有界会话历史持久化，
+  任务标题固定为“自动化任务”，不保存原始任务文本。两者均不构成持久化合规审计。
 - 本项目不绕过 `FLAG_SECURE`，保护页面为空或不可访问时应失败。
 
 ## 操作禁区
@@ -189,6 +236,23 @@ make release VERSION=0.1.0
 参见官方 [apksigner 文档](https://developer.android.com/tools/apksigner)。
 
 ## Secret 与日志清单
+
+虚拟摄像头必须由操作员显式 `display start --virtual-camera` 启用。伴生关联只使用
+固定shell包与标记MAC；默认停止精确移除，显式CLI stop --keep-camera-association可保留，
+不影响其它关联。启动失败只移除本次新建关联，既有/崩溃遗留原样保留，需默认stop显式移除。
+保留期间常驻shell的COMPANION_DEVICE_APP_STREAMING关联及用户此前授予目标应用的
+虚拟CAMERA授权，归还/转手前执行不带开关stop（无helper也可）；绝不disassociate-all。
+2026-11-19集成方在b6956单台真机验证关联10及虚拟CAMERA授权跨手机/helper重启保留，
+无新权限框且实际读回；不保证其它ROM或新关联继承，MCP没有此入口。
+BUSY表示尚有活动相机流，helper/文件/图片/关联全部保留，启动失败回滚也不得删除新建关联
+来间接注销活动设备；必须先让应用释放相机，由操作员决定是否手动force-stop，产品不执行。
+出流时禁止kill helper，崩溃/外部终止可能使A16系统virtual_camera卡死，需负责人重启恢复。
+该机70f8ae3构建的close/带开关stop/默认stop三种出流拆除路径各1次未卡死，不代表全部时序安全；
+BUSY实际触发/人工释放后恢复、两屏同时shutdown及创建失败残留仍待验。图片只通过CLI
+提供主机普通PNG/JPEG，8MiB/4096上限、随机UUID临时路径、拒绝符号链接和失败清理；
+不增加模型主机文件入口。helper不授予应用CAMERA，也不自动点权限框；虚拟设备上
+的相机授权由用户单独完成。fixture相机页只在测试应用中，生产App/Bridge不增加入口。
+三档配置和注册不代表真实画面已验收，分发时应保留[虚拟摄像头限制](virtual-camera.md)。
 
 不得进入 Git、命令参数、聊天、发布日志或工单：
 

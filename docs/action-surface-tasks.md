@@ -8,10 +8,11 @@
 
 ## 1. 目标
 
-当前动作面底层只有两类原语：`NodeAction`（CLICK / LONG_CLICK / SET_TEXT / 六向
-SCROLL）与 `Gesture`（Tap / Swipe）。`protocol/schema/v1/action.schema.json` 的
-`oneOf` 仅 14 项。三条通道封闭且一致，但真实 App 场景（弹窗、输入法、拖拽排序、
-缩放、长列表定位、文本编辑）无法表达。
+立项时动作面底层只有 `NodeAction`（CLICK / LONG_CLICK / SET_TEXT / 六向 SCROLL）
+与 `Gesture`（Tap / Swipe）两类原语，Schema 的 `oneOf` 为 14 项。此处描述立项
+背景；2026-11-14 基线 `984ee31` 的 Schema 已有 46 种动作，支持范围仍按具体入口
+区分。当前实现与设备证据见下表，后续交付见 `ime-show-focus`、
+`mcp-file-and-ime-show`、`selector-consistency-c12-c10` 等独立规格。
 
 本批把 17 项缺失能力补齐为**三层贯通**的产品能力：
 
@@ -26,13 +27,19 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 状态取值：`未开始` / `进行中` / `已实现未验证` / `已交付` / `未完成`。
 只有三层实现 + 定向测试 + 模拟器实测证据齐备才能记 `已交付`。
 
+2026-11-14 核对：下表原批次的设备证据不代表每种动作都已开放到 MCP；MCP 当前仅
+允许直连风险门中的动作及 `android_bridge_action` 的 click/longClick/scrollIntoView/
+nodeAction 子集，另有专用输入、聚焦、文件和 scroll-until 工具。多指、文本选择、
+复制/剪切/粘贴与全局动作虽有 Bridge 实现及设备证据，仍不能推定 MCP 全面可调用。
+出口依据为 `internal/mcpserver/{risk,bridge_action,server}.go`，不能只看本表“已交付”。
+
 ### P0（真实 App 会直接卡死）
 
 | 编号 | 能力 | 状态 | 验证 API | 证据 |
 | --- | --- | --- | --- | --- |
 | A1 | 多窗口模型（`service.windows` 遍历） | 已交付 | 30 / 33 / 34 / 35 | E1 |
 | A2 | `drag`（按住—停顿—移动） | 已交付（桥侧+直连） | 30 / 33 / 34 / 35 | E2、E5 |
-| A3 | `scrollIntoView` / `scrollUntil` | 已交付 | 30 / 33 / 34 / 35 | E10 |
+| A3 | `scrollIntoView` / `scrollUntil` | `scrollIntoView` 已有设备证据；判据型 `scrollUntil` 后续已实现 CLI/MCP，设备长列表验收待补 | 30 / 33 / 34 / 35（scrollIntoView） | E10；[C10](../.trae/specs/selector-consistency-c12-c10/tasks.md)、`841b7a9` |
 | A4 | Bridge 侧 `pressKey` | 部分实现 | — | 仅 MOVE_HOME/MOVE_END 可走无障碍，其余键需 ADB；无设备证据 |
 
 ### P1
@@ -46,15 +53,15 @@ protocol schema  →  Android（models / router / backend / bridge parser / capa
 | A9 | 节点动作补齐（8 项） | 部分已交付：EXPAND / COLLAPSE / SET_PROGRESS / FOCUS / SELECT / CLEAR_SELECTION / DISMISS / SCROLL_TO_POSITION 可用；仅 CLEAR_FOCUS 被平台拒绝 | 30 / 33 / 34 / 35 | E8、E9、E20、E22 |
 | A10 | 全局动作补齐（5 项） | 已交付 | 30 / 33 / 34 / 35 | E23 |
 | A11 | 设备状态动作 | 已交付 | 30 / 33 / 34 / 35 | E11 |
-| A12 | IME 控制 | 部分已交付：枚举/切换/收起键盘已验证；显示键盘未实现 | 30 / 33 / 34 / 35 | E12 |
+| A12 | IME 控制 | 部分已交付：枚举/切换/收起已验证；`ime.show` 后续按聚焦语义实现并有 CLI/MCP 出口，键盘可见性不保证，设备聚焦验收仍待补 | 30 / 33 / 34 / 35（仅枚举/切换/收起） | E12；[聚焦规格](../.trae/specs/ime-show-focus/checklist.md)、`008cf40` |
 
 ### P2
 
 | 编号 | 能力 | 状态 | 验证 API | 证据 |
 | --- | --- | --- | --- | --- |
-| A13 | 剪贴板读写 | 已交付（桥侧） | 30 / 33 / 34 / 35 | E13 |
+| A13 | 剪贴板读写 | 平台网关读写已有设备证据；桥侧只接 `clipboard.set`，`clipboard.get` 刻意无出口，MCP 仍排除剪贴板 | 30 / 33 / 34 / 35（平台网关） | E13；[出口边界](../.trae/specs/window-toast-event-clipboard/checklist.md)、`6843cf5` |
 | A14 | deeplink 打开 | 已交付 | 30 / 33 / 34 / 35 | E14 |
-| A15 | 文件 push / pull | 已交付 | 30 / 33 / 34 / 35 | E15 |
+| A15 | 文件 push / pull | 底层往返已有设备证据；后续 CLI/MCP 出口与传输前存在性保护已实现，新增保护仍待真机验证，不保证原子不覆盖 | 30 / 33 / 34 / 35（底层往返） | E15；`4da5182`、`008cf40`；[待验项](next-phase-tasks.md#待设备验证缺证据不是缺口) |
 | A16 | Toast 捕获 | 已交付 | 30 / 33 / 34 / 35 | E16 |
 | A17 | 路径手势 | 已交付 | 30 / 33 / 34 / 35 | E21 |
 
@@ -155,7 +162,7 @@ Android 单测 408 项、`lintDebug`、`assembleDebug` 通过；
 | 项 | 原因 | 替代路径 |
 | --- | --- | --- |
 | 全局动作「快捷键帮助面板」 | 常量 `GLOBAL_ACTION_KEYBOARD_SHORTCUTS` 是 `@hide`，仅系统应用可用 | 无。按 D1 如实上报 `ACTION_NOT_SUPPORTED` |
-| IME「显示键盘」 | 无障碍与 ADB 都没有公开的「弹出输入法」入口 | 对可编辑节点执行 FOCUS 或 CLICK 间接触发；A12 只交付枚举/切换/收起 |
+| 确定性 IME「显示键盘」 | 不能保证或验证键盘可见性；这不等于 `ime.show` 没有实现 | 后续已交付聚焦语义与 CLI `bridge ime-show` / MCP `android_ime_show`；设备行为待验，见 A12 |
 | 节点动作 `CLEAR_FOCUS` | 见 B4，平台拒绝执行 | 聚焦另一个节点以转移焦点 |
 | 节点动作 `SCROLL_TO_POSITION`（在**非集合**容器上） | 见 B3，需要 `CollectionInfo` 容器。在 ListView 等集合容器上**可用**（E22） | 非集合容器用 `scrollIntoView` 按目标元素滚动 |
 | 直连通道的多指手势 | `input motionevent` 只接受单坐标对（F1） | 走 App Bridge 的多 stroke `dispatchGesture`，即 D2 |

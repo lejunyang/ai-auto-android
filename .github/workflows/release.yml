@@ -1,4 +1,4 @@
-# 配置用途：构建、校验并发布带 SHA-256 清单的跨平台 CLI 与 Android debug APK。
+# 配置用途：构建并发布四平台完整/精简归档、同版 helper 与独立 App APK，统一核对 SHA-256。
 name: Release
 
 on:
@@ -98,6 +98,9 @@ jobs:
       - name: Build release bundle
         env:
           VERSION: ${{ steps.release.outputs.version }}
+          # 发布者明确同意获取和打包受 Android SDK 许可约束的官方 Platform-Tools。
+          # 与安装步骤 accept-license 的口径一致；--yes 本身不代表同意该许可。
+          AACTL_ACCEPT_ANDROID_SDK_LICENSE: android-sdk-license
         run: osdk exec -t go -t node -t java -t android-platforms -t android-build-tools -t android-platform-tools -- make release VERSION="$VERSION"
 
       - name: Verify release checksums
@@ -133,8 +136,16 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
           else
+            printf '%s\n' \
+              '默认推荐完整包：含官方 ADB、同版 aactl-displayd.apk 和官方 NOTICE.txt。' \
+              '精简包（_slim）含 CLI/helper，需自备官方 Platform-Tools。App debug APK 单独下载。' \
+              '发布资产改为八个归档和独立 App APK，不再单独发布裸 CLI；请核对 SHA256SUMS。' \
+              '升级 v1 helper 前，必须先用旧 CLI 执行 display stop，再整体替换 CLI/helper。' \
+              '官方二进制再分发的许可风险由发布者自行评估，详见 docs/security-distribution.md。' \
+              > "$RUNNER_TEMP/release-bundles-notes.md"
             gh release create "$TAG" dist/* \
               --generate-notes \
+              --notes-file "$RUNNER_TEMP/release-bundles-notes.md" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "$TAG"

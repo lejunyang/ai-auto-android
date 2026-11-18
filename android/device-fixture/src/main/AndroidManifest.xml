@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 配置用途：注册无权限、无网络和无外部副作用的三页原生自动化 Fixture。 -->
+<!-- 配置用途：注册原生自动化 Fixture；相机页只通过系统权限框请求 CAMERA，不访问网络或账号。 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -15,6 +17,10 @@
         android:allowBackup="false"
         android:label="@string/app_name"
         android:supportsRtl="true">
+        <activity
+            android:name=".CameraActivity"
+            android:canDisplayOnRemoteDevices="true"
+            android:exported="true" />
         <activity
             android:name=".ThirdActivity"
             android:exported="false" />

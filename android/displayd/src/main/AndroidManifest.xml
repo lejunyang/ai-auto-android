@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 配置用途：仅承载 app_process 字节码，不声明组件或权限，也不安装到设备。 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:allowBackup="false" android:label="displayd" android:supportsRtl="true" />
+</manifest>

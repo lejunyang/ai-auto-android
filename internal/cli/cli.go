@@ -18,6 +18,7 @@ import (
 	"github.com/lejunyang/ai-auto-android/internal/output"
 	"github.com/lejunyang/ai-auto-android/internal/process"
 	"github.com/lejunyang/ai-auto-android/internal/service"
+	"github.com/lejunyang/ai-auto-android/internal/vdisplay"
 	"github.com/lejunyang/ai-auto-android/internal/visual"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -133,18 +134,31 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 		}, nil
 	}
 
-	path, err := a.Locator.Resolve()
+	// 诊断使用同一次解析得到的来源，保持路径与来源一致；旧测试端口仍可只提供 Resolve。
+	resolution := adb.Resolution{Source: "unknown"}
+	var err error
+	if locator, ok := a.Locator.(interface {
+		ResolveWithSource() (adb.Resolution, error)
+	}); ok {
+		resolution, err = locator.ResolveWithSource()
+	} else {
+		resolution.Path, err = a.Locator.Resolve()
+	}
 	if err != nil {
 		return nil, err
 	}
-	client := adb.NewClient(path, a.Executor)
+	client := adb.NewClient(resolution.Path, a.Executor)
 
 	switch args[0] {
 	case "doctor":
 		if len(args) != 1 {
 			return nil, usageError("Usage: aactl doctor [--json]")
 		}
-		return client.Doctor(ctx)
+		report, err := client.Doctor(ctx)
+		return struct {
+			adb.DoctorReport
+			ADBSource string `json:"adbSource"`
+		}{report, resolution.Source}, err
 	case "devices":
 		return a.executeDevices(ctx, client, a.directAutomation(client), args[1:])
 	case "device":
@@ -153,6 +167,10 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 		return a.executeObserve(ctx, a.directAutomation(client), args[1:])
 	case "action":
 		return a.executeAction(ctx, a.directAutomation(client), args[1:])
+	case "display":
+		return a.executeDisplay(ctx, a.directAutomation(client), args[1:])
+	case "camera":
+		return a.executeCamera(ctx, a.directAutomation(client), args[1:])
 	case "check":
 		return a.executeCheck(ctx, a.directAutomation(client), args[1:])
 	case "file":
@@ -172,7 +190,7 @@ func (a *App) execute(ctx context.Context, args []string) (any, error) {
 	case "mcp":
 		return nil, usageError("Usage: aactl mcp serve")
 	default:
-		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, check, file, recording, bridge, mcp.")
+		return nil, usageError("Unknown command. Supported commands: version, doctor, devices, device, observe, action, display, camera, check, file, recording, bridge, mcp.")
 	}
 }
 
@@ -320,7 +338,7 @@ func (a *App) directAutomation(client *adb.Client) service.Automation {
 	if a.Automation != nil {
 		return a.Automation
 	}
-	return service.New(client, nil)
+	return service.NewWithDisplays(client, vdisplay.New(client))
 }
 
 func (a *App) automationService(client *adb.Client) (service.Automation, error) {
@@ -350,7 +368,7 @@ func (a *App) serveMCP(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		automation = service.New(client, bridgeService)
+		automation = service.NewWithDisplays(client, vdisplay.New(client), bridgeService)
 		desktopVisual = visual.NewDesktopProposalService(client, visual.DesktopOptions{})
 		desktopAttestedVisual = visual.NewDesktopAttestedActionService(
 			client,

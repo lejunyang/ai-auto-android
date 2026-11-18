@@ -5,7 +5,8 @@
 > `.trae/specs/n56-consumer-ui-wave2/`），本文不重复长日志。
 >
 > 状态定义：待做 / 进行中 / 已实现待设备验证 / 已验证（含设备截图证据） / 阻塞
-> 最后更新：2026-09-19
+> 当前汇总核对：2026-11-14（基线 `984ee31`，未运行设备）；下方带日期的逐轮记录
+> 保留当时状态。“当前有效截图”和构建计数仅指各记录的基线，不能当作最新 APK 证据。
 
 ## 总目标
 
@@ -18,7 +19,7 @@
 | 模块 | 内容 | 状态 | 验收证据 |
 |---|---|---|---|
 | 导航骨架 | 底部四 tab + 嵌套导航 + Uri.encode + 统一 switchTab（修复 tab 失效 P0） | 已验证（设备往返） | TabNavigationTest 11测试通过；设备验证助理↔技能↔我的往返，坐标从 dump 解析 |
-| 主题 | 固定配色（背景#EEF1F5 冷灰蓝/卡片#FFFFFF/主色#2563EB），无动态取色 | 已实现，已设备复验 | Theme.kt 用 AppColors；navfix-settings 截图确认 |
+| 主题 | 固定配色（屏幕 paper #FAFBFC/卡片#FFFFFF/主色#2563EB），无动态取色；#EEF1F5 仅为原型桌面 body 背景 | 已实现，历史设备复验 | AppTokens.kt:24；下方 2026-09-18 P0 背景色修正与 p2-home2 证据 |
 | 设计token层 | AppColors/AppShapes/AppSpacing/AppTypography（逐元素实测）+ DesignTokenParityTest | 已实现，单测通过 | 从 20 个原型视图机器抽取；parity 测试通过 |
 | 共享组件 | AppComponents.kt + ScriptStoreProducers.kt + ScreenScaffold（二级页外壳重做） | 已实现，二级页已设备复验 | navfix-bridge 截图确认返回箭头+标题+副标题+info |
 | 助理页 | Composer卡片(24dp圆角+1px#D9E3F3边框+阴影+无内部分隔线+16dp padding+50dp输入框+灰底pill选择应用+自定义phone/mic/up图标)+问候标题强制两行(27sp/620/-1/37.8)+右上tiny-orbit(42dp浅蓝圆角方块rotate-7°内蓝色Auto三角竖线，替换原"△"字符占位)+快捷chips灰底小胶囊(#E8EDF4/#5D6C82/10dp/44dp/11sp/自动换行)+常用技能两列等高网格(静态Column+Row，tile固定112.5dp)+虚线teach卡+点击空白失焦收键盘 | 已验证（四页37元素0超差+设备截图+失焦） | v3-home-empty 截图；element-compare skillTile 180.6x112.4≈原型180.5x112.5；失焦mInputShown true→false |
@@ -27,7 +28,7 @@
 | 我的页 | 页头(标题18sp+副标题12sp+info)+蓝色实心52dp logo(白色Auto三角竖线，非spark)+助理状态卡(白底+1px line边框+18dp圆角+琥珀"未完成配置"tag+AI模型/允许操作的应用子状态)+连接与能力三行setting-row(无图标底块+20dp自定义spark/shield/monitor描边图标#68809e+min-height63dp+行间border-bottom+右侧状态+chevron)+随时唤起(悬浮入口/运行通知真实授权状态"需授权>") | 已验证（0超差+设备截图+交互） | v3-settings 截图；info弹"关于这一页"设备验证；logo为白Auto、setting-row为自定义描边图标 |
 | 我的下二级页 | AI模型/允许操作的应用/连接电脑：外壳与内容均按原型重构，真实能力与安全文案保留 | 已验证（设备截图） | rev-02-provider / rev-03-permissions / rev-04-connection 截图；diff 超差 0 |
 | 底部导航 | 自定义Row+Column实现（68dp内容区+navigationBarsPadding手势条+weight(1f)均分宽度+padding 7/8/4dp+顶部1dp描边+46×27dp选中胶囊#E8EFFD+20dp自定义stroke图标(spark/flow/clock/settings)+12sp标签），弃用Material3 NavigationBar；settings横线选中跟随tint变蓝；flow节点7×5横向矩形 | 已验证（设备截图+dump点击中心坐标） | p1-home/p1-skills/p1-settings 截图确认4个自定义stroke图标+选中态浅蓝胶囊+手势条不压标签；点击各tab中心(135/405/675/945)均正确导航 |
-| 模块A：会话历史持久化 | SessionHistoryRecord(固定摘要安全策略)+Store(有界/可删/损坏Partial)+coordinator终态写入 | 已实现，单测通过 | compileDebugKotlin通过；SessionHistoryStoreTest 13测试通过（UUID id/TASK_SUMMARY/损坏Partial/有界/删除） |
+| 模块A：会话历史持久化 | SessionHistoryRecord(固定摘要安全策略)+Store(有界/可删/损坏Partial)+coordinator终态写入 | 已实现，单测及 LocalDemo 设备流程有证据 | SessionHistoryStoreTest；下方“运行时推进”记录页历史证据；后续 `840c3e3` 修复异步开始时间捕获并有回归测试 |
 | 模块B：语音输入 | VoiceInputHandler+权限检查+拒绝/无服务降级+外发说明+助理页语音按钮 | 已实现，代码验证(权限拒绝逻辑)，设备未复验 | compileDebugKotlin通过 |
 | 模块C：前台服务+运行通知 | SessionCoordinator单一owner+Application级Runtime+ViewModel仅订阅+通知安全短标题 | 已实现，单测通过，真实会话运行时未设备验证 | SessionCoordinatorTest 16测试通过；compileDebugKotlin通过 |
 | 模块D：受控悬浮窗 | OverlayController+权限引导+运行状态/结果+收起展开+我的页入口 | 已实现，真实会话运行时未设备验证 | OverlayController/OverlayWindow编译通过 |

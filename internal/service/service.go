@@ -194,8 +194,10 @@ type FileTransferRequest struct {
 
 // Service 在调用后端前集中执行设备、动作和 Bridge 响应校验。
 type Service struct {
-	direct DirectBackend
-	bridge BridgeBackend
+	direct        DirectBackend
+	bridge        BridgeBackend
+	displays      DisplayBackend
+	displayTarget func(int) DirectBackend
 }
 
 // DeviceListResult 返回规范化设备集合及对应计数。
@@ -206,6 +208,7 @@ type DeviceListResult struct {
 
 // ObserveRequest 描述一次明确设备上的直接或语义观察。
 type ObserveRequest struct {
+	DisplayID     *int   `json:"displayId,omitempty"`
 	Device        string `json:"device"`
 	Kind          string `json:"kind"`
 	TargetPackage string `json:"targetPackage,omitempty"`
@@ -270,6 +273,7 @@ type SemanticState struct {
 
 // ActionRequest 描述一个白名单直接动作及其类型化参数。
 type ActionRequest struct {
+	DisplayID  *int   `json:"displayId,omitempty"`
 	Device     string `json:"device"`
 	Action     string `json:"action"`
 	X          int    `json:"x,omitempty"`
@@ -353,7 +357,12 @@ type ReplayStepResult struct {
 
 // New 使用可选直接后端和 Bridge 后端创建共享服务。
 func New(direct DirectBackend, bridge BridgeBackend) *Service {
-	return &Service{direct: direct, bridge: bridge}
+	s := &Service{direct: direct, bridge: bridge}
+	// 显式主屏不依赖 displayd；只有真实 ADB 客户端能构造按显示的独立视图。
+	if client, ok := direct.(*adb.Client); ok {
+		s.displayTarget = func(id int) DirectBackend { return client.WithDisplay(id) }
+	}
+	return s
 }
 
 // ListDevices 列出直接后端可见的规范化设备。
@@ -383,6 +392,9 @@ func (s *Service) GetDevice(ctx context.Context, device string) (protocol.Device
 func (s *Service) Observe(ctx context.Context, request ObserveRequest) (ObserveResult, error) {
 	if err := adb.ValidateSerial(request.Device); err != nil {
 		return ObserveResult{}, err
+	}
+	if request.DisplayID != nil {
+		return s.observeDisplay(ctx, request)
 	}
 	switch request.Kind {
 	case ObserveScreenshot:
@@ -415,10 +427,14 @@ func (s *Service) Observe(ctx context.Context, request ObserveRequest) (ObserveR
 		if err != nil {
 			return ObserveResult{}, err
 		}
+		format := hierarchy.Format
+		if format == "" {
+			format = "uiautomator-xml"
+		}
 		return ObserveResult{
 			Device:    request.Device,
 			Kind:      request.Kind,
-			Format:    "uiautomator-xml",
+			Format:    format,
 			SizeBytes: hierarchy.Bytes,
 			SHA256:    hierarchy.SHA256,
 			XML:       hierarchy.XML,
@@ -470,6 +486,9 @@ func (s *Service) ExecuteAction(
 ) (adb.ActionResult, error) {
 	if err := adb.ValidateSerial(request.Device); err != nil {
 		return adb.ActionResult{}, err
+	}
+	if request.DisplayID != nil {
+		return s.actionDisplay(ctx, request)
 	}
 	if s.direct == nil {
 		return adb.ActionResult{}, unavailable("ADB action execution")
@@ -546,6 +565,14 @@ func (s *Service) ExecuteAction(
 		return s.direct.Rotate(ctx, request.Device, adb.Orientation(request.Orientation))
 	case ActionDeviceWake:
 		return s.direct.Wake(ctx, request.Device)
+	case ActionDeviceSleep:
+		backend, ok := s.direct.(interface {
+			Sleep(context.Context, string) (adb.ActionResult, error)
+		})
+		if !ok {
+			return adb.ActionResult{}, unavailable("main display sleep")
+		}
+		return backend.Sleep(ctx, request.Device)
 	case ActionDeviceUnlock:
 		return s.direct.Unlock(ctx, request.Device)
 	case ActionImeHide:

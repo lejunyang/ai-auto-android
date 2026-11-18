@@ -1,5 +1,14 @@
 # Unity Capture 实测：不可用，根因是像素格式
 
+> **现状更正（2026-11-14，基线 `984ee31`）**
+>
+> 本文为历史实测/评审记录，以下正文保留当时结论；本次仅核查仓库与后续证据，未操作设备。
+>
+> - 标题与正文“根因是像素格式”已被后续 OBS 对照实验否定：OBS 提供 NV12 仍不被枚举，决定性差异是 DirectShow 无 PnP 实例；Unity 的 bgr24 观察保留，不能当作已证实根因。
+> - “OBS 未验、最有希望/下一步装 OBS”已过期；完整实测见[宿主 verdict](host-virtual-camera-verdict.md)，当前未验路线见[摄像头结论](camera-virtual-stacks.md)。历史宿主安装与 Python 版本未在本轮清点。
+>
+> 逐条核查依据见[审计进度](../.trae/specs/docs-stale-audit/progress.md)。
+
 **结论先行：Unity Capture 走不通，原因是它只输出 bgr24，而 Android emulator 只接受 YUV 系格式（NV12）。**
 这是双方各自固定的设计，不是配置问题。
 

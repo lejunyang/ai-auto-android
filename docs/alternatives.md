@@ -4,24 +4,32 @@
 录制和人工接管方案。它不是功能承诺，也不改变协议 v1、Agent Skills 或 MCP
 当前暴露的动作语义。
 
+2026-11-14 本轮只核对仓库实现与验收记录；外部技术、政策和第三方版本说明保留原
+调研口径，现时效力未核实。实施候选方案时仍需按对应任务重新验证。
+
 ## 当前基线与接入原则
 
-### MVP 状态
+### 当前实现状态（2026-11-14，基线 `984ee31`）
 
 当前 MVP 已实现 Go `aactl`、类型化 ADB 观察/动作、Android
 Accessibility 执行、App Bridge、AI 会话和语义录制回放。以下状态必须与
 “已有基础能力”区分：
 
-| 方案 | MVP 状态 |
+| 方案 | 当前状态 |
 | --- | --- |
 | TypeScript/Node CLI | 未实现；当前 CLI 为 Go |
 | Shizuku 后端 | 未实现 |
 | Device Owner/DPC 后端 | 未实现 |
-| UI Automator/设备农场 Provider | 未实现；仅已有本地直接 ADB 基础能力 |
-| MediaProjection + OCR/模板视觉层 | 未实现 |
+| UI Automator/设备农场 Provider | 本地固定 AVD、debug 控制面、native/WebView fixture 已交付（N31-N34/N42/N43）；N52 完整本地矩阵未验收，N53 农场 Provider 未实现 |
+| MediaProjection + OCR/模板视觉层 | MediaProjection 与 OCR 未实现；已有 Accessibility/ADB 截图、App 授权视觉观察与执行、桌面只读模板候选及 attested 视觉动作端口（N44/N45/N47），不能统称视觉层未实现 |
 | ADB `getevent` 高保真录制 | 未实现 |
 | 厂商互联、专用蓝牙桥、互联网远程 Provider | 未实现 |
 | scrcpy 显示、控制和 OTG 恢复集成 | 未实现 |
+
+脚本 1.1、编辑器领域层和 Compose 接线已由 N39-N41 交付；LAN 邀请、加密持续 RPC、
+内置扫码和手工码已实现，N38 已验收，N37 跨平台矩阵仍待补。LAN 尚未接入 service/MCP
+持续控制，CLI 仅固定只读探针。具体状态与提交见[路线图](next-phase-tasks.md)，
+不以旧方案的落地步骤代表当前仍未实现。
 
 尤其需要明确：**Android 和 ADB 没有可供本项目直接启用的通用蓝牙 ADB
 transport**。官方 ADB 路线是 USB、模拟器通道和 TCP/IP/Wi-Fi；普通蓝牙配对
@@ -336,8 +344,10 @@ CLI JSON 信封、稳定错误码、确认规则和脚本动作保持不变；�
 
 - 视觉实现为 `Observer` 装饰层：先消费 MediaProjection/ADB screenshot，再输出
   OCR 块、模板候选和当前显示元数据。
-- 协议 v1 不新增“视觉点击”动作。候选最终映射为已有 `normalizedScreenPoint` 或
-  `recordedBounds + relativePoint`，保持 `ui.click`/`ui.tap` 语义。
+- 视觉执行复用类型化 tap/long-click/swipe 与坐标映射。当前桌面原子执行已有
+  `android_visual_action_execute` 和 Bridge `visual.action.execute`，要求 fresh
+  attestation、确认与后置验证；只读 proposal 的返回坐标不能直接当作执行授权。
+  OCR/MediaProjection 仍是后续方案，不代表上述现有端口已支持它们。
 - 在 Android 会话中补充 `SessionObservation.uiSummary`；在 Bridge 中用细粒度
   `vision.ocr`、`vision.template` capability 控制可用性。
 - 不在 `AutomationProvider` 内直接做截图或 OCR，便于替换视觉引擎并独立执行隐私
@@ -562,7 +572,8 @@ CLI JSON 信封、稳定错误码、确认规则和脚本动作保持不变；�
 
 ## 下一阶段优先级与新增方案
 
-本节是尚未实现的下一阶段路线图，不代表当前产品能力或完成承诺。实施时继续复用
+本节保留演进方向；已有交付与剩余工作按上方状态表及[路线图](next-phase-tasks.md)
+区分，不把整节当作“尚未实现”清单。后续实施继续复用
 协议 v1、显式设备选择、类型化动作、风险门和脱敏审计；不得为提高覆盖率而开放
 任意 shell、绕过系统授权或降低选择器置信度阈值。
 
@@ -570,13 +581,13 @@ CLI JSON 信封、稳定错误码、确认规则和脚本动作保持不变；�
 
 | 优先级 | 方案 | 决策与原因 |
 | --- | --- | --- |
-| P0：现在做 | UI Automator 与固定 AVD 控制面 | 自动运行跨 App、系统导航和无障碍场景，优先减少人工验证；固定 API、镜像、分辨率、语言、导航模式和快照 |
+| P0：基础已交付，矩阵待收口 | UI Automator 与固定 AVD 控制面 | N31-N34/N42/N43 已有证据；N52 完整 300 轮矩阵未验收 |
 | P0：现在做 | 无线 ADB 生命周期 | 补齐 Android 11+ 配对发现、`pair`/`connect`、mDNS、可信设备档案、端口变化和断线重连；继续沿用官方 ADB 信任边界 |
-| P0：现在做 | 录制编辑器 | 允许人工修正语义选择器、坐标、等待、重试、顺序和失败策略，是 WebView、Canvas 和动态真实 App 可维护回放的前提 |
-| P0：现在做 | WebView/Canvas fixture | 用离线、可复位、可断言的受控页面建立语义、混合和纯视觉测试基线 |
-| P0：现在做 | 视觉 `Observer` | 在语义树不可用时提供受限截图、候选区域、置信度和坐标证据；实际执行仍走现有类型化动作和风险策略 |
+| P0：已交付既定范围 | 录制编辑器 | N39-N41 已支持步骤、撤销、冲突和显式 observation 点选；N56 新 UI 的完整录制流程仍待设备验证 |
+| P0：已交付 | WebView/Canvas fixture | N42 离线三模式、N43 语义兼容分级已有证据，不代表真实小程序兼容性 |
+| P0：已交付既定范围 | 视觉 `Observer` | N44/N45 已有授权观察/执行与矩阵证据；OCR/MediaProjection 未实现，N47 完整设备闭环仍待验收 |
 | P0：现在做 | 真实 App 兼容矩阵 | 用固定版本的哔哩哔哩、抖音和小黑盒验证多页面、多动作与动态 UI，但不作为完全确定性的 CI 门禁 |
-| P1：条件推进 | App LAN QR Bridge | 当无线 ADB 向导仍不能满足低门槛连接时，实现 App 主动出站的同局域网加密 Bridge；先完成威胁模型和跨平台网络诊断 |
+| P1：连接已交付，兼容矩阵待补 | App LAN QR Bridge | N36/N38、Go/Kotlin socket 与 API34 内置扫码已验证；N37 跨平台网络与 service/MCP 持续控制仍待收口 |
 | P1：条件推进 | 设备农场 Provider | 本地 API 矩阵稳定后接入一个设备农场，扩大 OEM 和系统版本覆盖；复用同一脚本、错误码和结果模型 |
 | P1：条件推进 | scrcpy sidecar | 仅用于人工接管、演示和恢复，不作为语义观察器、录制器或 Agent 默认执行内核 |
 | P2：按部署模型 | Shizuku | 仅高级侧载版确需额外系统能力时实施；不能变成普通用户依赖，也不能向 Agent 暴露任意 shell |
@@ -749,7 +760,12 @@ swipe、等待、重试、失败策略、截图点选、Undo/Redo、导入导出
 - [WindowManager `FLAG_SECURE`](https://developer.android.com/reference/android/view/WindowManager.LayoutParams#FLAG_SECURE)
 - [AOSP `getevent`](https://source.android.com/docs/core/interaction/input/getevent)
 
-## 推荐演进顺序
+## 演进依赖与剩余工作
+
+下列编号保留原规划的依赖顺序。1 的基础控制面、3 的脚本/编辑器、4 的 fixture/语义
+分级、5 的视觉观察/受控执行已有相应交付；2 仍缺 macOS/Windows 断线矩阵，6 缺真实
+动作连续轮，7 的连接与扫码已落地但跨平台持续控制未收口，8-10 仍为条件后续项。
+本地 300 轮矩阵、真实 App 和小程序兼容性没有因这些基础交付而自动完成。
 
 1. **P0：本地测试控制面。** 保持 Go、协议 v1 和现有安全边界，先落地 UI
    Automator 与固定 AVD 本地矩阵，在 API 30/33/34 建立可重复、可清理且不增加
@@ -768,8 +784,8 @@ swipe、等待、重试、失败策略、截图点选、Undo/Redo、导入导出
 6. **P0：真实 App 兼容矩阵。** 在上述稳定基础上，用固定版本、ABI、来源和
    SHA-256 的哔哩哔哩、抖音和小黑盒验证多动作、多页面及任务切换，并独立报告
    动态内容、广告、A/B 实验和模拟器检测造成的失败。
-7. **P1：LAN QR Bridge。** 只有无线 ADB 向导仍不能满足连接体验时，才实现 App
-   主动出站、临时密钥协商和短期邀请的同局域网扫码连接。
+7. **P1：LAN QR Bridge。** 已实现 App 主动出站、临时密钥协商、短期邀请和内置
+   扫码；后续收口 N37 跨平台/网络矩阵与独立的 service/MCP 持续控制契约。
 8. **P1：设备农场与 scrcpy。** 本地 API 矩阵稳定后，条件接入一个设备农场
    Provider 扩大 OEM 覆盖；scrcpy 只作为人工接管、演示和恢复 sidecar，不进入
    自动执行内核。

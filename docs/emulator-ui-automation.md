@@ -1,5 +1,18 @@
 # 模拟器 UI 自动化：能力现状与实测结论
 
+> **现状更正（2026-11-14，基线 `984ee31`）**
+>
+> 本文为历史实测/评审记录，以下正文保留当时结论；本次仅核查仓库与后续证据，未操作设备。
+>
+> - “自动预置零命中、test-control 只有 README”已不适用：N32 core/debug 实现、`scripts/emulator/provision-bridge.mjs` 和 N47 授权 provider 均已存在。N47 endpoint 设备闭环仍阻塞，不能据此声称整套矩阵通过。
+> - 录屏、前台包与应用清单均已有 CLI/MCP 入口，见 `internal/adb/observe_extra.go` 的 `RecordScreen` / `Foreground` / `InstalledApps` 和[后续观察记录](observe-capability-extension.md)。
+> - 等待/断言已有 `check wait|assert` 与 `android_wait` / `android_assert`；长按/滚动已有直连出口，元素级动作还可走 Bridge，见[判据记录](interface-predicates-and-bridge.md)及[手势记录](gestures-lint-and-camera.md)。
+> - Unicode 输入已有 CLI `bridge set-text` 与 MCP `android_bridge_set_text`；直连 ASCII 约束仍保留。多指手势已由动作面规格提供 schema、router/backend 和设备派发证据，见[动作面追踪](action-surface-tasks.md)。
+> - “直连 UI 树无预算”不成立：`internal/adb/direct.go:31,170-174` 有 8 MiB 输出上限、超时与截断拒绝。它不等于节点分区下钻能力。
+> - 相机后续实测已区分固定文件/预录序列与运行时新 payload：覆盖文件不能热换码，Windows OBS/Unity DirectShow 路线被否定；Linux/MF 仍待验，见[当前摄像头结论](camera-virtual-stacks.md)。
+>
+> 逐条核查依据见[审计进度](../.trae/specs/docs-stale-audit/progress.md)。
+
 本文记录以 Android 模拟器为唯一目标设备做 AI 驱动 UI 自动化时的能力现状、实测证据和
 待补能力。本文只陈述已验证事实与明确缺口，不代替 change spec，也不预先勾选任何验收结论。
 

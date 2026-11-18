@@ -1,5 +1,14 @@
 # 中文输入通道与虚拟摄像头可行性
 
+> **现状更正（2026-11-14，基线 `984ee31`）**
+>
+> 本文为历史实测/评审记录，以下正文保留当时结论；本次仅核查仓库与后续证据，未操作设备。
+>
+> - “MCP 未暴露 setText、只有 CLI”已由 `android_bridge_set_text` 改变；当前可写非敏感 Unicode，见[后续 MCP 实测](mcp-text-input-and-webcam.md)及 `internal/mcpserver/server.go`。`android_action_execute` 的直连 ASCII 限制仍成立。
+> - 宿主 OBS/Unity 路线已实测否定为 Windows DirectShow 枚举不兼容；不能沿用本记录“装 OBS 待确认”的推荐，见[摄像头结论](camera-virtual-stacks.md)。
+>
+> 逐条核查依据见[审计进度](../.trae/specs/docs-stale-audit/progress.md)。
+
 本文记录两件事：解除 ADB 文本限制（桥侧 setText 通道已打通并实测写入中文），
 以及「在桥 App 里实现虚拟摄像头供其他 app 使用」的可行性判定。
 
