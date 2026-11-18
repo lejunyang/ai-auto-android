@@ -356,6 +356,7 @@ aactl bridge snapshot --device SERIAL \
 | `DEADLINE_EXCEEDED` | 先观察和核对结果，再判断是否重试 |
 | `VIRTUAL_CAMERA_NOT_ENABLED` | 操作员 stop 后以 --virtual-camera 重启；旧 helper 需更新，普通屏须用 --camera back 新建 |
 | `VIRTUAL_CAMERA_UNAVAILABLE` | 保留 API/异常原因；API35+仍可能缺少服务或 GL_EXT_YUV_target，勿回退真实摄像头 |
+| `VIRTUAL_CAMERA_BUSY` | retryable=true、CLI退出4；先由操作员让目标应用释放相机，再显式重试close/stop；不要kill helper，不删除关联 |
 | `CAMERA_IMAGE_INVALID` | 本机 PNG/JPEG ≤8MiB、宽高各≤4096；检查读取失败，不重复上传未知文件 |
 
 摄像头虚拟屏空屏可能返回DISPLAY_EMPTY/FRAME_NOT_READY，注册与imageSet:true不等于读回。
@@ -379,8 +380,9 @@ restricted断流且Uid mode CAMERA:ignore；负责人在系统设置补默认授
 
 禁止设备端`dumpsys media.camera | head`或提前关管道，本机曾导致虚拟服务死亡，甚至
 真实0–4移除后重加。完整取回主机文件后再过滤。若旧cameraId仍在但stream error/EGL失败，
-或cameraInfo.availability为unavailable，先保存完整证据，再由操作员关闭受影响屏重建；
-不自动重试/重建、不重启设备。available只表示监视未观察失败，不保证注册/权限/读回。
+或cameraInfo.availability为unavailable，先保存完整证据；系统仍响应且安全释放后才重建。
+遇BUSY先让应用释放相机；virtual_camera help超时或cameraserver残留失效虚拟相机时停止重建尝试，
+由负责人重启手机恢复，产品不自动重试/重建/重启。available只表示监视未观察失败，不保证注册/权限/读回。
 集成方在屏67正常关闭/重开两轮均available、reason=null且读回正确；restricted强制断流
 是否误报仍未验。新版fixture的横/竖图、文本可见和4:3预览已验，自动重连真机仍未验。
 
@@ -398,3 +400,20 @@ close销毁Activity后，系统最近任务可能仍有该Task；本工具不自
 - [在硬件设备上运行应用](https://developer.android.com/studio/run/device)
 - [安装 OEM USB 驱动程序](https://developer.android.com/studio/run/oem-usb)
 - [SDK Platform-Tools 版本说明](https://developer.android.com/tools/releases/platform-tools)
+
+## 摄像头屏关闭BUSY与系统卡死
+
+已改拆除顺序，真机待验：先display.release销毁Activity，保持出帧并等待所有onStreamClosed，
+共享6秒等待预算内流空才VirtualCamera.close→VirtualDevice.close；超时保留资源/进程并报BUSY。
+list/status的cameraInfo.releasePending=true表示待释放，原编号只供诊断和重试close，仍占容量；
+不再向该编号输入/启动/取帧。status中的state=0、组=-1、groupAwake=null表示无当前显示组，
+pendingCameraReleases表示创建失败但仍保留引用的残留数，用stop/shutdown重试。Go stop收到BUSY
+不清文件/图片/关联，启动回滚也不以删除新建关联来关闭仍活动设备。产品不force-stop应用。
+
+**出流期间禁止kill helper，崩溃也可能在A16触发Binder死亡注销并卡住系统virtual_camera。**
+负责人若授权操作员，可人工让应用退出相机或`am force-stop <pkg>`后再重试；Agent不代做，
+不可将kill helper当恢复方式。2026-11-18 b6956现场在kill已核验helper后仍help超时124，
+cameraserver残留v1_1000、总相机6；只能交负责人重启手机。真实0–4当时closed且无client，
+普通屏fixture重试耗尽而首次失败原因未知，不能断言真实相机已坏或正常。
+
+真机关闭不卡死、人工force-stop后BUSY恢复、保留关联后helper重启免重授均待负责人重启后由集成方验收。

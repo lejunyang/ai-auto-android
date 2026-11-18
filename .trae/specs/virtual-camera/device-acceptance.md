@@ -4,11 +4,11 @@
 
 ## 环境与停止条件
 
-明确 serial `324462538298`，NX888J/API36/arm64；预期指纹见 docs/virtual-camera.md。ADB 每次操作前检查 `adb devices -l` 只有该在线 serial，并核对 transport、指纹和当前用户0。通过 `dumpsys trust` 的当前用户 `deviceLocked=0` 确认未锁定；离线、身份变化、凭据锁定或状态未知时立即停止，不重试、不唤醒、不解锁。所有命令显式带 serial 或 `--device`，所有虚拟屏动作显式带本次 N。
+明确 serial `324462538298`，NX888J/API36/arm64；本轮后续复验预期指纹为nubia/CN_PQ85A02/PQ85A02:16/BQ2A.251016.001-BP2A.250605.031.A3/b6956:user/release-keys，旧b6416仅是历史证据。ADB 每次操作前检查 `adb devices -l` 只有该在线 serial，并核对 transport、指纹和当前用户0。通过 `dumpsys trust` 的当前用户 `deviceLocked=0` 确认未锁定；离线、身份变化、凭据锁定或状态未知时立即停止，不重试、不唤醒、不解锁。所有命令显式带 serial 或 `--device`，所有虚拟屏动作显式带本次 N。
 
 记录 host OS、CLI/helper/fixture SHA-256、APK package/version/ABI/source（仓库本地 debug 构建）、设备指纹、语言/密度/导航模式和开始时间。证据保存在仓库外，截图/层级须限额脱敏，完成验收后按项目策略清理，不提交二进制或原始 UI 数据。
 
-**禁止设备端截断相机dump**（如`dumpsys media.camera | head`、提前关闭设备端管道）。本机曾因此使虚拟服务死亡，甚至物理0–4也移除重加。须完整写电脑文件，命令成功结束后才在电脑端过滤；不要为验证故意触发故障。脚本已采用完整stdout文件，无输出缓冲上限/设备端过滤或提前终止。若服务消失或stream error，保留证据，由操作员close受影响屏后create新屏、重新启动目标应用，不自动恢复或重启设备。
+**禁止设备端截断相机dump**（如`dumpsys media.camera | head`、提前关闭设备端管道）。本机曾因此使虚拟服务死亡，甚至物理0–4也移除重加。须完整写电脑文件，命令成功结束后才在电脑端过滤；不要为验证故意触发故障。脚本已采用完整stdout文件，无输出缓冲上限/设备端过滤或提前终止。若服务异常先保留完整证据；系统仍响应且流可排空才close后重建。若help超时/cameraserver残留失效虚拟相机，停止重建尝试，交负责人重启手机；产品不自动恢复/重启。出流时禁止kill helper，崩溃也可能触发A16死锁。
 
 ## 独立 helper 检查（可自动）
 
@@ -53,7 +53,7 @@ node scripts/verify-virtual-camera-device.mjs --device 324462538298 --adb PATH_T
 
 保留触发失败的原始 CLI 信封、N/虚拟设备/流诊断、有限时间窗 helper 日志、当时目标屏截图/层级（脱敏）、动作时间线和指纹，禁止用重采结果冒充失败现场。FRAME_NOT_READY、DEVICE_LOCKED、DISPLAY_ASLEEP、权限错误与 VirtualDevice Activity 拦截分别记录。
 
-用户锁定、离线或身份变化时守卫应拒绝继续操作；只报告残留清单，待负责人恢复授权状态再清理。守卫仍通过时停止本工具 helper，精确清理工具关联/图片/forward并验证数量。不得 disassociate-all、杀未知进程、操作负责人应用、重启设备或修改安全设置。不要放宽颜色、落点或焦点判据；脚手架原因独立修复并重跑新的完整轮次。
+用户锁定、离线或身份变化时守卫应拒绝继续操作；只报告残留清单，待负责人恢复授权状态再清理。守卫仍通过且可安全排空时，停止helper后再清理工具资源。BUSY必须保留helper/文件/图片/关联，先由操作员让应用释放相机再重试；禁止kill helper或自行force-stop应用。系统已卡死时停止操作，交负责人重启，不能把保留资源写成清理通过。不得 disassociate-all、杀未知进程、操作负责人应用、重启设备或修改安全设置。不要放宽颜色、落点或焦点判据；脚手架原因独立修复并重跑新的完整轮次。
 
 新版fixture已由负责人安装，集成方读回横/竖图正确，状态文本bounds为[0,0][720,29]与[0,29][720,82]且截图可见；预览[0,411][720,951]为720×540（4:3），retries=0/3。正常关闭/重开相机两轮availability始终available、reason=null，每次重开均正确读回；按包名在屏67启动读到PAGE:MAIN。
 
@@ -69,3 +69,24 @@ node scripts/verify-virtual-camera-device.mjs --device 324462538298 --adb PATH_T
 | 显式移除 | 不带开关stop；若普通模式helper在运行，先停后再默认stop | 工具关联消失、其它关联不变、工具文件/forward无、摄像头回基线；归还/转手前必须做 |
 
 上述授权持久性仍待负责人/集成方执行，本轮仅模拟器验证编号生命周期，不证明CAMERA授权跨helper重启。
+
+## 出流关闭与BUSY恢复复验（负责人重启后由集成方执行，仍待验）
+
+本轮Agent不执行任何设备命令。当前手机系统相机服务卡死，待负责人重启；现场关联10保留，
+不得擅自删除。先在新指纹/ROM上建立独立基线，现有helper脚本若仍固定旧b6416指纹，
+不能直接照跑或去掉守卫；由集成方独立核对更新后执行，不将旧ROM通过外推新ROM。
+
+| 步骤/目标 | 动作 | 预期与判据 / 人工边界 |
+| --- | --- | --- |
+| 恢复系统基线 | 负责人重启手机；集成方只读核对b6956身份、完整相机dump及服务响应 | 真实/虚拟相机与关联各自记录；不能用closed无client断言真实相机功能正常。手机重启只由负责人做 |
+| 出流关闭 | fixture正常授权/四色读回后，应用仍出流时close原N | 显示先销毁，帧继续至onStreamClosed，流空后注销；无ANR/死锁、helper仍响应才算通过。BUSY也不得kill |
+| 观察待释放 | 若BUSY，读取list/status | 原N保留且releasePending=true，仍占容量；state0/组-1/awake=null是无有效显示诊断，不能继续输入/启动/取帧；pendingCameraReleases>0须shutdown释放 |
+| 人工释放相机后重试 | 负责人自行退出应用相机；如需`am force-stop <pkg>`，负责人先明确授权集成方执行一次 | 产品/Agent不执行force-stop。流空后同N重复close或stop可完成；失败保留证据，不杀helper、不盲重试 |
+| 两屏shutdown | 准备两摄像头屏流，执行stop；另一屏可先成功释放 | 一次共享6秒排空预算，任何BUSY则进程/未完资源保留，Go不清文件/图片/关联；全部安全释放才退出 |
+| 保留关联免重授 | 安全stop --keep-camera-association后重启helper并读回 | 编号不变且无新权限框/实际读回才算通过；本轮无此证据 |
+| 最终清理 | 仅安全退出后核对进程、屏、文件、forward、相机数量；按事先选择保留/移除精确关联 | BUSY或系统卡死不可伪称cleaned；cmd virtual_camera help超时/失效相机残留则停止，由负责人重启 |
+
+协议新增VIRTUAL_CAMERA_BUSY（retryable=true，CLI退出4），不是PROTOCOL_ERROR；等待所有流
+的上限6000ms，Go单次wire为10秒。条件变量等待释放流表锁，出帧不在等待前停；
+AndroidBackend仍串行，只读可能等待该局部预算，系统Binder已卡死时没有本地强制中断保证。
+上述关闭不卡死、人工force-stop后恢复及免重授全部未勾选；本轮只改拆除顺序并完成静态验证。

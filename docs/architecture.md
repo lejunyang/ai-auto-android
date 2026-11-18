@@ -113,7 +113,10 @@ steal可息屏读层级，但会打断主屏输入法；API33 focusIsolated=fals
 
 静态图片摄像头是独立的操作员启用路径：Go建立或复用精确shell伴生关联并读回编号，
 仅CLI的stop可选保留关联，默认仍移除；启动失败根据Created只回收本次新建的关联，
-既有/崩溃遗留保留并公开结果。Java退出只释放会话资源，不解除关联。
+既有/崩溃遗留保留并公开结果。Java退出不解除关联；摄像头先移除显示、用CameraRelease共享6秒预算等流关闭再注销相机/设备。
+BUSY保留所有权与出帧，ShutdownCompletion仅在安全拆除成功后允许退出；Go遇BUSY不清文件/关联。
+创建失败残留保留引用并公开计数，待释放屏只可诊断/重试关闭，不能作为输入/取帧目标。
+AndroidBackend仍串行，只读请求可能等待局部排空预算；b6956真机关闭复验待负责人重启后执行。
 helper 为每块 camera:back 屏创建一个 VirtualDevice 和后置 VirtualCamera，逐流 EGL
 将有界图片等比绘入输入面。普通屏仍使用原 DisplayManager；摄像头屏返回实际显示标志，
 不复用普通屏的焦点/IME/息屏验收结论。协议仍 v2，以 virtualCamera 能力位扩展；MCP

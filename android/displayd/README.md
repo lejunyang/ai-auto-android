@@ -23,9 +23,12 @@ adb -s emulator-5554 forward tcp:0 localabstract:aactl-displayd-v1
 
 `nohup`、重定向标准输入输出和进程入口的 `setsid()` 使辅助进程脱离启动它的
 `adb shell`；后续连接共享同一组虚拟屏。同名进程重复启动会绑定失败，不接管旧进程。
-`shutdown` 先释放全部虚拟屏与图像资源，响应后关闭套接字并退出；正常退出与
-`SIGTERM` 也通过退出钩子清理。`SIGKILL` 无法执行 Java 钩子，由系统在 binder owner
-死亡后回收虚拟屏。关闭虚拟屏固定销毁其上内容，不把任务搬回主屏。
+普通屏shutdown先释放显示/图像再退出。摄像头屏先display.release销毁Activity，保持出帧，
+最多共享6000ms等所有onStreamClosed；流空才停残余线程（不无限join）、VirtualCamera.close、
+VirtualDevice.close。BUSY保留原编号/资源/进程，Main只有安全完成shutdown后才允许退出。
+**出流时禁止kill helper（含SIGTERM/SIGKILL），崩溃也可能卡死A16系统virtual_camera。**
+shutdown hook不能取消外部终止；Binder owner死亡会走系统注销，不保证安全回收。
+关闭显示仍固定销毁其上内容，不把任务搬回主屏。
 
 停止后调用方应检查进程和显示屏已消失，移除实际分配的端口并清理推送文件：
 
@@ -119,7 +122,7 @@ REMOVE_MODE_DESTROY_CONTENT，null/缺省表示未验证。不得用请求中含
 保留方案实际flags24456/20360、组1；去掉的临时实验24200/20104、组2/3；全部groupAwake=true。
 不再宣称摄像头屏必由VirtualDevice分配显示组，完整对照与验收边界见虚拟摄像头文档。
 
-主机stop独立尝试普通文件、相机关联和图片清理；部分失败通过错误details.cleanup分类公开，
+主机stop仅在helper确认退出后独立尝试普通文件、相机关联和图片清理；BUSY直接返回，不清任何仍在用资源；部分失败通过错误details.cleanup分类公开，
 不因伴生服务失败而跳过普通文件。`/data/local/tmp/dalvik-cache[/arm64]`是系统uiautomator
 包装脚本可创建的共享缓存，本轮启动前已存在且各阶段stat未变，不归helper删除；验收脚本
 记录其基线与最终状态，交负责人决定，不能把它漏写为“所有临时目录均已删除”。
@@ -131,7 +134,8 @@ REMOVE_MODE_DESTROY_CONTENT，null/缺省表示未验证。不得用请求中含
 cameraInfo新增可选availability（available/unavailable/unknown）与availabilityReason。
 注册且服务Binder监视建立后只表示尚未观察到失败；未能监视为unknown，服务死亡或
 真实渲染失败为unavailable，保留到关闭屏。旧cameraId作为历史标识，不能证明仍注册。
-available不保证权限/读回，helper不自动重建或重试。恢复由操作员关闭受影响屏再创建。
+available不保证权限/读回，helper不自动重建或重试。系统仍响应且可安全释放才关闭重建；
+help超时/cameraserver残留失效虚拟相机时停止尝试，由负责人重启手机恢复。
 相机dump必须完整回传主机文件后过滤，禁止设备端head或提前关闭管道。
 
 集成方/负责人已验证旧验收产物的isolated/640×480读回、切图及33分钟57386帧；
@@ -151,7 +155,7 @@ com.android.shell + 00:00:00:00:00:10；不带开关stop即移除，无helper也
 关联及用户此前授予目标应用的虚拟CAMERA授权；归还/转手前须移除。不disassociate-all，
 不代授权/代点弹窗。保留后helper重启免重授的真机效果尚未验证，本轮无真机。
 启动失败只移除本次新建关联，既有/崩溃遗留原样保留并在错误说明。Main/AndroidBackend/
-VirtualCameraBackend退出只释放屏、流、摄像头与VirtualDevice，不解除关联，不需要改Java。
+VirtualCameraBackend不解除关联；本轮Java新增空流门，先排空再释放，不能在出流时退出。
 
 `state` 是 Android `Display.getState()` 的整数常量（常见 OFF=1、ON=2、DOZE=3）。
 API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`，查询的是
@@ -168,6 +172,7 @@ API 34+ 的 `groupAwake` 来自 `IPowerManager.isDisplayInteractive(displayId)`�
 | `INVALID_ARGUMENT` | 宽高/dpi 超范围，或 focus 不属于 isolated/steal |
 | `MESSAGE_TOO_LARGE` | 请求行或响应头超预算；拒绝后关闭连接，不继续读超长输入 |
 | `FRAME_TOO_LARGE` | PNG 编码超预算；不发送任何帧体 |
+| `VIRTUAL_CAMERA_BUSY` | 活动流6秒未排空；Go标记retryable=true/CLI退出4，先由操作员释放应用相机再重试close/stop，禁止kill helper |
 | `DISPLAY_LIMIT` | 已拥有 2 块屏，先关闭再创建 |
 | `UNSUPPORTED_API` | API <33，不能创建虚拟屏 |
 | `DISPLAY_NOT_FOUND` | 不归本进程所有（包括主屏 0）或已被系统移除，绝不回退主屏 |
@@ -243,3 +248,23 @@ BACK/空屏/重启、息屏取帧/输入及唤醒后层级恢复均通过。对�
 旧搜索基线的失败仍保留在历史记录，未计为成功。MCP stdio在Round26三个冷启动完整通过，两策略均由MCP创建并完成列表/状态/观察/六类动作/关闭；
 helper启停仍只有CLI，20个MCP工具与三道既有风险门边界保持。
 API33/34、真机/OEM仍留待后续任务，不把标志能力字段当成这些平台的实测结论。
+
+### 摄像头待释放状态（真机待验）
+
+cameraInfo.releasePending=true的屏保留原编号与容量，只供诊断/重试close或shutdown，
+不再输入/启动/取帧/设置图片。status跳过失效DisplayInfo与电源查询，state=0、
+displayGroupId=-1、groupAwake=null；displayFlags为创建时实际值。创建失败若意外仍有流，
+保留内部引用，status.pendingCameraReleases显示计数，shutdown重试。
+关闭/停止的所有屏共享6秒排空预算，进入全局锁前记录deadline；全局串行框架边界保留，
+只读请求可能等待该局部预算，已卡死的外部Binder调用无法靠本地计时强制结束。Go wire为10秒。
+BUSY时显示可能已移除，但camera/device与出帧仍在；产品不自行force-stop任何应用。
+
+b6956真机2026-11-18出流关闭后发生ANR/跨进程Binder阻塞；集成方留证kill已核验helper后，
+cmd virtual_camera help仍超时退出124，cameraserver残留失效v1_1000、相机总数6。
+真实0–4当时closed且无client，后续普通屏fixture首次失败原因未取得，不能判断真实相机好坏。
+当前结论只能是已改拆除顺序，真机关闭不卡死/人工force-stop后的BUSY恢复/保留关联免重授
+待负责人重启后由集成方复验；本轮不操作任何设备，不以JVM单测代替真机结论。
+
+升级需同时部署本轮CLI与helper，只有更新CLI不能改变旧helper的拆除顺序。
+旧helper仍出流时不要直接stop/kill来升级；先由操作员让应用正常释放相机并确认流为空，
+再停止并替换制品。无法确认空流或系统已卡死时停止操作，由负责人处理/重启，不自动终止进程。

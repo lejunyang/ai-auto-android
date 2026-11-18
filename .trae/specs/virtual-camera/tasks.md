@@ -94,9 +94,9 @@ VC8–VC11审查修复按下表顺序实施，当轮不执行VC5。集成方后�
 | VC25 | 文档、仅N60.6、五项make、Git审查与Gradle停止 | VC23/24；允许文档/skills参考镜像与规格单一owner | docs(camera)；不push、不动main、不提交二进制/原始证据；设备复验保持未勾选 |
 
 - [x] VC22 事实/源码核对与规格追加。
-- [ ] VC23 安全拆除Java实现与纯逻辑测试。
-- [ ] VC24 Go/CLI/MCP忙碌状态与停止保护。
-- [ ] VC25 文档、五项make、本地提交与Gradle退出。
+- [x] VC23 安全拆除Java实现与纯逻辑测试（5d82a66；displayd59项含新增11项，超时/解锁/顺序/重试/shutdown门通过；真机未验）。
+- [x] VC24 Go/CLI/MCP忙碌状态与停止保护（09845be；新增7项Go测试，BUSY不清理及启动回滚保护、状态/schema、预算通过）。
+- [x] VC25 文档、五项make、本地提交与Gradle退出（全部exit0，源码事实/推断分记，进度只追加，实际C盘daemon已停止；本轮零设备命令）。
 - [ ] 负责人重启b6956真机后由集成方验证关闭不卡死。
 - [ ] 操作员人工force-stop后BUSY恢复（产品不执行force-stop）。
 - [ ] 保留关联后helper重启免重授CAMERA。

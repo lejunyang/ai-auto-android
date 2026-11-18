@@ -216,3 +216,67 @@
 
 - 我们的旧触发路径经仓库核对：Screen.close先display.release再camera.close，VirtualCameraBackend.close立刻停流并注销，不等待应用onStreamClosed；Main在收到shutdown请求后即使backend失败也会在finally退出。Go只接受固定错误集，wire10秒。按VC22–VC25改为6秒排空门与BUSY，不能声称已修复卡死。
 - Git起点4105965与远端一致，worktree干净，test(adb) CI修复为集成方提交，不改写；main worktree仍f861a61。仅当前分支本地提交，不push、不动main/三份风险门。
+
+
+<a id="camera-teardown-20261119"></a>
+
+## 安全拆除实现与静态验证（2026-11-19，真机待验）
+
+- 规格先提交45d5d51。5d82a66修改Java：先display.release（销毁内容标志保持），保持仍工作的出帧，CameraRelease在同一流表monitor上按单调时钟最多等6000ms；wait释放monitor，onStreamClosed移除流/发停止信号并notifyAll。流空才封口、停止残余线程（不join）、VirtualCamera.close→VirtualDevice.close；Binder注销在monitor外。超时/中断返回BUSY，不停止活跃流、不注销、不丢引用；资源调用失败也保留重试所有权。
+- AndroidBackend在进入全局串行锁前记录每请求排空deadline，shutdown全部显示和创建残留共享该deadline，避免两屏各等6秒；队列中的后续关闭请求不重置预算。本轮保留全局框架串行边界，status/list可能等待本地排空预算。外部Binder若已卡死/框架release本身阻塞或调用方更短deadline不在局部计时可中断保证内，不能写所有请求必在6秒完成。
+- 摄像头BUSY保留原屏编号/容量、cameraInfo.releasePending=true，显示已进入释放；不再用于输入/启动/截图/图片目标，不查询失效DisplayInfo或按旧id保活。status.state=0/groupId=-1/groupAwake=null，displayFlags为创建时实际快照。创建失败的意外活动流保留内部Screen引用，status.pendingCameraReleases公开无编号残留数，shutdown重试；客户端验证已知显示+残留计数总和最多2。成功释放记录才移除；普通DisplayManager屏保留既有立即释放路径。
+- ShutdownCompletion只在backend.execute安全完成shutdown后授予退出资格，BUSY/框架异常即使进入finally也不System.exit；监听/线程池/剩余资源保留。shutdown可先释放成功屏，失败屏留待下一次显式close/stop。创建失败清理也用同一空流门，不假设绝无流。外部kill/崩溃的Binder死亡不可由Java hook取消，不新增kill或force-stop路径。
+- 09845be新增VIRTUAL_CAMERA_BUSY常量、allowed列表/可重试映射、CLI退出4；Go单次wire具名10秒，跨语言测试读取Java等待常量，断言至少3秒余量（当前6秒等待+4秒余量）。直接close、默认stop、keep-stop均透传BUSY及下一步提示，stop在shutdown失败处返回，不删helper文件/图片/关联，forward仍按调用清理。启动失败回滚也必须确认stopped=true才删本次新建关联；回滚遇BUSY则保留新建关联和helper，避免通过disassociate间接关闭活动设备。MCP只扩可选状态/schema与close提示，没有新工具/入口/风险门/版本变更。
+- 新增Java11项、Go7项均通过，既有测试未改弱。Java新增测试：
+  - CameraReleaseTest.activeStreamsTimeoutWithoutStoppingOrUnregistering
+  - CameraReleaseTest.streamClosureBeforeDeadlinePreservesRenderingThenClosesInOrder
+  - CameraReleaseTest.conditionWaitReleasesMonitorForStreamCallback
+  - CameraReleaseTest.shutdownSharesOneDeadlineAndDoesNotCompleteWhenBusy
+  - CameraReleaseTest.interruptedWaitKeepsResourcesAndReportsBusy
+  - CameraReleaseTest.emptyCreationRollbackClosesWithoutWaiting
+  - CameraReleaseTest.failedCameraCloseRetainsDeviceAndCanRetry
+  - CameraReleaseTest.unregisterRunsOutsideStreamMonitor
+  - CameraReleaseTest.shutdownPrefersBusyAndPreservesAllFailures
+  - ShutdownCompletionTest.busyShutdownCannotExitAndNextRequestCanRetry
+  - ShutdownCompletionTest.normalRequestOrFrameworkFailureCannotExit
+- Go新增测试：
+  - TestCameraBusyCloseAndStopPreserveLiveResources
+  - TestPendingCameraStateIsVisibleButNotAnActionTarget
+  - TestWireBudgetCoversSharedCameraDrain
+  - TestStatusRejectsPendingCameraReleaseOverBudget
+  - TestCLICameraBusyCloseAndStopAreRetryable
+  - TestMCPCameraBusyCloseAndPendingStatus
+  - TestCameraFailedStartBusyShutdownRetainsNewAssociation
+- 失败与改正：Go新测试先因BUSY常量/待释放字段未定义编译失败；MCP新增status测试真实捕获releasePending未进入输出schema，补可选字段/残留计数后通过。中文注释检查曾拒绝ShutdownCompletion用途注释缺少可识别动作，改为“管理安全拆除成功后的退出资格”后通过。一次文档替换脚手架误用status schema的integer锚点（实际为const），未写入文件，按真实schema修正；没有放宽测试或验收判据。
+- 全量验证前在Git Bash export PATH=/e/osdk-data/data/installs/go/1.26.5/bin:$PATH，直接运行make comments、make test、make verify、make build、make android-verify，最终全部exit0。注释636个手写文件/16个检查器自测；协议56项、skills三份及镜像、Go全量与三平台vet通过。Android643项，642通过、1项既有app测试跳过、0失败：app564、displayd59、fixture14、web-fixture6；单测/lint/构建均通过。日志在仓库外C:/Users/LJY/AppData/Local/Temp/aactl-camera-teardown-20261119，不提交构建产物/证据/AOSP源码副本。
+- Gradle清理：先在E:/osdk-data/cache/pkg/gradle查询No daemon，但宿主只读检查发现本轮targeted osdk调用的daemon47164实际位于C:/Users/LJY/.gradle。按该实际user home执行cd android && ./gradlew --stop，exit0、1 Daemon stopped；--status为No Gradle daemons are running且47164 STOPPED，宿主GradleDaemon进程复核为空。没有按PID强杀，没有修改系统配置；后续只改文档，不再启动Gradle。
+- 文档更新四处关闭语义/忙碌处理/禁止出流kill/死锁症状与负责人重启恢复；README、架构/协议错误表/安全分发、skills引用及镜像同步。N60.6新增b6956验收优先项并保留旧MCP 2/3失败等其它未验项。仍只能说“已改拆除顺序，真机待验”：本轮没有任何设备命令、没有ADB枚举、没有模拟器启动，没有授权/安装/force-stop/kill/设备重启。
+- 真机关闭不死锁、人工force-stop后同编号BUSY恢复、创建残留/两屏shutdown设备行为、保留关联helper重启免重授均未验证，保持未勾选，须负责人重启b6956手机后由集成方执行。旧高分辨率/steal/IME/息屏/第三方/强制断流诊断/多轮统计也未新增通过结论。现场的关联10与失效v1_1000/相机数6来自集成方记录，不冒称Agent已恢复或清理系统状态。
+
+本轮源码核对引用（根目录为前节给出的仓库外scratchpad/aosp；prefix/tag按集成方说明，本轮实际逐文件读取；不以在线打开失败的页面冒充下载核验）：
+
+| 快照 | 核对位置 | SHA-256 |
+| --- | --- | --- |
+| 16_main.cc | 43/65 | 796317b19e967209e241d35842241b893aa4ce8792fa9f7f8b4e19a206a15b5f |
+| a17_main.cc | 44/45/67 | 67f8e554f439ca2368fb19f30b771542b2287334ab86e02985279ecf9fb52dbe |
+| 16_VirtualCameraController.java | 115/125/149/160/168/267/269 | d09ce40c5744c234728733dc86e608d3fa49ebfe0649821cf5b5cfe3c9ebf459 |
+| 16_VirtualDeviceImpl.java | 777/805/828/833/1621 | 870a2734ee0dfc0aa4424adf88b1647649cdd27c046883be353e1a1daf2fe341 |
+| 16_VirtualCameraProvider.cc | 193/202/209 | d541602cf443522b4f987a05d7e9d1d119ad55a3abb712de64b0b3243d369d67 |
+| q2_Camera3Device.cpp | 295/297/353 | 81ad0f8697b841455e4a0ebf2cf6a0f6acc1f90e27e4dc23f248cf4b0f6943b4 |
+| q2_ProcessState.cpp | 435/437 | 56f7cd3f88dd04605be08b5488dd1ac9de888a425a8011e5b07782f262fd9478 |
+
+补充读源码：16_VirtualCameraService.cc:326/345调用Provider.removeCamera；q2_CameraService.cpp:524–589在NOT_PRESENT路径直接disconnectClients，660–668的disconnectClient同步调用客户端disconnect；q2_Camera3Device.cpp:295/297/353持接口锁并join。Controller的service binderDied只清表，与CameraDescriptor.binderDied（267–269注销）不得混淆。上游代码与现场环形等待的对应关系仍是推断，不声称已验证OEM二进制内部线程池实现或修复效果。
+
+
+
+本轮提交文件清单（收口文档与本记录同一提交，hash见git log）：
+
+| 提交 | 文件 |
+| --- | --- |
+| 45d5d51 | `.trae/specs/virtual-camera/checklist.md`、`.trae/specs/virtual-camera/progress.md`、`.trae/specs/virtual-camera/spec.md`、`.trae/specs/virtual-camera/tasks.md` |
+| 5d82a66 | `android/displayd/src/main/java/dev/aiauto/displayd/AndroidBackend.java`、`android/displayd/src/main/java/dev/aiauto/displayd/CameraRelease.java`、`android/displayd/src/main/java/dev/aiauto/displayd/Main.java`、`android/displayd/src/main/java/dev/aiauto/displayd/ShutdownCompletion.java`、`android/displayd/src/main/java/dev/aiauto/displayd/VirtualCameraBackend.java`、`android/displayd/src/test/java/dev/aiauto/displayd/CameraReleaseTest.java`、`android/displayd/src/test/java/dev/aiauto/displayd/ShutdownCompletionTest.java` |
+| 09845be | `internal/apperr/error.go`、`internal/cli/camera_busy_test.go`、`internal/mcpserver/camera_busy_test.go`、`internal/mcpserver/display.go`、`internal/vdisplay/association_start_test.go`、`internal/vdisplay/camera.go`、`internal/vdisplay/camera_busy_test.go`、`internal/vdisplay/client.go` |
+| docs(camera)收口 | `.trae/skills/android-device-automation/references/commands.md`、`.trae/skills/android-device-observation/references/commands.md`、`.trae/specs/virtual-camera/checklist.md`、`.trae/specs/virtual-camera/device-acceptance.md`、`.trae/specs/virtual-camera/progress.md`、`.trae/specs/virtual-camera/tasks.md`、`README.md`、`android/displayd/README.md`、`docs/architecture.md`、`docs/next-phase-tasks.md`、`docs/protocol.md`、`docs/security-distribution.md`、`docs/troubleshooting.md`、`docs/virtual-camera.md`、`skills/android-device-automation/references/commands.md`、`skills/android-device-observation/references/commands.md` |
+
+- 本轮记录仅追加；最终文档格式、允许范围与提交后工作区状态见收尾报告，不以静态验证冒充设备恢复。
+- 本轮本地构建CLI SHA256=ea429de225b89d909fcd3caf65ff4623eab9be42b5214454ecdb0f64f47740f3，helper SHA256=49307540443b2df252f53f35a308207f2c493c008569ebc414a406abcf4f18fe；均未部署到设备，摘要仅供后续集成核对。文档补充同版CLI/helper升级要求：旧helper活动流未释放时不得stop/kill升级。

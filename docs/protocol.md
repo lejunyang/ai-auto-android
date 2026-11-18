@@ -59,6 +59,12 @@ keptCameraAssociation:{userId,id}；无匹配省略、查询失败分类可见�
 availabilityReason；旧helper缺字段按未知处理。服务死亡/渲染失败为unavailable，保留
 旧cameraId作历史标识，不自动重建。available只是注册后未观察到监视失败，不证明权限
 或应用读回。协议保持v2，MCP输出schema同步；本机稳定使用需用户默认与虚拟两处授权。
+摄像头安全拆除新增VIRTUAL_CAMERA_BUSY（retryable=true、CLI退出4）：显示先移除，
+最多共享6000ms等待全部流关闭，流空才注销相机/设备；BUSY保留helper和资源，不清文件/关联。
+cameraInfo.releasePending可选布尔标记待释放屏；该编号仅供诊断/重试close，不能作为动作目标。
+待释放status的state=0、displayGroupId=-1、groupAwake=null；flags为创建时实际快照。
+status.pendingCameraReleases可选0..2计数表示创建失败仍保留的无编号资源，用shutdown重试。
+Go wire与helper连接预算10秒，覆盖6秒局部排空与余量，不承诺中断已卡死的系统Binder调用。
 `action sleep` 为 CLI 的 device.sleep，KEYCODE_SLEEP 只使主屏息屏；MCP不开放sleep/wake。
 
 层级结果分两种 `format`：
@@ -284,7 +290,7 @@ Schema 合法不等于当前后端可执行。Bridge 对未实现但合法的动
 | 资源限制 | `DEADLINE_EXCEEDED`、`MESSAGE_TOO_LARGE`、`RATE_LIMITED` |
 | 动作/选择器 | `ACTION_NOT_ALLOWED`、`ACTION_FAILED`、`SELECTOR_NOT_FOUND`、`SELECTOR_AMBIGUOUS` |
 | 虚拟显示 | DISPLAYD_NOT_RUNNING、DISPLAYD_IDENTITY_MISMATCH、DISPLAY_NOT_FOUND、DISPLAY_EMPTY、WINDOWS_UNAVAILABLE、DEVICE_LOCKED、DISPLAY_ASLEEP |
-| 虚拟摄像头 | `VIRTUAL_CAMERA_NOT_ENABLED`（未启用/旧helper，CLI退出6）、`VIRTUAL_CAMERA_UNAVAILABLE`（API/服务/创建失败，退出6）、`CAMERA_IMAGE_INVALID`（图片预算/格式/路径，退出2） |
+| 虚拟摄像头 | `VIRTUAL_CAMERA_BUSY`（仍有活动流，retryable=true、退出4，释放应用相机后重试close/stop，禁止kill helper）、`VIRTUAL_CAMERA_NOT_ENABLED`（未启用/旧helper，CLI退出6）、`VIRTUAL_CAMERA_UNAVAILABLE`（API/服务/创建失败，退出6）、`CAMERA_IMAGE_INVALID`（图片预算/格式/路径，退出2） |
 | 录制/内部 | `SCRIPT_NOT_FOUND`、`INTERNAL_ERROR` |
 
 回放报告中的 `SECRET_REQUIRED`、`CONDITION_TIMEOUT`、

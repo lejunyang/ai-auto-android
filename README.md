@@ -123,6 +123,9 @@ API35+ 支持的设备可由操作员使用 `display start --virtual-camera`，�
 操作员可用`display stop --device SERIAL --keep-camera-association`保留关联供重启复用；
 设备将常驻shell伴生关联及既有虚拟CAMERA授权，归还前以不带开关stop移除（无helper也可）。
 保留后helper重启免重授的真机效果待验；MCP不开放此开关。
+摄像头屏关闭先移除显示、最多等6秒流关闭再注销；VIRTUAL_CAMERA_BUSY时保留helper/关联，
+请操作员让应用释放相机再重试。出流时禁止kill helper；A16系统卡死可能只能由负责人重启恢复。
+当前已改拆除顺序，b6956真机关闭不卡死仍待集成方复验。
 
 ## MCP 配置
 

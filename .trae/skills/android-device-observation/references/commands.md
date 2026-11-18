@@ -146,3 +146,9 @@ focus默认isolated：API34+不打断主屏输入，但息屏无层级、虚拟�
 但打断主屏输入法。API33 focusIsolated=false。DISPLAY_EMPTY要求先在目标屏启动应用；
 WINDOWS_UNAVAILABLE提示唤醒主屏或用steal重建（销毁原屏内容），不能删除目标参数改向主屏。
 MCP可用android_display_list/status读取；helper start/stop只有CLI，升级v2前先旧CLI停止v1。
+
+cameraInfo.releasePending=true表示摄像头资源待释放：原编号仅用于诊断/重试关闭，
+不可继续作为输入/启动/截图目标。待释放status用state=0、displayGroupId=-1、groupAwake=null
+表示没有当前有效显示组，displayFlags为创建时快照；pendingCameraReleases计数用于创建失败
+仍持有的无编号资源。BUSY时不要kill helper、删关联或自动force-stop应用。
+A16服务已卡死（help超时、失效虚拟相机残留）须停止并交负责人重启，不继续重建尝试。

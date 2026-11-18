@@ -193,3 +193,9 @@ API33没有隔离标志，focusIsolated=false；中文输入与多显示Bridge�
 只读查adb -s SERIAL shell cmd companiondevice list USER_ID中的com.android.shell+00:00:00:00:00:10。
 归还前用不带开关display stop --device SERIAL移除（无helper亦可）；保留后重启免重授真机待验。
 启动失败只移除本次新建关联，既有/崩溃遗留保留；不disassociate-all、不代授权或点弹窗。
+
+摄像头屏close/stop若返回VIRTUAL_CAMERA_BUSY（retryable=true，CLI退出4），
+须让操作员先使目标应用释放相机，再显式重试关闭；不要自动重试、force-stop或kill helper。
+helper正在出流时外部kill/崩溃可能卡死A16系统virtual_camera，help超时/残留失效相机
+应停止操作并交负责人重启。releasePending屏已进入释放，不可再启动/输入/取帧；
+本轮已改6秒排空后注销的顺序，真机关闭及保留关联免重授仍待验。

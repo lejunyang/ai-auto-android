@@ -54,11 +54,11 @@
 - [ ] 真机保留关联后helper重启无需重新授权CAMERA（不得用模拟器或同关联重建屏代替）。
 ## 安全拆除续修验收
 
-- [ ] display.release后保持出帧，流回调清空才camera→device注销；6秒超时BUSY不注销，重复close可完成。
-- [ ] wait释放流表monitor，回调可执行；两屏shutdown共享6秒等待预算，BUSY不退出。
-- [ ] 待释放屏原编号可诊断/重试、占容量、不作为输入/取帧目标；创建残留保留引用并公开计数。
-- [ ] BUSY端到端透传retryable=true/退出4，stop遇BUSY不删文件/图片/关联，10秒wire预算断言。
-- [ ] 五项make、文档/仅N60.6、无越界diff/二进制、Gradle停止与干净worktree。
+- [x] display.release后保持出帧，流回调清空才camera→device注销；6秒超时BUSY不注销，重复close纯逻辑测试通过，真机待验。
+- [x] wait释放流表monitor，回调可执行；两屏shutdown共享6秒等待预算，BUSY不退出（纯逻辑时钟/假资源及Main退出门测试）。
+- [x] 待释放屏原编号可诊断/重试、占容量、不作为输入/取帧目标；创建残留保留引用并公开计数，Go/MCP状态验证通过。
+- [x] BUSY在Go/CLI/MCP测试中透传retryable=true/退出4；stop及启动失败回滚遇BUSY均不删仍在用资源，10秒wire对6秒Java常量留余量的断言通过。
+- [x] 五项make、文档/仅N60.6、无二进制及Gradle停止完成；最终提交范围/工作区审查见本轮报告。本轮没有设备操作，不宣称已修复卡死。
 - [ ] b6956真机关闭不死锁复验（负责人重启后集成方执行，本轮无设备）。
 - [ ] 人工force-stop释放相机后的BUSY恢复路径。
 - [ ] 保留关联后重启免重授相机权限。
